@@ -6,10 +6,111 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Modelos para el sistema de inventario
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  sku         String          @unique
+  cost        Decimal         @default(0) @db.Decimal(10, 2)  // Precio de compra
+  price       Decimal         @db.Decimal(10, 2)              // Precio de venta
+  margin      Decimal         @default(0) @db.Decimal(10, 2)  // Margen de ganancia
+  categoryId  String?
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  imageUrl    String?
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  inventory   InventoryItem?
+  transactions SaleTransaction[]
+
+  @@map("products")
+}
+
+model InventoryItem {
+  id              String          @id @default(cuid())
+  productId       String          @unique
+  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity        Int             @default(0)
+  minStockLevel   Int             @default(5)
+  location        String?
+  lastUpdated     DateTime        @updatedAt
+  stockMovements  StockMovement[]
+  
+  @@map("inventory_items")
+}
+
+enum MovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  INITIAL
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity        Int
+  type            MovementType
+  date            DateTime      @default(now())
+  notes           String?
+  createdBy       String?
+  
+  @@map("stock_movements")
+}
+
+model Sale {
+  id            String            @id @default(cuid())
+  date          DateTime          @default(now())
+  total         Decimal          @db.Decimal(10, 2)
+  subtotal      Decimal          @db.Decimal(10, 2)
+  tax           Decimal          @db.Decimal(10, 2)
+  transactions  SaleTransaction[]
+  status        SaleStatus       @default(COMPLETED)
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@map("sales")
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model SaleTransaction {
+  id            String    @id @default(cuid())
+  saleId        String
+  sale          Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity      Int
+  unitPrice     Decimal   @db.Decimal(10, 2)
+  subtotal      Decimal   @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now())
+
+  @@map("sale_transactions")
 }

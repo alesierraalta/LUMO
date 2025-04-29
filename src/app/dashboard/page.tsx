@@ -1,9 +1,21 @@
-import { BarChart3, BoxIcon, ClipboardList, PieChart, DollarSign } from "lucide-react";
+import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
 import Link from "next/link";
 import { getAllProducts, getAllCategories } from "@/services/productService";
 import { getLowStockItems } from "@/services/inventoryService";
 import { formatDate } from "@/lib/utils";
+
+interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  margin: number;
+  createdAt: string;
+  category?: {
+    name: string;
+  };
+}
 
 // Define margin categories
 const MARGIN_CATEGORIES = {
@@ -18,7 +30,7 @@ export default async function DashboardPage() {
     getAllProducts(),
     getAllCategories(),
     getLowStockItems()
-  ]);
+  ]) as [Product[], any[], any[]];
 
   // Calcular estadísticas
   const totalProducts = products.length;
@@ -26,7 +38,7 @@ export default async function DashboardPage() {
   const lowStockCount = lowStockItems.length;
 
   // Calculate margin statistics
-  const totalMargin = products.reduce((sum, product) => sum + Number(product.margin || 0), 0);
+  const totalMargin = products.reduce((sum: number, product: Product) => sum + Number(product.margin || 0), 0);
   const averageMargin = products.length > 0 ? (totalMargin / products.length).toFixed(2) : "0";
   
   // Get highest margin products
@@ -36,9 +48,9 @@ export default async function DashboardPage() {
 
   // Products by margin category
   const productsByCategory = {
-    HIGH: products.filter(p => Number(p.margin || 0) > MARGIN_CATEGORIES.MEDIUM.max).length,
-    MEDIUM: products.filter(p => Number(p.margin || 0) > MARGIN_CATEGORIES.LOW.max && Number(p.margin || 0) <= MARGIN_CATEGORIES.MEDIUM.max).length,
-    LOW: products.filter(p => Number(p.margin || 0) <= MARGIN_CATEGORIES.LOW.max).length
+    HIGH: products.filter((p: Product) => Number(p.margin || 0) > MARGIN_CATEGORIES.MEDIUM.max).length,
+    MEDIUM: products.filter((p: Product) => Number(p.margin || 0) > MARGIN_CATEGORIES.LOW.max && Number(p.margin || 0) <= MARGIN_CATEGORIES.MEDIUM.max).length,
+    LOW: products.filter((p: Product) => Number(p.margin || 0) <= MARGIN_CATEGORIES.LOW.max).length
   };
 
   return (
@@ -59,8 +71,8 @@ export default async function DashboardPage() {
           title="Total Products"
           value={totalProducts}
           description="Total products in inventory"
-          icon={<BoxIcon className="h-5 w-5" />}
-          href="/products"
+          icon={<ClipboardList className="h-5 w-5" />}
+          href="/inventory"
           linkText="View all products"
         />
         
@@ -181,10 +193,10 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="grid gap-3">
               <Link 
-                href="/products/add" 
+                href="/inventory/add" 
                 className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
               >
-                <BoxIcon className="h-5 w-5" />
+                <PlusCircle className="h-5 w-5" />
                 <span>Add new product</span>
               </Link>
               <Link 

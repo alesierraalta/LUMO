@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, BoxIcon, ClipboardList } from "lucide-react";
+import { BarChart3, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
@@ -13,15 +13,8 @@ export default function Home() {
       color: "from-primary/20 to-primary/10 hover:from-primary/30 hover:to-primary/20 border-primary/20"
     },
     {
-      title: "Products",
-      description: "Manage your product catalog",
-      href: "/products",
-      icon: <BoxIcon className="h-6 w-6" />,
-      color: "from-accent/20 to-accent/10 hover:from-accent/30 hover:to-accent/20 border-accent/20"
-    },
-    {
       title: "Inventory",
-      description: "Track stock levels and updates",
+      description: "Manage products and track stock levels",
       href: "/inventory",
       icon: <ClipboardList className="h-6 w-6" />,
       color: "from-secondary/30 to-muted/30 hover:from-secondary/40 hover:to-muted/40 border-secondary/20"
@@ -51,7 +44,7 @@ export default function Home() {
           </div>
 
           {/* Navigation Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {navigationCards.map((card) => (
               <Link 
                 key={card.title}

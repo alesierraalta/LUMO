@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, Home, PackageOpen } from "lucide-react";
+import { BarChart3, Boxes, Home } from "lucide-react";
 
 interface SidebarLinkProps {
   href: string;
@@ -39,7 +39,6 @@ export function Sidebar() {
       <nav className="flex-1 p-4 space-y-2">
         <SidebarLink href="/" icon={Home} title="Home" />
         <SidebarLink href="/dashboard" icon={BarChart3} title="Dashboard" />
-        <SidebarLink href="/products" icon={PackageOpen} title="Products" />
         <SidebarLink href="/inventory" icon={Boxes} title="Inventory" />
       </nav>
       
@@ -62,9 +61,6 @@ export function MobileNav() {
         </Link>
         <Link href="/dashboard" className="p-2 hover:bg-secondary rounded-md">
           <BarChart3 className="h-5 w-5" />
-        </Link>
-        <Link href="/products" className="p-2 hover:bg-secondary rounded-md">
-          <PackageOpen className="h-5 w-5" />
         </Link>
         <Link href="/inventory" className="p-2 hover:bg-secondary rounded-md">
           <Boxes className="h-5 w-5" />

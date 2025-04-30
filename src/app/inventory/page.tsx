@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ArrowUpDown, PackageOpen, Filter } from "lucide-react";
+import { Plus, ArrowUpDown, PackageOpen, Filter, Tag } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getAllInventoryItems } from "@/services/inventoryService";
@@ -44,9 +44,10 @@ export default async function InventoryPage() {
       </div>
       
       <Tabs defaultValue="inventory" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
           <TabsTrigger value="inventory">Stock Levels</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
         
         <TabsContent value="inventory">
@@ -85,6 +86,29 @@ export default async function InventoryPage() {
                 </Button>
               </div>
               <ProductsTable products={products} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="categories">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Product Categories</CardTitle>
+              <CardDescription>
+                Manage and organize your product categories
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center py-10">
+              <Tag className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Category Management</h3>
+              <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
+                Create, edit, and organize product categories to better structure your inventory
+              </p>
+              <Button asChild>
+                <Link href="/categories">
+                  View Categories
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

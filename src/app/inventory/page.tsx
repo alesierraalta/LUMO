@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ArrowUpDown, PackageOpen, Filter, Tag } from "lucide-react";
+import { Plus, ArrowUpDown, PackageOpen, Filter, Tag, Settings, MoreVertical, Layers, ClipboardList } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getAllInventoryItems } from "@/services/inventoryService";
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductsTable from "@/components/inventory/products-table";
 import { getAllProducts } from "@/services/productService";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default async function InventoryPage() {
   // Fetch both inventory and product data
@@ -39,6 +40,36 @@ export default async function InventoryPage() {
                 Stock Movement
               </Link>
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">More options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Inventory Options</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link href="/categories">
+                    <Tag className="h-4 w-4 mr-2" />
+                    Gestionar Categorías
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/inventory/location">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Manage Locations
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/reports/low-stock">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    Stock Reports
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

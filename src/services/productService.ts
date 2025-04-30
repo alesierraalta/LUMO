@@ -44,6 +44,35 @@ function calculateMargin(cost: number, price: number): number {
   return ((price - cost) / cost) * 100;
 }
 
+// Validation functions
+function validateSKU(sku: string): boolean {
+  return /^PROD-[A-Z0-9]{5}$/.test(sku);
+}
+
+function validateDecimalPlaces(value: number): boolean {
+  const decimals = value.toString().split('.')[1];
+  return !decimals || decimals.length <= 2;
+}
+
+function validateImageUrl(url: string | null | undefined): boolean {
+  if (!url) return true;
+  try {
+    new URL(url);
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  } catch {
+    return false;
+  }
+}
+
+function validateName(name: string): boolean {
+  return name.length >= 1 && name.length <= 100;
+}
+
+function validateDescription(description: string | undefined): boolean {
+  if (!description) return true;
+  return description.length <= 500;
+}
+
 /**
  * Obtiene todos los productos
  */
@@ -206,6 +235,50 @@ export async function searchProducts(
  * Crea un nuevo producto
  */
 export async function createProduct(productData: CreateProductInput) {
+  // Validar nombre
+  if (!validateName(productData.name)) {
+    throw new Error('El nombre del producto es requerido y no puede exceder los 100 caracteres');
+  }
+
+  // Validar descripción
+  if (productData.description && !validateDescription(productData.description)) {
+    throw new Error('La descripción no puede exceder los 500 caracteres');
+  }
+
+  // Validar formato de SKU
+  if (!validateSKU(productData.sku)) {
+    throw new Error('El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)');
+  }
+
+  // Validar decimales en precio y costo
+  if (productData.cost && !validateDecimalPlaces(productData.cost)) {
+    throw new Error('El costo debe tener máximo 2 decimales');
+  }
+  if (!validateDecimalPlaces(productData.price)) {
+    throw new Error('El precio debe tener máximo 2 decimales');
+  }
+
+  // Validar rangos de valores
+  if (productData.cost && productData.cost > 999999.99) {
+    throw new Error('El costo no puede exceder los 999,999.99');
+  }
+  if (productData.price > 999999.99) {
+    throw new Error('El precio no puede exceder los 999,999.99');
+  }
+  if (productData.margin && (productData.margin < 0 || productData.margin > 1000)) {
+    throw new Error('El margen debe estar entre 0 y 1000%');
+  }
+
+  // Validar que el precio sea mayor que el costo
+  if (productData.cost && productData.price <= productData.cost) {
+    throw new Error('El precio de venta debe ser mayor que el costo');
+  }
+
+  // Validar URL de imagen
+  if (productData.imageUrl && !validateImageUrl(productData.imageUrl)) {
+    throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
+  }
+
   // Verificar si el SKU ya existe
   const existingProduct = await prisma.product.findUnique({
     where: { sku: productData.sku },
@@ -253,6 +326,50 @@ export async function createProduct(productData: CreateProductInput) {
  * Actualiza un producto existente
  */
 export async function updateProduct(id: string, productData: UpdateProductInput) {
+  // Validar nombre
+  if (productData.name && !validateName(productData.name)) {
+    throw new Error('El nombre del producto es requerido y no puede exceder los 100 caracteres');
+  }
+
+  // Validar descripción
+  if (productData.description && !validateDescription(productData.description)) {
+    throw new Error('La descripción no puede exceder los 500 caracteres');
+  }
+
+  // Validar formato de SKU si se está actualizando
+  if (productData.sku && !validateSKU(productData.sku)) {
+    throw new Error('El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)');
+  }
+
+  // Validar decimales en precio y costo
+  if (productData.cost !== undefined && !validateDecimalPlaces(productData.cost)) {
+    throw new Error('El costo debe tener máximo 2 decimales');
+  }
+  if (productData.price !== undefined && !validateDecimalPlaces(productData.price)) {
+    throw new Error('El precio debe tener máximo 2 decimales');
+  }
+
+  // Validar rangos de valores
+  if (productData.cost !== undefined && productData.cost > 999999.99) {
+    throw new Error('El costo no puede exceder los 999,999.99');
+  }
+  if (productData.price !== undefined && productData.price > 999999.99) {
+    throw new Error('El precio no puede exceder los 999,999.99');
+  }
+  if (productData.margin !== undefined && (productData.margin < 0 || productData.margin > 1000)) {
+    throw new Error('El margen debe estar entre 0 y 1000%');
+  }
+
+  // Validar que el precio sea mayor que el costo si ambos están definidos
+  if (productData.price !== undefined && productData.cost !== undefined && productData.price <= productData.cost) {
+    throw new Error('El precio de venta debe ser mayor que el costo');
+  }
+
+  // Validar URL de imagen
+  if (productData.imageUrl && !validateImageUrl(productData.imageUrl)) {
+    throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
+  }
+
   // Verificar si el producto existe
   const existingProduct = await prisma.product.findUnique({
     where: { id },

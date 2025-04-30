@@ -1,29 +1,86 @@
+import { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getAllProducts } from "@/services/productService";
-import ProductList from "@/components/products/product-list";
+import { PlusCircle } from "lucide-react";
+import prisma from "@/lib/prisma";
+import { ProductList } from "@/components/products/product-list";
+import { ProductSearch } from "@/components/products/product-search";
 
-export default async function ProductsPage() {
-  // Fetch products on the server
-  const products = await getAllProducts();
+export const metadata: Metadata = {
+  title: "Products",
+  description: "Manage your products",
+};
+
+interface PageProps {
+  searchParams: { q?: string; category?: string };
+}
+
+async function getProducts(query?: string, categoryId?: string) {
+  const products = await prisma.product.findMany({
+    where: {
+      AND: [
+        query ? {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+            { sku: { contains: query, mode: 'insensitive' } },
+          ],
+        } : {},
+        categoryId ? { categoryId } : {},
+      ],
+    },
+    include: {
+      category: true,
+      inventory: {
+        select: {
+          quantity: true,
+          minStockLevel: true,
+        },
+      },
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+
+  return products;
+}
+
+async function getCategories() {
+  return prisma.category.findMany({
+    orderBy: {
+      name: 'asc',
+    },
+  });
+}
+
+export default async function ProductsPage({ searchParams }: PageProps) {
+  const [products, categories] = await Promise.all([
+    getProducts(searchParams.q, searchParams.category),
+    getCategories(),
+  ]);
 
   return (
-    <div className="container max-w-7xl mx-auto space-y-6 p-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="container mx-auto py-10">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground">Manage your product catalog</p>
+          <p className="text-sm text-muted-foreground">
+            Manage your products here
+          </p>
         </div>
         <Link href="/products/add">
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add New Product
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Product
           </Button>
         </Link>
       </div>
-      
-      {/* Use the new ProductList component */}
+
+      <div className="mt-4 mb-6">
+        <ProductSearch categories={categories} />
+      </div>
+
       <ProductList products={products} />
     </div>
   );

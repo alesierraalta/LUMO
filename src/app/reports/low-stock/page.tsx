@@ -9,13 +9,13 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { getAllProducts, getAllCategories, getProductsWithLowStock } from "@/services/productService";
+import { getAllProducts, getProductsWithLowStock } from "@/services/productService";
 import { getLowStockItems, getOutOfStockItems, calculateStockStatus, StockStatus } from "@/services/inventoryService";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import dynamic from "next/dynamic";
 import PrintHeader from "@/components/reports/print-header";
 import ReportActions from "@/components/reports/report-actions";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getApiBaseUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 // Client components
@@ -35,16 +35,27 @@ const STOCK_CATEGORIES = {
     label: "Low",
     color: "warning",
   },
+  NORMAL: {
+    label: "Normal",
+    color: "success",
+  }
 };
 
 export default async function LowStockReportsPage() {
   // Fetch inventory data
-  const [lowStockItems, outOfStockItems, allProducts, categories] = await Promise.all([
+  const [lowStockItems, outOfStockItems, allProducts] = await Promise.all([
     getLowStockItems(),
     getOutOfStockItems(),
     getAllProducts(true), // Include inactive products for complete analysis
-    getAllCategories()
   ]);
+  
+  // Fetch categories from API with proper base URL
+  const apiBaseUrl = getApiBaseUrl();
+  const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
+  if (!categoriesResponse.ok) {
+    throw new Error('Failed to fetch categories');
+  }
+  const categories = await categoriesResponse.json();
   
   // Calculate statistics
   const totalProducts = allProducts.length;
@@ -53,7 +64,7 @@ export default async function LowStockReportsPage() {
   const lowStockPercentage = totalProducts > 0 ? (lowStockCount / totalProducts * 100).toFixed(1) : "0";
   
   // Group low stock items by category
-  const lowStockByCategory = categories.map(category => {
+  const lowStockByCategory = categories.map((category: any) => {
     const productsInCategory = lowStockItems.filter(item => 
       item.product.categoryId === category.id
     );
@@ -63,7 +74,7 @@ export default async function LowStockReportsPage() {
       name: category.name,
       count: productsInCategory.length,
     };
-  }).filter(cat => cat.count > 0).sort((a, b) => b.count - a.count);
+  }).filter((cat: any) => cat.count > 0).sort((a: any, b: any) => b.count - a.count);
   
   // Calculate stock level distribution for visualization
   const stockLevelDistribution = [
@@ -92,7 +103,7 @@ export default async function LowStockReportsPage() {
             Products that need to be restocked soon
           </p>
         </div>
-        <ReportActions />
+        <ReportActions reportType="low-stock" />
       </div>
 
       <div className="hidden print:block">
@@ -102,9 +113,9 @@ export default async function LowStockReportsPage() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {products.map((product) => {
           const stockLevel =
-            product.inventory.quantity === 0
+            product.inventory?.quantity === 0
               ? "OUT_OF_STOCK"
-              : product.inventory.quantity <= product.inventory.minStockLevel / 2
+              : product.inventory?.quantity <= (product.inventory?.minStockLevel || 0) / 2
               ? "CRITICAL"
               : "LOW";
 
@@ -120,10 +131,10 @@ export default async function LowStockReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {product.inventory.quantity}
+                  {product.inventory?.quantity || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Min. Level: {product.inventory.minStockLevel}
+                  Min. Level: {product.inventory?.minStockLevel || 0}
                 </div>
                 <div className="mt-4 text-xs text-muted-foreground">
                   <div>SKU: {product.sku}</div>

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getProductById, updateProduct, getAllCategories } from "@/services/productService"
+import { getProductById, updateProduct } from "@/services/productService"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 
 interface Product {
@@ -42,10 +42,20 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     // Load product and categories data
     const loadData = async () => {
       try {
+        // Fetch product data and categories in parallel
+        const fetchProduct = getProductById(params.id);
+        const fetchCategories = fetch('/api/categories').then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch categories');
+          }
+          return res.json();
+        });
+
         const [productData, categoriesData] = await Promise.all([
-          getProductById(params.id),
-          getAllCategories()
+          fetchProduct,
+          fetchCategories
         ])
+        
         setProduct(productData)
         setCategories(categoriesData)
       } catch (error) {

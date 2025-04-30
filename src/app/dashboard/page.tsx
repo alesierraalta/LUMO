@@ -1,9 +1,9 @@
 import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
 import Link from "next/link";
-import { getAllProducts, getAllCategories } from "@/services/productService";
+import { getAllProducts } from "@/services/productService";
 import { getLowStockItems } from "@/services/inventoryService";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getApiBaseUrl } from "@/lib/utils";
 
 interface Product {
   id: string;
@@ -26,11 +26,18 @@ const MARGIN_CATEGORIES = {
 
 export default async function DashboardPage() {
   // Obtener datos reales de la base de datos
-  const [products, categories, lowStockItems] = await Promise.all([
+  const [products, lowStockItems] = await Promise.all([
     getAllProducts(),
-    getAllCategories(),
     getLowStockItems()
-  ]) as [Product[], any[], any[]];
+  ]) as [Product[], any[]];
+
+  // Fetch categories from API with proper base URL
+  const apiBaseUrl = getApiBaseUrl();
+  const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
+  if (!categoriesResponse.ok) {
+    throw new Error('Failed to fetch categories');
+  }
+  const categories = await categoriesResponse.json();
 
   // Calcular estadísticas
   const totalProducts = products.length;
@@ -249,12 +256,6 @@ export default async function DashboardPage() {
                   </div>
                 </div>
               ))}
-              <Link 
-                href="/reports/margins" 
-                className="block w-full text-center text-sm text-primary hover:underline mt-4"
-              >
-                View detailed margin analysis
-              </Link>
             </div>
           </CardContent>
         </Card>

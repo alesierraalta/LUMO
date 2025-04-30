@@ -1,9 +1,30 @@
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import ProductForm from "@/components/products/product-form";
-import { getAllCategories } from "@/services/productService";
+import { createProduct } from "@/services/productService";
 
-export default async function AddProductPage() {
-  // Fetch categories on the server
-  const categories = await getAllCategories();
+export default function AddProductPage() {
+  const router = useRouter();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   return (
     <div className="container max-w-5xl mx-auto py-8">

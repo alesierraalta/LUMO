@@ -9,6 +9,24 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Returns the base URL for API requests
+ * This is needed for server components where relative URLs won't work
+ */
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, ''); // Remove trailing slash if present
+  }
+  
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  return process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:3000' 
+    : '';
+}
+
+/**
  * Formats a date to a readable string
  */
 export function formatDate(input: Date | string | null | undefined): string {

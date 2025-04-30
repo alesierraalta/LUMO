@@ -1,11 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -13,8 +8,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// Modelos para el sistema de inventario
 
 model Category {
   id          String    @id @default(cuid())
@@ -28,36 +21,78 @@ model Category {
 }
 
 model Product {
-  id          String          @id @default(cuid())
-  name        String
-  description String?
-  sku         String          @unique
-  cost        Decimal         @default(0) @db.Decimal(10, 2)  // Precio de compra
-  price       Decimal         @db.Decimal(10, 2)              // Precio de venta
-  margin      Decimal         @default(0) @db.Decimal(10, 2)  // Margen de ganancia
-  categoryId  String?
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  imageUrl    String?
-  active      Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  inventory   InventoryItem?
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  sku          String            @unique
+  price        Decimal           @db.Decimal(10, 2)
+  categoryId   String?
+  imageUrl     String?
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  cost         Decimal           @default(0) @db.Decimal(10, 2)
+  margin       Decimal           @default(0) @db.Decimal(10, 2)
+  inventory    InventoryItem?
+  category     Category?         @relation(fields: [categoryId], references: [id])
   transactions SaleTransaction[]
 
   @@map("products")
 }
 
 model InventoryItem {
-  id              String          @id @default(cuid())
-  productId       String          @unique
-  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity        Int             @default(0)
-  minStockLevel   Int             @default(5)
-  location        String?
-  lastUpdated     DateTime        @updatedAt
-  stockMovements  StockMovement[]
-  
+  id             String          @id @default(cuid())
+  productId      String          @unique
+  quantity       Int             @default(0)
+  minStockLevel  Int             @default(5)
+  location       String?
+  lastUpdated    DateTime        @updatedAt
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+
   @@map("inventory_items")
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  quantity        Int
+  type            MovementType
+  date            DateTime      @default(now())
+  notes           String?
+  createdBy       String?
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@map("stock_movements")
+}
+
+model Sale {
+  id           String            @id @default(cuid())
+  date         DateTime          @default(now())
+  total        Decimal           @db.Decimal(10, 2)
+  subtotal     Decimal           @db.Decimal(10, 2)
+  tax          Decimal           @db.Decimal(10, 2)
+  status       SaleStatus        @default(COMPLETED)
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  transactions SaleTransaction[]
+
+  @@map("sales")
+}
+
+model SaleTransaction {
+  id        String   @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  subtotal  Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_transactions")
 }
 
 enum MovementType {
@@ -67,50 +102,8 @@ enum MovementType {
   INITIAL
 }
 
-model StockMovement {
-  id              String        @id @default(cuid())
-  inventoryItemId String
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  quantity        Int
-  type            MovementType
-  date            DateTime      @default(now())
-  notes           String?
-  createdBy       String?
-  
-  @@map("stock_movements")
-}
-
-model Sale {
-  id            String            @id @default(cuid())
-  date          DateTime          @default(now())
-  total         Decimal          @db.Decimal(10, 2)
-  subtotal      Decimal          @db.Decimal(10, 2)
-  tax           Decimal          @db.Decimal(10, 2)
-  transactions  SaleTransaction[]
-  status        SaleStatus       @default(COMPLETED)
-  notes         String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  @@map("sales")
-}
-
 enum SaleStatus {
   PENDING
   COMPLETED
   CANCELLED
-}
-
-model SaleTransaction {
-  id            String    @id @default(cuid())
-  saleId        String
-  sale          Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantity      Int
-  unitPrice     Decimal   @db.Decimal(10, 2)
-  subtotal      Decimal   @db.Decimal(10, 2)
-  createdAt     DateTime  @default(now())
-
-  @@map("sale_transactions")
 }

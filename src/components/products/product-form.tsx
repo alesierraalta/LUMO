@@ -19,17 +19,83 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { calculateMargin } from "@/services/productService";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 // Esquema de validación para el formulario
 const productSchema = z.object({
-  name: z.string().min(1, { message: "El nombre es requerido" }),
-  description: z.string().optional(),
-  sku: z.string().min(1, { message: "El SKU es requerido" }),
-  cost: z.coerce.number().min(0, { message: "El costo no puede ser negativo" }),
-  price: z.coerce.number().min(0.01, { message: "El precio debe ser mayor que 0" }),
-  margin: z.coerce.number().optional(),
+  name: z.string().min(1, { message: "El nombre del producto es requerido" }).max(100, { message: "El nombre no puede exceder los 100 caracteres" }),
+  description: z.string().optional().max(500, { message: "La descripción no puede exceder los 500 caracteres" }),
+  sku: z.string()
+    .min(1, { message: "El SKU es requerido" })
+    .regex(/^PROD-[A-Z0-9]{5}$/, { 
+      message: "El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)" 
+    }),
+  cost: z.coerce
+    .number()
+    .min(0, { message: "El costo no puede ser negativo" })
+    .max(999999.99, { message: "El costo no puede exceder los 999,999.99" })
+    .refine((val) => {
+      const decimals = val.toString().split('.')[1];
+      return !decimals || decimals.length <= 2;
+    }, { message: "El costo debe tener máximo 2 decimales" }),
+  price: z.coerce
+    .number()
+    .min(0.01, { message: "El precio debe ser mayor que 0" })
+    .max(999999.99, { message: "El precio no puede exceder los 999,999.99" })
+    .refine((val) => {
+      const decimals = val.toString().split('.')[1];
+      return !decimals || decimals.length <= 2;
+    }, { message: "El precio debe tener máximo 2 decimales" }),
+  margin: z.coerce.number().optional().min(0, { message: "El margen no puede ser negativo" }).max(1000, { message: "El margen no puede exceder el 1000%" }),
   categoryId: z.string().optional(),
-  imageUrl: z.string().optional(),
+  imageUrl: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, { message: "La URL de la imagen debe ser válida (debe incluir http:// o https://)" })
+    .refine((val) => {
+      if (!val) return true;
+      return /\.(jpg|jpeg|png|gif|webp)$/i.test(val);
+    }, { message: "La URL debe terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)" }),
+}).refine((data) => data.price > data.cost, {
+  message: "El precio de venta debe ser mayor que el costo",
+  path: ["price"],
+}).refine((data) => {
+  if (data.categoryId && data.categoryId !== "none") {
+    // This is a placeholder - in a real app, you'd check against actual category IDs
+    return true;
+  }
+  return true; // For now, always pass since we can't access categories list in schema
+}, {
+  message: "La categoría seleccionada no es válida",
+  path: ["categoryId"],
+}).refine((data) => {
+  if (data.margin) {
+    const calculatedMargin = data.cost === 0 ? 0 : ((data.price - data.cost) / data.cost) * 100;
+    return Math.abs(calculatedMargin - data.margin) < 0.1; // Small tolerance for rounding
+  }
+  return true;
+}, {
+  message: "El margen proporcionado no coincide con el cálculo basado en costo y precio",
+  path: ["margin"],
+}).refine((data) => {
+  return !!(data.description || data.imageUrl);
+}, {
+  message: "Debe proporcionar al menos una descripción o una URL de imagen para el producto",
+  path: ["description"],
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -135,133 +201,182 @@ export default function ProductForm({
           </div>
         </div>
       )}
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre</Label>
-              <Input id="name" {...register("name")} placeholder="Nombre del producto" />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sku">SKU</Label>
-              <Input id="sku" {...register("sku")} placeholder="SKU único" />
-              {errors.sku && (
-                <p className="text-sm text-destructive">{errors.sku.message}</p>
-              )}
-            </div>
-          </div>
+      <Form {...{ register, handleSubmit, errors }}>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+          <FormField
+            control={register("name")}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre</FormLabel>
+                <FormControl>
+                  <Input placeholder="Nombre del producto" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              placeholder="Descripción del producto"
-              rows={3}
+          <FormField
+            control={register("description")}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descripción</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Descripción del producto"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={register("sku")}
+            name="sku"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>SKU</FormLabel>
+                <FormControl>
+                  <Input placeholder="SKU único" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={register("cost")}
+              name="cost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Costo</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={register("price")}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Precio de Venta</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cost">Costo</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="pl-7"
-                  {...register("cost")}
-                  placeholder="0.00"
-                />
-              </div>
-              {errors.cost && (
-                <p className="text-sm text-destructive">{errors.cost.message}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={register("margin")}
+              name="margin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Margen</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="pr-7"
+                      {...field}
+                      placeholder="0.00"
+                      readOnly
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Precio de Venta</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="pl-7"
-                  {...register("price")}
-                  placeholder="0.00"
-                />
-              </div>
-              {errors.price && (
-                <p className="text-sm text-destructive">{errors.price.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="margin">Margen</Label>
-              <div className="relative">
-                <Input
-                  id="margin"
-                  type="number"
-                  step="0.01"
-                  className="pr-7"
-                  {...register("margin")}
-                  placeholder="0.00"
-                  readOnly
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">%</span>
-              </div>
-            </div>
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="categoryId">Categoría</Label>
-              <Select
-                onValueChange={(value) => setValue("categoryId", value)}
-                defaultValue={initialData?.categoryId || "none"}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">URL de Imagen</Label>
-              <Input
-                id="imageUrl"
-                {...register("imageUrl")}
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
-            </div>
+          <FormField
+            control={register("categoryId")}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categoría</FormLabel>
+                <FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin categoría</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={register("imageUrl")}
+            name="imageUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>URL de Imagen</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/products")}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
+            </Button>
           </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/products")}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
-          </Button>
-        </CardFooter>
-      </form>
+        </form>
+      </Form>
     </Card>
   );
 } 

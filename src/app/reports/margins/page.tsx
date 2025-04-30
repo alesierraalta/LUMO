@@ -9,11 +9,12 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { getAllProducts, getAllCategories } from "@/services/productService";
+import { getAllProducts } from "@/services/productService";
 import dynamic from "next/dynamic";
 import PrintHeader from "@/components/reports/print-header";
 import ReportActionsClientWrapper from "@/components/reports/ReportActionsClientWrapper";
 import MarginChartsClient from "@/components/reports/MarginChartsClient";
+import { getApiBaseUrl } from "@/lib/utils";
 
 // Define margin categories
 const MARGIN_CATEGORIES = {
@@ -25,7 +26,14 @@ const MARGIN_CATEGORIES = {
 export default async function MarginReportsPage() {
   // Fetch products data
   const products = await getAllProducts(true); // Include inactive products for complete analysis
-  const categories = await getAllCategories();
+  
+  // Fetch categories data from API with proper base URL
+  const apiBaseUrl = getApiBaseUrl();
+  const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
+  if (!categoriesResponse.ok) {
+    throw new Error('Failed to fetch categories');
+  }
+  const categories = await categoriesResponse.json();
   
   // Helper function to get category for a margin value
   const getMarginCategory = (margin: number) => {
@@ -249,8 +257,10 @@ export default async function MarginReportsPage() {
                       ))}
                       {prods.length > 5 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                            And {prods.length - 5} more products...
+                          <TableCell colSpan={6} className="text-center py-2">
+                            <span className="text-sm text-muted-foreground">
+                              And {prods.length - 5} more products...
+                            </span>
                           </TableCell>
                         </TableRow>
                       )}

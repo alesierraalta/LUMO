@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createProduct } from "@/services/productService"
-import { getAllCategories } from "@/services/productService"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 
 export default function AddProductPage() {
@@ -25,7 +24,19 @@ export default function AddProductPage() {
 
   // Load categories on mount
   useEffect(() => {
-    getAllCategories().then(setCategories)
+    async function fetchCategories() {
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    }
+    fetchCategories();
   }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

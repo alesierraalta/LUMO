@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: { q?: string };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 async function getCategories(query?: string) {
@@ -38,8 +38,8 @@ async function getCategories(query?: string) {
 }
 
 export default async function CategoriesPage({ searchParams }: PageProps) {
-  // Asegurarse de que searchParams es un objeto y extraer q de manera segura
-  const query = searchParams?.q || undefined;
+  // Convert search parameter to string
+  const query = typeof searchParams.q === 'string' ? searchParams.q : undefined;
   const categories = await getCategories(query);
   const totalProducts = categories.reduce((sum, category) => sum + category._count.inventory, 0);
 

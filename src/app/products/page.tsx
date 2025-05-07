@@ -14,11 +14,11 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: { q?: string; category?: string };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 async function getProducts(query?: string, categoryId?: string) {
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where: {
       AND: [
         query ? {
@@ -33,20 +33,31 @@ async function getProducts(query?: string, categoryId?: string) {
     },
     include: {
       category: true,
-      inventory: {
-        select: {
-          quantity: true,
-          minStockLevel: true,
-        },
-      },
     },
     orderBy: {
       name: 'asc',
     },
   });
 
+  // Map the inventoryItem to match the expected product structure
+  const mappedProducts = products.map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    sku: item.sku,
+    cost: item.cost,
+    price: item.price,
+    margin: item.margin,
+    categoryId: item.categoryId,
+    category: item.category,
+    quantity: item.quantity,
+    minStockLevel: item.minStockLevel,
+    imageUrl: item.imageUrl,
+    active: item.active,
+  }));
+
   // Serializar los objetos Decimal a números JavaScript
-  return serializeDecimal(products);
+  return serializeDecimal(mappedProducts);
 }
 
 async function getCategories() {
@@ -58,9 +69,9 @@ async function getCategories() {
 }
 
 export default async function ProductsPage({ searchParams }: PageProps) {
-  // Extract and handle searchParams safely
-  const query = searchParams?.q || undefined;
-  const categoryId = searchParams?.category || undefined;
+  // Extract and handle searchParams safely - converted to string
+  const query = typeof searchParams.q === 'string' ? searchParams.q : undefined;
+  const categoryId = typeof searchParams.category === 'string' ? searchParams.category : undefined;
 
   const [products, categories] = await Promise.all([
     getProducts(query, categoryId),
@@ -106,7 +117,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
         <ProductFilters />
       </div>
 
-      <ProductList products={products} />
+      <ProductList products={products} categories={categories} />
     </div>
   );
 } 

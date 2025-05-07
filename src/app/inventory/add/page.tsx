@@ -123,16 +123,16 @@ export default function AddProductPage() {
     <div className="container max-w-2xl mx-auto space-y-6 p-6">
       <Breadcrumb
         items={[
-          { title: "Inventory", href: "/inventory" },
-          { title: "Add Product" }
+          { title: "Inventario", href: "/inventory" },
+          { title: "Añadir Producto" }
         ]}
       />
       
       <Card>
         <CardHeader>
-          <CardTitle>Add New Product</CardTitle>
+          <CardTitle>Añadir Nuevo Producto</CardTitle>
           <CardDescription>
-            Create a new product in your inventory
+            Crear un nuevo producto en su inventario
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -144,11 +144,11 @@ export default function AddProductPage() {
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Product Name</Label>
+              <Label htmlFor="name">Nombre del Producto</Label>
               <Input
                 id="name"
                 name="name"
-                placeholder="Enter product name"
+                placeholder="Ingrese nombre del producto"
                 required
               />
             </div>
@@ -158,24 +158,24 @@ export default function AddProductPage() {
               <Input
                 id="sku"
                 name="sku"
-                placeholder="Enter product SKU"
+                placeholder="Ingrese SKU del producto"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Descripción</Label>
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Enter product description"
+                placeholder="Ingrese descripción del producto"
                 className="min-h-[100px]"
               />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="cost">Cost</Label>
+                <Label htmlFor="cost">Costo</Label>
                 <Input
                   id="cost"
                   name="cost"
@@ -190,7 +190,7 @@ export default function AddProductPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="price">Price</Label>
+                <Label htmlFor="price">Precio</Label>
                 <Input
                   id="price"
                   name="price"
@@ -205,7 +205,7 @@ export default function AddProductPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="margin">Margin (%)</Label>
+                <Label htmlFor="margin">Margen (%)</Label>
                 <Input
                   id="margin"
                   name="margin"
@@ -227,13 +227,13 @@ export default function AddProductPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Categoría</Label>
               <Select name="category">
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select a category (optional)" />
+                  <SelectValue placeholder="Seleccione una categoría (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="uncategorized">No category</SelectItem>
+                  <SelectItem value="uncategorized">Sin categoría</SelectItem>
                   {categories.map((category: any) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -244,10 +244,10 @@ export default function AddProductPage() {
             </div>
             
             <div className="border-t pt-4 mt-4">
-              <h3 className="text-lg font-medium mb-4">Inventory Information</h3>
+              <h3 className="text-lg font-medium mb-4">Información de Inventario</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Initial Quantity</Label>
+                  <Label htmlFor="quantity">Cantidad Inicial</Label>
                   <Input
                     id="quantity"
                     name="quantity"
@@ -259,7 +259,7 @@ export default function AddProductPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="minStockLevel">Min Stock Level</Label>
+                  <Label htmlFor="minStockLevel">Nivel Mínimo de Stock</Label>
                   <Input
                     id="minStockLevel"
                     name="minStockLevel"
@@ -271,11 +271,11 @@ export default function AddProductPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">Ubicación</Label>
                   <Input
                     id="location"
                     name="location"
-                    placeholder="Warehouse, Shelf, etc."
+                    placeholder="Almacén, Estante, etc."
                   />
                 </div>
               </div>
@@ -287,10 +287,10 @@ export default function AddProductPage() {
                 variant="outline"
                 onClick={() => router.push("/inventory?tab=products")}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Product"}
+                {loading ? "Creando..." : "Crear Producto"}
               </Button>
             </div>
           </form>

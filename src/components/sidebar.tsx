@@ -33,19 +33,19 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 bg-card text-card-foreground border-r border-border h-screen sticky top-0">
       <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-xl">Inventory App</h2>
+        <h2 className="font-semibold text-xl">App de Inventario</h2>
       </div>
       
       <nav className="flex-1 p-4 space-y-2">
-        <SidebarLink href="/" icon={Home} title="Home" />
-        <SidebarLink href="/dashboard" icon={BarChart3} title="Dashboard" />
-        <SidebarLink href="/inventory" icon={Boxes} title="Inventory" />
+        <SidebarLink href="/" icon={Home} title="Inicio" />
+        <SidebarLink href="/dashboard" icon={BarChart3} title="Panel" />
+        <SidebarLink href="/inventory" icon={Boxes} title="Inventario" />
         <SidebarLink href="/settings" icon={Settings} title="Configuración" />
       </nav>
       
       <div className="p-4 border-t border-border">
         <div className="text-xs text-muted-foreground">
-          Inventory Management v1.0
+          Gestión de Inventario v1.0
         </div>
       </div>
     </aside>
@@ -55,7 +55,7 @@ export function Sidebar() {
 export function MobileNav() {
   return (
     <div className="md:hidden flex justify-between items-center p-4 border-b border-border bg-card">
-      <h2 className="font-semibold text-lg">Inventory App</h2>
+      <h2 className="font-semibold text-lg">App de Inventario</h2>
       <nav className="flex space-x-2">
         <Link href="/" className="p-2 hover:bg-secondary rounded-md">
           <Home className="h-5 w-5" />

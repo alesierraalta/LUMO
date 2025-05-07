@@ -6,15 +6,15 @@ import { cn } from "@/lib/utils";
 export default function Home() {
   const navigationCards = [
     {
-      title: "Dashboard",
-      description: "View inventory summary and stats",
+      title: "Panel",
+      description: "Ver resumen y estadísticas de inventario",
       href: "/dashboard",
       icon: <BarChart3 className="h-6 w-6" />,
       color: "from-primary/20 to-primary/10 hover:from-primary/30 hover:to-primary/20 border-primary/20"
     },
     {
-      title: "Inventory",
-      description: "Manage products and track stock levels",
+      title: "Inventario",
+      description: "Gestionar productos y seguir niveles de stock",
       href: "/inventory",
       icon: <ClipboardList className="h-6 w-6" />,
       color: "from-secondary/30 to-muted/30 hover:from-secondary/40 hover:to-muted/40 border-secondary/20"
@@ -44,9 +44,9 @@ export default function Home() {
                 priority
               />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight">Inventory Management System</h1>
+            <h1 className="text-4xl font-bold tracking-tight">Sistema de Gestión de Inventario</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              A modern solution for tracking products, managing inventory, and optimizing your stock levels
+              Una solución moderna para rastrear productos, gestionar inventario y optimizar sus niveles de stock
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export default function Home() {
 
           {/* Features Section */}
           <div className="bg-card rounded-lg border p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold mb-4">Key Features</h2>
+            <h2 className="text-2xl font-semibold mb-4">Características Principales</h2>
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <div className="rounded-full bg-primary/10 p-1 mt-0.5">
@@ -82,7 +82,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <span>Real-time inventory tracking and management</span>
+                <span>Seguimiento y gestión de inventario en tiempo real</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="rounded-full bg-primary/10 p-1 mt-0.5">
@@ -90,7 +90,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <span>Detailed product and category management</span>
+                <span>Gestión detallada de productos y categorías</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="rounded-full bg-primary/10 p-1 mt-0.5">
@@ -98,7 +98,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <span>Automated low stock alerts and notifications</span>
+                <span>Alertas y notificaciones automatizadas de bajo stock</span>
               </li>
             </ul>
           </div>
@@ -108,7 +108,7 @@ export default function Home() {
       <footer className="border-t py-6">
         <div className="container max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            Inventory Management System &copy; {new Date().getFullYear()}
+            Sistema de Gestión de Inventario &copy; {new Date().getFullYear()}
           </div>
           <div className="flex gap-4">
             <a

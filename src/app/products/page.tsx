@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import prisma from "@/lib/prisma";
 import ProductList from "@/components/products/product-list";
-import ProductFilters from "@/components/products/product-filters";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { serializeDecimal } from "@/lib/utils";
 
@@ -111,10 +110,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
             Add Product
           </Button>
         </Link>
-      </div>
-
-      <div className="mt-4 mb-6">
-        <ProductFilters />
       </div>
 
       <ProductList products={products} categories={categories} />

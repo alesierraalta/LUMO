@@ -33,25 +33,27 @@ export function CategorySearch() {
   }, [debouncedQuery, router, createQueryString]);
 
   return (
-    <div className="relative">
-      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-      <Input
-        placeholder="Search categories..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="pl-8"
-      />
-      {query && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute right-1 top-1 h-7 w-7 px-0"
-          onClick={() => setQuery("")}
-        >
-          <span className="sr-only">Clear search</span>
-          <X className="h-4 w-4" />
-        </Button>
-      )}
+    <div className="relative w-full sm:max-w-[280px]">
+      <div className="relative flex items-center">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search categories..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="pl-9 pr-10 h-10 w-full bg-background focus-visible:ring-primary/20 focus-visible:ring-offset-0"
+        />
+        {query && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-full"
+            onClick={() => setQuery("")}
+          >
+            <span className="sr-only">Clear search</span>
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 } 

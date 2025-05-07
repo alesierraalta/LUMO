@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { calculateMargin, calculatePrice } from '@/lib/client-utils';
 
 const prisma = new PrismaClient();
 
@@ -20,19 +21,6 @@ const ProductUpdateSchema = z.object({
   minStockLevel: z.number().int().min(0).optional(),
   location: z.string().optional()
 });
-
-// Helper function to calculate margin
-function calculateMargin(cost: number, price: number): number {
-  if (cost === 0 || price === 0) return 0;
-  return ((price - cost) / price) * 100;
-}
-
-// Helper function to calculate price from cost and margin
-function calculatePrice(cost: number, margin: number): number {
-  if (cost === 0) return 0;
-  if (margin >= 100) return cost * 100; // Cap extremely high margins
-  return cost / (1 - margin / 100);
-}
 
 // Helper function to serialize Decimal fields to numbers
 function serializeDecimal(data: any): any {
@@ -177,7 +165,7 @@ export async function PATCH(
     }
     
     // Prepare transaction to update both product and inventory
-    const product = await prisma.$transaction(async (tx) => {
+    const product = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update product
       const updatedProduct = await tx.product.update({
         where: { id },

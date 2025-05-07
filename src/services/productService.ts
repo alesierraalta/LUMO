@@ -46,7 +46,7 @@ export type SortOrder = "asc" | "desc";
 
 /**
  * Calcula el margen de ganancia como porcentaje
- * Utiliza la fórmula (Precio-Costo)/Precio para calcular el margen como porcentaje del precio de venta
+ * Utiliza la fórmula (Precio-Costo)/Costo para calcular el margen como porcentaje del costo
  */
 export function calculateMargin(cost: number, price: number): number {
   // Ensure we're working with numbers
@@ -54,11 +54,10 @@ export function calculateMargin(cost: number, price: number): number {
   price = Number(price) || 0;
   
   // Handle edge cases
-  if (price <= 0) return 0;
-  if (cost <= 0) return 100; // If cost is zero or negative, margin is 100%
-  if (cost > price) return 0; // If cost exceeds price, margin is 0%
+  if (cost <= 0) return 0; // Cannot calculate margin if cost is zero or negative
+  if (price <= 0) return 0; // Cannot have a negative or zero price
   
-  return ((price - cost) / price) * 100;
+  return ((price - cost) / cost) * 100;
 }
 
 // Validation functions

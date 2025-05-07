@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash, Plus, Minus, Edit3, DollarSign, Percent } from "lucide-react";
+import { calculateMargin, calculatePrice } from "@/lib/client-utils";
 
 // Esquema de validación para el formulario
 const inventoryAdjustmentSchema = z.object({
@@ -77,7 +78,7 @@ export default function InventoryAdjustmentForm({
   // Calculate margin whenever price or cost changes
   useEffect(() => {
     if (currentPrice > 0) {
-      const margin = ((currentPrice - currentCost) / currentPrice) * 100;
+      const margin = calculateMargin(currentCost, currentPrice);
       setCalculatedMargin(margin);
     } else {
       setCalculatedMargin(null);
@@ -158,7 +159,7 @@ export default function InventoryAdjustmentForm({
           // Calculate new margin if price or cost changed
           if (inventoryItem.price !== data.price || inventoryItem.cost !== data.cost) {
             if (data.price > 0) {
-              newMargin = ((data.price - data.cost) / data.price) * 100;
+              newMargin = calculateMargin(data.cost, data.price);
             } else {
               newMargin = 0;
             }

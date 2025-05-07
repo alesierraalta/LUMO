@@ -14,8 +14,8 @@ export default function MarginChartsClient({ marginDistribution, pieChartData }:
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Margin Distribution</CardTitle>
-          <CardDescription>Products by margin range</CardDescription>
+          <CardTitle>Distribución de Márgenes</CardTitle>
+          <CardDescription>Productos por rango de margen</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80">
@@ -29,7 +29,7 @@ export default function MarginChartsClient({ marginDistribution, pieChartData }:
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="count" name="Number of Products">
+                <Bar dataKey="count" name="Número de Productos">
                   {marginDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
@@ -41,8 +41,8 @@ export default function MarginChartsClient({ marginDistribution, pieChartData }:
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Products by Margin Category</CardTitle>
-          <CardDescription>Distribution across margin categories</CardDescription>
+          <CardTitle>Productos por Categoría de Margen</CardTitle>
+          <CardDescription>Distribución entre categorías de margen</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80">

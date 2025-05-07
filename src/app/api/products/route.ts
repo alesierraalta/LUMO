@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { calculateMargin, calculatePrice } from '@/lib/client-utils';
 
 // Schema for search query parameters
 const SearchParamsSchema = z.object({
@@ -30,19 +31,6 @@ const ProductSchema = z.object({
   minStockLevel: z.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
   location: z.string().optional()
 });
-
-// Helper function to calculate margin
-function calculateMargin(cost: number, price: number): number {
-  if (cost === 0 || price === 0) return 0;
-  return ((price - cost) / price) * 100;
-}
-
-// Helper function to calculate price from cost and margin
-function calculatePrice(cost: number, margin: number): number {
-  if (cost === 0) return 0;
-  if (margin >= 100) return cost * 100; // Cap extremely high margins
-  return cost / (1 - margin / 100);
-}
 
 // Helper function to serialize Decimal fields to numbers
 function serializeDecimal(data: any): any {

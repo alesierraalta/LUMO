@@ -50,6 +50,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { calculateMargin } from "@/lib/client-utils";
 
 // Updated to match the actual data from Prisma
 type InventoryItem = {
@@ -291,15 +292,17 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-center gap-1">
-                            {Number(item.margin).toFixed(2)}%
+                            {Number(item.cost) > 0 
+                              ? calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)
+                              : Number(item.margin).toFixed(2)}%
                             <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            {Number(item.price) === 0 
-                              ? "Margin cannot be calculated when price is $0.00" 
-                              : `Margin calculation: ${((Number(item.price) - Number(item.cost)) / Number(item.price) * 100).toFixed(2)}%`
+                            {Number(item.cost) === 0 
+                              ? "Margin cannot be calculated when cost is $0.00" 
+                              : `Margin calculation: (${formatCurrency(item.price)} - ${formatCurrency(item.cost)}) / ${formatCurrency(item.cost)} × 100 = ${calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)}%`
                             }
                           </p>
                         </TooltipContent>

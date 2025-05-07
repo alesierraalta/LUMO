@@ -18,11 +18,11 @@ interface Product {
   };
 }
 
-// Define margin categories
+// Define categorías de márgenes
 const MARGIN_CATEGORIES = {
-  LOW: { label: "Low Margin", min: 0, max: 15, color: "var(--chart-1)" },
-  MEDIUM: { label: "Medium Margin", min: 15, max: 30, color: "var(--chart-2)" },
-  HIGH: { label: "High Margin", min: 30, max: Infinity, color: "var(--chart-3)" }
+  LOW: { label: "Margen Bajo", min: 0, max: 15, color: "var(--chart-1)" },
+  MEDIUM: { label: "Margen Medio", min: 15, max: 30, color: "var(--chart-2)" },
+  HIGH: { label: "Margen Alto", min: 30, max: Infinity, color: "var(--chart-3)" }
 };
 
 export default async function DashboardPage() {
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   const apiBaseUrl = getApiBaseUrl();
   const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
   if (!categoriesResponse.ok) {
-    throw new Error('Failed to fetch categories');
+    throw new Error('Error al obtener categorías');
   }
   const categories = await categoriesResponse.json();
 
@@ -45,16 +45,16 @@ export default async function DashboardPage() {
   const totalCategories = categories.length;
   const lowStockCount = lowStockItems.length;
 
-  // Calculate margin statistics
+  // Calcular estadísticas de márgenes
   const totalMargin = products.reduce((sum: number, product: Product) => sum + Number(product.margin || 0), 0);
   const averageMargin = products.length > 0 ? (totalMargin / products.length).toFixed(2) : "0";
   
-  // Get highest margin products
+  // Obtener productos con mayor margen
   const highestMarginProducts = [...products]
     .sort((a, b) => Number(b.margin || 0) - Number(a.margin || 0))
     .slice(0, 3);
 
-  // Products by margin category
+  // Productos por categoría de margen
   const productsByCategory = {
     HIGH: products.filter((p: Product) => Number(p.margin || 0) > MARGIN_CATEGORIES.MEDIUM.max).length,
     MEDIUM: products.filter((p: Product) => Number(p.margin || 0) > MARGIN_CATEGORIES.LOW.max && Number(p.margin || 0) <= MARGIN_CATEGORIES.MEDIUM.max).length,
@@ -64,11 +64,11 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Panel de Control</h1>
         <div className="flex items-center gap-2">
           <Link href="/reports/margins">
             <button className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              View Margin Reports
+              Ver Reportes de Margen
             </button>
           </Link>
         </div>
@@ -76,51 +76,51 @@ export default async function DashboardPage() {
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Products"
+          title="Total de Productos"
           value={totalProducts}
-          description="Total products in inventory"
+          description="Productos totales en inventario"
           icon={<ClipboardList className="h-5 w-5" />}
           href="/inventory"
-          linkText="View all products"
+          linkText="Ver todos los productos"
         />
         
         <StatCard
-          title="Low Stock Items"
+          title="Productos con Stock Bajo"
           value={lowStockCount}
-          description="Items below minimum stock level"
+          description="Productos por debajo del nivel mínimo"
           icon={<ClipboardList className="h-5 w-5" />}
           trend={lowStockCount > 0 ? "down" : "neutral"}
-          trendValue={lowStockCount > 0 ? `${lowStockCount} items need attention` : "Stock levels are healthy"}
+          trendValue={lowStockCount > 0 ? `${lowStockCount} productos requieren atención` : "Niveles de stock saludables"}
           href="/inventory"
-          linkText="Manage inventory"
+          linkText="Administrar inventario"
         />
         
         <StatCard
-          title="Average Margin"
+          title="Margen Promedio"
           value={`${averageMargin}%`}
-          description="Across all products"
+          description="En todos los productos"
           icon={<DollarSign className="h-5 w-5" />}
           trend={Number(averageMargin) > 25 ? "up" : Number(averageMargin) < 15 ? "down" : "neutral"}
-          trendValue={Number(averageMargin) > 25 ? "Healthy margins" : Number(averageMargin) < 15 ? "Margins need attention" : "Average margins"}
+          trendValue={Number(averageMargin) > 25 ? "Márgenes saludables" : Number(averageMargin) < 15 ? "Márgenes requieren atención" : "Márgenes promedio"}
           href="/reports/margins"
-          linkText="View margin details"
+          linkText="Ver detalles de márgenes"
         />
         
         <StatCard
-          title="High Margin Products"
+          title="Productos con Alto Margen"
           value={productsByCategory.HIGH}
-          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% of total`}
+          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% del total`}
           icon={<PieChart className="h-5 w-5" />}
           href="/reports/margins"
-          linkText="View all margin data"
+          linkText="Ver datos de márgenes"
         />
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Products</CardTitle>
-            <CardDescription>Latest products added</CardDescription>
+            <CardTitle>Productos Recientes</CardTitle>
+            <CardDescription>Últimos productos añadidos</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
                         product.description.length > 60 ? 
                           `${product.description.substring(0, 60)}...` : 
                           product.description 
-                        : 'No description'}
+                        : 'Sin descripción'}
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -144,7 +144,7 @@ export default async function DashboardPage() {
               
               {products.length === 0 && (
                 <div className="flex items-center justify-center h-24 text-muted-foreground">
-                  No products found
+                  No se encontraron productos
                 </div>
               )}
             </div>
@@ -153,8 +153,8 @@ export default async function DashboardPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Top Margin Products</CardTitle>
-            <CardDescription>Products with highest profit margins</CardDescription>
+            <CardTitle>Productos con Mayor Margen</CardTitle>
+            <CardDescription>Productos con márgenes de beneficio más altos</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -162,24 +162,24 @@ export default async function DashboardPage() {
                 <div key={product.id} className="flex items-center gap-4 rounded-lg border p-4">
                   <div className="flex-1 space-y-1">
                     <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       {product.category ? (
                         product.category.name
                       ) : (
                         <Badge variant="outline" className="text-xs">Sin categoría</Badge>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="font-medium">${Number(product.price).toFixed(2)}</div>
-                    <div className="text-sm text-green-600 font-semibold">{Number(product.margin).toFixed(2)}% margin</div>
+                    <div className="text-sm text-green-600 font-semibold">{Number(product.margin).toFixed(2)}% margen</div>
                   </div>
                 </div>
               ))}
               
               {highestMarginProducts.length === 0 && (
                 <div className="flex items-center justify-center h-24 text-muted-foreground">
-                  No products with margin data
+                  No hay productos con datos de margen
                 </div>
               )}
               
@@ -188,7 +188,7 @@ export default async function DashboardPage() {
                   href="/reports/margins" 
                   className="block w-full text-center text-sm text-primary hover:underline mt-2"
                 >
-                  View full margin report
+                  Ver reporte completo de márgenes
                 </Link>
               )}
             </div>
@@ -199,8 +199,8 @@ export default async function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common inventory tasks</CardDescription>
+            <CardTitle>Acciones Rápidas</CardTitle>
+            <CardDescription>Tareas comunes de inventario</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3">
@@ -209,21 +209,21 @@ export default async function DashboardPage() {
                 className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
               >
                 <PlusCircle className="h-5 w-5" />
-                <span>Add new product</span>
+                <span>Añadir nuevo producto</span>
               </Link>
               <Link 
                 href="/inventory" 
                 className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
               >
                 <ClipboardList className="h-5 w-5" />
-                <span>Update stock levels</span>
+                <span>Actualizar niveles de stock</span>
               </Link>
               <Link 
                 href="/reports/margins" 
                 className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
               >
                 <PieChart className="h-5 w-5" />
-                <span>View margin reports</span>
+                <span>Ver reportes de márgenes</span>
               </Link>
             </div>
           </CardContent>
@@ -231,8 +231,8 @@ export default async function DashboardPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Margin Distribution</CardTitle>
-            <CardDescription>Products by margin category</CardDescription>
+            <CardTitle>Distribución de Márgenes</CardTitle>
+            <CardDescription>Productos por categoría de margen</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -247,7 +247,7 @@ export default async function DashboardPage() {
                       <span className="text-sm font-medium">{category.label}</span>
                     </span>
                     <span className="text-sm font-medium">
-                      {productsByCategory[key as keyof typeof productsByCategory]} products
+                      {productsByCategory[key as keyof typeof productsByCategory]} productos
                     </span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2.5">

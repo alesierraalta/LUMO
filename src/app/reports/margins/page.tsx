@@ -19,9 +19,9 @@ import { getApiBaseUrl } from "@/lib/utils";
 
 // Define margin categories
 const MARGIN_CATEGORIES = {
-  LOW: { label: "Low Margin", min: 0, max: 15, color: "var(--chart-1)" },
-  MEDIUM: { label: "Medium Margin", min: 15, max: 30, color: "var(--chart-2)" },
-  HIGH: { label: "High Margin", min: 30, max: Infinity, color: "var(--chart-3)" }
+  LOW: { label: "Margen Bajo", min: 0, max: 15, color: "var(--chart-1)" },
+  MEDIUM: { label: "Margen Medio", min: 15, max: 30, color: "var(--chart-2)" },
+  HIGH: { label: "Margen Alto", min: 30, max: Infinity, color: "var(--chart-3)" }
 };
 
 export default async function MarginReportsPage() {
@@ -32,7 +32,7 @@ export default async function MarginReportsPage() {
   const apiBaseUrl = getApiBaseUrl();
   const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
   if (!categoriesResponse.ok) {
-    throw new Error('Failed to fetch categories');
+    throw new Error('Error al obtener categorías');
   }
   const categories = await categoriesResponse.json();
   
@@ -123,7 +123,7 @@ export default async function MarginReportsPage() {
       <PrintHeader reportType="margins" />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Margin Reports</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Reportes de Márgenes</h1>
         <ReportActionsClientWrapper 
           reportType="margins" 
           data={products} 
@@ -134,14 +134,14 @@ export default async function MarginReportsPage() {
       {/* Stats Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="Average Margin"
+          title="Margen Promedio"
           value={`${averageMargin}%`}
-          description="Across all products"
+          description="En todos los productos"
           icon={<BarChart3 className="h-5 w-5" />}
         />
         
         <StatCard
-          title="Highest Margin Product"
+          title="Producto con Mayor Margen"
           value={products.length > 0 
             ? `${products.sort((a, b) => Number(b.margin) - Number(a.margin))[0].name}`
             : "N/A"
@@ -153,12 +153,12 @@ export default async function MarginReportsPage() {
         />
         
         <StatCard
-          title="High Margin Products"
+          title="Productos con Alto Margen"
           value={productsByCategory.HIGH.length}
-          description={`${(productsByCategory.HIGH.length / products.length * 100).toFixed(1)}% of total products`}
+          description={`${(productsByCategory.HIGH.length / products.length * 100).toFixed(1)}% del total de productos`}
           icon={<PieChart className="h-5 w-5" />}
           trend={productsByCategory.HIGH.length > products.length * 0.3 ? "up" : "neutral"}
-          trendValue={`Avg. ${avgMarginByCategory.HIGH}% margin`}
+          trendValue={`Prom. ${avgMarginByCategory.HIGH}% margen`}
         />
       </div>
       
@@ -168,17 +168,17 @@ export default async function MarginReportsPage() {
       {/* Category-based Analysis */}
       <Card>
         <CardHeader>
-          <CardTitle>Categories by Average Margin</CardTitle>
-          <CardDescription>Analysis of product categories by profitability</CardDescription>
+          <CardTitle>Categorías por Margen Promedio</CardTitle>
+          <CardDescription>Análisis de categorías de productos por rentabilidad</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead>Average Margin</TableHead>
-                <TableHead>Margin Classification</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Productos</TableHead>
+                <TableHead>Margen Promedio</TableHead>
+                <TableHead>Clasificación de Margen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -206,7 +206,7 @@ export default async function MarginReportsPage() {
               {categoriesWithStats.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    No categories found.
+                    No se encontraron categorías.
                   </TableCell>
                 </TableRow>
               )}
@@ -218,8 +218,8 @@ export default async function MarginReportsPage() {
       {/* Product Breakdown by Margin Category */}
       <Card>
         <CardHeader>
-          <CardTitle>Products by Margin Category</CardTitle>
-          <CardDescription>Detailed breakdown of products in each margin category</CardDescription>
+          <CardTitle>Productos por Categoría de Margen</CardTitle>
+          <CardDescription>Desglose detallado de productos en cada categoría de margen</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -232,7 +232,7 @@ export default async function MarginReportsPage() {
                   ></span>
                   {MARGIN_CATEGORIES[category as keyof typeof MARGIN_CATEGORIES].label} 
                   <span className="text-sm font-normal text-muted-foreground">
-                    ({prods.length} products, avg. {avgMarginByCategory[category as keyof typeof avgMarginByCategory]}%)
+                    ({prods.length} productos, prom. {avgMarginByCategory[category as keyof typeof avgMarginByCategory]}%)
                   </span>
                 </h3>
                 
@@ -240,12 +240,12 @@ export default async function MarginReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>Nombre</TableHead>
                         <TableHead>SKU</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Cost</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Margin</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Costo</TableHead>
+                        <TableHead>Precio</TableHead>
+                        <TableHead>Margen</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -269,7 +269,7 @@ export default async function MarginReportsPage() {
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-2">
                             <span className="text-sm text-muted-foreground">
-                              And {prods.length - 5} more products...
+                              Y {prods.length - 5} más productos...
                             </span>
                           </TableCell>
                         </TableRow>
@@ -277,7 +277,7 @@ export default async function MarginReportsPage() {
                       {prods.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={6} className="h-24 text-center">
-                            No products in this category.
+                            No hay productos en esta categoría.
                           </TableCell>
                         </TableRow>
                       )}

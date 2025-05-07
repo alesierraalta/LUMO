@@ -1,13 +1,14 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Tags, Plus, Tag } from "lucide-react";
+import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3 } from "lucide-react";
 import { 
   Card, 
   CardContent, 
   CardDescription, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardFooter 
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
@@ -15,12 +16,12 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Inventory",
-  description: "Manage your inventory levels and products",
+  title: "Inventario",
+  description: "Gestiona tus niveles de inventario y productos",
 };
 
-// Custom serialization function specifically for inventory data
-// Avoids issues with the generic serializeDecimal function
+// Función de serialización personalizada específicamente para datos de inventario
+// Evita problemas con la función genérica serializeDecimal
 function safeSerializeInventory(items: any[]) {
   return items.map(item => ({
     ...item,
@@ -30,53 +31,107 @@ function safeSerializeInventory(items: any[]) {
   }));
 }
 
-// Simple Categories Section Component
+// Componente Sección de Categorías
 function CategoriesSection({ categories }: { categories: any[] }) {
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle>Product Categories</CardTitle>
-        <CardDescription>
-          Manage and organize your product categories
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {categories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Tag className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Categories Found</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              You haven't created any product categories yet. Categories help you organize your inventory.
-            </p>
-            <Button asChild>
-              <Link href="/categories/add">
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Category
-              </Link>
-            </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-full bg-primary/10">
+            <Tag className="h-5 w-5 text-primary" />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map(category => (
-              <Card key={category.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{category.name}</CardTitle>
-                  <CardDescription className="line-clamp-1 text-xs">
-                    {category.description || "No description"}
+          <h2 className="text-xl font-semibold">Categorías de Productos</h2>
+          <Badge variant="outline" className="ml-2 font-medium">
+            {categories.length}
+          </Badge>
+        </div>
+        <Button asChild className="transition-all hover:shadow-md">
+          <Link href="/categories/add">
+            <Plus className="h-4 w-4 mr-2" />
+            Añadir Categoría
+          </Link>
+        </Button>
+      </div>
+
+      {categories.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-gradient-to-br from-muted/30 to-muted/10 rounded-lg border-2 border-dashed border-muted/60 transition-all">
+          <div className="p-4 rounded-full bg-muted/20 mb-4">
+            <Tag className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-medium mb-2">No Se Encontraron Categorías</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md px-6">
+            Aún no has creado categorías de productos. Las categorías te ayudan a organizar tu inventario de manera eficiente.
+          </p>
+          <Button asChild size="lg" className="transition-all hover:shadow-md">
+            <Link href="/categories/add">
+              <Plus className="h-4 w-4 mr-2" />
+              Crear Primera Categoría
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {categories.map(category => (
+            <Card 
+              key={category.id} 
+              className="group overflow-hidden transition-all hover:shadow-lg border-muted/60 hover:border-primary/20 duration-300"
+            >
+              <CardHeader className="pb-2 bg-gradient-to-br from-card to-muted/5">
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
+                    <Tag className="h-4 w-4 text-primary" />
+                  </div>
+                  <span>{category.name}</span>
+                </CardTitle>
+                {category.description && (
+                  <CardDescription className="line-clamp-2 text-sm mt-1">
+                    {category.description}
                   </CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                )}
+              </CardHeader>
+              <CardContent className="py-4">
+                <div className="h-12">
+                  {!category.description && <p className="text-muted-foreground text-sm">Sin descripción</p>}
+                </div>
+              </CardContent>
+              <CardFooter className="border-t p-3 flex justify-between items-center bg-muted/5">
+                <Badge variant="secondary" className="flex items-center gap-1 px-2.5 py-1">
+                  <PackageOpen className="h-3 w-3" />
+                  <span className="text-xs font-medium">{category._count?.inventory || 0} productos</span>
+                </Badge>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" asChild className="h-8">
+                    <Link href={`/categories/edit/${category.id}`}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Editar
+                    </Link>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild className="h-8 transition-all hover:bg-primary hover:text-primary-foreground">
+                    <Link href={`/categories`}>
+                      Ver
+                    </Link>
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+      
+      <div className="flex justify-center mt-8">
+        <Button variant="outline" size="lg" asChild className="transition-all hover:shadow-md hover:bg-primary/5 px-6">
+          <Link href="/categories">
+            Ver Todas las Categorías
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
 export default async function InventoryPage() {
   try {
-    // Use string-based query to avoid TypeScript errors with schema mismatches
+    // Usar consulta basada en string para evitar errores de TypeScript con discrepancias de esquema
     const inventoryItems = await prisma.$queryRaw`
       SELECT 
         i.id, i.name, i.description, i.sku, 
@@ -88,10 +143,16 @@ export default async function InventoryPage() {
       ORDER BY i."updatedAt" DESC
     ` as any[];
 
-    // Fetch categories as a simple array
-    const categories = await prisma.category.findMany() as any[];
+    // Obtener categorías con recuento de inventario
+    const categories = await prisma.category.findMany({
+      include: {
+        _count: {
+          select: { inventory: true }
+        }
+      }
+    }) as any[];
 
-    // Manual join to avoid serialization issues
+    // Unión manual para evitar problemas de serialización
     const itemsWithCategories = inventoryItems.map(item => {
       const category = item.categoryId 
         ? categories.find(c => c.id === item.categoryId) 
@@ -103,7 +164,7 @@ export default async function InventoryPage() {
       };
     });
     
-    // Filter the data for counts
+    // Filtrar los datos para los conteos
     const lowStockCount = inventoryItems.filter(
       item => item.quantity <= item.minStockLevel && item.quantity > 0
     ).length;
@@ -116,113 +177,139 @@ export default async function InventoryPage() {
       item => item.active === true
     ).length;
 
-    // Safe serialization
+    // Serialización segura
     const safeItems = safeSerializeInventory(itemsWithCategories);
 
     return (
-      <div className="container mx-auto p-6">
-        {/* Header with title and action buttons */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+      <div className="container mx-auto p-6 space-y-8">
+        {/* Encabezado con título y botones de acción */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-gradient-to-r from-background to-muted/20 p-5 rounded-lg shadow-sm border border-muted/30">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Stock & Inventory</h1>
-            <p className="text-muted-foreground">
-              Manage your inventory levels, locations, and products
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">Inventario y Existencias</h1>
+            <p className="text-muted-foreground mt-1">
+              Gestiona tus niveles de inventario, ubicaciones y productos
             </p>
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="transition-all hover:shadow-md border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/10">
               <Link href="/reports/low-stock">
                 {lowStockCount > 0 && (
                   <Badge className="mr-2 bg-amber-500" aria-hidden="true">
                     {lowStockCount}
                   </Badge>
                 )}
-                Low Stock
+                Stock Bajo
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="transition-all hover:shadow-md">
               <Link href="/inventory/add">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Item
+                Añadir Nuevo Artículo
               </Link>
             </Button>
           </div>
         </div>
         
-        {/* Stats cards row */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Inventory</CardTitle>
+        {/* Fila de tarjetas de estadísticas */}
+        <div className="grid gap-5 md:grid-cols-3 mb-8">
+          <Card className="overflow-hidden transition-all hover:shadow-md border-muted/60">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-card to-muted/5">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="p-1.5 rounded-full bg-primary/10">
+                  <PackageOpen className="h-4 w-4 text-primary" />
+                </div>
+                Inventario Total
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{inventoryItems.length} items</div>
-              <p className="text-xs text-muted-foreground">
-                {activeItemsCount} active
+            <CardContent className="pt-6">
+              <div className="text-3xl font-bold">{inventoryItems.length}</div>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                {activeItemsCount} artículos activos
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+          <Card className="overflow-hidden transition-all hover:shadow-md border-muted/60">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-card to-muted/5">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="p-1.5 rounded-full bg-amber-500/10">
+                  <BarChart3 className="h-4 w-4 text-amber-500" />
+                </div>
+                Artículos con Stock Bajo
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{lowStockCount} items</div>
-              <p className="text-xs text-muted-foreground">
-                Below minimum stock levels
+            <CardContent className="pt-6">
+              <div className="text-3xl font-bold text-amber-500">{lowStockCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Por debajo de niveles mínimos de stock
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
+          <Card className="overflow-hidden transition-all hover:shadow-md border-muted/60">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-card to-muted/5">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="p-1.5 rounded-full bg-red-500/10">
+                  <PackageOpen className="h-4 w-4 text-red-500" />
+                </div>
+                Sin Existencias
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-500">{outOfStockCount} items</div>
-              <p className="text-xs text-muted-foreground">
-                Items that need restocking
+            <CardContent className="pt-6">
+              <div className="text-3xl font-bold text-red-500">{outOfStockCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Artículos que necesitan reposición
               </p>
             </CardContent>
           </Card>
         </div>
         
         <Tabs defaultValue="inventory" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="inventory">Stock Levels</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 p-1">
+            <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Niveles de Stock</TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Categorías</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="inventory">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Inventory Status</CardTitle>
-                <CardDescription>
-                  Monitor stock levels, manage products, and view inventory details
+          <TabsContent value="inventory" className="mt-6">
+            <Card className="border-muted/60 shadow-sm">
+              <CardHeader className="pb-3 bg-gradient-to-br from-card to-muted/5">
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-full bg-primary/10">
+                    <PackageOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  Estado del Inventario
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Monitorea niveles de stock, gestiona productos y visualiza detalles de inventario
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6 pb-4">
                 <InventoryTable inventoryItems={safeItems} />
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="categories">
+          <TabsContent value="categories" className="mt-6">
             <CategoriesSection categories={categories} />
           </TabsContent>
         </Tabs>
       </div>
     );
   } catch (error) {
-    console.error("Error loading inventory data:", error);
+    console.error("Error al cargar datos de inventario:", error);
     return (
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-4">Inventory</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-500">Error Loading Data</CardTitle>
+        <h1 className="text-3xl font-bold tracking-tight mb-4">Inventario</h1>
+        <Card className="border-red-200 shadow-md">
+          <CardHeader className="bg-red-50/50">
+            <CardTitle className="text-red-500 flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-red-100">
+                <PackageOpen className="h-4 w-4 text-red-500" />
+              </div>
+              Error al Cargar Datos
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>There was a problem loading the inventory data. Please try again later.</p>
+          <CardContent className="pt-4">
+            <p>Hubo un problema al cargar los datos del inventario. Por favor, inténtalo de nuevo más tarde.</p>
             <p className="text-sm text-muted-foreground mt-2">{(error as Error).message}</p>
           </CardContent>
         </Card>

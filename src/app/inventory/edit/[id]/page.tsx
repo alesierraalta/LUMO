@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { updateProduct } from "@/services/productService"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
+import { calculateMargin, calculatePrice } from "@/lib/client-utils"
 
 interface Product {
   id: string
@@ -25,6 +26,7 @@ interface Product {
   margin: number
   categoryId?: string
   sku: string
+  cost?: number
 }
 
 interface Category {
@@ -39,6 +41,9 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
   const [product, setProduct] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const productIdRef = useRef<string | null>(null)
+  const [cost, setCost] = useState("")
+  const [price, setPrice] = useState("")
+  const [margin, setMargin] = useState("")
   
   // First useEffect to safely extract the ID using useParams hook
   useEffect(() => {
@@ -84,8 +89,14 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
             price: Number(productData.price),
             margin: Number(productData.margin),
             categoryId: productData.categoryId || undefined,
-            sku: productData.sku
+            sku: productData.sku,
+            cost: productData.cost
           })
+          
+          // Initialize the form state variables
+          setCost(productData.cost ? productData.cost.toString() : "0");
+          setPrice(productData.price ? productData.price.toString() : "0");
+          setMargin(productData.margin ? productData.margin.toString() : "0");
         }
         
         setCategories(categoriesData)
@@ -142,6 +153,45 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
       setLoading(false)
     }
   }
+
+  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCost = e.target.value;
+    setCost(newCost);
+    
+    if (newCost && price) {
+      const costVal = parseFloat(newCost);
+      const priceVal = parseFloat(price);
+      const newMargin = calculateMargin(costVal, priceVal);
+      console.log('Calculated margin (edit):', newMargin, 'from cost:', costVal, 'price:', priceVal);
+      setMargin(newMargin.toFixed(2));
+    }
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPrice = e.target.value;
+    setPrice(newPrice);
+    
+    if (cost && newPrice) {
+      const costVal = parseFloat(cost);
+      const priceVal = parseFloat(newPrice);
+      const newMargin = calculateMargin(costVal, priceVal);
+      console.log('Calculated margin (edit):', newMargin, 'from cost:', costVal, 'price:', priceVal);
+      setMargin(newMargin.toFixed(2));
+    }
+  };
+
+  const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMargin = e.target.value;
+    setMargin(newMargin);
+    
+    if (cost && newMargin) {
+      const costVal = parseFloat(cost);
+      const marginVal = parseFloat(newMargin);
+      const newPrice = calculatePrice(costVal, marginVal);
+      console.log('Calculated price (edit):', newPrice, 'from cost:', costVal, 'margin:', marginVal);
+      setPrice(newPrice.toFixed(2));
+    }
+  };
 
   if (!product) {
     return (
@@ -220,6 +270,7 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
                   defaultValue={product.price}
                   placeholder="0.00"
                   required
+                  onChange={handlePriceChange}
                 />
               </div>
               
@@ -234,8 +285,24 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
                   defaultValue={product.margin}
                   placeholder="0"
                   required
+                  onChange={handleMarginChange}
                 />
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cost">Cost</Label>
+              <Input
+                id="cost"
+                name="cost"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue={product.cost}
+                placeholder="0.00"
+                required
+                onChange={handleCostChange}
+              />
             </div>
             
             <div className="space-y-2">

@@ -23,6 +23,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { calculateMargin } from "@/lib/client-utils"
 
 interface Product {
   id: string
@@ -63,9 +64,9 @@ export default function ProductsTable({ products }: ProductsTableProps) {
       return `${Number(product.margin).toFixed(2)}%`;
     }
     
-    // Calculate margin as fallback
+    // Calculate margin as fallback using the correct formula from client-utils
     if (price > 0) {
-      const margin = ((price - cost) / price) * 100;
+      const margin = calculateMargin(cost, price);
       return `${margin.toFixed(2)}%`;
     }
     
@@ -82,7 +83,7 @@ export default function ProductsTable({ products }: ProductsTableProps) {
     }
     
     const marginFormula = product.cost > 0 ? 
-      `(${formatCurrency(product.price)} - ${formatCurrency(product.cost)}) / ${formatCurrency(product.price)} × 100 = ${Number(product.margin).toFixed(2)}%` :
+      `(${formatCurrency(product.price)} - ${formatCurrency(product.cost)}) / ${formatCurrency(product.cost)} × 100 = ${Number(product.margin).toFixed(2)}%` :
       "No se puede calcular margen con costo cero";
       
     return marginFormula;

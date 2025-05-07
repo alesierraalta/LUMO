@@ -21,6 +21,7 @@ import ProductFilters from "./product-filters"
 import { SortOrder } from "@/services/productService"
 import { formatCurrency } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { calculateMargin } from "@/lib/client-utils"
 
 interface ProductListProps {
   products: any[]
@@ -36,61 +37,37 @@ export default function ProductList({ products: initialProducts }: ProductListPr
     sortOrder?: SortOrder
   }>({})
 
-  // Helper function to calculate display margin text
-  const getMarginDisplay = (product: any) => {
-    if (!product || product.price === undefined || product.cost === undefined) {
+  // Helper function to get margin display
+  const getMarginDisplay = (price: number, cost: number, margin?: number) => {
+    if (price === undefined || cost === undefined) {
       return '0.00%';
     }
-
-    const price = Number(product.price);
-    const cost = Number(product.cost);
     
     if (cost === 0) {
       if (price === 0) {
-        return '0.00%'; // Both cost and price are 0, display 0%
+        return '0.00%';
       }
       return '100.00%'; // Cost is 0 but price is not, effectively 100% markup
     }
     
-    // Use the margin value from the product if it exists
-    if (product.margin !== undefined && product.margin !== null) {
-      return `${Number(product.margin).toFixed(2)}%`;
-    }
-    
-    // Calculate margin as fallback
-    if (price > 0) {
-      const margin = ((price - cost) / price) * 100;
+    // Use the provided margin if available
+    if (margin !== undefined) {
       return `${margin.toFixed(2)}%`;
     }
     
-    return '0.00%';
+    // Calculate margin as fallback using the correct formula
+    const calculatedMargin = calculateMargin(cost, price);
+    return `${calculatedMargin.toFixed(2)}%`;
   };
 
-  // Helper function to get tooltip content
-  const getTooltipContent = (product: any) => {
-    if (!product || product.price === undefined || product.cost === undefined) {
-      return "No data available";
-    }
-
-    const price = Number(product.price);
-    const cost = Number(product.cost);
-    
+  // Helper function to get tooltip content for margin calculation
+  const getMarginTooltip = (price: number, cost: number) => {
     if (cost === 0) {
-      if (price === 0) {
-        return "No hay margen cuando el costo y precio son cero";
-      }
-      return "Margen del 100% cuando el costo es cero";
+      return "Cannot calculate margin when cost is $0.00";
     }
     
-    if (price <= 0) {
-      return "No se puede calcular margen con precio cero o negativo";
-    }
-    
-    const margin = product.margin !== undefined && product.margin !== null 
-      ? Number(product.margin).toFixed(2) 
-      : ((price - cost) / price * 100).toFixed(2);
-      
-    const marginFormula = `(${formatCurrency(price)} - ${formatCurrency(cost)}) / ${formatCurrency(price)} × 100 = ${margin}%`;
+    const margin = calculateMargin(cost, price);
+    const marginFormula = `(${formatCurrency(price)} - ${formatCurrency(cost)}) / ${formatCurrency(cost)} × 100 = ${margin.toFixed(2)}%`;
     
     return marginFormula;
   };
@@ -220,14 +197,14 @@ export default function ProductList({ products: initialProducts }: ProductListPr
                               <Calculator className="h-3.5 w-3.5 text-muted-foreground ml-1 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Margen: {getMarginDisplay(product)}</p>
-                              <p className="text-xs">{getTooltipContent(product)}</p>
+                              <p>Margen: {getMarginDisplay(product.price, product.cost, product.margin)}</p>
+                              <p className="text-xs">{getMarginTooltip(product.price, product.cost)}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
                     </TableCell>
-                    <TableCell>{getMarginDisplay(product)}</TableCell>
+                    <TableCell>{getMarginDisplay(product.price, product.cost, product.margin)}</TableCell>
                   <TableCell className="text-right space-x-1">
                       <Link href={`/products/edit/${product.id}`}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 group-hover:opacity-100">

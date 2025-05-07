@@ -2,7 +2,7 @@
 
 /**
  * Client-side utility function to calculate margin percentage
- * Uses the formula (Price-Cost)/Price to calculate profit margin as a percentage of revenue
+ * Uses the formula (Price-Cost)/Cost to calculate profit margin as a percentage of cost
  */
 export function calculateMargin(cost: number, price: number): number {
   // Ensure we're working with numbers
@@ -10,16 +10,15 @@ export function calculateMargin(cost: number, price: number): number {
   price = Number(price) || 0;
   
   // Handle edge cases
-  if (price <= 0) return 0;
-  if (cost <= 0) return 100; // If cost is zero or negative, margin is 100%
-  if (cost > price) return 0; // If cost exceeds price, margin is 0%
+  if (cost <= 0) return 0; // Cannot calculate margin if cost is zero or negative
+  if (price <= 0) return 0; // Cannot have a negative or zero price
   
-  return ((price - cost) / price) * 100;
+  return ((price - cost) / cost) * 100;
 }
 
 /**
  * Client-side utility function to calculate price from cost and margin
- * Uses the formula Price = Cost/(1-Margin/100) to derive price from margin
+ * Uses the formula Price = Cost*(1+Margin/100) to derive price from margin
  */
 export function calculatePrice(cost: number, margin: number): number {
   // Ensure we're working with numbers
@@ -29,9 +28,8 @@ export function calculatePrice(cost: number, margin: number): number {
   // Handle edge cases
   if (cost <= 0) return 0;
   if (margin <= 0) return cost; // No margin means price equals cost
-  if (margin >= 100) return cost * 100; // Cap at 100x for extremely high margins
   
-  return cost / (1 - margin / 100);
+  return cost * (1 + margin / 100);
 }
 
 /**

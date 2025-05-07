@@ -50,7 +50,10 @@ export default function AddProductPage() {
     setCost(newCost);
     
     if (newCost && price) {
-      const newMargin = calculateMargin(parseFloat(newCost), parseFloat(price));
+      const costVal = parseFloat(newCost);
+      const priceVal = parseFloat(price);
+      const newMargin = calculateMargin(costVal, priceVal);
+      console.log('Calculated margin:', newMargin, 'from cost:', costVal, 'price:', priceVal);
       setMargin(newMargin.toFixed(2));
     }
   };
@@ -60,7 +63,10 @@ export default function AddProductPage() {
     setPrice(newPrice);
     
     if (cost && newPrice) {
-      const newMargin = calculateMargin(parseFloat(cost), parseFloat(newPrice));
+      const costVal = parseFloat(cost);
+      const priceVal = parseFloat(newPrice);
+      const newMargin = calculateMargin(costVal, priceVal);
+      console.log('Calculated margin:', newMargin, 'from cost:', costVal, 'price:', priceVal);
       setMargin(newMargin.toFixed(2));
     }
   };
@@ -70,7 +76,10 @@ export default function AddProductPage() {
     setMargin(newMargin);
     
     if (cost && newMargin) {
-      const newPrice = calculatePrice(parseFloat(cost), parseFloat(newMargin));
+      const costVal = parseFloat(cost);
+      const marginVal = parseFloat(newMargin);
+      const newPrice = calculatePrice(costVal, marginVal);
+      console.log('Calculated price:', newPrice, 'from cost:', costVal, 'margin:', marginVal);
       setPrice(newPrice.toFixed(2));
     }
   };
@@ -212,7 +221,9 @@ export default function AddProductPage() {
             </div>
             
             <div className="mt-1 text-xs text-muted-foreground">
-              El margen se calcula automáticamente al ingresar costo y precio.
+              El margen se calcula como porcentaje sobre el costo: (Precio-Costo)/Costo × 100.
+              <br />
+              Ejemplo: Precio=100, Costo=50 → Margen=100%
             </div>
             
             <div className="space-y-2">

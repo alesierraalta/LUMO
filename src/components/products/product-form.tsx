@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { calculateMargin } from "@/services/productService";
 import {
   Form,
   FormControl,
@@ -27,16 +26,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { calculateMargin, calculatePrice, createProductApi, updateProductApi } from "@/lib/client-utils";
+
+// Import Radio Group components
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Esquema de validación para el formulario
 const productSchema = z.object({
   name: z.string().min(1, { message: "El nombre del producto es requerido" }).max(100, { message: "El nombre no puede exceder los 100 caracteres" }),
-  description: z.string().optional().max(500, { message: "La descripción no puede exceder los 500 caracteres" }),
+  description: z.string().optional(),
   sku: z.string()
-    .min(1, { message: "El SKU es requerido" })
-    .regex(/^PROD-[A-Z0-9]{5}$/, { 
-      message: "El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)" 
-    }),
+    .min(1, { message: "El SKU es requerido" }),
   cost: z.coerce
     .number()
     .min(0, { message: "El costo no puede ser negativo" })
@@ -53,44 +53,28 @@ const productSchema = z.object({
       const decimals = val.toString().split('.')[1];
       return !decimals || decimals.length <= 2;
     }, { message: "El precio debe tener máximo 2 decimales" }),
-  margin: z.coerce.number().optional().min(0, { message: "El margen no puede ser negativo" }).max(1000, { message: "El margen no puede exceder el 1000%" }),
+  margin: z.coerce.number().min(0, { message: "El margen no puede ser negativo" }).max(1000, { message: "El margen no puede exceder el 1000%" }),
   categoryId: z.string().optional(),
-  imageUrl: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true;
-      try {
-        new URL(val);
-        return true;
-      } catch {
-        return false;
-      }
-    }, { message: "La URL de la imagen debe ser válida (debe incluir http:// o https://)" })
-    .refine((val) => {
-      if (!val) return true;
-      return /\.(jpg|jpeg|png|gif|webp)$/i.test(val);
-    }, { message: "La URL debe terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)" }),
-}).refine((data) => data.price > data.cost, {
+  imageUrl: z.string().optional(),
+  // Inventory fields
+  quantity: z.coerce.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
+  minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
+  location: z.string().optional(),
+}).refine((data) => {
+  const price = data.price as number;
+  const cost = data.cost as number;
+  return price > cost;
+}, {
   message: "El precio de venta debe ser mayor que el costo",
   path: ["price"],
 }).refine((data) => {
-  if (data.categoryId && data.categoryId !== "none") {
-    // This is a placeholder - in a real app, you'd check against actual category IDs
+  if (data.categoryId && data.categoryId !== "uncategorized") {
     return true;
-  }
-  return true; // For now, always pass since we can't access categories list in schema
-}, {
-  message: "La categoría seleccionada no es válida",
-  path: ["categoryId"],
-}).refine((data) => {
-  if (data.margin) {
-    const calculatedMargin = data.cost === 0 ? 0 : ((data.price - data.cost) / data.cost) * 100;
-    return Math.abs(calculatedMargin - data.margin) < 0.1; // Small tolerance for rounding
   }
   return true;
 }, {
-  message: "El margen proporcionado no coincide con el cálculo basado en costo y precio",
-  path: ["margin"],
+  message: "La categoría seleccionada no es válida",
+  path: ["categoryId"],
 }).refine((data) => {
   return !!(data.description || data.imageUrl);
 }, {
@@ -98,22 +82,23 @@ const productSchema = z.object({
   path: ["description"],
 });
 
+// Keep the original Zod inference for type safety
 type ProductFormValues = z.infer<typeof productSchema>;
 
 type ProductFormProps = {
   initialData?: any;
   categories: any[];
-  onSubmit?: (data: ProductFormValues) => Promise<void>;
 };
 
 export default function ProductForm({
   initialData,
   categories,
-  onSubmit,
 }: ProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  // Change default pricing mode to margin
+  const [pricingMode, setPricingMode] = useState<"price" | "margin">("margin");
 
   // Configurar el formulario con react-hook-form
   const {
@@ -121,6 +106,7 @@ export default function ProductForm({
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -130,22 +116,118 @@ export default function ProductForm({
       sku: "",
       cost: 0,
       price: 0,
-      margin: 0,
-      categoryId: "none",
+      margin: 30, // Default 30% margin
+      categoryId: "uncategorized",
       imageUrl: "",
+      quantity: 0,
+      minStockLevel: 5,
+      location: "",
     },
   });
+
+  // Event handlers for interactive calculations
+  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCost = parseFloat(e.target.value) || 0;
+    setValue("cost", newCost);
+    
+    // Recalculate based on pricing mode
+    if (pricingMode === "price") {
+      // In price mode, update margin based on current price
+      const currentPrice = getValues("price");
+      if (currentPrice && newCost > 0) {
+        const newMargin = calculateMargin(newCost, currentPrice);
+        setValue("margin", newMargin);
+      } else {
+        setValue("margin", 0);
+      }
+    } else {
+      // In margin mode, update price based on current margin
+      const currentMargin = getValues("margin");
+      if (currentMargin !== undefined && newCost > 0) {
+        const newPrice = calculatePrice(newCost, currentMargin);
+        setValue("price", newPrice);
+      }
+    }
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPrice = parseFloat(e.target.value) || 0;
+    setValue("price", newPrice);
+    
+    // Recalculate margin
+    const currentCost = getValues("cost");
+    if (currentCost > 0 && newPrice > 0) {
+      const newMargin = calculateMargin(currentCost, newPrice);
+      setValue("margin", newMargin);
+    } else {
+      setValue("margin", 0);
+    }
+  };
+
+  const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMargin = parseFloat(e.target.value) || 0;
+    setValue("margin", newMargin);
+    
+    // Recalculate price
+    const currentCost = getValues("cost");
+    if (currentCost > 0) {
+      const newPrice = calculatePrice(currentCost, newMargin);
+      setValue("price", newPrice);
+    }
+  };
+
+  // Handle pricing mode change
+  const handlePricingModeChange = (value: string) => {
+    const newMode = value as "price" | "margin";
+    setPricingMode(newMode);
+    
+    // Recalculate values based on new mode
+    const currentCost = getValues("cost");
+    
+    if (newMode === "price") {
+      // Switching to price mode - price stays the same, recalculate margin
+      const currentPrice = getValues("price");
+      if (currentCost > 0 && currentPrice > 0) {
+        const newMargin = calculateMargin(currentCost, currentPrice);
+        setValue("margin", newMargin);
+      }
+    } else {
+      // Switching to margin mode - margin stays the same, recalculate price
+      const currentMargin = getValues("margin");
+      if (currentCost > 0 && currentMargin !== undefined) {
+        const newPrice = calculatePrice(currentCost, currentMargin);
+        setValue("price", newPrice);
+      }
+    }
+  };
 
   // Observar los cambios en costo y precio para calcular el margen
   const cost = watch("cost");
   const price = watch("price");
+  const margin = watch("margin");
 
+  // Initialize calculations on component mount
   useEffect(() => {
-    if (cost !== undefined && price !== undefined) {
-      const newMargin = calculateMargin(Number(cost), Number(price));
-      setValue("margin", newMargin);
+    if (initialData) {
+      // If we have initial data, ensure margin is calculated correctly
+      const initialCost = Number(initialData.cost || 0);
+      const initialPrice = Number(initialData.price || 0);
+      
+      if (initialCost > 0 && initialPrice > 0) {
+        const calculatedMargin = calculateMargin(initialCost, initialPrice);
+        setValue("margin", calculatedMargin);
+      }
+    } else {
+      // For new products, calculate initial price based on default margin
+      const initialCost = getValues("cost");
+      const initialMargin = getValues("margin");
+      
+      if (initialCost > 0 && initialMargin > 0) {
+        const calculatedPrice = calculatePrice(initialCost, initialMargin);
+        setValue("price", calculatedPrice);
+      }
     }
-  }, [cost, price, setValue]);
+  }, [initialData, setValue, getValues]);
 
   // Manejar el envío del formulario
   const handleFormSubmit = async (data: ProductFormValues) => {
@@ -153,30 +235,41 @@ export default function ProductForm({
       setIsLoading(true);
       setError("");
       
-      // If categoryId is "none", set it to null for the database
-      if (data.categoryId === "none") {
-        data.categoryId = undefined;
+      // Ensure price and margin are consistent before submission
+      // based on the current pricing mode
+      if (pricingMode === "price") {
+        // Calculate margin based on price
+        const cost = Number(data.cost);
+        const price = Number(data.price);
+        if (cost > 0 && price > 0) {
+          data.margin = calculateMargin(cost, price);
+        }
+      } else {
+        // Calculate price based on margin
+        const cost = Number(data.cost);
+        const margin = Number(data.margin);
+        if (cost > 0 && margin !== undefined) {
+          data.price = calculatePrice(cost, margin);
+        }
       }
       
-      if (onSubmit) {
-        // Use passed onSubmit for edit functionality
-        await onSubmit(data);
+      // If categoryId is "uncategorized", set it to null for the database
+      if (data.categoryId === "uncategorized") {
+        data.categoryId = undefined;
+      }
+
+      // Ensure inventory values are valid numbers
+      data.quantity = Number(data.quantity) || 0;
+      data.minStockLevel = Number(data.minStockLevel) || 5;
+      
+      if (initialData) {
+        // Update existing product
+        const updatedProduct = await updateProductApi(initialData.id, data);
+        toast.success("Producto actualizado correctamente");
       } else {
-        // Create product directly for new products
-        const response = await fetch('/api/products', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Error al crear el producto');
-        }
-        
-        toast.success('Producto creado exitosamente');
+        // Create new product
+        const newProduct = await createProductApi(data);
+        toast.success("Producto creado correctamente");
       }
       
       router.push("/products");
@@ -184,7 +277,6 @@ export default function ProductForm({
     } catch (error: any) {
       console.error("Error al guardar el producto:", error);
       setError(error.message || "Ocurrió un error al guardar el producto");
-      toast.error(error.message || "Ocurrió un error al guardar el producto");
       setIsLoading(false);
     }
   };
@@ -201,182 +293,224 @@ export default function ProductForm({
           </div>
         </div>
       )}
-      <Form {...{ register, handleSubmit, errors }}>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
-          <FormField
-            control={register("name")}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nombre</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nombre del producto" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={register("description")}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descripción</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Descripción del producto"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={register("sku")}
-            name="sku"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>SKU</FormLabel>
-                <FormControl>
-                  <Input placeholder="SKU único" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={register("cost")}
-              name="cost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Costo</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+        <div className="px-6 space-y-6">
+          {/* Form fields */}
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nombre</Label>
+              <Input
+                id="name"
+                placeholder="Nombre del producto"
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
               )}
-            />
+            </div>
 
-            <FormField
-              control={register("price")}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Precio de Venta</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                placeholder="Descripción del producto"
+                {...register("description")}
+              />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description.message}</p>
               )}
-            />
-          </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={register("margin")}
-              name="margin"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Margen</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="pr-7"
-                      {...field}
-                      placeholder="0.00"
-                      readOnly
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="grid gap-2">
+              <Label htmlFor="sku">SKU</Label>
+              <Input
+                id="sku"
+                placeholder="SKU único"
+                {...register("sku")}
+              />
+              {errors.sku && (
+                <p className="text-sm text-destructive">{errors.sku.message}</p>
               )}
-            />
-          </div>
+            </div>
 
-          <FormField
-            control={register("categoryId")}
-            name="categoryId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categoría</FormLabel>
-                <FormControl>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            {/* Radio group for pricing mode selection */}
+            <div className="space-y-2">
+              <Label>Modo de Precios</Label>
+              <RadioGroup 
+                value={pricingMode} 
+                onValueChange={handlePricingModeChange}
+                className="flex flex-row gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="price" id="price-mode" />
+                  <Label htmlFor="price-mode">Especificar Precio</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="margin" id="margin-mode" />
+                  <Label htmlFor="margin-mode">Especificar Margen (Cálculo automático del precio)</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
-          <FormField
-            control={register("imageUrl")}
-            name="imageUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>URL de Imagen</FormLabel>
-                <FormControl>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="cost">Costo</Label>
+                <Input
+                  id="cost"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...register("cost")}
+                  onChange={(e) => {
+                    register("cost").onChange(e);
+                    handleCostChange(e);
+                  }}
+                />
+                {errors.cost && (
+                  <p className="text-sm text-destructive">{errors.cost.message}</p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="margin">Margen (%)</Label>
+                <Input
+                  id="margin"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="0.0"
+                  disabled={pricingMode === "price"}
+                  {...register("margin")}
+                  onChange={(e) => {
+                    register("margin").onChange(e);
+                    handleMarginChange(e);
+                  }}
+                />
+                {errors.margin && (
+                  <p className="text-sm text-destructive">{errors.margin.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="price">
+                Precio de Venta {pricingMode === "margin" && "(Calculado automáticamente)"}
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                disabled={pricingMode === "margin"}
+                className={pricingMode === "margin" ? "bg-muted" : ""}
+                {...register("price")}
+                onChange={(e) => {
+                  register("price").onChange(e);
+                  handlePriceChange(e);
+                }}
+              />
+              {errors.price && (
+                <p className="text-sm text-destructive">{errors.price.message}</p>
+              )}
+              {pricingMode === "margin" && (
+                <p className="text-xs text-muted-foreground">
+                  El precio se calcula automáticamente en base al costo y margen
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="categoryId">Categoría</Label>
+              <Select
+                defaultValue={initialData?.categoryId || "uncategorized"}
+                onValueChange={(value) => setValue("categoryId", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="uncategorized">Sin categoría</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="imageUrl">URL de Imagen</Label>
+              <Input
+                id="imageUrl"
+                placeholder="https://ejemplo.com/imagen.jpg"
+                {...register("imageUrl")}
+              />
+            </div>
+
+            {/* Inventory Fields */}
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-lg font-medium mb-4">Información de Inventario</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="quantity">Cantidad Inicial</Label>
                   <Input
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                    {...field}
+                    id="quantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register("quantity")}
+                    placeholder="0"
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/products")}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
-            </Button>
+                  {errors.quantity && (
+                    <p className="text-sm text-destructive">{errors.quantity.message}</p>
+                  )}
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="minStockLevel">Nivel Mínimo de Stock</Label>
+                  <Input
+                    id="minStockLevel"
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register("minStockLevel")}
+                    placeholder="5"
+                  />
+                  {errors.minStockLevel && (
+                    <p className="text-sm text-destructive">{errors.minStockLevel.message}</p>
+              )}
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Ubicación</Label>
+                  <Input
+                    id="location"
+                    {...register("location")}
+                    placeholder="Almacén, Estante, etc."
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </form>
-      </Form>
+        </div>
+        
+        <div className="px-6 py-4 flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/products")}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
+          </Button>
+        </div>
+      </form>
     </Card>
   );
 } 

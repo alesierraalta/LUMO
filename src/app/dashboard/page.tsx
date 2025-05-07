@@ -1,5 +1,6 @@
 import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { getAllProducts } from "@/services/productService";
 import { getLowStockItems } from "@/services/inventoryService";
@@ -162,7 +163,11 @@ export default async function DashboardPage() {
                   <div className="flex-1 space-y-1">
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {product.category?.name || "Uncategorized"}
+                      {product.category ? (
+                        product.category.name
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Sin categoría</Badge>
+                      )}
                     </p>
                   </div>
                   <div className="text-right">

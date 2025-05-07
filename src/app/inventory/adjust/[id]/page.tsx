@@ -6,13 +6,14 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AdjustInventoryPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function AdjustInventoryPage({ params }: AdjustInventoryPageProps) {
-  const inventoryItem = await getInventoryItemById(params.id);
+  const resolvedParams = await params;
+  const inventoryItem = await getInventoryItemById(resolvedParams.id);
 
   if (!inventoryItem) {
     notFound();
@@ -34,7 +35,7 @@ export default async function AdjustInventoryPage({ params }: AdjustInventoryPag
       
       <InventoryAdjustmentForm 
         inventoryItem={inventoryItem}
-        productName={inventoryItem.product.name}
+        productName={inventoryItem.name}
       />
       
       <div className="mt-6 text-center">

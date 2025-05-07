@@ -9,6 +9,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { getAllProducts } from "@/services/productService";
 import dynamic from "next/dynamic";
 import PrintHeader from "@/components/reports/print-header";
@@ -82,20 +83,23 @@ export default async function MarginReportsPage() {
     { name: MARGIN_CATEGORIES.HIGH.label, value: productsByCategory.HIGH.length, color: MARGIN_CATEGORIES.HIGH.color },
   ];
   
-  // Calculate average margin
-  const totalMargin = products.reduce((sum, product) => sum + Number(product.margin), 0);
+  // Calculate average margin (safely)
+  const totalMargin = products.reduce((sum, product) => {
+    const margin = Number(product.margin) || 0;
+    return sum + margin;
+  }, 0);
   const averageMargin = products.length > 0 ? (totalMargin / products.length).toFixed(2) : "0";
   
-  // Calculate average margins by category
+  // Calculate average margins by category (safely)
   const avgMarginByCategory = {
     LOW: productsByCategory.LOW.length > 0 
-      ? (productsByCategory.LOW.reduce((sum, p) => sum + Number(p.margin), 0) / productsByCategory.LOW.length).toFixed(2) 
+      ? (productsByCategory.LOW.reduce((sum, p) => sum + (Number(p.margin) || 0), 0) / productsByCategory.LOW.length).toFixed(2) 
       : "0",
     MEDIUM: productsByCategory.MEDIUM.length > 0 
-      ? (productsByCategory.MEDIUM.reduce((sum, p) => sum + Number(p.margin), 0) / productsByCategory.MEDIUM.length).toFixed(2) 
+      ? (productsByCategory.MEDIUM.reduce((sum, p) => sum + (Number(p.margin) || 0), 0) / productsByCategory.MEDIUM.length).toFixed(2) 
       : "0",
     HIGH: productsByCategory.HIGH.length > 0 
-      ? (productsByCategory.HIGH.reduce((sum, p) => sum + Number(p.margin), 0) / productsByCategory.HIGH.length).toFixed(2) 
+      ? (productsByCategory.HIGH.reduce((sum, p) => sum + (Number(p.margin) || 0), 0) / productsByCategory.HIGH.length).toFixed(2) 
       : "0"
   };
   
@@ -249,7 +253,13 @@ export default async function MarginReportsPage() {
                         <TableRow key={product.id}>
                           <TableCell className="font-medium">{product.name}</TableCell>
                           <TableCell>{product.sku}</TableCell>
-                          <TableCell>{product.category?.name || "Uncategorized"}</TableCell>
+                          <TableCell>
+                            {product.category ? (
+                              product.category.name
+                            ) : (
+                              <Badge variant="outline" className="text-xs">Sin categoría</Badge>
+                            )}
+                          </TableCell>
                           <TableCell>${Number(product.cost).toFixed(2)}</TableCell>
                           <TableCell>${Number(product.price).toFixed(2)}</TableCell>
                           <TableCell>{Number(product.margin).toFixed(2)}%</TableCell>

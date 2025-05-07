@@ -44,7 +44,7 @@ export function formatDate(input: Date | string | null | undefined): string {
     }
     
     // Validate the date
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
+    if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }
     

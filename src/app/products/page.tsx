@@ -3,8 +3,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import prisma from "@/lib/prisma";
-import { ProductList } from "@/components/products/product-list";
-import { ProductSearch } from "@/components/products/product-search";
+import ProductList from "@/components/products/product-list";
+import ProductFilters from "@/components/products/product-filters";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { serializeDecimal } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Products",
@@ -43,7 +45,8 @@ async function getProducts(query?: string, categoryId?: string) {
     },
   });
 
-  return products;
+  // Serializar los objetos Decimal a números JavaScript
+  return serializeDecimal(products);
 }
 
 async function getCategories() {
@@ -55,18 +58,40 @@ async function getCategories() {
 }
 
 export default async function ProductsPage({ searchParams }: PageProps) {
+  // Extract and handle searchParams safely
+  const query = searchParams?.q || undefined;
+  const categoryId = searchParams?.category || undefined;
+
   const [products, categories] = await Promise.all([
-    getProducts(searchParams.q, searchParams.category),
+    getProducts(query, categoryId),
     getCategories(),
   ]);
 
+  // Find selected category if filtered by category
+  const selectedCategory = categoryId ? 
+    categories.find(cat => cat.id === categoryId) : null;
+
   return (
     <div className="container mx-auto py-10">
+      <div className="mb-4">
+        <Breadcrumb items={[
+          { title: "Dashboard", href: "/dashboard" },
+          { title: "Inventory", href: "/inventory" },
+          { title: selectedCategory ? "Category" : "Products", href: selectedCategory ? `/categories` : undefined },
+          ...(selectedCategory ? [{ title: selectedCategory.name }] : [])
+        ]} />
+      </div>
+      
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {selectedCategory ? `${selectedCategory.name} Products` : "Products"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Manage your products here
+            {selectedCategory 
+              ? `Viewing products in the ${selectedCategory.name} category`
+              : "Manage your products here"
+            }
           </p>
         </div>
         <Link href="/products/add">
@@ -78,7 +103,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       </div>
 
       <div className="mt-4 mb-6">
-        <ProductSearch categories={categories} />
+        <ProductFilters />
       </div>
 
       <ProductList products={products} />

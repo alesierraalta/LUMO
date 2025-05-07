@@ -30,7 +30,7 @@ const MARGIN_CATEGORIES = {
 type MarginCategory = keyof typeof MARGIN_CATEGORIES | "ALL"
 
 type ProductFiltersProps = {
-  onFilterChange: (filters: {
+  onFilterChange?: (filters: {
     minMargin?: number
     maxMargin?: number
     sortBy?: string
@@ -52,11 +52,11 @@ export default function ProductFilters({ onFilterChange }: ProductFiltersProps) 
 
     if (category === "ALL") {
       setMarginRange([0, 100])
-      onFilterChange({ minMargin: undefined, maxMargin: undefined })
+      onFilterChange?.({ minMargin: undefined, maxMargin: undefined })
     } else {
       const { min, max } = MARGIN_CATEGORIES[category as keyof typeof MARGIN_CATEGORIES]
       setMarginRange([min, max])
-      onFilterChange({ minMargin: min, maxMargin: max })
+      onFilterChange?.({ minMargin: min, maxMargin: max })
     }
   }
 
@@ -64,7 +64,7 @@ export default function ProductFilters({ onFilterChange }: ProductFiltersProps) 
   const handleRangeChange = (value: number[]) => {
     setMarginRange(value as [number, number])
     setMarginCategory("ALL") // Reset category when manual range is set
-    onFilterChange({ minMargin: value[0], maxMargin: value[1] })
+    onFilterChange?.({ minMargin: value[0], maxMargin: value[1] })
   }
 
   // Toggle sort order
@@ -72,7 +72,7 @@ export default function ProductFilters({ onFilterChange }: ProductFiltersProps) 
     const newOrder = marginSortOrder === "asc" ? "desc" : 
                     marginSortOrder === "desc" ? undefined : "asc"
     setMarginSortOrder(newOrder)
-    onFilterChange({ sortBy: newOrder ? "margin" : undefined, sortOrder: newOrder })
+    onFilterChange?.({ sortBy: newOrder ? "margin" : undefined, sortOrder: newOrder })
   }
 
   return (

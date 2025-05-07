@@ -1,24 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js Inventory App
 
-## Getting Started
+A modern inventory management application built with Next.js, Prisma, and PostgreSQL.
 
-First, run the development server:
+## Quick Setup (Windows)
 
-```bash
+For Windows users, we've provided batch files to simplify setup and management:
+
+1. **First-time setup**: Run `setup.bat` to install dependencies and set up the database.
+2. **Start development server**: Run `start.bat` to start the Next.js development server.
+3. **Production deployment**: Run `build-and-start.bat` to build and start the production server.
+4. **Application management**: Run `manage.bat` for an interactive menu with all operations.
+
+## Manual Setup
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- PostgreSQL database
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Set up your environment variables in `.env`
+4. Generate Prisma client:
+   ```
+   npx prisma generate
+   ```
+5. Push the database schema:
+   ```
+   npx prisma db push
+   ```
+
+### Development
+
+Start the development server:
+
+```
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000 to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build the application:
+
+```
+npm run build
+```
+
+Start the production server:
+
+```
+npm run start
+```
+
+## Features
+
+- Inventory tracking and management
+- Product categorization
+- Stock level monitoring
+- Sales tracking
+- Reporting tools
+
+## License
+
+[MIT](LICENSE)
 
 ## Learn More
 

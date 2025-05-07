@@ -16,7 +16,7 @@ export type Category = {
   description: string | null;
   createdAt: Date;
   _count: {
-    products: number;
+    inventory: number;
   };
 };
 
@@ -31,9 +31,9 @@ export const columns: ColumnDef<Category>[] = [
     cell: ({ row }) => row.original.description || "No description",
   },
   {
-    accessorKey: "_count.products",
+    accessorKey: "_count.inventory",
     header: "Products",
-    cell: ({ row }) => row.original._count.products,
+    cell: ({ row }) => row.original._count.inventory,
   },
   {
     id: "actions",

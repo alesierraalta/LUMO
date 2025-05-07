@@ -27,13 +27,8 @@ export type StockMovementInput = {
  */
 export async function getAllInventoryItems() {
   const items = await prisma.inventoryItem.findMany({
-    include: {
-      product: true,
-    },
     orderBy: {
-      product: {
-        name: "asc",
-      },
+      updatedAt: "asc",
     },
   });
   return serializeDecimal(items);
@@ -50,7 +45,6 @@ export async function getInventoryItemById(id: string) {
   const item = await prisma.inventoryItem.findUnique({
     where: { id },
     include: {
-      product: true,
       stockMovements: {
         orderBy: {
           date: "desc",
@@ -63,17 +57,22 @@ export async function getInventoryItemById(id: string) {
 }
 
 /**
- * Obtiene un item de inventario por ID de producto
+ * Obtiene un item de inventario por SKU
  */
-export async function getInventoryItemByProductId(productId: string) {
-  if (!productId) {
-    throw new Error("El ID del producto es requerido");
+export async function getInventoryItemBySku(sku: string) {
+  if (!sku) {
+    throw new Error("El SKU del producto es requerido");
   }
   
-  const item = await prisma.inventoryItem.findUnique({
-    where: { productId },
+  // Since sku is not directly accessible in InventoryItem, 
+  // we need to query differently to find items by SKU
+  const items = await prisma.inventoryItem.findMany({
+    where: {
+      sku: {
+        equals: sku
+      }
+    },
     include: {
-      product: true,
       stockMovements: {
         orderBy: {
           date: "desc",
@@ -81,7 +80,10 @@ export async function getInventoryItemByProductId(productId: string) {
         take: 10,
       },
     },
+    take: 1
   });
+  
+  const item = items.length > 0 ? items[0] : null;
   return serializeDecimal(item);
 }
 
@@ -145,7 +147,7 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
     throw new Error("La cantidad debe ser mayor que cero para entradas de stock");
   }
 
-  return await prisma.$transaction(async (tx: PrismaClient) => {
+  return await prisma.$transaction(async (tx) => {
     // Obtener el item de inventario actual
     const inventoryItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
@@ -172,9 +174,6 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
       data: {
         quantity: inventoryItem.quantity + quantity,
       },
-      include: {
-        product: true,
-      },
     });
 
     return {
@@ -192,7 +191,7 @@ export async function removeStock(inventoryItemId: string, quantity: number, not
     throw new Error("La cantidad debe ser mayor que cero para salidas de stock");
   }
 
-  return await prisma.$transaction(async (tx: PrismaClient) => {
+  return await prisma.$transaction(async (tx) => {
     // Obtener el item de inventario actual
     const inventoryItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
@@ -224,9 +223,6 @@ export async function removeStock(inventoryItemId: string, quantity: number, not
       data: {
         quantity: inventoryItem.quantity - quantity,
       },
-      include: {
-        product: true,
-      },
     });
 
     return {
@@ -244,7 +240,7 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
     throw new Error("La cantidad no puede ser negativa");
   }
 
-  return await prisma.$transaction(async (tx: PrismaClient) => {
+  return await prisma.$transaction(async (tx) => {
     // Obtener el item de inventario actual
     const inventoryItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
@@ -254,15 +250,17 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
       throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
     }
 
+    // Calcular la diferencia para el registro del movimiento
     const difference = newQuantity - inventoryItem.quantity;
+    const movementType = difference >= 0 ? "ADJUSTMENT" : "ADJUSTMENT";
 
     // Registrar el movimiento
     const movement = await tx.stockMovement.create({
       data: {
         inventoryItemId,
         quantity: Math.abs(difference),
-        type: "ADJUSTMENT",
-        notes: notes || `Ajuste de ${inventoryItem.quantity} a ${newQuantity} unidades`,
+        type: movementType,
+        notes: notes || `Ajuste de stock de ${inventoryItem.quantity} a ${newQuantity}`,
         createdBy,
       },
     });
@@ -272,9 +270,6 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
       where: { id: inventoryItemId },
       data: {
         quantity: newQuantity,
-      },
-      include: {
-        product: true,
       },
     });
 
@@ -305,42 +300,56 @@ export async function getStockMovementHistory(inventoryItemId: string, limit?: n
  * Obtiene items con stock bajo (por debajo del nivel mínimo)
  */
 export async function getLowStockItems() {
-  const items = await prisma.inventoryItem.findMany({
-    where: {
-      quantity: {
-        lte: prisma.inventoryItem.fields.minStockLevel,
-      },
-    },
-    include: {
-      product: true,
-    },
-    orderBy: {
-      product: {
-        name: "asc",
-      },
-    },
+  // Use raw SQL to avoid Prisma client validation issues
+  const items = await prisma.$queryRaw`
+    SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
+    FROM inventory_items i
+    LEFT JOIN categories c ON i."categoryId" = c.id
+    WHERE i.quantity <= i."minStockLevel" AND i.quantity > 0
+    ORDER BY i.quantity ASC, i.name ASC
+  `;
+
+  // Process the raw items to add the category relationship
+  const processedItems = (items as any[]).map(item => {
+    return {
+      ...item,
+      category: item.category_id ? {
+        id: item.category_id,
+        name: item.category_name,
+        description: item.category_description
+      } : null
+    };
   });
-  return serializeDecimal(items);
+  
+  return serializeDecimal(processedItems);
 }
 
 /**
  * Obtiene items sin stock (cantidad = 0)
  */
 export async function getOutOfStockItems() {
-  const items = await prisma.inventoryItem.findMany({
-    where: {
-      quantity: 0,
-    },
-    include: {
-      product: true,
-    },
-    orderBy: {
-      product: {
-        name: "asc",
-      },
-    },
+  // Use raw SQL to avoid Prisma client validation issues
+  const items = await prisma.$queryRaw`
+    SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
+    FROM inventory_items i
+    LEFT JOIN categories c ON i."categoryId" = c.id
+    WHERE i.quantity = 0
+    ORDER BY i.name ASC
+  `;
+
+  // Process the raw items to add the category relationship
+  const processedItems = (items as any[]).map(item => {
+    return {
+      ...item,
+      category: item.category_id ? {
+        id: item.category_id,
+        name: item.category_name,
+        description: item.category_description
+      } : null
+    };
   });
-  return serializeDecimal(items);
+  
+  return serializeDecimal(processedItems);
 }
 
 /**
@@ -350,9 +359,8 @@ export async function generateStockAlerts() {
   const lowStockItems = await getLowStockItems();
   return serializeDecimal(lowStockItems.map((item: any) => ({
     id: item.id,
-    productId: item.productId,
-    productName: item.product.name,
-    sku: item.product.sku,
+    name: item.name,
+    sku: item.sku,
     currentQuantity: item.quantity,
     minStockLevel: item.minStockLevel,
     status: item.quantity === 0 
@@ -369,24 +377,21 @@ export async function deleteInventoryItem(inventoryItemId: string) {
     throw new Error("El ID del item de inventario es requerido");
   }
 
-  const result = await prisma.$transaction(async (tx: PrismaClient) => {
-    // Verificar que el item existe
-    const inventoryItem = await tx.inventoryItem.findUnique({
+  return await prisma.$transaction(async (tx) => {
+    // Obtener el item antes de eliminarlo
+    const itemToDelete = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
-      include: { product: true }
+      include: { 
+        stockMovements: true 
+      },
     });
 
-    if (!inventoryItem) {
+    if (!itemToDelete) {
       throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
     }
 
-    // Obtener la cantidad de movimientos asociados para incluir en la respuesta
-    const movementsCount = await tx.stockMovement.count({
-      where: { inventoryItemId },
-    });
-
-    // Eliminar todos los movimientos de stock asociados
-    await tx.stockMovement.deleteMany({
+    // Eliminar todos los movimientos asociados
+    const deleteMovements = await tx.stockMovement.deleteMany({
       where: { inventoryItemId },
     });
 
@@ -398,14 +403,11 @@ export async function deleteInventoryItem(inventoryItemId: string) {
     return {
       deleted: true,
       item: {
-        id: inventoryItem.id,
-        productId: inventoryItem.productId,
-        productName: inventoryItem.product.name,
-        quantity: inventoryItem.quantity,
-        minStockLevel: inventoryItem.minStockLevel,
-        movementsDeleted: movementsCount
-      }
+        id: itemToDelete.id,
+        quantity: itemToDelete.quantity,
+        minStockLevel: itemToDelete.minStockLevel,
+        movementsDeleted: deleteMovements.count,
+      },
     };
   });
-  return serializeDecimal(result);
 } 

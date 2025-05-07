@@ -10,46 +10,38 @@ datasource db {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  inventory   InventoryItem[]
 
   @@map("categories")
 }
 
-model Product {
-  id           String            @id @default(cuid())
-  name         String
-  description  String?
-  sku          String            @unique
-  price        Decimal           @db.Decimal(10, 2)
-  categoryId   String?
-  imageUrl     String?
-  active       Boolean           @default(true)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  cost         Decimal           @default(0) @db.Decimal(10, 2)
-  margin       Decimal           @default(0) @db.Decimal(10, 2)
-  inventory    InventoryItem?
-  category     Category?         @relation(fields: [categoryId], references: [id])
-  transactions SaleTransaction[]
-
-  @@map("products")
-}
-
 model InventoryItem {
-  id             String          @id @default(cuid())
-  productId      String          @unique
-  quantity       Int             @default(0)
-  minStockLevel  Int             @default(5)
+  id             String            @id @default(cuid())
+  quantity       Int               @default(0)
+  minStockLevel  Int               @default(5)
   location       String?
-  lastUpdated    DateTime        @updatedAt
-  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lastUpdated    DateTime          @updatedAt
+  active         Boolean           @default(true)
+  categoryId     String?
+  cost           Decimal           @default(0) @db.Decimal(10, 2)
+  createdAt      DateTime          @default(now())
+  description    String?
+  imageUrl       String?
+  margin         Decimal           @default(0) @db.Decimal(10, 2)
+  name           String
+  price          Decimal           @db.Decimal(10, 2)
+  sku            String            @unique
+  updatedAt      DateTime          @updatedAt
+  category       Category?         @relation(fields: [categoryId], references: [id])
+  transactions   SaleTransaction[]
   stockMovements StockMovement[]
 
+  @@index([categoryId])
   @@map("inventory_items")
 }
 
@@ -63,6 +55,7 @@ model StockMovement {
   createdBy       String?
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
+  @@index([inventoryItemId])
   @@map("stock_movements")
 }
 
@@ -82,16 +75,18 @@ model Sale {
 }
 
 model SaleTransaction {
-  id        String   @id @default(cuid())
-  saleId    String
-  productId String
-  quantity  Int
-  unitPrice Decimal  @db.Decimal(10, 2)
-  subtotal  Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id])
-  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  saleId          String
+  quantity        Int
+  unitPrice       Decimal       @db.Decimal(10, 2)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  @@index([inventoryItemId])
+  @@index([saleId])
   @@map("sale_transactions")
 }
 

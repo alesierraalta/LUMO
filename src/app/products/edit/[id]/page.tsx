@@ -3,9 +3,13 @@ import { getProductById } from "@/services/productService";
 import ProductForm from "@/components/products/product-form";
 import ProductEditWrapper from "@/components/products/product-edit-wrapper";
 import { getApiBaseUrl } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  // Access id directly but in a way that's compatible with future Next.js changes
+  // In a future version, this would become: const id = React.use(params).id;
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   try {
     // Fetch product data from the server
@@ -25,7 +29,16 @@ export default async function EditProductPage({ params }: { params: { id: string
 
     return (
       <div className="container max-w-5xl mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8">Editar Producto</h1>
+        <div className="mb-4">
+          <Breadcrumb items={[
+            { title: "Dashboard", href: "/dashboard" },
+            { title: "Inventory", href: "/inventory" },
+            { title: "Products", href: "/products" },
+            { title: "Edit" }
+          ]} />
+        </div>
+        
+        <h1 className="text-3xl font-bold mb-8">Edit Product</h1>
         <ProductEditWrapper productId={id}>
           <ProductForm 
             initialData={product}
@@ -35,11 +48,20 @@ export default async function EditProductPage({ params }: { params: { id: string
       </div>
     );
   } catch (error) {
-    console.error("Error al cargar datos:", error);
+    console.error("Error loading data:", error);
     return (
       <div className="container max-w-5xl mx-auto py-8">
+        <div className="mb-4">
+          <Breadcrumb items={[
+            { title: "Dashboard", href: "/dashboard" },
+            { title: "Inventory", href: "/inventory" },
+            { title: "Products", href: "/products" },
+            { title: "Edit" }
+          ]} />
+        </div>
+        
         <div className="bg-destructive/20 text-destructive p-4 rounded-md mb-8">
-          <p>No se pudieron cargar los datos del producto.</p>
+          <p>Could not load product data.</p>
         </div>
       </div>
     );

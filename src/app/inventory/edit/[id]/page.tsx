@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,13 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getProductById, updateProduct } from "@/services/productService"
+import { updateProduct } from "@/services/productService"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 
 interface Product {
   id: string
   name: string
-  description?: string
+  description?: string | null
   price: number
   margin: number
   categoryId?: string
@@ -32,18 +32,37 @@ interface Category {
   name: string
 }
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
+export default function EditProductPage({ params: pageParams }: { params: { id: string } }) {
   const router = useRouter()
+  const params = useParams() // Get params from hook
   const [loading, setLoading] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-
+  const productIdRef = useRef<string | null>(null)
+  
+  // First useEffect to safely extract the ID using useParams hook
   useEffect(() => {
+    // Get ID from URL params using the useParams hook
+    const id = params.id as string
+    productIdRef.current = id
+  }, [params])
+  
+  // Second useEffect to fetch data once we have the ID
+  useEffect(() => {
+    // Don't proceed if we don't have a valid ID
+    if (!productIdRef.current) return
+    
     // Load product and categories data
     const loadData = async () => {
       try {
-        // Fetch product data and categories in parallel
-        const fetchProduct = getProductById(params.id);
+        // Fetch product data and categories in parallel using API routes instead of direct service calls
+        const fetchProduct = fetch(`/api/products/${productIdRef.current}`).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch product data');
+          }
+          return res.json();
+        });
+        
         const fetchCategories = fetch('/api/categories').then(res => {
           if (!res.ok) {
             throw new Error('Failed to fetch categories');
@@ -56,7 +75,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           fetchCategories
         ])
         
-        setProduct(productData)
+        // Ensure product data matches our interface
+        if (productData) {
+          setProduct({
+            id: productData.id,
+            name: productData.name,
+            description: productData.description,
+            price: Number(productData.price),
+            margin: Number(productData.margin),
+            categoryId: productData.categoryId || undefined,
+            sku: productData.sku
+          })
+        }
+        
         setCategories(categoriesData)
       } catch (error) {
         console.error("Failed to load data:", error)
@@ -65,25 +96,43 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
     
     loadData()
-  }, [params.id])
+  }, [productIdRef.current])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    if (!productIdRef.current || !product) {
+      console.error("Missing product ID or product data")
+      return
+    }
+    
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
     const productData = {
-      id: params.id,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       price: parseFloat(formData.get("price") as string),
       margin: parseFloat(formData.get("margin") as string),
       categoryId: formData.get("category") as string,
-      sku: formData.get("sku") as string || product?.sku || "",
+      sku: formData.get("sku") as string || product.sku,
     }
 
     try {
-      await updateProduct(productData)
+      // Update using the API route instead of direct service call
+      const response = await fetch(`/api/products/${productIdRef.current}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error updating product');
+      }
+      
       router.push("/inventory?tab=products")
       router.refresh()
     } catch (error) {
@@ -153,7 +202,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <Textarea
                 id="description"
                 name="description"
-                defaultValue={product.description}
+                defaultValue={product.description || ""}
                 placeholder="Enter product description"
                 className="min-h-[100px]"
               />

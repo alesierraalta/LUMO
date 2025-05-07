@@ -63,6 +63,14 @@ export default function StockMovementForm({
 
   const movementType = watch("type");
 
+  // Manejar cambios en la cantidad
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value)) {
+      setValue("quantity", value, { shouldValidate: true });
+    }
+  };
+
   // Manejar el envío del formulario
   const handleFormSubmit = async (data: StockMovementFormValues) => {
     try {
@@ -126,6 +134,7 @@ export default function StockMovementForm({
                 step="1"
                 {...register("quantity")}
                 placeholder="1"
+                onChange={handleQuantityChange}
               />
               {errors.quantity && (
                 <p className="text-sm text-destructive">{errors.quantity.message}</p>

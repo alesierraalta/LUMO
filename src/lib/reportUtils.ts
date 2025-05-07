@@ -160,7 +160,7 @@ export function prepareMarginReportData(products: any[], categories: any[]): Rec
   return products.map(product => ({
     Name: product.name,
     SKU: product.sku,
-    Category: product.category?.name || 'Uncategorized',
+    Category: product.category?.name || 'Sin categoría',
     Cost: Number(product.cost).toFixed(2),
     Price: Number(product.price).toFixed(2),
     'Margin (%)': Number(product.margin).toFixed(2),
@@ -176,7 +176,7 @@ export function prepareMarginReportData(products: any[], categories: any[]): Rec
  */
 export function prepareLowStockReportData(lowStockItems: any[], categories: any[]): Record<string, any>[] {
   return lowStockItems.map(item => {
-    const categoryName = categories.find(c => c.id === item.product.categoryId)?.name || 'Uncategorized';
+    const categoryName = categories.find(c => c.id === item.product.categoryId)?.name || 'Sin categoría';
     const status = item.quantity === 0 ? 'Out of Stock' : 'Low Stock';
     
     return {

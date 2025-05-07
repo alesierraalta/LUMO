@@ -5,11 +5,12 @@ const prisma = new PrismaClient();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const sale = await prisma.sale.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         transactions: {
           include: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash, Plus, Minus, Edit3 } from "lucide-react";
+import { Trash, Plus, Minus, Edit3, DollarSign, Percent } from "lucide-react";
 
 // Esquema de validación para el formulario
 const inventoryAdjustmentSchema = z.object({
@@ -30,6 +30,8 @@ const inventoryAdjustmentSchema = z.object({
   minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }),
   location: z.string().optional(),
   notes: z.string().optional(),
+  price: z.coerce.number().min(0, { message: "El precio no puede ser negativo" }),
+  cost: z.coerce.number().min(0, { message: "El costo no puede ser negativo" }),
 });
 
 type InventoryAdjustmentValues = z.infer<typeof inventoryAdjustmentSchema>;
@@ -46,6 +48,7 @@ export default function InventoryAdjustmentForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [calculatedMargin, setCalculatedMargin] = useState<number | null>(null);
 
   // Configurar el formulario con react-hook-form
   const {
@@ -58,14 +61,36 @@ export default function InventoryAdjustmentForm({
     resolver: zodResolver(inventoryAdjustmentSchema),
     defaultValues: {
       operationType: "adjust",
-      quantity: 1,
+      quantity: inventoryItem.quantity,
       minStockLevel: inventoryItem.minStockLevel,
       location: inventoryItem.location || "",
       notes: "",
+      price: inventoryItem.price,
+      cost: inventoryItem.cost,
     },
   });
 
   const operationType = watch("operationType");
+  const currentPrice = watch("price");
+  const currentCost = watch("cost");
+
+  // Calculate margin whenever price or cost changes
+  useEffect(() => {
+    if (currentPrice > 0) {
+      const margin = ((currentPrice - currentCost) / currentPrice) * 100;
+      setCalculatedMargin(margin);
+    } else {
+      setCalculatedMargin(null);
+    }
+  }, [currentPrice, currentCost]);
+  
+  // Manejadores para asegurar que los inputs numéricos funcionen correctamente con el teclado
+  const handleNumericChange = (fieldName: keyof InventoryAdjustmentValues, e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setValue(fieldName, value, { shouldValidate: true });
+    }
+  };
 
   // Manejar el envío del formulario
   const handleFormSubmit = async (data: InventoryAdjustmentValues) => {
@@ -126,11 +151,47 @@ export default function InventoryAdjustmentForm({
           break;
 
         case "adjust":
-          // Actualizar la cantidad, nivel mínimo y ubicación
           const promises = [];
           const changeMessages = [];
+          let newMargin = inventoryItem.margin;
 
-          // Ajustar la cantidad si es diferente
+          // Calculate new margin if price or cost changed
+          if (inventoryItem.price !== data.price || inventoryItem.cost !== data.cost) {
+            if (data.price > 0) {
+              newMargin = ((data.price - data.cost) / data.price) * 100;
+            } else {
+              newMargin = 0;
+            }
+          }
+
+          // Update financials (price, cost, margin) if changed
+          if (
+            inventoryItem.price !== data.price ||
+            inventoryItem.cost !== data.cost ||
+            inventoryItem.margin !== newMargin
+          ) {
+            promises.push(
+              fetch(`/api/inventory/${inventoryItem.id}/financials`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  price: data.price,
+                  cost: data.cost,
+                  margin: newMargin,
+                }),
+              }).then(res => {
+                if (!res.ok) throw new Error(`Error updating financials: ${res.statusText}`);
+                return res.json();
+              })
+            );
+            if (inventoryItem.price !== data.price) changeMessages.push(`precio a ${data.price}`);
+            if (inventoryItem.cost !== data.cost) changeMessages.push(`costo a ${data.cost}`);
+            if (inventoryItem.margin !== newMargin) changeMessages.push(`margen a ${newMargin.toFixed(2)}%`);
+          }
+          
+          // Adjust quantity if different
           if (inventoryItem.quantity !== data.quantity) {
             promises.push(
               fetch(`/api/inventory/${inventoryItem.id}/adjust-stock`, {
@@ -143,14 +204,14 @@ export default function InventoryAdjustmentForm({
                   notes: data.notes,
                 }),
               }).then(res => {
-                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+                if (!res.ok) throw new Error(`Error adjusting stock: ${res.statusText}`);
                 return res.json();
               })
             );
             changeMessages.push(`cantidad a ${data.quantity}`);
           }
 
-          // Actualizar nivel mínimo si es diferente
+          // Update min stock level if different
           if (inventoryItem.minStockLevel !== data.minStockLevel) {
             promises.push(
               fetch(`/api/inventory/${inventoryItem.id}/min-level`, {
@@ -162,14 +223,14 @@ export default function InventoryAdjustmentForm({
                   minLevel: data.minStockLevel,
                 }),
               }).then(res => {
-                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+                if (!res.ok) throw new Error(`Error updating min level: ${res.statusText}`);
                 return res.json();
               })
             );
             changeMessages.push(`nivel mínimo a ${data.minStockLevel}`);
           }
 
-          // Actualizar ubicación si es diferente
+          // Update location if different
           if (inventoryItem.location !== data.location) {
             promises.push(
               fetch(`/api/inventory/${inventoryItem.id}/location`, {
@@ -181,7 +242,7 @@ export default function InventoryAdjustmentForm({
                   location: data.location,
                 }),
               }).then(res => {
-                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+                if (!res.ok) throw new Error(`Error updating location: ${res.statusText}`);
                 return res.json();
               })
             );
@@ -214,6 +275,7 @@ export default function InventoryAdjustmentForm({
     } catch (error: any) {
       console.error("Error en la operación:", error);
       toast.error(`Error: ${error.message || "Ha ocurrido un error inesperado"}`);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -233,20 +295,17 @@ export default function InventoryAdjustmentForm({
         {
           loading: `Eliminando inventario de "${productName}"...`,
           success: `El item de inventario para "${productName}" ha sido eliminado correctamente`,
-          error: "Error al eliminar el item de inventario",
+          error: (err) => `Error: ${err.message || "No se pudo eliminar el item"}`,
         }
       );
-      
-      // Pequeña pausa para que el usuario vea el mensaje de éxito
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+
       router.push("/inventory");
       router.refresh();
     } catch (error: any) {
-      console.error("Error al eliminar:", error);
-      toast.error(`Error: ${error.message || "Ha ocurrido un error inesperado"}`);
-      setIsLoading(false);
+      console.error("Error eliminando item:", error);
+    } finally {
       setShowDeleteConfirmation(false);
+      setIsLoading(false);
     }
   };
 
@@ -278,140 +337,186 @@ export default function InventoryAdjustmentForm({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="operationType">Tipo de Operación</Label>
-                <Select
-                  defaultValue="adjust"
-                  onValueChange={(value) => setValue("operationType", value as any)}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar operación" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="add">
-                      <div className="flex items-center">
-                        <Plus className="h-4 w-4 mr-2" />
-                        <span>Añadir Stock</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="remove">
-                      <div className="flex items-center">
-                        <Minus className="h-4 w-4 mr-2" />
-                        <span>Reducir Stock</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="adjust">
-                      <div className="flex items-center">
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        <span>Ajustar Directamente</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="operationType">Tipo de Operación</Label>
+              <Select 
+                defaultValue="adjust" 
+                onValueChange={(value: "add" | "remove" | "adjust") => setValue("operationType", value)}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="operationType">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adjust">
+                    <Edit3 className="h-4 w-4 mr-2 inline-block" /> Ajustar Detalles
+                  </SelectItem>
+                  <SelectItem value="add">
+                    <Plus className="h-4 w-4 mr-2 inline-block" /> Añadir Stock
+                  </SelectItem>
+                  <SelectItem value="remove">
+                    <Minus className="h-4 w-4 mr-2 inline-block" /> Reducir Stock
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="quantity">
-                  {operationType === "add" ? "Cantidad a Añadir" : 
-                  operationType === "remove" ? "Cantidad a Reducir" : 
-                  "Nueva Cantidad Total"}
-                </Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  {...register("quantity")}
-                  placeholder="1"
-                  disabled={isLoading}
-                />
-                {errors.quantity && (
-                  <p className="text-sm text-destructive">{errors.quantity.message}</p>
-                )}
-              </div>
-
-              {operationType === "adjust" && (
+            {/* Campos condicionales basados en el tipo de operación */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {operationType !== 'adjust' && (
                 <div className="space-y-2">
-                  <Label htmlFor="minStockLevel">Nivel Mínimo de Stock</Label>
+                  <Label htmlFor="quantity">
+                    {operationType === "add" ? "Cantidad a Añadir" : 
+                    operationType === "remove" ? "Cantidad a Reducir" : 
+                    "Nueva Cantidad Total"}
+                  </Label>
                   <Input
-                    id="minStockLevel"
+                    id="quantity"
                     type="number"
-                    min="0"
+                    min="1"
                     step="1"
-                    {...register("minStockLevel")}
-                    placeholder="5"
+                    {...register("quantity")}
+                    placeholder="1"
                     disabled={isLoading}
+                    onChange={(e) => handleNumericChange('quantity', e)}
                   />
-                  {errors.minStockLevel && (
-                    <p className="text-sm text-destructive">{errors.minStockLevel.message}</p>
+                  {errors.quantity && (
+                    <p className="text-sm text-destructive">{errors.quantity.message}</p>
                   )}
                 </div>
               )}
+
+              {operationType === "adjust" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Cantidad Total Actual</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="0"
+                      step="1"
+                      {...register("quantity")}
+                      placeholder="0"
+                      disabled={isLoading}
+                      onChange={(e) => handleNumericChange('quantity', e)}
+                    />
+                    {errors.quantity && (
+                      <p className="text-sm text-destructive">{errors.quantity.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minStockLevel">Nivel Mínimo de Stock</Label>
+                    <Input
+                      id="minStockLevel"
+                      type="number"
+                      min="0"
+                      step="1"
+                      {...register("minStockLevel")}
+                      placeholder="5"
+                      disabled={isLoading}
+                      onChange={(e) => handleNumericChange('minStockLevel', e)}
+                    />
+                    {errors.minStockLevel && (
+                      <p className="text-sm text-destructive">{errors.minStockLevel.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Precio de Venta</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        {...register("price")}
+                        placeholder="0.00"
+                        className="pl-8"
+                        disabled={isLoading}
+                        onChange={(e) => handleNumericChange('price', e)}
+                      />
+                    </div>
+                    {errors.price && (
+                      <p className="text-sm text-destructive">{errors.price.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cost">Costo</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="cost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        {...register("cost")}
+                        placeholder="0.00"
+                        className="pl-8"
+                        disabled={isLoading}
+                        onChange={(e) => handleNumericChange('cost', e)}
+                      />
+                    </div>
+                    {errors.cost && (
+                      <p className="text-sm text-destructive">{errors.cost.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Margen Calculado</Label>
+                    <div className="relative">
+                      <Percent className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        value={calculatedMargin !== null ? `${calculatedMargin.toFixed(2)}%` : 'N/A'}
+                        readOnly
+                        className="pl-8 bg-muted text-muted-foreground"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Ubicación</Label>
+                    <Input
+                      id="location"
+                      {...register("location")}
+                      placeholder="Almacén, Estante, etc."
+                      disabled={isLoading}
+                    />
+                    {errors.location && (
+                      <p className="text-sm text-destructive">{errors.location.message}</p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            {operationType === "adjust" && (
-              <div className="space-y-2">
-                <Label htmlFor="location">Ubicación</Label>
-                <Input
-                  id="location"
-                  {...register("location")}
-                  placeholder="Almacén, Estante, etc."
-                  disabled={isLoading}
-                />
-              </div>
-            )}
-
             <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
+              <Label htmlFor="notes">Notas (Opcional)</Label>
               <Textarea
                 id="notes"
                 {...register("notes")}
-                placeholder="Información adicional sobre este movimiento"
-                rows={3}
+                placeholder="Añadir notas sobre el ajuste..."
                 disabled={isLoading}
+                rows={3}
               />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/inventory")}
-              disabled={isLoading}
-            >
-              {isLoading ? "Espere..." : "Cancelar"}
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className={isLoading ? "animate-pulse" : ""}
-            >
-              {isLoading ? 
-                (operationType === "add" ? "Añadiendo..." : 
-                 operationType === "remove" ? "Reduciendo..." : 
-                 "Guardando...") : 
-                (operationType === "add" ? "Añadir Stock" : 
-                 operationType === "remove" ? "Reducir Stock" : 
-                 "Guardar Cambios")
-              }
+          <CardFooter className="border-t px-6 py-4">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Guardando Cambios..." : "Guardar Cambios"}
             </Button>
           </CardFooter>
         </form>
       </Card>
 
-      {/* Diálogo de confirmación para eliminación */}
-      <DialogConfirmation
+      {/* Confirmation Dialog for Deletion */}
+      <DialogConfirmation 
         open={showDeleteConfirmation}
         onOpenChange={setShowDeleteConfirmation}
-        title="Eliminar Item de Inventario"
-        description={`¿Estás seguro de que deseas eliminar el item de inventario para "${productName}"? Esta acción eliminará todos los movimientos de stock asociados y no se puede deshacer.`}
         onConfirm={handleDelete}
-        isLoading={isLoading}
+        title="Confirmar Eliminación"
+        description={`¿Estás seguro de que quieres eliminar permanentemente el item "${productName}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         cancelText="Cancelar"
-        variant="destructive"
+        isLoading={isLoading}
       />
     </>
   );

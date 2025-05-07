@@ -14,13 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createProduct } from "@/services/productService"
+import { createProductApi, ProductData, calculateMargin, calculatePrice } from "@/lib/client-utils"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function AddProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState([])
+  const [error, setError] = useState("")
+  const [cost, setCost] = useState("")
+  const [price, setPrice] = useState("")
+  const [margin, setMargin] = useState("")
 
   // Load categories on mount
   useEffect(() => {
@@ -39,27 +45,66 @@ export default function AddProductPage() {
     fetchCategories();
   }, [])
 
+  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCost = e.target.value;
+    setCost(newCost);
+    
+    if (newCost && price) {
+      const newMargin = calculateMargin(parseFloat(newCost), parseFloat(price));
+      setMargin(newMargin.toFixed(2));
+    }
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPrice = e.target.value;
+    setPrice(newPrice);
+    
+    if (cost && newPrice) {
+      const newMargin = calculateMargin(parseFloat(cost), parseFloat(newPrice));
+      setMargin(newMargin.toFixed(2));
+    }
+  };
+
+  const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMargin = e.target.value;
+    setMargin(newMargin);
+    
+    if (cost && newMargin) {
+      const newPrice = calculatePrice(parseFloat(cost), parseFloat(newMargin));
+      setPrice(newPrice.toFixed(2));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
+    setError("") // Clear previous errors
 
     const formData = new FormData(e.currentTarget)
-    const productData = {
+    const categoryValue = formData.get("category") as string
+    
+    const productData: ProductData = {
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       price: parseFloat(formData.get("price") as string),
+      cost: parseFloat(formData.get("cost") as string),
       margin: parseFloat(formData.get("margin") as string),
-      categoryId: formData.get("category") as string,
+      categoryId: categoryValue && categoryValue !== "uncategorized" ? categoryValue : undefined,
       sku: formData.get("sku") as string,
+      quantity: parseInt(formData.get("quantity") as string) || 0,
+      minStockLevel: parseInt(formData.get("minStockLevel") as string) || 5,
+      location: (formData.get("location") as string) || undefined
     }
 
     try {
-      await createProduct(productData)
+      await createProductApi(productData)
       router.push("/inventory?tab=products")
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create product:", error)
-      // Here you would typically show an error message to the user
+      // Extract error message from the error object
+      const errorMessage = error.message || "Error al crear el producto"
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -82,6 +127,12 @@ export default function AddProductPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Product Name</Label>
@@ -113,7 +164,22 @@ export default function AddProductPage() {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cost">Cost</Label>
+                <Input
+                  id="cost"
+                  name="cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={cost}
+                  onChange={handleCostChange}
+                  required
+                />
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="price">Price</Label>
                 <Input
@@ -123,6 +189,8 @@ export default function AddProductPage() {
                   min="0"
                   step="0.01"
                   placeholder="0.00"
+                  value={price}
+                  onChange={handlePriceChange}
                   required
                 />
               </div>
@@ -136,18 +204,25 @@ export default function AddProductPage() {
                   min="0"
                   max="100"
                   placeholder="0"
+                  value={margin}
+                  onChange={handleMarginChange}
                   required
                 />
               </div>
             </div>
             
+            <div className="mt-1 text-xs text-muted-foreground">
+              El margen se calcula automáticamente al ingresar costo y precio.
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Select name="category">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select a category (optional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="uncategorized">No category</SelectItem>
                   {categories.map((category: any) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -155,6 +230,44 @@ export default function AddProductPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-lg font-medium mb-4">Inventory Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Initial Quantity</Label>
+                  <Input
+                    id="quantity"
+                    name="quantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="minStockLevel">Min Stock Level</Label>
+                  <Input
+                    id="minStockLevel"
+                    name="minStockLevel"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="5"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    placeholder="Warehouse, Shelf, etc."
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="flex justify-end space-x-2 pt-4">

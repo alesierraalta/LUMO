@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm from "@/components/products/product-form";

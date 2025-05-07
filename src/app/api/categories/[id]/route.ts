@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const CategoryUpdateSchema = z.object({
@@ -15,9 +15,6 @@ export async function GET(
   try {
     const category = await prisma.category.findUnique({
       where: { id: params.id },
-      include: {
-        products: true, // Include related products
-      },
     });
 
     if (!category) {

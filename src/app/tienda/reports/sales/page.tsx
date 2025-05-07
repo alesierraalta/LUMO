@@ -13,6 +13,31 @@ async function getSalesReport(searchParams: { [key: string]: string | string[] |
     if (value) params.append(key, value.toString());
   });
 
+  // Validate dates if they exist in the search params
+  if (searchParams.startDate) {
+    try {
+      const startDate = new Date(searchParams.startDate.toString());
+      if (isNaN(startDate.getTime())) {
+        throw new Error('Invalid start date');
+      }
+    } catch (error) {
+      console.error('Invalid start date:', error);
+      throw new Error('Please provide a valid start date');
+    }
+  }
+
+  if (searchParams.endDate) {
+    try {
+      const endDate = new Date(searchParams.endDate.toString());
+      if (isNaN(endDate.getTime())) {
+        throw new Error('Invalid end date');
+      }
+    } catch (error) {
+      console.error('Invalid end date:', error);
+      throw new Error('Please provide a valid end date');
+    }
+  }
+
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/report?${params.toString()}`, {
     cache: 'no-store',
   });

@@ -14,6 +14,10 @@ export type CreateProductInput = {
   margin?: number;
   categoryId?: string;
   imageUrl?: string;
+  // Inventory fields
+  quantity?: number;
+  minStockLevel?: number;
+  location?: string;
 };
 
 /**
@@ -29,6 +33,10 @@ export type UpdateProductInput = {
   categoryId?: string | null;
   imageUrl?: string;
   active?: boolean;
+  // Inventory fields
+  quantity?: number;
+  minStockLevel?: number;
+  location?: string;
 };
 
 /**
@@ -38,15 +46,25 @@ export type SortOrder = "asc" | "desc";
 
 /**
  * Calcula el margen de ganancia como porcentaje
+ * Utiliza la fórmula (Precio-Costo)/Precio para calcular el margen como porcentaje del precio de venta
  */
-function calculateMargin(cost: number, price: number): number {
-  if (cost === 0 || price === 0) return 0;
-  return ((price - cost) / cost) * 100;
+export function calculateMargin(cost: number, price: number): number {
+  // Ensure we're working with numbers
+  cost = Number(cost) || 0;
+  price = Number(price) || 0;
+  
+  // Handle edge cases
+  if (price <= 0) return 0;
+  if (cost <= 0) return 100; // If cost is zero or negative, margin is 100%
+  if (cost > price) return 0; // If cost exceeds price, margin is 0%
+  
+  return ((price - cost) / price) * 100;
 }
 
 // Validation functions
 function validateSKU(sku: string): boolean {
-  return /^PROD-[A-Z0-9]{5}$/.test(sku);
+  // Remove the regex validation and just make sure it's not empty
+  return sku.trim().length > 0;
 }
 
 function validateDecimalPlaces(value: number): boolean {
@@ -73,22 +91,59 @@ function validateDescription(description: string | undefined): boolean {
   return description.length <= 500;
 }
 
+// Add inventory validation functions
+function validateQuantity(quantity: number | undefined): boolean {
+  if (quantity === undefined) return true;
+  return Number.isInteger(quantity) && quantity >= 0;
+}
+
+function validateMinStockLevel(level: number | undefined): boolean {
+  if (level === undefined) return true;
+  return Number.isInteger(level) && level >= 0;
+}
+
+function validateLocation(location: string | undefined): boolean {
+  if (!location) return true;
+  return location.length <= 100;
+}
+
 /**
  * Obtiene todos los productos
  */
 export async function getAllProducts(includeInactive = false) {
-  const products = await prisma.product.findMany({
-    where: includeInactive ? {} : { active: true },
-    include: {
-      category: true,
-      inventory: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
+  // Use raw SQL to avoid Prisma client validation issues
+  let items;
+  
+  if (includeInactive) {
+    items = await prisma.$queryRaw`
+      SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
+      FROM inventory_items i
+      LEFT JOIN categories c ON i."categoryId" = c.id
+      ORDER BY i.name ASC
+    `;
+  } else {
+    items = await prisma.$queryRaw`
+      SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
+      FROM inventory_items i
+      LEFT JOIN categories c ON i."categoryId" = c.id
+      WHERE i.active = true
+      ORDER BY i.name ASC
+    `;
+  }
+
+  // Process the raw items to add the category relationship
+  const processedItems = (items as any[]).map(item => {
+    return {
+      ...item,
+      category: item.category_id ? {
+        id: item.category_id,
+        name: item.category_name,
+        description: item.category_description
+      } : null
+    };
   });
   
-  return serializeDecimal(products);
+  return serializeDecimal(processedItems);
 }
 
 /**
@@ -247,7 +302,7 @@ export async function createProduct(productData: CreateProductInput) {
 
   // Validar formato de SKU
   if (!validateSKU(productData.sku)) {
-    throw new Error('El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)');
+    throw new Error('El SKU es requerido');
   }
 
   // Validar decimales en precio y costo
@@ -279,6 +334,17 @@ export async function createProduct(productData: CreateProductInput) {
     throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
   }
 
+  // Validar campos de inventario
+  if (!validateQuantity(productData.quantity)) {
+    throw new Error('La cantidad debe ser un número entero no negativo');
+  }
+  if (!validateMinStockLevel(productData.minStockLevel)) {
+    throw new Error('El nivel mínimo de stock debe ser un número entero no negativo');
+  }
+  if (!validateLocation(productData.location)) {
+    throw new Error('La ubicación no puede exceder los 100 caracteres');
+  }
+
   // Verificar si el SKU ya existe
   const existingProduct = await prisma.product.findUnique({
     where: { sku: productData.sku },
@@ -295,8 +361,16 @@ export async function createProduct(productData: CreateProductInput) {
     productData.margin : 
     calculateMargin(cost, price);
 
+  // Preparar datos de inventario con valores predeterminados si no se proporcionan
+  const quantity = productData.quantity !== undefined ? productData.quantity : 0;
+  const minStockLevel = productData.minStockLevel !== undefined ? productData.minStockLevel : 5;
+  const location = productData.location;
+
+  // Usar una transacción para asegurar que la creación del producto y su inventario sean atómicas
+  try {
   // Crear el producto
-  const product = await prisma.product.create({
+    const product = await prisma.$transaction(async (tx) => {
+      const newProduct = await tx.product.create({
     data: {
       name: productData.name,
       description: productData.description,
@@ -308,8 +382,9 @@ export async function createProduct(productData: CreateProductInput) {
       imageUrl: productData.imageUrl,
       inventory: {
         create: {
-          quantity: 0,
-          minStockLevel: 5,
+              quantity,
+              minStockLevel,
+              location,
         },
       },
     },
@@ -317,9 +392,17 @@ export async function createProduct(productData: CreateProductInput) {
       category: true,
       inventory: true,
     },
+      });
+      
+      return newProduct;
   });
 
   return serializeDecimal(product);
+  } catch (error: any) {
+    // Capturar errores de la transacción
+    console.error('Error al crear el producto:', error);
+    throw new Error(error.message || 'Ha ocurrido un error al crear el producto');
+  }
 }
 
 /**
@@ -338,7 +421,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
 
   // Validar formato de SKU si se está actualizando
   if (productData.sku && !validateSKU(productData.sku)) {
-    throw new Error('El SKU debe tener el formato PROD-XXXXX (donde X son letras mayúsculas o números)');
+    throw new Error('El SKU es requerido');
   }
 
   // Validar decimales en precio y costo
@@ -370,9 +453,23 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
     throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
   }
 
+  // Validar campos de inventario
+  if (productData.quantity !== undefined && !validateQuantity(productData.quantity)) {
+    throw new Error('La cantidad debe ser un número entero no negativo');
+  }
+  if (productData.minStockLevel !== undefined && !validateMinStockLevel(productData.minStockLevel)) {
+    throw new Error('El nivel mínimo de stock debe ser un número entero no negativo');
+  }
+  if (productData.location !== undefined && !validateLocation(productData.location)) {
+    throw new Error('La ubicación no puede exceder los 100 caracteres');
+  }
+
   // Verificar si el producto existe
   const existingProduct = await prisma.product.findUnique({
     where: { id },
+    include: {
+      inventory: true
+    }
   });
 
   if (!existingProduct) {
@@ -393,6 +490,21 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
   // Preparar los datos para actualizar, calculando el margen si se modificó el costo o precio
   let updateData = { ...productData };
 
+  // Extraer datos de inventario
+  const inventoryData: any = {};
+  if (productData.quantity !== undefined) {
+    inventoryData.quantity = productData.quantity;
+    delete updateData.quantity;
+  }
+  if (productData.minStockLevel !== undefined) {
+    inventoryData.minStockLevel = productData.minStockLevel;
+    delete updateData.minStockLevel;
+  }
+  if (productData.location !== undefined) {
+    inventoryData.location = productData.location;
+    delete updateData.location;
+  }
+
   // Si se actualiza el precio o el costo, recalcular el margen
   if ((productData.cost !== undefined || productData.price !== undefined) && productData.margin === undefined) {
     const newCost = productData.cost !== undefined ? productData.cost : Number(existingProduct.cost);
@@ -400,17 +512,45 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
     updateData.margin = calculateMargin(newCost, newPrice);
   }
 
+  try {
+    // Usar una transacción para actualizar el producto y su inventario de forma atómica
+    const product = await prisma.$transaction(async (tx) => {
   // Actualizar el producto
-  const product = await prisma.product.update({
+      const updatedProduct = await tx.product.update({
     where: { id },
     data: updateData,
     include: {
       category: true,
       inventory: true,
     },
+      });
+      
+      // Actualizar el inventario si es necesario
+      if (Object.keys(inventoryData).length > 0 && existingProduct.inventory) {
+        await tx.inventoryItem.update({
+          where: { productId: id },
+          data: inventoryData
+        });
+      } else if (Object.keys(inventoryData).length > 0 && !existingProduct.inventory) {
+        // Si no existe registro de inventario, crearlo
+        await tx.inventoryItem.create({
+          data: {
+            productId: id,
+            quantity: inventoryData.quantity || 0,
+            minStockLevel: inventoryData.minStockLevel || 5,
+            location: inventoryData.location
+          }
+        });
+      }
+      
+      return updatedProduct;
   });
   
   return serializeDecimal(product);
+  } catch (error: any) {
+    console.error('Error al actualizar el producto:', error);
+    throw new Error(error.message || 'Ha ocurrido un error al actualizar el producto');
+  }
 }
 
 /**
@@ -531,20 +671,37 @@ export async function getProductsWithLowStock() {
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }) {
   const { page = '1', limit = '12', search, category, minPrice, maxPrice, inStock } = searchParams;
 
-  const where = {
-    AND: [
-      search ? {
-        OR: [
-          { name: { contains: search.toString(), mode: 'insensitive' } },
-          { sku: { contains: search.toString(), mode: 'insensitive' } }
-        ]
-      } : {},
-      category ? { categoryId: category.toString() } : {},
-      minPrice ? { price: { gte: parseFloat(minPrice.toString()) } } : {},
-      maxPrice ? { price: { lte: parseFloat(maxPrice.toString()) } } : {},
-      inStock === 'true' ? { inventory: { quantity: { gt: 0 } } } : {},
-    ]
-  };
+  const where: Prisma.ProductWhereInput = {};
+  const conditions = [];
+
+  if (search) {
+    conditions.push({
+      OR: [
+        { name: { contains: search.toString(), mode: 'insensitive' as Prisma.QueryMode } },
+        { sku: { contains: search.toString(), mode: 'insensitive' as Prisma.QueryMode } }
+      ]
+    });
+  }
+
+  if (category) {
+    conditions.push({ categoryId: category.toString() });
+  }
+
+  if (minPrice) {
+    conditions.push({ price: { gte: parseFloat(minPrice.toString()) } });
+  }
+
+  if (maxPrice) {
+    conditions.push({ price: { lte: parseFloat(maxPrice.toString()) } });
+  }
+
+  if (inStock === 'true') {
+    conditions.push({ inventory: { quantity: { gt: 0 } } });
+  }
+
+  if (conditions.length > 0) {
+    where.AND = conditions;
+  }
 
   const [products, total] = await Promise.all([
     prisma.product.findMany({

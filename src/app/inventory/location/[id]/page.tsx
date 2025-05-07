@@ -4,13 +4,14 @@ import InventoryForm from "@/components/inventory/inventory-form";
 import { updateLocationAction } from "./actions";
 
 interface ChangeLocationPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function ChangeLocationPage({ params }: ChangeLocationPageProps) {
-  const inventoryItem = await getInventoryItemById(params.id);
+  const resolvedParams = await params;
+  const inventoryItem = await getInventoryItemById(resolvedParams.id);
 
   if (!inventoryItem) {
     notFound();

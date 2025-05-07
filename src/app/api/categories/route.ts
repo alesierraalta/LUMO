@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getAllCategories } from "@/services/productService";
 
@@ -12,7 +12,12 @@ const CategorySchema = z.object({
 // GET /api/categories - List all categories
 export async function GET() {
   try {
-    const categories = await getAllCategories();
+    // Get all categories without trying to count related products
+    const categories = await prisma.category.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
     return NextResponse.json(categories);
   } catch (error: any) {
     console.error("Error fetching categories:", error);

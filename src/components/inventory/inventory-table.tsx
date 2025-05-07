@@ -14,7 +14,9 @@ import {
   ClipboardList,
   Tag,
   Tags,
-  Calculator
+  Calculator,
+  MoreHorizontal,
+  Trash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +39,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StockStatus } from "@/services/inventoryService";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -51,6 +54,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { calculateMargin } from "@/lib/client-utils";
+import { getMarginCategory, getMarginColor, getMarginLabel } from "@/lib/margin-settings";
 
 // Updated to match the actual data from Prisma
 type InventoryItem = {
@@ -268,6 +272,13 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                 stockStatus === StockStatus.LOW ? "Low Stock" : "In Stock";
               const stockPercentage = calculateStockPercentage(item.quantity, item.minStockLevel);
 
+              // Get margin category and color
+              const marginValue = Number(item.cost) > 0 
+                ? calculateMargin(Number(item.cost), Number(item.price))
+                : Number(item.margin);
+              const marginCategory = getMarginCategory(marginValue);
+              const marginColor = getMarginColor(marginValue);
+
               return (
                 <TableRow key={item.id} className="group">
                   <TableCell className="font-medium">{item.sku}</TableCell>
@@ -292,9 +303,14 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-center gap-1">
-                            {Number(item.cost) > 0 
-                              ? calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)
-                              : Number(item.margin).toFixed(2)}%
+                            <span 
+                              className="px-2 py-1 rounded-full text-xs"
+                              style={{ backgroundColor: `${marginColor}40`, color: marginColor }}
+                            >
+                              {Number(item.cost) > 0 
+                                ? calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)
+                                : Number(item.margin).toFixed(2)}%
+                            </span>
                             <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                         </TooltipTrigger>
@@ -302,8 +318,10 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                           <p>
                             {Number(item.cost) === 0 
                               ? "Margin cannot be calculated when cost is $0.00" 
-                              : `Margin calculation: (${formatCurrency(item.price)} - ${formatCurrency(item.cost)}) / ${formatCurrency(item.cost)} × 100 = ${calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)}%`
-                            }
+                              : `Margin = ((${formatCurrency(item.price)} - ${formatCurrency(item.cost)}) / ${formatCurrency(item.cost)}) × 100 = ${calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)}%`}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {getMarginLabel(marginCategory)}
                           </p>
                         </TooltipContent>
                       </Tooltip>

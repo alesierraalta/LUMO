@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, ClipboardList } from "lucide-react";
+import { BarChart3, ClipboardList, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
@@ -18,6 +18,13 @@ export default function Home() {
       href: "/inventory",
       icon: <ClipboardList className="h-6 w-6" />,
       color: "from-secondary/30 to-muted/30 hover:from-secondary/40 hover:to-muted/40 border-secondary/20"
+    },
+    {
+      title: "Configuración",
+      description: "Personaliza la configuración del sistema",
+      href: "/settings",
+      icon: <Settings className="h-6 w-6" />,
+      color: "from-slate-500/20 to-slate-400/10 hover:from-slate-500/30 hover:to-slate-400/20 border-slate-500/20"
     }
   ];
 

@@ -16,216 +16,319 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { StockStatus, calculateStockStatus } from "@/services/inventoryService"
+import { StockStatus } from "@/services/inventoryService"
 import ProductFilters from "./product-filters"
 import { SortOrder } from "@/services/productService"
-import { formatCurrency } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { calculateMargin } from "@/lib/client-utils"
+import { getMarginCategory, getMarginColor, getMarginLabel } from "@/lib/margin-settings"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { formatCurrency } from "@/lib/utils"
+
+enum LocalStockStatus {
+  OUT_OF_STOCK = "OUT_OF_STOCK",
+  LOW_STOCK = "LOW_STOCK",
+  IN_STOCK = "IN_STOCK"
+}
+
+interface FilterState {
+  searchTerm: string
+  categoryId?: string
+  minPrice?: number
+  maxPrice?: number
+  minMargin?: number
+  maxMargin?: number
+  inStock?: boolean
+  sortBy?: string
+  sortOrder?: SortOrder
+}
 
 interface ProductListProps {
   products: any[]
+  categories?: any[]
+  onProductDeleted?: (id: string) => void
 }
 
-export default function ProductList({ products: initialProducts }: ProductListProps) {
-  const [filteredProducts, setFilteredProducts] = useState(initialProducts)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filters, setFilters] = useState<{
-    minMargin?: number
-    maxMargin?: number
-    sortBy?: string
-    sortOrder?: SortOrder
-  }>({})
+export default function ProductList({ products, categories = [], onProductDeleted }: ProductListProps) {
+  const [filteredProducts, setFilteredProducts] = useState(products)
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: ""
+  })
 
-  // Helper function to get margin display
-  const getMarginDisplay = (price: number, cost: number, margin?: number) => {
-    if (price === undefined || cost === undefined) {
-      return '0.00%';
-    }
-    
-    if (cost === 0) {
-      if (price === 0) {
-        return '0.00%';
-      }
-      return '100.00%'; // Cost is 0 but price is not, effectively 100% markup
-    }
-    
-    // Use the provided margin if available
-    if (margin !== undefined) {
-      return `${margin.toFixed(2)}%`;
-    }
-    
-    // Calculate margin as fallback using the correct formula
-    const calculatedMargin = calculateMargin(cost, price);
-    return `${calculatedMargin.toFixed(2)}%`;
-  };
-
-  // Helper function to get tooltip content for margin calculation
-  const getMarginTooltip = (price: number, cost: number) => {
-    if (cost === 0) {
-      return "Cannot calculate margin when cost is $0.00";
-    }
-    
-    const margin = calculateMargin(cost, price);
-    const marginFormula = `(${formatCurrency(price)} - ${formatCurrency(cost)}) / ${formatCurrency(cost)} × 100 = ${margin.toFixed(2)}%`;
-    
-    return marginFormula;
-  };
-
-  // Apply filters when they change
   useEffect(() => {
-    let result = [...initialProducts]
-    
-    // Apply text search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
+    let result = [...products]
+
+    if (filters.searchTerm) {
+      const search = filters.searchTerm.toLowerCase()
       result = result.filter(product => 
-        product.name.toLowerCase().includes(term) ||
-        product.sku.toLowerCase().includes(term) ||
-        (product.description && product.description.toLowerCase().includes(term))
+        product.name.toLowerCase().includes(search) || 
+        product.sku.toLowerCase().includes(search) ||
+        (product.description && product.description.toLowerCase().includes(search))
       )
     }
-    
-    // Apply margin filters
-    if (filters.minMargin !== undefined) {
-      result = result.filter(product => product.margin >= filters.minMargin!)
+
+    if (filters.categoryId) {
+      result = result.filter(product => product.categoryId === filters.categoryId)
     }
-    
-    if (filters.maxMargin !== undefined) {
-      result = result.filter(product => product.margin <= filters.maxMargin!)
+
+    if (filters.minPrice !== undefined) {
+      result = result.filter(product => Number(product.price) >= filters.minPrice!)
     }
-    
-    // Apply sorting
-    if (filters.sortBy === "margin") {
-      result.sort((a, b) => {
-        if (filters.sortOrder === "asc") {
-          return a.margin - b.margin
-        } else {
-          return b.margin - a.margin
-        }
+    if (filters.maxPrice !== undefined) {
+      result = result.filter(product => Number(product.price) <= filters.maxPrice!)
+    }
+
+    if (filters.minMargin !== undefined || filters.maxMargin !== undefined) {
+      result = result.filter(product => {
+        const margin = calculateMargin(Number(product.cost), Number(product.price))
+        return (
+          (filters.minMargin === undefined || margin >= filters.minMargin) &&
+          (filters.maxMargin === undefined || margin <= filters.maxMargin)
+        )
       })
     }
-    
-    setFilteredProducts(result)
-  }, [initialProducts, searchTerm, filters])
 
-  // Handle filter changes from the filter component
-  const handleFilterChange = (newFilters: {
-    minMargin?: number
-    maxMargin?: number
-    sortBy?: string
-    sortOrder?: SortOrder
-  }) => {
+    if (filters.inStock !== undefined) {
+      result = result.filter(product => filters.inStock ? product.quantity > 0 : true)
+    }
+
+    if (filters.sortBy) {
+      result.sort((a, b) => {
+        let valueA: any, valueB: any
+
+        switch (filters.sortBy) {
+          case "name":
+            valueA = a.name.toLowerCase()
+            valueB = b.name.toLowerCase()
+            break
+          case "price":
+            valueA = Number(a.price)
+            valueB = Number(b.price)
+            break
+          case "margin":
+            valueA = calculateMargin(Number(a.cost), Number(a.price))
+            valueB = calculateMargin(Number(b.cost), Number(b.price))
+            break
+          case "stock":
+            valueA = Number(a.quantity)
+            valueB = Number(b.quantity)
+            break
+          default:
+            const sortKey = filters.sortBy as string;
+            valueA = a[sortKey] !== undefined ? a[sortKey] : ''
+            valueB = b[sortKey] !== undefined ? b[sortKey] : ''
+        }
+
+        return filters.sortOrder === "desc" 
+          ? (valueA > valueB ? -1 : 1)
+          : (valueA < valueB ? -1 : 1)
+      })
+    }
+
+    setFilteredProducts(result)
+  }, [products, filters])
+
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }))
+  }
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+  }
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("¿Está seguro que desea eliminar este producto? Esta acción no se puede deshacer.")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete product")
+      }
+
+      if (onProductDeleted) {
+        onProductDeleted(id)
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      alert("No se pudo eliminar el producto. Por favor, inténtelo de nuevo.")
+    }
   }
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle>Product Catalog</CardTitle>
-        <CardDescription>
-          View and manage all products in your inventory
-        </CardDescription>
+      <CardHeader>
+        <CardTitle>Products</CardTitle>
+        <CardDescription>Manage your product catalog and view availability</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-4 mb-4">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                type="text" 
-                placeholder="Search products..." 
-                className="pl-9 w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+        <div className="mb-4 flex justify-between gap-2">
+          <div className="flex flex-1 items-center gap-2">
+            <form onSubmit={handleSearch} className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search products..."
+                  className="pl-8"
+                  value={filters.searchTerm}
+                  onChange={(e) => handleFilterChange({ searchTerm: e.target.value })}
+                />
+              </div>
+            </form>
+            <Button 
+              variant="default" 
+              size="sm"
+              asChild
+            >
+              <Link href="/products/add">
+                Add Product
+              </Link>
+            </Button>
           </div>
-          
-          <ProductFilters onFilterChange={handleFilterChange} />
         </div>
+
+        <ProductFilters 
+          onFilterChange={handleFilterChange}
+        />
         
-        <div className="rounded-md border overflow-hidden">
+        <div className="border rounded-md mt-4">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">SKU</TableHead>
-                <TableHead className="min-w-[150px]">Name</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Cost</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Cost</TableHead>
                 <TableHead>Margin</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product: any) => {
-                const stockStatus = product.inventory 
-                  ? calculateStockStatus(product.inventory.quantity, product.inventory.minStockLevel) 
-                  : StockStatus.OUT_OF_STOCK;
-                
-                return (
-                <TableRow key={product.id} className="group">
-                    <TableCell className="font-medium">{product.sku}</TableCell>
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell>
-                    {product.category ? (
-                      product.category.name
-                    ) : (
-                      <Badge variant="outline" className="text-xs">Sin categoría</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                        stockStatus === StockStatus.OUT_OF_STOCK 
-                        ? "bg-destructive/20 text-destructive" 
-                          : stockStatus === StockStatus.LOW
-                        ? "bg-warning/20 text-warning-foreground" 
-                        : "bg-success/20 text-success"
-                    }`}>
-                        {product.inventory?.quantity || 0}
-                    </span>
-                  </TableCell>
-                    <TableCell>{formatCurrency(product.cost)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {formatCurrency(product.price)}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Calculator className="h-3.5 w-3.5 text-muted-foreground ml-1 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Margen: {getMarginDisplay(product.price, product.cost, product.margin)}</p>
-                              <p className="text-xs">{getMarginTooltip(product.price, product.cost)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getMarginDisplay(product.price, product.cost, product.margin)}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                      <Link href={`/products/edit/${product.id}`}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 group-hover:opacity-100">
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                      </Link>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 group-hover:opacity-100">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                );
-              })}
-              {filteredProducts.length === 0 && (
+              {filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     No products found.
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredProducts.map((product) => {
+                  const stockStatus = product.quantity 
+                    ? product.quantity <= (product.minStockLevel || 0) 
+                      ? LocalStockStatus.LOW_STOCK 
+                      : LocalStockStatus.IN_STOCK 
+                    : LocalStockStatus.OUT_OF_STOCK;
+                  
+                  const marginValue = Number(product.cost) > 0 
+                    ? calculateMargin(Number(product.cost), Number(product.price))
+                    : Number(product.margin);
+                  
+                  const marginCategory = getMarginCategory(marginValue);
+                  const marginColor = getMarginColor(marginValue);
+                  
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="font-medium">{product.name}</div>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{product.sku}</TableCell>
+                      <TableCell>
+                        {product.category ? (
+                          <Badge variant="outline">{product.category.name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">None</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{formatCurrency(product.price)}</TableCell>
+                      <TableCell>{formatCurrency(product.cost)}</TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1">
+                                <span 
+                                  className="px-2 py-1 rounded-full text-xs"
+                                  style={{ backgroundColor: `${marginColor}40`, color: marginColor }}
+                                >
+                                  {marginValue.toFixed(2)}%
+                                </span>
+                                <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                {Number(product.cost) === 0 
+                                  ? "Margin cannot be calculated when cost is $0.00" 
+                                  : `Margin = ((${formatCurrency(product.price)} - ${formatCurrency(product.cost)}) / ${formatCurrency(product.cost)}) × 100 = ${marginValue.toFixed(2)}%`}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {getMarginLabel(marginCategory)}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell>
+                        {product.quantity} 
+                        {product.minStockLevel > 0 && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            (Min: {product.minStockLevel})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            stockStatus === LocalStockStatus.OUT_OF_STOCK
+                              ? "destructive"
+                              : stockStatus === LocalStockStatus.LOW_STOCK
+                              ? "outline"
+                              : "success"
+                          }
+                        >
+                          {stockStatus === LocalStockStatus.OUT_OF_STOCK
+                            ? "Out of Stock"
+                            : stockStatus === LocalStockStatus.LOW_STOCK
+                            ? "Low Stock"
+                            : "In Stock"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                          >
+                            <Link href={`/products/edit/${product.id}`}>
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteProduct(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

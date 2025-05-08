@@ -118,7 +118,7 @@ export async function getAllProducts(includeInactive = false) {
       SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
       FROM inventory_items i
       LEFT JOIN categories c ON i."categoryId" = c.id
-      ORDER BY i.name ASC
+      ORDER BY i."createdAt" DESC
     `;
   } else {
     items = await prisma.$queryRaw`
@@ -126,14 +126,20 @@ export async function getAllProducts(includeInactive = false) {
       FROM inventory_items i
       LEFT JOIN categories c ON i."categoryId" = c.id
       WHERE i.active = true
-      ORDER BY i.name ASC
+      ORDER BY i."createdAt" DESC
     `;
   }
 
   // Process the raw items to add the category relationship
   const processedItems = (items as any[]).map(item => {
+    // Ensure dates are properly formatted
+    const createdAt = item.createdAt ? item.createdAt.toISOString() : null;
+    const updatedAt = item.updatedAt ? item.updatedAt.toISOString() : null;
+    
     return {
       ...item,
+      createdAt,
+      updatedAt,
       category: item.category_id ? {
         id: item.category_id,
         name: item.category_name,
@@ -149,11 +155,10 @@ export async function getAllProducts(includeInactive = false) {
  * Obtiene un producto por su ID
  */
 export async function getProductById(id: string) {
-  const product = await prisma.product.findUnique({
+  const product = await prisma.inventoryItem.findUnique({
     where: { id },
     include: {
       category: true,
-      inventory: true,
     },
   });
   
@@ -164,14 +169,16 @@ export async function getProductById(id: string) {
  * Obtiene productos por categoría
  */
 export async function getProductsByCategory(categoryId: string) {
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where: {
       categoryId,
       active: true,
     },
     include: {
       category: true,
-      inventory: true,
+    },
+    orderBy: {
+      name: 'asc',
     },
   });
   
@@ -182,7 +189,7 @@ export async function getProductsByCategory(categoryId: string) {
  * Obtiene productos por rango de margen
  */
 export async function getProductsByMarginRange(minMargin: number, maxMargin: number, includeInactive = false) {
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where: {
       margin: {
         gte: minMargin,
@@ -192,7 +199,6 @@ export async function getProductsByMarginRange(minMargin: number, maxMargin: num
     },
     include: {
       category: true,
-      inventory: true,
     },
     orderBy: {
       margin: "asc",
@@ -206,11 +212,10 @@ export async function getProductsByMarginRange(minMargin: number, maxMargin: num
  * Ordena productos por margen
  */
 export async function sortProductsByMargin(order: SortOrder = "asc", includeInactive = false) {
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where: includeInactive ? {} : { active: true },
     include: {
       category: true,
-      inventory: true,
     },
     orderBy: {
       margin: order,
@@ -273,11 +278,10 @@ export async function searchProducts(
     orderBy.name = "asc";
   }
   
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where,
     include: {
       category: true,
-      inventory: true,
     },
     orderBy,
   });
@@ -345,7 +349,7 @@ export async function createProduct(productData: CreateProductInput) {
   }
 
   // Verificar si el SKU ya existe
-  const existingProduct = await prisma.product.findUnique({
+  const existingProduct = await prisma.inventoryItem.findUnique({
     where: { sku: productData.sku },
   });
 
@@ -369,7 +373,7 @@ export async function createProduct(productData: CreateProductInput) {
   try {
   // Crear el producto
     const product = await prisma.$transaction(async (tx) => {
-      const newProduct = await tx.product.create({
+      const newProduct = await tx.inventoryItem.create({
     data: {
       name: productData.name,
       description: productData.description,
@@ -464,7 +468,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
   }
 
   // Verificar si el producto existe
-  const existingProduct = await prisma.product.findUnique({
+  const existingProduct = await prisma.inventoryItem.findUnique({
     where: { id },
     include: {
       inventory: true
@@ -477,7 +481,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
 
   // Si se está actualizando el SKU, verificar que no esté en uso
   if (productData.sku && productData.sku !== existingProduct.sku) {
-    const duplicateSku = await prisma.product.findUnique({
+    const duplicateSku = await prisma.inventoryItem.findUnique({
       where: { sku: productData.sku },
     });
 
@@ -515,7 +519,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
     // Usar una transacción para actualizar el producto y su inventario de forma atómica
     const product = await prisma.$transaction(async (tx) => {
   // Actualizar el producto
-      const updatedProduct = await tx.product.update({
+      const updatedProduct = await tx.inventoryItem.update({
     where: { id },
     data: updateData,
     include: {
@@ -557,7 +561,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
  */
 export async function deactivateProduct(id: string) {
   // Verificar si el producto existe
-  const existingProduct = await prisma.product.findUnique({
+  const existingProduct = await prisma.inventoryItem.findUnique({
     where: { id },
   });
 
@@ -565,7 +569,7 @@ export async function deactivateProduct(id: string) {
     throw new Error(`Producto con ID '${id}' no encontrado.`);
   }
 
-  const product = await prisma.product.update({
+  const product = await prisma.inventoryItem.update({
     where: { id },
     data: { active: false },
   });
@@ -578,7 +582,7 @@ export async function deactivateProduct(id: string) {
  */
 export async function deleteProduct(id: string) {
   // Verificar si el producto existe
-  const existingProduct = await prisma.product.findUnique({
+  const existingProduct = await prisma.inventoryItem.findUnique({
     where: { id },
   });
 
@@ -588,7 +592,7 @@ export async function deleteProduct(id: string) {
 
   // Al eliminar un producto, se eliminarán automáticamente sus registros de inventario relacionados
   // debido a la restricción onDelete: Cascade
-  const product = await prisma.product.delete({
+  const product = await prisma.inventoryItem.delete({
     where: { id },
   });
   
@@ -648,7 +652,7 @@ export async function deleteCategory(id: string) {
 }
 
 export async function getProductsWithLowStock() {
-  const products = await prisma.product.findMany({
+  const products = await prisma.inventoryItem.findMany({
     where: {
       inventory: {
         quantity: {
@@ -670,7 +674,7 @@ export async function getProductsWithLowStock() {
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }) {
   const { page = '1', limit = '12', search, category, minPrice, maxPrice, inStock } = searchParams;
 
-  const where: Prisma.ProductWhereInput = {};
+  const where: Prisma.InventoryItemWhereInput = {};
   const conditions = [];
 
   if (search) {
@@ -695,7 +699,7 @@ export async function getProducts(searchParams: { [key: string]: string | string
   }
 
   if (inStock === 'true') {
-    conditions.push({ inventory: { quantity: { gt: 0 } } });
+    conditions.push({ quantity: { gt: 0 } });
   }
 
   if (conditions.length > 0) {
@@ -703,11 +707,10 @@ export async function getProducts(searchParams: { [key: string]: string | string
   }
 
   const [products, total] = await Promise.all([
-    prisma.product.findMany({
+    prisma.inventoryItem.findMany({
       where,
       include: {
-        category: true,
-        inventory: true
+        category: true
       },
       orderBy: {
         name: 'asc'
@@ -715,7 +718,7 @@ export async function getProducts(searchParams: { [key: string]: string | string
       skip: (parseInt(page.toString()) - 1) * parseInt(limit.toString()),
       take: parseInt(limit.toString())
     }),
-    prisma.product.count({ where })
+    prisma.inventoryItem.count({ where })
   ]);
 
   return {

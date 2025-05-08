@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDate(new Date(product.createdAt))}
+                    {product.createdAt ? formatDate(product.createdAt) : 'Fecha no disponible'}
                   </div>
                 </div>
               ))}

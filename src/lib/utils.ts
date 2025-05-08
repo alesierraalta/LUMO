@@ -45,17 +45,18 @@ export function formatDate(input: Date | string | null | undefined): string {
     
     // Validate the date
     if (isNaN(date.getTime())) {
-      return 'Invalid Date';
+      console.error('Invalid date input:', input);
+      return 'Fecha Inválida';
     }
     
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('es-ES', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     }).format(date);
   } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Invalid Date';
+    console.error('Error formatting date:', error, 'Input:', input);
+    return 'Fecha Inválida';
   }
 }
 

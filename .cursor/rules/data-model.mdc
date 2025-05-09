@@ -1,0 +1,31 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Data Model
+
+The application uses a Prisma ORM with PostgreSQL database. Core models include:
+
+## Main Entities
+
+- **InventoryItem**: Core model representing products in inventory with integrated stock tracking
+  - Contains fields for name, description, SKU, cost, price, margin, stock quantity
+  - Connected to Category via one-to-many relationship
+
+- **Category**: Used to organize products into categories 
+  - Simple model with name and description
+  - One category can have many inventory items
+
+- **StockMovement**: Tracks all changes to inventory levels
+  - Records quantity, date, type of movement and notes
+  - Connected to InventoryItem via foreign key
+
+- **Sale**: Represents a sales transaction with items sold and revenue
+  - Records date, amount, payment method, status
+
+## Key Relationships
+
+- Each InventoryItem belongs to one Category (optional)
+- Each InventoryItem can have multiple StockMovements
+- Sales contain references to the products sold

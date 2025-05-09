@@ -134,3 +134,35 @@ export function generatePagination(currentPage: number, totalPages: number) {
     totalPages,
   ];
 }
+
+/**
+ * Server-side function to calculate margin percentage 
+ * Uses the formula (Price-Cost)/Cost to calculate profit margin as a percentage of cost
+ */
+export function calculateMargin(cost: number, price: number): number {
+  // Ensure we're working with numbers
+  cost = Number(cost) || 0;
+  price = Number(price) || 0;
+  
+  // Handle edge cases
+  if (cost <= 0) return 0; // Cannot calculate margin if cost is zero or negative
+  if (price <= 0) return 0; // Cannot have a negative or zero price
+  
+  return ((price - cost) / cost) * 100;
+}
+
+/**
+ * Server-side function to calculate price from cost and margin
+ * Uses the formula Price = Cost*(1+Margin/100) to derive price from margin
+ */
+export function calculatePrice(cost: number, margin: number): number {
+  // Ensure we're working with numbers
+  cost = Number(cost) || 0;
+  margin = Number(margin) || 0;
+  
+  // Handle edge cases
+  if (cost <= 0) return 0;
+  if (margin <= 0) return cost; // No margin means price equals cost
+  
+  return cost * (1 + margin / 100);
+}

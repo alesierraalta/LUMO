@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { calculateMargin, calculatePrice } from '@/lib/client-utils';
+import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
 
 // Schema for search query parameters
 const SearchParamsSchema = z.object({
@@ -31,31 +31,6 @@ const ProductSchema = z.object({
   minStockLevel: z.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
   location: z.string().optional()
 });
-
-// Helper function to serialize Decimal fields to numbers
-function serializeDecimal(data: any): any {
-  if (data === null || data === undefined) {
-    return data;
-  }
-
-  if (typeof data === 'object') {
-    if (data.constructor && data.constructor.name === 'Decimal') {
-      return Number(data);
-    }
-
-    for (const key in data) {
-      if (Object.prototype.hasOwnProperty.call(data, key)) {
-        data[key] = serializeDecimal(data[key]);
-      }
-    }
-  }
-
-  if (Array.isArray(data)) {
-    return data.map(item => serializeDecimal(item));
-  }
-
-  return data;
-}
 
 export async function GET(request: Request) {
   try {

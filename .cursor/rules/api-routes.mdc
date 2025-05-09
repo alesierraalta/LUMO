@@ -1,0 +1,35 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# API Routes
+
+The application uses Next.js App Router API routes in `/src/app/api/` for server-side operations.
+
+## Products API
+
+- [src/app/api/products/route.ts](mdc:src/app/api/products/route.ts)
+  - `GET`: Search and filter products with pagination
+  - `POST`: Create new products with validation
+
+- [src/app/api/products/[id]/route.ts](mdc:src/app/api/products/[id]/route.ts)
+  - `GET`: Fetch a specific product by ID
+  - `PATCH`: Update product details
+  - `DELETE`: Deactivate or delete a product
+
+## Categories API
+
+- [src/app/api/categories/route.ts](mdc:src/app/api/categories/route.ts): CRUD operations for categories
+- [src/app/api/categories/search/route.ts](mdc:src/app/api/categories/search/route.ts): Search categories
+
+## Inventory API
+
+- [src/app/api/inventory/[id]/add-stock/route.ts](mdc:src/app/api/inventory/[id]/add-stock/route.ts): Add stock to inventory
+- [src/app/api/inventory/[id]/remove-stock/route.ts](mdc:src/app/api/inventory/[id]/remove-stock/route.ts): Remove stock
+- [src/app/api/inventory/[id]/adjust-stock/route.ts](mdc:src/app/api/inventory/[id]/adjust-stock/route.ts): Adjust stock levels
+
+## Sales API
+
+- [src/app/api/sales/report/route.ts](mdc:src/app/api/sales/report/route.ts): Generate sales reports
+- [src/app/api/sales/[id]/refund/route.ts](mdc:src/app/api/sales/[id]/refund/route.ts): Process refunds

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { calculateMargin, calculatePrice } from '@/lib/client-utils';
+import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
 
 const prisma = new PrismaClient();
 
@@ -21,31 +21,6 @@ const ProductUpdateSchema = z.object({
   minStockLevel: z.number().int().min(0).optional(),
   location: z.string().optional()
 });
-
-// Helper function to serialize Decimal fields to numbers
-function serializeDecimal(data: any): any {
-  if (data === null || data === undefined) {
-    return data;
-  }
-
-  if (typeof data === 'object') {
-    if (data.constructor && data.constructor.name === 'Decimal') {
-      return Number(data);
-    }
-
-    for (const key in data) {
-      if (Object.prototype.hasOwnProperty.call(data, key)) {
-        data[key] = serializeDecimal(data[key]);
-      }
-    }
-  }
-
-  if (Array.isArray(data)) {
-    return data.map(item => serializeDecimal(item));
-  }
-
-  return data;
-}
 
 // GET handler to fetch a single product
 export async function GET(

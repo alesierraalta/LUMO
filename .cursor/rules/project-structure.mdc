@@ -1,0 +1,23 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Project Structure
+
+This is a Next.js inventory management application built with TypeScript, Prisma ORM, and Tailwind CSS.
+
+## Key Directories
+
+- `/src/app`: Contains pages and API routes following Next.js App Router structure
+- `/src/components`: Reusable React components
+- `/src/lib`: Utility functions and helpers
+- `/src/services`: Business logic and data access
+- `/prisma`: Database schema and migrations
+
+## Important Files
+
+- [src/lib/utils.ts](mdc:src/lib/utils.ts): Contains core utility functions like date formatting and server-side margin calculations
+- [src/lib/client-utils.ts](mdc:src/lib/client-utils.ts): Client-side utilities with `"use client"` directive
+- [src/lib/prisma.ts](mdc:src/lib/prisma.ts): Prisma client instance for database operations
+- [prisma/schema.prisma](mdc:prisma/schema.prisma): Database schema definitions

@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { serializeDecimal } from "../lib/utils";
+import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils";
 
 /**
  * Tipo para crear un nuevo producto
@@ -43,22 +43,6 @@ export type UpdateProductInput = {
  * Tipo para opciones de ordenamiento
  */
 export type SortOrder = "asc" | "desc";
-
-/**
- * Calcula el margen de ganancia como porcentaje
- * Utiliza la fórmula (Precio-Costo)/Costo para calcular el margen como porcentaje del costo
- */
-export function calculateMargin(cost: number, price: number): number {
-  // Ensure we're working with numbers
-  cost = Number(cost) || 0;
-  price = Number(price) || 0;
-  
-  // Handle edge cases
-  if (cost <= 0) return 0; // Cannot calculate margin if cost is zero or negative
-  if (price <= 0) return 0; // Cannot have a negative or zero price
-  
-  return ((price - cost) / cost) * 100;
-}
 
 // Validation functions
 function validateSKU(sku: string): boolean {

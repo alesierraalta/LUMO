@@ -1,0 +1,43 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Known Issues and Solutions
+
+## Client/Server Function Separation
+
+**Issue**: "Error: Attempted to call calculatePrice() from the server but calculatePrice is on the client."
+
+**Solution**: 
+- Server-side calculations must use functions from [src/lib/utils.ts](mdc:src/lib/utils.ts)
+- Client-side calculations must use functions from [src/lib/client-utils.ts](mdc:src/lib/client-utils.ts)
+- The same functions are implemented in both files but tagged differently
+- Never import client functions in server components or API routes
+
+Example fix:
+```typescript
+// For server components and API routes:
+import { calculateMargin, calculatePrice } from '@/lib/utils';
+
+// For client components:
+import { calculateMargin, calculatePrice } from '@/lib/client-utils';
+```
+
+## Date Formatting
+
+**Issue**: "Invalid Date" appears in UI components
+
+**Solution**:
+- Use the improved `formatDate()` function from [src/lib/utils.ts](mdc:src/lib/utils.ts)
+- This function handles various input formats and provides proper error handling
+- For client components that need formatting, import from utils (safe for both)
+
+## Duplicate SKU Handling
+
+**Issue**: Creating products with duplicate SKUs causes errors
+
+**Solution**:
+- The API correctly validates SKUs and returns proper error messages
+- Client-side code should handle these error responses properly
+- All product creation should go through the API which has validation

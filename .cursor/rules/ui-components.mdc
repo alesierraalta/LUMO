@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# UI Components and Styling
+
+This application uses Tailwind CSS for styling with custom component patterns.
+
+## Component Patterns
+
+- **Card-based layouts**: Most data is displayed in cards with consistent spacing
+- **Responsive grids**: Pages use responsive grid layouts (1 column mobile, 2-3 columns desktop)
+- **Form components**: Forms use standardized input components with validation
+
+## Style Guidelines
+
+- Use Tailwind's utility classes directly in components
+- Follow these design patterns for consistency:
+  - Cards with hover effects and subtle gradients
+  - Clean typography with proper heading hierarchy
+  - Consistent spacing (gap-6 between cards, p-4 inside cards)
+  - Soft rounded corners (rounded-lg) on interactive elements
+
+## Example Components
+
+The dashboard page in [src/app/dashboard/page.tsx](mdc:src/app/dashboard/page.tsx) shows:
+- Card layouts for statistics
+- Recent products list with formatted dates
+
+The inventory page in [src/app/inventory/page.tsx](mdc:src/app/inventory/page.tsx) demonstrates:
+- Category cards with hover effects
+- Empty state handling with visual feedback

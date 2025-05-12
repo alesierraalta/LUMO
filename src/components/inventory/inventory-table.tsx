@@ -337,7 +337,14 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                     <Progress value={stockPercentage} className="h-1 w-[60px]" />
                   </TableCell>
                   <TableCell>
-                    {item.lastUpdated ? formatDate(new Date(item.lastUpdated)) : 'N/A'}
+                    {/* Update the date formatting to better handle various date formats */}
+                    {item.lastUpdated 
+                      ? formatDate(typeof item.lastUpdated === 'string' 
+                          ? new Date(item.lastUpdated) 
+                          : item.lastUpdated instanceof Date 
+                            ? item.lastUpdated 
+                            : new Date()) 
+                      : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

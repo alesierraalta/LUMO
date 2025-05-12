@@ -30,32 +30,37 @@ export function getApiBaseUrl(): string {
  * Formats a date to a readable string
  */
 export function formatDate(input: Date | string | null | undefined): string {
-  if (!input) return 'N/A';
+  // Si no hay entrada, devolver N/A
+  if (input === null || input === undefined) return 'N/A';
   
   try {
-    // If it's already a Date object, use it directly
+    // Si es una cadena vacía, devolver N/A
+    if (typeof input === 'string' && input.trim() === '') return 'N/A';
+    
+    // Convertir a objeto Date si no lo es ya
     let date: Date;
     
     if (input instanceof Date) {
       date = input;
     } else {
-      // Try to parse the string date
+      // Intentar parsear la cadena de fecha
       date = new Date(input);
     }
     
-    // Validate the date
+    // Validar que la fecha sea correcta
     if (isNaN(date.getTime())) {
-      console.error('Invalid date input:', input);
+      console.error('Fecha inválida:', input);
       return 'Fecha Inválida';
     }
     
+    // Formatear la fecha según el formato español
     return new Intl.DateTimeFormat('es-ES', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     }).format(date);
   } catch (error) {
-    console.error('Error formatting date:', error, 'Input:', input);
+    console.error('Error al formatear fecha:', error, 'Entrada:', input);
     return 'Fecha Inválida';
   }
 }

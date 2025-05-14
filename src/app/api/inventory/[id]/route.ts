@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteInventoryItem } from "@/services/inventoryService";
+import { deleteInventoryItem, getInventoryItemById } from "@/services/inventoryService";
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
+    const { id } = params;
 
     if (!id) {
       return NextResponse.json(
@@ -46,8 +45,38 @@ export async function DELETE(
 }
 
 export async function GET(
-  req: Request,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Existing code
+  try {
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "El ID del item de inventario es requerido" },
+        { status: 400 }
+      );
+    }
+
+    const item = await getInventoryItemById(id);
+
+    if (!item) {
+      return NextResponse.json(
+        { success: false, error: `Item de inventario con ID '${id}' no encontrado` },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(item, { status: 200 });
+  } catch (error: any) {
+    console.error("Error al obtener el item de inventario:", error);
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        error: error.message || "Error al obtener el item de inventario" 
+      },
+      { status: 500 }
+    );
+  }
 } 

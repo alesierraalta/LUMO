@@ -292,14 +292,15 @@ export default async function InventoryPage() {
           </TabsList>
           
           <TabsContent value="all">
-            <InventoryTable inventoryItems={safeItems} />
+            <InventoryTable inventoryItems={safeItems} allCategories={categories} />
           </TabsContent>
           
           <TabsContent value="good">
             <InventoryTable 
               inventoryItems={safeItems.filter(
                 item => item.quantity > item.minStockLevel
-              )} 
+              )}
+              allCategories={categories}
             />
           </TabsContent>
           
@@ -307,7 +308,8 @@ export default async function InventoryPage() {
             <InventoryTable 
               inventoryItems={safeItems.filter(
                 item => item.quantity <= item.minStockLevel && item.quantity > 0
-              )} 
+              )}
+              allCategories={categories}
             />
           </TabsContent>
           
@@ -315,7 +317,8 @@ export default async function InventoryPage() {
             <InventoryTable 
               inventoryItems={safeItems.filter(
                 item => item.quantity <= 0
-              )} 
+              )}
+              allCategories={categories}
             />
           </TabsContent>
         </Tabs>

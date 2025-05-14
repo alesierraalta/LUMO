@@ -84,33 +84,41 @@ type InventoryItem = {
 type Category = {
   id: string;
   name: string;
+  _count?: {
+    inventory: number;
+  };
 }
 
 type InventoryTableProps = {
   inventoryItems: InventoryItem[];
+  allCategories?: Category[];
 };
 
-export default function InventoryTable({ inventoryItems }: InventoryTableProps) {
+export default function InventoryTable({ inventoryItems, allCategories }: InventoryTableProps) {
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>(inventoryItems);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Extract unique categories from inventory items
+  // Extract unique categories from inventory items or use provided categories
   useEffect(() => {
-    const uniqueCategories = new Map<string, Category>();
-    
-    inventoryItems.forEach(item => {
-      if (item.category && !uniqueCategories.has(item.category.id)) {
-        uniqueCategories.set(item.category.id, {
-          id: item.category.id,
-          name: item.category.name
-        });
-      }
-    });
-    
-    setCategories(Array.from(uniqueCategories.values()));
-  }, [inventoryItems]);
+    if (allCategories && allCategories.length > 0) {
+      setCategories(allCategories);
+    } else {
+      const uniqueCategories = new Map<string, Category>();
+      
+      inventoryItems.forEach(item => {
+        if (item.category && !uniqueCategories.has(item.category.id)) {
+          uniqueCategories.set(item.category.id, {
+            id: item.category.id,
+            name: item.category.name
+          });
+        }
+      });
+      
+      setCategories(Array.from(uniqueCategories.values()));
+    }
+  }, [inventoryItems, allCategories]);
 
   // Apply filters whenever filter state or search query changes
   useEffect(() => {
@@ -225,24 +233,24 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px]">SKU</TableHead>
-              <TableHead className="min-w-[150px]">Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Cost</TableHead>
-              <TableHead>Margin</TableHead>
-              <TableHead>Current Stock</TableHead>
-              <TableHead>Min Level</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="min-w-[150px]">Producto</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead>Precio</TableHead>
+              <TableHead>Costo</TableHead>
+              <TableHead>Margen</TableHead>
+              <TableHead>Stock Actual</TableHead>
+              <TableHead>Nivel Mínimo</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Última Actualización</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredItems.map((item) => {
               const stockStatus = calculateStockStatus(item.quantity, item.minStockLevel);
               const statusText = 
-                stockStatus === StockStatus.OUT_OF_STOCK ? "Out of Stock" :
-                stockStatus === StockStatus.LOW ? "Low Stock" : "In Stock";
+                stockStatus === StockStatus.OUT_OF_STOCK ? "Sin Stock" :
+                stockStatus === StockStatus.LOW ? "Stock Bajo" : "En Stock";
               const stockPercentage = calculateStockPercentage(item.quantity, item.minStockLevel);
 
               // Get margin category and color
@@ -290,8 +298,8 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                         <TooltipContent>
                           <p>
                             {Number(item.cost) === 0 
-                              ? "Margin cannot be calculated when cost is $0.00" 
-                              : `Margin = ((${formatCurrency(item.price)} - ${formatCurrency(item.cost)}) / ${formatCurrency(item.cost)}) × 100 = ${calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)}%`}
+                              ? "No se puede calcular el margen cuando el costo es $0.00" 
+                              : `Margen = ((${formatCurrency(item.price)} - ${formatCurrency(item.cost)}) / ${formatCurrency(item.cost)}) × 100 = ${calculateMargin(Number(item.cost), Number(item.price)).toFixed(2)}%`}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {getMarginLabel(marginCategory)}
@@ -323,50 +331,37 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
                     <div className="flex items-center justify-end gap-2">
                       <Button 
                         asChild 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 opacity-70 group-hover:opacity-100"
+                        variant="secondary" 
+                        size="sm" 
+                        className="text-green-600 font-medium"
                       >
-                        <Link href={`/inventory/adjust/${item.id}`} title="Adjust Stock">
-                          <Sliders className="h-4 w-4" />
+                        <Link href={`/inventory/adjust/${item.id}/add`} title="Sumar Stock">
+                          <span className="text-xs font-medium mr-1">+</span>
+                          Sumar
                         </Link>
                       </Button>
                       <Button 
                         asChild 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 opacity-70 group-hover:opacity-100"
+                        variant="secondary" 
+                        size="sm" 
+                        className="text-red-600 font-medium"
                       >
-                        <Link href={`/inventory/location/${item.id}`} title="Location">
-                          <MapPin className="h-4 w-4" />
+                        <Link href={`/inventory/adjust/${item.id}/remove`} title="Restar Stock">
+                          <span className="text-xs font-medium mr-1">-</span>
+                          Restar
                         </Link>
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 opacity-70 group-hover:opacity-100"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/inventory/adjust/${item.id}`}>
-                              <Sliders className="h-4 w-4 mr-2" />
-                              Adjust Stock
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/inventory/edit/${item.id}`}>
-                              <Tag className="h-4 w-4 mr-2" />
-                              Edit Item
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button 
+                        asChild 
+                        variant="secondary" 
+                        size="sm" 
+                        className="font-medium"
+                      >
+                        <Link href={`/inventory/adjust/${item.id}`} title="Editar Stock">
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
+                        </Link>
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -375,7 +370,7 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
             {filteredItems.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
-                  No inventory items found.
+                  No se encontraron items en el inventario.
                 </TableCell>
               </TableRow>
             )}

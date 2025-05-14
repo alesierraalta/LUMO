@@ -20,6 +20,8 @@ export async function adjustInventoryAction(
   data: AdjustInventoryData
 ) {
   try {
+    let updated = false;
+    
     // Adjust the stock if the quantity changed
     if (data.quantity !== currentQuantity) {
       await adjustStock(
@@ -27,34 +29,39 @@ export async function adjustInventoryAction(
         data.quantity,
         `Ajuste manual de cantidad de ${currentQuantity} a ${data.quantity}`
       );
+      updated = true;
     }
     
     // Update min stock level if changed
     if (data.minStockLevel !== currentMinStockLevel) {
-      const updatedItem = await prisma.inventoryItem.update({
+      await prisma.inventoryItem.update({
         where: { id: inventoryId },
         data: { minStockLevel: data.minStockLevel }
       });
-      return serializeDecimal(updatedItem);
+      updated = true;
     }
     
     // Update location if changed
     if (data.location !== currentLocation) {
-      const updatedItem = await prisma.inventoryItem.update({
+      await prisma.inventoryItem.update({
         where: { id: inventoryId },
         data: { location: data.location }
       });
-      return serializeDecimal(updatedItem);
+      updated = true;
     }
 
     // Revalidate the inventory pages
     revalidatePath('/inventory');
+    revalidatePath(`/inventory/adjust/${inventoryId}`);
     
-    // Redirect back to inventory
-    redirect('/inventory');
+    // Return success message and let the client handle the redirect
+    return { 
+      success: true, 
+      updated,
+      message: "Item de inventario actualizado correctamente" 
+    };
   } catch (error) {
-    // In a real app, you might want to handle this error more gracefully
     console.error("Error adjusting inventory:", error);
-    throw new Error("Failed to adjust inventory");
+    throw new Error("Error al ajustar el inventario");
   }
 } 

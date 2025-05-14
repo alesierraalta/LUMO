@@ -27,42 +27,129 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Formats a date to a readable string
+ * Validates and ensures a value is a proper Date object or null
+ * This handles various date formats and empty objects that might come from the database
  */
-export function formatDate(input: Date | string | null | undefined): string {
-  // Si no hay entrada, devolver N/A
-  if (input === null || input === undefined) return 'N/A';
+export function ensureValidDate(dateInput: any): Date | null {
+  // If it's already a Date object
+  if (dateInput instanceof Date) {
+    return dateInput;
+  }
+  
+  // If it's null, undefined, or empty object
+  if (dateInput === null || dateInput === undefined || 
+      (typeof dateInput === 'object' && Object.keys(dateInput).length === 0)) {
+    return null;
+  }
+  
+  // If it's a string, try to parse it
+  if (typeof dateInput === 'string') {
+    try {
+      const parsedDate = new Date(dateInput);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    } catch (error) {
+      console.error("Failed to parse date string:", dateInput);
+      return null;
+    }
+  }
+  
+  // For other cases, try to convert to date if possible
+  try {
+    const date = new Date(dateInput);
+    return isNaN(date.getTime()) ? null : date;
+  } catch (error) {
+    console.error("Failed to convert to date:", dateInput);
+    return null;
+  }
+}
+
+/**
+ * Formats a date value for display
+ * Returns a fallback string if the date is invalid
+ */
+export function formatDate(dateInput: string | Date | null | undefined, fallback: string = "-"): string {
+  const date = ensureValidDate(dateInput);
+  
+  if (!date) {
+    return fallback;
+  }
   
   try {
-    // Si es una cadena vacía, devolver N/A
-    if (typeof input === 'string' && input.trim() === '') return 'N/A';
-    
-    // Convertir a objeto Date si no lo es ya
-    let date: Date;
-    
-    if (input instanceof Date) {
-      date = input;
-    } else {
-      // Intentar parsear la cadena de fecha
-      date = new Date(input);
-    }
-    
-    // Validar que la fecha sea correcta
-    if (isNaN(date.getTime())) {
-      console.error('Fecha inválida:', input);
-      return 'Fecha Inválida';
-    }
-    
-    // Formatear la fecha según el formato español
-    return new Intl.DateTimeFormat('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Intl.DateTimeFormat('es-ES', { 
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     }).format(date);
   } catch (error) {
-    console.error('Error al formatear fecha:', error, 'Entrada:', input);
-    return 'Fecha Inválida';
+    console.error("Error formatting date:", error);
+    return fallback;
   }
+}
+
+/**
+ * Formats a date value with time for display
+ * Returns a fallback string if the date is invalid
+ */
+export function formatDateTime(dateInput: string | Date | null | undefined, fallback: string = "-"): string {
+  const date = ensureValidDate(dateInput);
+  
+  if (!date) {
+    return fallback;
+  }
+  
+  try {
+    return new Intl.DateTimeFormat('es-ES', { 
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  } catch (error) {
+    console.error("Error formatting datetime:", error);
+    return fallback;
+  }
+}
+
+/**
+ * Returns a new Date set to 00:00:00.000 of the given date
+ */
+export function startOfDay(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setHours(0, 0, 0, 0);
+  return newDate;
+}
+
+/**
+ * Returns a new Date set to 23:59:59.999 of the given date
+ */
+export function endOfDay(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setHours(23, 59, 59, 999);
+  return newDate;
+}
+
+/**
+ * Formats a number as currency (MXN)
+ */
+export function formatCurrency(value: number | string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "$0.00";
+  }
+  
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  
+  if (isNaN(numValue)) {
+    return "$0.00";
+  }
+  
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2
+  }).format(numValue);
 }
 
 /**
@@ -76,6 +163,11 @@ export function serializeDecimal<T>(data: T): T {
     return data;
   }
   
+  // Check if it's a Date object and convert to ISO string
+  if (data instanceof Date) {
+    return data.toISOString() as unknown as T;
+  }
+  
   // Check if it's a Decimal object (has toNumber method)
   if (typeof data === 'object' && 'toNumber' in data && typeof data.toNumber === 'function') {
     return data.toNumber() as unknown as T;
@@ -86,30 +178,19 @@ export function serializeDecimal<T>(data: T): T {
     return data.map(item => serializeDecimal(item)) as unknown as T;
   }
   
-  // Handle plain objects recursively
-  if (typeof data === 'object' && data !== null) {
+  // Handle objects (recursively)
+  if (typeof data === 'object') {
     const result: Record<string, any> = {};
-    for (const [key, value] of Object.entries(data)) {
-      result[key] = serializeDecimal(value);
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = serializeDecimal((data as Record<string, any>)[key]);
+      }
     }
-    return result as T;
+    return result as unknown as T;
   }
   
-  // Return primitive values as is
+  // Return primitives as is
   return data;
-}
-
-export function formatCurrency(amount: number | string | null | undefined): string {
-  if (amount === null || amount === undefined) return '$0.00';
-  
-  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numericAmount);
 }
 
 export function generatePagination(currentPage: number, totalPages: number) {

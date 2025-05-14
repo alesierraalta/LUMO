@@ -33,7 +33,10 @@ export async function adjustInventoryAction(
     if (data.minStockLevel !== currentMinStockLevel) {
       const updatedItem = await prisma.inventoryItem.update({
         where: { id: inventoryId },
-        data: { minStockLevel: data.minStockLevel }
+        data: { 
+          minStockLevel: data.minStockLevel,
+          lastUpdated: new Date() // Set the lastUpdated date explicitly
+        }
       });
       return serializeDecimal(updatedItem);
     }
@@ -42,7 +45,10 @@ export async function adjustInventoryAction(
     if (data.location !== currentLocation) {
       const updatedItem = await prisma.inventoryItem.update({
         where: { id: inventoryId },
-        data: { location: data.location }
+        data: { 
+          location: data.location,
+          lastUpdated: new Date() // Set the lastUpdated date explicitly
+        }
       });
       return serializeDecimal(updatedItem);
     }

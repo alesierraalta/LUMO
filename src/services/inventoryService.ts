@@ -97,7 +97,10 @@ export async function updateMinStockLevel(inventoryItemId: string, minLevel: num
 
   return prisma.inventoryItem.update({
     where: { id: inventoryItemId },
-    data: { minStockLevel: minLevel },
+    data: { 
+      minStockLevel: minLevel,
+      lastUpdated: new Date() // Set the lastUpdated date explicitly
+    },
   });
 }
 
@@ -120,7 +123,10 @@ export async function updateItemLocation(inventoryItemId: string, location: stri
 
   return prisma.inventoryItem.update({
     where: { id: inventoryItemId },
-    data: { location },
+    data: { 
+      location,
+      lastUpdated: new Date() // Set the lastUpdated date explicitly 
+    },
   });
 }
 
@@ -157,7 +163,7 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
       throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
     }
 
-    // Registrar el movimiento
+    // Registrar el movimiento con fecha explícita
     const movement = await tx.stockMovement.create({
       data: {
         inventoryItemId,
@@ -165,6 +171,7 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
         type: "STOCK_IN",
         notes,
         createdBy,
+        date: new Date(), // Establecer fecha explícitamente
       },
     });
 
@@ -173,6 +180,7 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
       where: { id: inventoryItemId },
       data: {
         quantity: inventoryItem.quantity + quantity,
+        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
       },
     });
 
@@ -206,7 +214,7 @@ export async function removeStock(inventoryItemId: string, quantity: number, not
       throw new Error(`Stock insuficiente. Disponible: ${inventoryItem.quantity}, Solicitado: ${quantity}`);
     }
 
-    // Registrar el movimiento
+    // Registrar el movimiento con fecha explícita
     const movement = await tx.stockMovement.create({
       data: {
         inventoryItemId,
@@ -214,6 +222,7 @@ export async function removeStock(inventoryItemId: string, quantity: number, not
         type: "STOCK_OUT",
         notes,
         createdBy,
+        date: new Date(), // Establecer fecha explícitamente
       },
     });
 
@@ -222,6 +231,7 @@ export async function removeStock(inventoryItemId: string, quantity: number, not
       where: { id: inventoryItemId },
       data: {
         quantity: inventoryItem.quantity - quantity,
+        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
       },
     });
 
@@ -254,7 +264,7 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
     const difference = newQuantity - inventoryItem.quantity;
     const movementType = difference >= 0 ? "ADJUSTMENT" : "ADJUSTMENT";
 
-    // Registrar el movimiento
+    // Registrar el movimiento con fecha explícita
     const movement = await tx.stockMovement.create({
       data: {
         inventoryItemId,
@@ -262,6 +272,7 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
         type: movementType,
         notes: notes || `Ajuste de stock de ${inventoryItem.quantity} a ${newQuantity}`,
         createdBy,
+        date: new Date(), // Establecer fecha explícitamente
       },
     });
 
@@ -270,6 +281,7 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
       where: { id: inventoryItemId },
       data: {
         quantity: newQuantity,
+        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
       },
     });
 
@@ -294,6 +306,73 @@ export async function getStockMovementHistory(inventoryItemId: string, limit?: n
     take: limit,
   });
   return serializeDecimal(movements);
+}
+
+/**
+ * Obtiene todos los movimientos de stock con detalles del producto
+ */
+export async function getAllStockMovements(params?: {
+  limit?: number;
+  page?: number;
+  type?: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "INITIAL";
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const { limit = 50, page = 1, type, startDate, endDate } = params || {};
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+  
+  if (type) {
+    where.type = type;
+  }
+  
+  if (startDate || endDate) {
+    where.date = {};
+    if (startDate) {
+      where.date.gte = startDate;
+    }
+    if (endDate) {
+      where.date.lte = endDate;
+    }
+  }
+  
+  const [movements, total] = await Promise.all([
+    prisma.stockMovement.findMany({
+      where,
+      include: {
+        inventoryItem: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        date: "desc",
+      },
+      take: limit,
+      skip,
+    }),
+    prisma.stockMovement.count({ where })
+  ]);
+  
+  return {
+    data: serializeDecimal(movements),
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 }
 
 /**

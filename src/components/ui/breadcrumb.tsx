@@ -1,39 +1,57 @@
 import Link from "next/link"
 import { ChevronRight, Home } from "lucide-react"
 
-interface BreadcrumbItem {
+type BreadcrumbItem = {
   title: string
   href?: string
 }
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[]
+  homeHref?: string
+  includeHome?: boolean
 }
 
-export function Breadcrumb({ items }: BreadcrumbProps) {
+export function Breadcrumb({
+  items,
+  homeHref = "/",
+  includeHome = true,
+}: BreadcrumbProps) {
+  const allItems = includeHome
+    ? [{ title: "Inicio", href: homeHref }, ...items]
+    : items
+
   return (
-    <nav className="flex items-center space-x-1 text-sm text-muted-foreground">
-      <Link
-        href="/"
-        className="flex items-center hover:text-foreground transition-colors"
-      >
-        <Home className="h-4 w-4" />
-      </Link>
-      {items.map((item, index) => (
-        <div key={index} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-1" />
-          {item.href ? (
-            <Link
-              href={item.href}
-              className="hover:text-foreground transition-colors"
-            >
-              {item.title}
-            </Link>
-          ) : (
-            <span className="text-foreground">{item.title}</span>
-          )}
-        </div>
-      ))}
+    <nav className="flex items-center space-x-1 text-sm text-muted-foreground mb-4">
+      {allItems.map((item, index) => {
+        const isLast = index === allItems.length - 1
+        const isFirst = index === 0
+        
+        return (
+          <div key={`${item.title}-${index}`} className="flex items-center">
+            {isFirst && includeHome && (
+              <Home className="mr-1 h-4 w-4 text-muted-foreground" />
+            )}
+            
+            {item.href && !isLast ? (
+              <Link 
+                href={item.href} 
+                className="hover:text-foreground underline-offset-4 hover:underline"
+              >
+                {item.title}
+              </Link>
+            ) : (
+              <span className={isLast ? "font-medium text-foreground" : ""}>
+                {item.title}
+              </span>
+            )}
+            
+            {!isLast && (
+              <ChevronRight className="mx-1 h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+        )
+      })}
     </nav>
   )
 } 

@@ -188,7 +188,7 @@ export default async function InventoryPage() {
         i.price, i.cost, i.margin, 
         i.quantity, i."minStockLevel", 
         i.location, i."imageUrl", i.active, 
-        i."categoryId"
+        i."categoryId", i."lastUpdated"
       FROM inventory_items i 
       ORDER BY i."updatedAt" DESC
     ` as any[];

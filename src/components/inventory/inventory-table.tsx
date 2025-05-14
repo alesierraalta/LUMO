@@ -16,7 +16,11 @@ import {
   Tags,
   Calculator,
   MoreHorizontal,
-  Trash
+  Trash,
+  RotateCw,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StockStatus } from "@/services/inventoryService";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, ensureValidDate } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,6 +93,12 @@ type Category = {
   };
 }
 
+// Sort direction type
+type SortDirection = 'asc' | 'desc' | null;
+
+// Sortable fields
+type SortField = 'lastUpdated' | 'sku' | 'name' | 'price' | 'cost' | 'quantity' | null;
+
 type InventoryTableProps = {
   inventoryItems: InventoryItem[];
   allCategories?: Category[];
@@ -99,6 +109,8 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   // Extract unique categories from inventory items or use provided categories
   useEffect(() => {
@@ -120,7 +132,7 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
     }
   }, [inventoryItems, allCategories]);
 
-  // Apply filters whenever filter state or search query changes
+  // Apply filters and sorting whenever state changes
   useEffect(() => {
     let results = [...inventoryItems];
     
@@ -142,8 +154,42 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
       );
     }
     
+    // Apply sorting if active
+    if (sortField && sortDirection) {
+      results.sort((a, b) => {
+        if (sortField === 'lastUpdated') {
+          // Handle date sorting
+          const dateA = ensureValidDate(a.lastUpdated) || new Date(0); // Default to "epoch" if null
+          const dateB = ensureValidDate(b.lastUpdated) || new Date(0);
+          
+          return sortDirection === 'asc' 
+            ? dateA.getTime() - dateB.getTime() 
+            : dateB.getTime() - dateA.getTime();
+        } else if (sortField === 'price' || sortField === 'cost') {
+          // Handle numeric sorting for money values
+          const numA = Number(a[sortField]) || 0;
+          const numB = Number(b[sortField]) || 0;
+          
+          return sortDirection === 'asc' ? numA - numB : numB - numA;
+        } else if (sortField === 'quantity') {
+          // Handle numeric sorting
+          return sortDirection === 'asc' 
+            ? a.quantity - b.quantity
+            : b.quantity - a.quantity;
+        } else {
+          // Handle string sorting
+          const strA = String(a[sortField] || '').toLowerCase();
+          const strB = String(b[sortField] || '').toLowerCase();
+          
+          return sortDirection === 'asc'
+            ? strA.localeCompare(strB)
+            : strB.localeCompare(strA);
+        }
+      });
+    }
+    
     setFilteredItems(results);
-  }, [categoryFilter, searchQuery, inventoryItems]);
+  }, [categoryFilter, searchQuery, inventoryItems, sortField, sortDirection]);
 
   // Calculate stock status based on quantity and min level
   const calculateStockStatus = (quantity: number, minStockLevel: number): StockStatus => {
@@ -179,6 +225,32 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
         return <BatteryWarning className="h-4 w-4 text-destructive" />;
     }
   };
+
+  // Handle sorting toggle
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction or clear if already descending
+      setSortDirection(sortDirection === 'asc' ? 'desc' : null);
+      if (sortDirection === 'desc') {
+        setSortField(null);
+      }
+    } else {
+      // Set new field and direction (default to ascending)
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Render sort icon based on current state
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 text-muted-foreground" />;
+    }
+    
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-primary" />
+      : <ArrowDown className="h-4 w-4 ml-1 text-primary" />;
+  };
   
   return (
     <>
@@ -188,14 +260,14 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
             defaultValue="all" 
             onValueChange={(value) => setCategoryFilter(value)}
           >
-            <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filtrar por categoría">
+            <SelectTrigger className="w-full sm:w-[180px] bg-secondary" aria-label="Filtrar por categoría">
               <div className="flex items-center gap-2">
                 <Tag className="h-3.5 w-3.5" />
                 <SelectValue placeholder="Filtrar por categoría" />
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas las Categorías</SelectItem>
+              <SelectItem value="all" className="font-medium">Todas las Categorías</SelectItem>
               {categories.map(category => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
@@ -217,6 +289,17 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            asChild 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-2"
+          >
+            <Link href="/inventory/movements">
+              <RotateCw className="h-4 w-4" />
+              Historial
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" className="flex items-center gap-2">
             <FileBarChart className="h-4 w-4" />
             Exportar
@@ -232,16 +315,58 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">SKU</TableHead>
-              <TableHead className="min-w-[150px]">Producto</TableHead>
+              <TableHead 
+                className="w-[80px] cursor-pointer hover:text-primary"
+                onClick={() => handleSort('sku')}
+              >
+                <div className="flex items-center">
+                  SKU {renderSortIcon('sku')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="min-w-[150px] cursor-pointer hover:text-primary"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center">
+                  Producto {renderSortIcon('name')}
+                </div>
+              </TableHead>
               <TableHead>Categoría</TableHead>
-              <TableHead>Precio</TableHead>
-              <TableHead>Costo</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary"
+                onClick={() => handleSort('price')}
+              >
+                <div className="flex items-center">
+                  Precio {renderSortIcon('price')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary"
+                onClick={() => handleSort('cost')}
+              >
+                <div className="flex items-center">
+                  Costo {renderSortIcon('cost')}
+                </div>
+              </TableHead>
               <TableHead>Margen</TableHead>
-              <TableHead>Stock Actual</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary"
+                onClick={() => handleSort('quantity')}
+              >
+                <div className="flex items-center">
+                  Stock Actual {renderSortIcon('quantity')}
+                </div>
+              </TableHead>
               <TableHead>Nivel Mínimo</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Última Actualización</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:text-primary"
+                onClick={() => handleSort('lastUpdated')}
+              >
+                <div className="flex items-center">
+                  Última Actualización {renderSortIcon('lastUpdated')}
+                </div>
+              </TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -318,14 +443,7 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
                     <Progress value={stockPercentage} className="h-1 w-[60px]" />
                   </TableCell>
                   <TableCell>
-                    {/* Update the date formatting to better handle various date formats */}
-                    {item.lastUpdated 
-                      ? formatDate(typeof item.lastUpdated === 'string' 
-                          ? new Date(item.lastUpdated) 
-                          : item.lastUpdated instanceof Date 
-                            ? item.lastUpdated 
-                            : new Date()) 
-                      : 'N/A'}
+                    {formatDate(ensureValidDate(item.lastUpdated))}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -369,7 +487,7 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
             })}
             {filteredItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={11} className="h-24 text-center">
                   No se encontraron items en el inventario.
                 </TableCell>
               </TableRow>

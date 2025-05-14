@@ -36,7 +36,10 @@ export async function adjustInventoryAction(
     if (data.minStockLevel !== currentMinStockLevel) {
       await prisma.inventoryItem.update({
         where: { id: inventoryId },
-        data: { minStockLevel: data.minStockLevel }
+        data: { 
+          minStockLevel: data.minStockLevel,
+          lastUpdated: new Date() // Set the lastUpdated date explicitly
+        }
       });
       updated = true;
     }
@@ -45,7 +48,10 @@ export async function adjustInventoryAction(
     if (data.location !== currentLocation) {
       await prisma.inventoryItem.update({
         where: { id: inventoryId },
-        data: { location: data.location }
+        data: { 
+          location: data.location,
+          lastUpdated: new Date() // Set the lastUpdated date explicitly 
+        }
       });
       updated = true;
     }

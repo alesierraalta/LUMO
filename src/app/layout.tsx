@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema de Gestión de Inventario",
+  title: "LUMO",
   description: "Una aplicación moderna para gestión de inventario",
 };
 

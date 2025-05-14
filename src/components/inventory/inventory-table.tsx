@@ -92,7 +92,6 @@ type InventoryTableProps = {
 
 export default function InventoryTable({ inventoryItems }: InventoryTableProps) {
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>(inventoryItems);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -117,17 +116,6 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
   useEffect(() => {
     let results = [...inventoryItems];
     
-    // Apply status filter
-    if (statusFilter !== "all") {
-      results = results.filter((item) => {
-        const status = calculateStockStatus(item.quantity, item.minStockLevel);
-        if (statusFilter === "low") return status === StockStatus.LOW;
-        if (statusFilter === "out") return status === StockStatus.OUT_OF_STOCK;
-        if (statusFilter === "normal") return status === StockStatus.NORMAL;
-        return true;
-      });
-    }
-    
     // Apply category filter
     if (categoryFilter !== "all") {
       results = results.filter((item) => 
@@ -147,7 +135,7 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
     }
     
     setFilteredItems(results);
-  }, [statusFilter, categoryFilter, searchQuery, inventoryItems]);
+  }, [categoryFilter, searchQuery, inventoryItems]);
 
   // Calculate stock status based on quantity and min level
   const calculateStockStatus = (quantity: number, minStockLevel: number): StockStatus => {
@@ -190,31 +178,16 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Select 
             defaultValue="all" 
-            onValueChange={(value) => setStatusFilter(value)}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Items</SelectItem>
-              <SelectItem value="low">Low Stock</SelectItem>
-              <SelectItem value="out">Out of Stock</SelectItem>
-              <SelectItem value="normal">In Stock</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select 
-            defaultValue="all" 
             onValueChange={(value) => setCategoryFilter(value)}
           >
-            <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by category">
+            <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filtrar por categoría">
               <div className="flex items-center gap-2">
                 <Tag className="h-3.5 w-3.5" />
-                <SelectValue placeholder="Filter by category" />
+                <SelectValue placeholder="Filtrar por categoría" />
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="all">Todas las Categorías</SelectItem>
               {categories.map(category => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
@@ -227,7 +200,7 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               type="text" 
-              placeholder="Search inventory..." 
+              placeholder="Buscar inventario..." 
               className="pl-9 w-full sm:w-[220px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -238,11 +211,11 @@ export default function InventoryTable({ inventoryItems }: InventoryTableProps) 
         <div className="flex gap-2 w-full sm:w-auto">
           <Button variant="outline" size="sm" className="flex items-center gap-2">
             <FileBarChart className="h-4 w-4" />
-            Export
+            Exportar
           </Button>
           <Button variant="outline" size="sm" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
-            Report
+            Reporte
           </Button>
         </div>
       </div>

@@ -277,9 +277,9 @@ export default async function InventoryPage() {
               <Tags className="h-4 w-4" />
               <span>Todos ({safeItems.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="active" className="flex items-center gap-2">
+            <TabsTrigger value="good" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              <span>Activos ({activeItemsCount})</span>
+              <span>Stock Bueno ({safeItems.filter(item => item.quantity > item.minStockLevel).length})</span>
             </TabsTrigger>
             <TabsTrigger value="low" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
@@ -295,8 +295,12 @@ export default async function InventoryPage() {
             <InventoryTable inventoryItems={safeItems} />
           </TabsContent>
           
-          <TabsContent value="active">
-            <InventoryTable inventoryItems={safeItems.filter(item => item.active === true)} />
+          <TabsContent value="good">
+            <InventoryTable 
+              inventoryItems={safeItems.filter(
+                item => item.quantity > item.minStockLevel
+              )} 
+            />
           </TabsContent>
           
           <TabsContent value="low">

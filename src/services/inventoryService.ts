@@ -314,16 +314,29 @@ export async function getStockMovementHistory(inventoryItemId: string, limit?: n
 export async function getAllStockMovements(params?: {
   limit?: number;
   page?: number;
-  type?: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "INITIAL";
+  type?: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "INITIAL" | "all";
   startDate?: Date;
   endDate?: Date;
+  categoryId?: string;
+  search?: string;
+  sort?: string;
 }) {
-  const { limit = 50, page = 1, type, startDate, endDate } = params || {};
+  const { 
+    limit = 50, 
+    page = 1, 
+    type, 
+    startDate, 
+    endDate,
+    categoryId,
+    search,
+    sort = "date-desc"
+  } = params || {};
+  
   const skip = (page - 1) * limit;
 
   const where: any = {};
   
-  if (type) {
+  if (type && type !== 'all') {
     where.type = type;
   }
   
@@ -335,6 +348,70 @@ export async function getAllStockMovements(params?: {
     if (endDate) {
       where.date.lte = endDate;
     }
+  }
+
+  // Category filtering
+  if (categoryId && categoryId !== "all") {
+    where.inventoryItem = {
+      categoryId
+    };
+  }
+
+  // Search functionality
+  if (search) {
+    where.OR = [
+      {
+        inventoryItem: {
+          name: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      },
+      {
+        inventoryItem: {
+          sku: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      },
+      {
+        notes: {
+          contains: search,
+          mode: 'insensitive'
+        }
+      }
+    ];
+  }
+
+  // Determine the sorting options
+  const orderBy: any = {};
+  
+  switch (sort) {
+    case 'date-asc':
+      orderBy.date = 'asc';
+      break;
+    case 'product-asc':
+      orderBy.inventoryItem = {
+        name: 'asc'
+      };
+      break;
+    case 'product-desc':
+      orderBy.inventoryItem = {
+        name: 'desc'
+      };
+      break;
+    case 'quantity-asc':
+      orderBy.quantity = 'asc';
+      break;
+    case 'quantity-desc':
+      orderBy.quantity = 'desc';
+      break;
+    case 'date-desc':
+    default:
+      orderBy.date = 'desc';
+      break;
   }
   
   const [movements, total] = await Promise.all([
@@ -355,9 +432,7 @@ export async function getAllStockMovements(params?: {
           }
         }
       },
-      orderBy: {
-        date: "desc",
-      },
+      orderBy,
       take: limit,
       skip,
     }),

@@ -241,26 +241,6 @@ export default async function InventoryPage() {
             </p>
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button asChild variant="outline" className="transition-all hover:shadow-md border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/10">
-              <Link href="/reports/low-stock">
-                {lowStockCount > 0 && (
-                  <Badge className="mr-2 bg-amber-500" aria-hidden="true">
-                    {lowStockCount}
-                  </Badge>
-                )}
-                Existencias Bajas
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="transition-all hover:shadow-md border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10">
-              <Link href="/inventory?filter=out">
-                {outOfStockCount > 0 && (
-                  <Badge className="mr-2 bg-red-500" aria-hidden="true">
-                    {outOfStockCount}
-                  </Badge>
-                )}
-                Sin Stock
-              </Link>
-            </Button>
             <Button asChild className="transition-all hover:shadow-md">
               <Link href="/inventory/add" className="flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" />

@@ -442,8 +442,7 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
                     </div>
                     <Progress value={stockPercentage} className="h-1 w-[60px]" />
                   </TableCell>
-                  <TableCell>
-                    {formatDate(ensureValidDate(item.lastUpdated))}
+                  <TableCell>                    {formatDate(ensureValidDate(item.lastUpdated))}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

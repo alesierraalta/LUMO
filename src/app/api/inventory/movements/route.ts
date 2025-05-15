@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") || undefined;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const page = parseInt(searchParams.get("page") || "1", 10);
+    const categoryId = searchParams.get("categoryId") || undefined;
+    const search = searchParams.get("search") || undefined;
+    const sort = searchParams.get("sort") || "date-desc";
     
     // Handle date filters
     const startDateParam = searchParams.get("startDate");
@@ -19,11 +22,14 @@ export async function GET(request: NextRequest) {
     
     // Get movements with filters
     const result = await getAllStockMovements({
-      type: type as any,
+      type: type !== "all" ? type as any : undefined,
       limit,
       page,
       startDate: startDate || undefined,
-      endDate: endDate || undefined
+      endDate: endDate || undefined,
+      categoryId,
+      search,
+      sort
     });
     
     return NextResponse.json(result);

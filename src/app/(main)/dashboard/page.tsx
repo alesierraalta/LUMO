@@ -11,6 +11,8 @@ import { getLowStockItems } from "@/services/inventoryService";
 import { formatDate, getApiBaseUrl } from "@/lib/utils";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import { ActionLink } from "@/components/ui/action-link";
 
 interface Product {
   id: string;
@@ -38,19 +40,29 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
   
-  // Obtener datos reales de la base de datos
-  const [products, lowStockItems] = await Promise.all([
-    getAllProducts(),
-    getLowStockItems()
-  ]) as [Product[], any[]];
+  // Verificar permisos antes de mostrar datos reales
+  const authCheck = await checkPermissionsWithDebug("admin");
+  
+  // Valores por defecto para usuarios no autorizados
+  let products: Product[] = [];
+  let lowStockItems: any[] = [];
+  let categories: any[] = [];
 
-  // Fetch categories from API with proper base URL
-  const apiBaseUrl = getApiBaseUrl();
-  const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
-  if (!categoriesResponse.ok) {
-    throw new Error('Error al obtener categorías');
+  // Solo cargar datos si el usuario está autorizado
+  if (authCheck.authorized) {
+    // Obtener datos reales de la base de datos
+    [products, lowStockItems] = await Promise.all([
+      getAllProducts(),
+      getLowStockItems()
+    ]) as [Product[], any[]];
+
+    // Fetch categories from API with proper base URL
+    const apiBaseUrl = getApiBaseUrl();
+    const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
+    if (categoriesResponse.ok) {
+      categories = await categoriesResponse.json();
+    }
   }
-  const categories = await categoriesResponse.json();
 
   // Calcular estadísticas
   const totalProducts = products.length;
@@ -78,11 +90,18 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Panel de Control</h1>
         <div className="flex items-center gap-2">
-          <Link href="/reports/margins">
-            <button className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              Ver Reportes de Margen
-            </button>
-          </Link>
+          {!authCheck.authorized && (
+            <div className="text-sm font-medium text-yellow-600">
+              Necesitas permisos de administrador para ver los datos reales
+            </div>
+          )}
+          <ActionLink 
+            href="/reports/margins" 
+            isDisabled={!authCheck.authorized}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Ver Reportes de Margen
+          </ActionLink>
         </div>
       </div>
       
@@ -132,7 +151,14 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Productos Recientes</CardTitle>
-            <CardDescription>Últimos productos añadidos</CardDescription>
+            <CardDescription>
+              Últimos productos añadidos
+              {!authCheck.authorized && (
+                <span className="block mt-1 text-sm text-yellow-600">
+                  Necesitas permisos de administrador para ver esta información
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -166,7 +192,14 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Productos con Mayor Margen</CardTitle>
-            <CardDescription>Productos con márgenes de beneficio más altos</CardDescription>
+            <CardDescription>
+              Productos con márgenes de beneficio más altos
+              {!authCheck.authorized && (
+                <span className="block mt-1 text-sm text-yellow-600">
+                  Necesitas permisos de administrador para ver esta información
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -196,12 +229,13 @@ export default async function DashboardPage() {
               )}
               
               {highestMarginProducts.length > 0 && (
-                <Link 
+                <ActionLink 
                   href="/reports/margins" 
                   className="block w-full text-center text-sm text-primary hover:underline mt-2"
+                  isDisabled={!authCheck.authorized}
                 >
                   Ver reporte completo de márgenes
-                </Link>
+                </ActionLink>
               )}
             </div>
           </CardContent>
@@ -216,27 +250,32 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3">
-              <Link 
+              <ActionLink 
                 href="/inventory/add" 
-                className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
+                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
+                isDisabled={!authCheck.authorized}
               >
                 <PlusCircle className="h-5 w-5" />
                 <span>Añadir nuevo producto</span>
-              </Link>
-              <Link 
+              </ActionLink>
+              
+              <ActionLink 
                 href="/inventory" 
-                className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
+                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
+                isDisabled={!authCheck.authorized}
               >
                 <ClipboardList className="h-5 w-5" />
                 <span>Actualizar niveles de stock</span>
-              </Link>
-              <Link 
+              </ActionLink>
+              
+              <ActionLink 
                 href="/reports/margins" 
-                className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-secondary"
+                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
+                isDisabled={!authCheck.authorized}
               >
                 <PieChart className="h-5 w-5" />
                 <span>Ver reportes de márgenes</span>
-              </Link>
+              </ActionLink>
             </div>
           </CardContent>
         </Card>
@@ -244,30 +283,42 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Distribución de Márgenes</CardTitle>
-            <CardDescription>Productos por categoría de margen</CardDescription>
+            <CardDescription>
+              Productos por categoría de margen
+              {!authCheck.authorized && (
+                <span className="block mt-1 text-sm text-yellow-600">
+                  Necesitas permisos de administrador para ver esta información
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {Object.entries(MARGIN_CATEGORIES).map(([key, category]) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: category.color }}></div>
-                      <span>{category.label}</span>
-                    </span>
-                    <span>{productsByCategory[key as keyof typeof productsByCategory]}</span>
+                <div key={key} className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{category.label}</div>
+                    <div className="mt-1 h-2 w-full rounded-full bg-muted">
+                      <div 
+                        className="h-full rounded-full" 
+                        style={{
+                          width: `${products.length > 0 ? (productsByCategory[key as keyof typeof productsByCategory] / products.length) * 100 : 0}%`,
+                          backgroundColor: category.color
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                    <div 
-                      className="h-full rounded-full" 
-                      style={{ 
-                        width: `${products.length > 0 ? (productsByCategory[key as keyof typeof productsByCategory] / products.length) * 100 : 0}%`,
-                        backgroundColor: category.color 
-                      }}
-                    ></div>
+                  <div className="text-sm font-medium">
+                    {productsByCategory[key as keyof typeof productsByCategory]} productos
                   </div>
                 </div>
               ))}
+              
+              {products.length === 0 && (
+                <div className="flex items-center justify-center h-24 text-muted-foreground">
+                  No hay datos de margen disponibles
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

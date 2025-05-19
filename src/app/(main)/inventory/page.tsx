@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3 } from "lucide-react";
+import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3, BatteryLow } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
+import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 
 export const metadata: Metadata = {
   title: "Inventario",
@@ -180,52 +181,63 @@ function CategoriesSection({ categories }: { categories: any[] }) {
 }
 
 export default async function InventoryPage() {
+  // Verificar permisos para mostrar datos reales
+  const authCheck = await checkPermissionsWithDebug("admin");
+
   try {
-    // Usar consulta basada en string para evitar errores de TypeScript con discrepancias de esquema
-    const inventoryItems = await prisma.$queryRaw`
-      SELECT 
-        i.id, i.name, i.description, i.sku, 
-        i.price, i.cost, i.margin, 
-        i.quantity, i."minStockLevel", 
-        i.location, i."imageUrl", i.active, 
-        i."categoryId", i."lastUpdated"
-      FROM inventory_items i 
-      ORDER BY i."updatedAt" DESC
-    ` as any[];
+    let inventoryItems: any[] = [];
+    let categories: any[] = [];
 
-    // Obtener categorías con recuento de inventario
-    const categories = await prisma.category.findMany({
-      include: {
-        _count: {
-          select: { inventory: true }
+    // Solo cargar datos si el usuario está autorizado
+    if (authCheck.authorized) {
+      // Usar consulta basada en string para evitar errores de TypeScript con discrepancias de esquema
+      inventoryItems = await prisma.$queryRaw`
+        SELECT 
+          i.id, i.name, i.description, i.sku, 
+          i.price, i.cost, i.margin, 
+          i.quantity, i."minStockLevel", 
+          i.location, i."imageUrl", i.active, 
+          i."categoryId", i."lastUpdated"
+        FROM inventory_items i 
+        ORDER BY i."updatedAt" DESC
+      ` as any[];
+
+      // Obtener categorías con recuento de inventario
+      categories = await prisma.category.findMany({
+        include: {
+          _count: {
+            select: { inventory: true }
+          }
         }
-      }
-    }) as any[];
+      }) as any[];
+    }
 
-    // Unión manual para evitar problemas de serialización
-    const itemsWithCategories = inventoryItems.map(item => {
-      const category = item.categoryId 
-        ? categories.find(c => c.id === item.categoryId) 
-        : null;
-      
-      return {
-        ...item,
-        category
-      };
-    });
+    // Unión manual para evitar problemas de serialización (solo si hay datos)
+    const itemsWithCategories = authCheck.authorized 
+      ? inventoryItems.map(item => {
+          const category = item.categoryId 
+            ? categories.find(c => c.id === item.categoryId) 
+            : null;
+          
+          return {
+            ...item,
+            category
+          };
+        })
+      : [];
     
-    // Filtrar los datos para los conteos
-    const lowStockCount = inventoryItems.filter(
-      item => item.quantity <= item.minStockLevel && item.quantity > 0
-    ).length;
+    // Filtrar los datos para los conteos (o usar 0 si no hay datos)
+    const lowStockCount = authCheck.authorized 
+      ? inventoryItems.filter(item => item.quantity <= item.minStockLevel && item.quantity > 0).length
+      : 0;
 
-    const outOfStockCount = inventoryItems.filter(
-      item => item.quantity <= 0
-    ).length;
+    const outOfStockCount = authCheck.authorized 
+      ? inventoryItems.filter(item => item.quantity <= 0).length
+      : 0;
 
-    const activeItemsCount = inventoryItems.filter(
-      item => item.active === true
-    ).length;
+    const activeItemsCount = authCheck.authorized 
+      ? inventoryItems.filter(item => item.active === true).length
+      : 0;
 
     // Serialización segura
     const safeItems = safeSerializeInventory(itemsWithCategories);
@@ -238,10 +250,15 @@ export default async function InventoryPage() {
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">Inventario y Existencias</h1>
             <p className="text-muted-foreground mt-1">
               Gestiona tus niveles de inventario, ubicaciones y productos
+              {!authCheck.authorized && (
+                <span className="block mt-2 font-medium text-yellow-600">
+                  Necesitas permisos para ver los datos del inventario
+                </span>
+              )}
             </p>
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button asChild className="transition-all hover:shadow-md">
+            <Button asChild className="transition-all hover:shadow-md" disabled={!authCheck.authorized}>
               <Link href="/inventory/add" className="flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" />
                 <span>Nuevo Item</span>
@@ -249,73 +266,127 @@ export default async function InventoryPage() {
             </Button>
           </div>
         </div>
-        
-        {/* Sección principal con tabs para diferentes vistas */}
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <Tags className="h-4 w-4" />
-              <span>Todos ({safeItems.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="good" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Stock Bueno ({safeItems.filter(item => item.quantity > item.minStockLevel).length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="low" className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              <span>Stock Bajo ({lowStockCount})</span>
-            </TabsTrigger>
-            <TabsTrigger value="out" className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              <span>Sin Stock ({outOfStockCount})</span>
-            </TabsTrigger>
-          </TabsList>
+
+        {/* Targetas de estadísticas */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Targeta estadística - Total en inventario */}
+          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+              <CardTitle className="text-sm font-medium">
+                Total Items en Inventario
+              </CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-primary"
+              >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{safeItems.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {activeItemsCount} productos activos
+              </p>
+            </CardContent>
+          </Card>
           
-          <TabsContent value="all">
+          {/* Targeta estadística - Bajo stock */}
+          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+              <CardTitle className="text-sm font-medium">
+                Bajo Stock
+              </CardTitle>
+              <BatteryLow className="h-4 w-4 text-warning" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{lowStockCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Inventario por debajo del mínimo
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Targeta estadística - Sin stock */}
+          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+              <CardTitle className="text-sm font-medium">
+                Sin Existencias
+              </CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-destructive"
+              >
+                <rect width="20" height="14" x="2" y="5" rx="2" />
+                <path d="M2 10h20" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{outOfStockCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Productos agotados
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Targeta estadística - Categorías */}
+          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+              <CardTitle className="text-sm font-medium">
+                Categorías
+              </CardTitle>
+              <Tags className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{categories.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                De productos disponibles
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabla de inventario */}
+        <Card className="shadow-sm hover:shadow-md transition-all">
+          <CardHeader>
+            <CardTitle>Inventario</CardTitle>
+            <CardDescription>
+              Gestiona tus productos y existencias
+              {!authCheck.authorized && (
+                <span className="block mt-2 font-medium text-yellow-600">
+                  Necesitas permisos de administrador para ver datos del inventario
+                </span>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <InventoryTable inventoryItems={safeItems} allCategories={categories} />
-          </TabsContent>
-          
-          <TabsContent value="good">
-            <InventoryTable 
-              inventoryItems={safeItems.filter(
-                item => item.quantity > item.minStockLevel
-              )}
-              allCategories={categories}
-            />
-          </TabsContent>
-          
-          <TabsContent value="low">
-            <InventoryTable 
-              inventoryItems={safeItems.filter(
-                item => item.quantity <= item.minStockLevel && item.quantity > 0
-              )}
-              allCategories={categories}
-            />
-          </TabsContent>
-          
-          <TabsContent value="out">
-            <InventoryTable 
-              inventoryItems={safeItems.filter(
-                item => item.quantity <= 0
-              )}
-              allCategories={categories}
-            />
-          </TabsContent>
-        </Tabs>
-        
-        {/* Sección de Categorías */}
+          </CardContent>
+        </Card>
+
+        {/* Sección de categorías */}
         <CategoriesSection categories={categories} />
       </div>
     );
   } catch (error) {
-    console.error("Error loading inventory data:", error);
+    console.error("Error cargando datos de inventario:", error);
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <h2 className="text-2xl font-bold mb-4">Error al cargar datos de inventario</h2>
-        <p className="text-muted-foreground mb-6">
-          Ocurrió un error al intentar cargar los datos de inventario. Por favor, intenta de nuevo más tarde.
-        </p>
-        <Button>Reintentar</Button>
+      <div className="p-4 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
+        <h3 className="font-semibold">Error al cargar los datos</h3>
+        <p>Ocurrió un problema al cargar la información del inventario.</p>
       </div>
     );
   }

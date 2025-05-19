@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteInventoryItem, getInventoryItemById } from "@/services/inventoryService";
+import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verificar permisos antes de eliminar datos
+    const authCheck = await checkPermissionsWithDebug("admin");
+    
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "No tienes permisos para eliminar items de inventario" 
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
 
     if (!id) {
@@ -49,6 +63,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verificar permisos antes de devolver datos
+    const authCheck = await checkPermissionsWithDebug("admin");
+    
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: "No tienes permisos para ver detalles de items de inventario" 
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
 
     if (!id) {

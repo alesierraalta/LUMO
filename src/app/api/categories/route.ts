@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getAllCategories } from "@/services/productService";
+import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 
 // Validation schema for category creation
 const CategorySchema = z.object({
@@ -12,6 +13,14 @@ const CategorySchema = z.object({
 // GET /api/categories - List all categories
 export async function GET() {
   try {
+    // Verificar permisos antes de devolver datos
+    const authCheck = await checkPermissionsWithDebug("admin");
+    
+    // Si el usuario no está autorizado, devolver un array vacío
+    if (!authCheck.authorized) {
+      return NextResponse.json([]);
+    }
+    
     // Get all categories without trying to count related products
     const categories = await prisma.category.findMany({
       orderBy: {
@@ -31,6 +40,16 @@ export async function GET() {
 // POST /api/categories - Create a new category
 export async function POST(req: Request) {
   try {
+    // Verificar permisos antes de crear datos
+    const authCheck = await checkPermissionsWithDebug("admin");
+    
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { error: "No tienes permisos para crear categorías" },
+        { status: 403 }
+      );
+    }
+    
     const body = await req.json();
     const validatedData = CategorySchema.parse(body);
 

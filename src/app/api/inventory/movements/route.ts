@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllStockMovements } from "@/services/inventoryService";
 import { ensureValidDate } from "@/lib/utils";
+import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 
 export async function GET(request: NextRequest) {
   try {
+    // Verificar permisos antes de devolver datos
+    const authCheck = await checkPermissionsWithDebug("admin");
+    
+    // Si el usuario no está autorizado, devolver datos vacíos
+    if (!authCheck.authorized) {
+      return NextResponse.json({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 10,
+        pages: 0
+      });
+    }
+    
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type") || undefined;

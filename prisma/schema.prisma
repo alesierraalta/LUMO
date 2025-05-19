@@ -53,9 +53,12 @@ model StockMovement {
   date            DateTime      @default(now())
   notes           String?
   createdBy       String?
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId])
+  @@index([userId])
   @@map("stock_movements")
 }
 
@@ -69,8 +72,11 @@ model Sale {
   notes        String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  userId       String?
+  user         User?             @relation(fields: [userId], references: [id])
   transactions SaleTransaction[]
 
+  @@index([userId])
   @@map("sales")
 }
 
@@ -88,6 +94,60 @@ model SaleTransaction {
   @@index([inventoryItemId])
   @@index([saleId])
   @@map("sale_transactions")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  clerkId       String          @unique
+  email         String          @unique
+  firstName     String?
+  lastName      String?
+  roleId        String
+  role          Role            @relation(fields: [roleId], references: [id])
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  stockMovements StockMovement[]
+  sales         Sale[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  resource    String
+  action      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 enum MovementType {

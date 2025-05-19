@@ -2,6 +2,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar, MobileNav } from "@/components/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserNav } from "@/components/auth/UserNav";
+import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 
 export default function MainLayout({
   children,
@@ -20,6 +21,7 @@ export default function MainLayout({
           </div>
         </div>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+          <AuthErrorBanner />
           {children}
         </main>
       </div>

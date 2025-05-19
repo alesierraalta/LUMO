@@ -1,5 +1,4 @@
 import { PrismaClient } from '../generated/prisma';
-import path from 'path';
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.

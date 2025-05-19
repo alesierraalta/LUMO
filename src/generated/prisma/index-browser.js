@@ -151,7 +151,8 @@ exports.Prisma.StockMovementScalarFieldEnum = {
   type: 'type',
   date: 'date',
   notes: 'notes',
-  createdBy: 'createdBy'
+  createdBy: 'createdBy',
+  userId: 'userId'
 };
 
 exports.Prisma.SaleScalarFieldEnum = {
@@ -163,7 +164,8 @@ exports.Prisma.SaleScalarFieldEnum = {
   status: 'status',
   notes: 'notes',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  userId: 'userId'
 };
 
 exports.Prisma.SaleTransactionScalarFieldEnum = {
@@ -176,14 +178,67 @@ exports.Prisma.SaleTransactionScalarFieldEnum = {
   inventoryItemId: 'inventoryItemId'
 };
 
+exports.Prisma.UserScalarFieldEnum = {
+  id: 'id',
+  clerkId: 'clerkId',
+  email: 'email',
+  firstName: 'firstName',
+  lastName: 'lastName',
+  roleId: 'roleId',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RoleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.PermissionScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  resource: 'resource',
+  action: 'action',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RolePermissionScalarFieldEnum = {
+  id: 'id',
+  roleId: 'roleId',
+  permissionId: 'permissionId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
 };
 
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
+
+exports.Prisma.QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
 };
 exports.MovementType = exports.$Enums.MovementType = {
   STOCK_IN: 'STOCK_IN',
@@ -203,7 +258,11 @@ exports.Prisma.ModelName = {
   InventoryItem: 'InventoryItem',
   StockMovement: 'StockMovement',
   Sale: 'Sale',
-  SaleTransaction: 'SaleTransaction'
+  SaleTransaction: 'SaleTransaction',
+  User: 'User',
+  Role: 'Role',
+  Permission: 'Permission',
+  RolePermission: 'RolePermission'
 };
 
 /**

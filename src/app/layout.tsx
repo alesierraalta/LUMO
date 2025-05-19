@@ -7,6 +7,7 @@ import { Sidebar, MobileNav } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner"
 import { ClerkProvider } from "@clerk/nextjs";
 import { UserNav } from "@/components/auth/UserNav";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +36,9 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ThemeProvider defaultTheme="system">
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </ThemeProvider>
           <Toaster />
         </body>

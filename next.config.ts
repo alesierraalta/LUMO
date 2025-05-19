@@ -7,10 +7,16 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   experimental: {
+    instrumentationHook: true,
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
     serverActions: {
       bodySizeLimit: '2mb'
     }
-  }
+  },
+  middleware: {
+    // Force middleware to use the Node.js runtime
+    runtime: 'nodejs',
+  },
 };
 
 export default nextConfig;

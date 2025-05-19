@@ -1,28 +1,29 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Definir cuáles rutas son públicas
+// Define which routes are public
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)", 
   "/sign-up(.*)",
   "/api/(.*)auth(.*)"
 ]);
 
-// Aplicar middleware con verificación personalizada
+// Apply middleware with custom verification
 export default clerkMiddleware(async (auth, req) => {
-  // Si el usuario intenta acceder a la ruta raíz, permitir
-  // (la página raíz manejará la redirección basada en la autenticación)
+  // If the user is trying to access the root, allow
+  // (the root page will handle the redirection based on authentication)
   if (req.nextUrl.pathname === '/') {
     return NextResponse.next();
   }
   
-  // Si es una ruta pública, permitir
+  // If it's a public route, allow
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
   
-  // Si no está autenticado, redirigir a sign-in
+  // If not authenticated, redirect to sign-in
   try {
+    // Protect the route
     await auth.protect();
     return NextResponse.next();
   } catch (error) {

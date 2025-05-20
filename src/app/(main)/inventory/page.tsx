@@ -15,6 +15,7 @@ import InventoryTable from "@/components/inventory/inventory-table";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import InventoryClientWrapper from "./client-wrapper";
 
 export const metadata: Metadata = {
   title: "Inventario",
@@ -180,7 +181,18 @@ function CategoriesSection({ categories }: { categories: any[] }) {
   );
 }
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams
+}: {
+  searchParams: { tab?: string }
+}) {
+  // Get the tab from the URL parameters, defaulting to 'all'
+  const activeTab = searchParams.tab === 'normal' || 
+                   searchParams.tab === 'low' || 
+                   searchParams.tab === 'out_of_stock' 
+                   ? searchParams.tab 
+                   : 'all';
+
   // Verificar permisos para mostrar datos reales
   const authCheck = await checkPermissionsWithDebug("admin");
 
@@ -299,48 +311,52 @@ export default async function InventoryPage() {
           </Card>
           
           {/* Targeta estadística - Bajo stock */}
-          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
-              <CardTitle className="text-sm font-medium">
-                Bajo Stock
-              </CardTitle>
-              <BatteryLow className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{lowStockCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Inventario por debajo del mínimo
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/inventory?tab=low" className="transition-all">
+            <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+                <CardTitle className="text-sm font-medium">
+                  Bajo Stock
+                </CardTitle>
+                <BatteryLow className="h-4 w-4 text-warning" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{lowStockCount}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inventario por debajo del mínimo
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
           
           {/* Targeta estadística - Sin stock */}
-          <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
-              <CardTitle className="text-sm font-medium">
-                Sin Existencias
-              </CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                className="h-4 w-4 text-destructive"
-              >
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{outOfStockCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Productos agotados
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/inventory?tab=out_of_stock" className="transition-all">
+            <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
+                <CardTitle className="text-sm font-medium">
+                  Sin Existencias
+                </CardTitle>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  className="h-4 w-4 text-destructive"
+                >
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <path d="M2 10h20" />
+                </svg>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{outOfStockCount}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Productos agotados
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
           
           {/* Targeta estadística - Categorías */}
           <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-tr from-card to-background">
@@ -373,7 +389,11 @@ export default async function InventoryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <InventoryTable inventoryItems={safeItems} allCategories={categories} />
+            <InventoryClientWrapper 
+              inventoryItems={safeItems} 
+              allCategories={categories} 
+              initialTab={activeTab as 'all' | 'normal' | 'low' | 'out_of_stock'} 
+            />
           </CardContent>
         </Card>
 

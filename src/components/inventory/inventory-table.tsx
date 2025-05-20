@@ -102,15 +102,28 @@ type SortField = 'lastUpdated' | 'sku' | 'name' | 'price' | 'cost' | 'quantity' 
 type InventoryTableProps = {
   inventoryItems: InventoryItem[];
   allCategories?: Category[];
+  activeTab?: 'all' | 'normal' | 'low' | 'out_of_stock';
+  onTabChange?: (tab: 'all' | 'normal' | 'low' | 'out_of_stock') => void;
 };
 
-export default function InventoryTable({ inventoryItems, allCategories }: InventoryTableProps) {
+export default function InventoryTable({ 
+  inventoryItems, 
+  allCategories,
+  activeTab = 'all',
+  onTabChange
+}: InventoryTableProps) {
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>(inventoryItems);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'normal' | 'low' | 'out_of_stock'>(activeTab);
+
+  // Update internal stockStatusFilter when activeTab prop changes
+  useEffect(() => {
+    setStockStatusFilter(activeTab);
+  }, [activeTab]);
 
   // Extract unique categories from inventory items or use provided categories
   useEffect(() => {
@@ -135,6 +148,14 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
   // Apply filters and sorting whenever state changes
   useEffect(() => {
     let results = [...inventoryItems];
+    
+    // Apply stock status filter
+    if (stockStatusFilter !== 'all') {
+      results = results.filter((item) => {
+        const status = calculateStockStatus(item.quantity, item.minStockLevel);
+        return status === stockStatusFilter;
+      });
+    }
     
     // Apply category filter
     if (categoryFilter !== "all") {
@@ -189,7 +210,7 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
     }
     
     setFilteredItems(results);
-  }, [categoryFilter, searchQuery, inventoryItems, sortField, sortDirection]);
+  }, [categoryFilter, searchQuery, inventoryItems, sortField, sortDirection, stockStatusFilter]);
 
   // Calculate stock status based on quantity and min level
   const calculateStockStatus = (quantity: number, minStockLevel: number): StockStatus => {
@@ -252,6 +273,28 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
       : <ArrowDown className="h-4 w-4 ml-1 text-primary" />;
   };
   
+  // Handle stock status tab change
+  const handleStockStatusChange = (status: 'all' | 'normal' | 'low' | 'out_of_stock') => {
+    if (onTabChange) {
+      onTabChange(status);
+    } else {
+      setStockStatusFilter(status);
+    }
+  };
+
+  // Calculate counts for each stock status
+  const normalCount = inventoryItems.filter(
+    item => calculateStockStatus(item.quantity, item.minStockLevel) === StockStatus.NORMAL
+  ).length;
+  
+  const lowCount = inventoryItems.filter(
+    item => calculateStockStatus(item.quantity, item.minStockLevel) === StockStatus.LOW
+  ).length;
+  
+  const outOfStockCount = inventoryItems.filter(
+    item => calculateStockStatus(item.quantity, item.minStockLevel) === StockStatus.OUT_OF_STOCK
+  ).length;
+  
   return (
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -308,6 +351,76 @@ export default function InventoryTable({ inventoryItems, allCategories }: Invent
             <ClipboardList className="h-4 w-4" />
             Reporte
           </Button>
+        </div>
+      </div>
+      
+      <div className="mb-6">
+        <div className="border-b border-border">
+          <div className="flex space-x-1 overflow-x-auto">
+            <button
+              onClick={() => handleStockStatusChange('all')}
+              className={`px-4 py-2 text-sm font-medium transition-all duration-200 border-b-2 ${
+                stockStatusFilter === 'all'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span>Todos</span>
+                <Badge variant="secondary" className="ml-1 bg-secondary text-secondary-foreground">
+                  {inventoryItems.length}
+                </Badge>
+              </div>
+            </button>
+            <button
+              onClick={() => handleStockStatusChange('normal')}
+              className={`px-4 py-2 text-sm font-medium transition-all duration-200 border-b-2 ${
+                stockStatusFilter === 'normal'
+                  ? 'border-success text-success'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Battery className="h-4 w-4 text-success" />
+                <span>En Stock</span>
+                <Badge variant="outline" className="ml-1 bg-success/10 text-success border-success/20">
+                  {normalCount}
+                </Badge>
+              </div>
+            </button>
+            <button
+              onClick={() => handleStockStatusChange('low')}
+              className={`px-4 py-2 text-sm font-medium transition-all duration-200 border-b-2 ${
+                stockStatusFilter === 'low'
+                  ? 'border-warning text-warning'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BatteryLow className="h-4 w-4 text-warning" />
+                <span>Stock Bajo</span>
+                <Badge variant="outline" className="ml-1 bg-warning/10 text-warning border-warning/20">
+                  {lowCount}
+                </Badge>
+              </div>
+            </button>
+            <button
+              onClick={() => handleStockStatusChange('out_of_stock')}
+              className={`px-4 py-2 text-sm font-medium transition-all duration-200 border-b-2 ${
+                stockStatusFilter === 'out_of_stock'
+                  ? 'border-destructive text-destructive'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BatteryWarning className="h-4 w-4 text-destructive" />
+                <span>Sin Stock</span>
+                <Badge variant="outline" className="ml-1 bg-destructive/10 text-destructive border-destructive/20">
+                  {outOfStockCount}
+                </Badge>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
       

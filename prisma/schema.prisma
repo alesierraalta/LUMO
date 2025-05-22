@@ -40,6 +40,7 @@ model InventoryItem {
   category       Category?         @relation(fields: [categoryId], references: [id])
   transactions   SaleTransaction[]
   stockMovements StockMovement[]
+  priceHistory   PriceHistory[]
 
   @@index([categoryId])
   @@map("inventory_items")
@@ -97,18 +98,19 @@ model SaleTransaction {
 }
 
 model User {
-  id            String          @id @default(cuid())
-  clerkId       String          @unique
-  email         String          @unique
-  firstName     String?
-  lastName      String?
-  roleId        String
-  role          Role            @relation(fields: [roleId], references: [id])
-  metadata      Json?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  clerkId        String          @unique
+  email          String          @unique
+  firstName      String?
+  lastName       String?
+  roleId         String
+  role           Role            @relation(fields: [roleId], references: [id])
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   stockMovements StockMovement[]
-  sales         Sale[]
+  sales          Sale[]
+  priceHistory   PriceHistory[]
 
   @@map("users")
 }
@@ -148,6 +150,26 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model PriceHistory {
+  id             String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  oldPrice       Float?
+  newPrice       Float?
+  oldCost        Float?
+  newCost        Float?
+  oldMargin      Float?
+  newMargin      Float?
+  changeReason   String?
+  createdAt      DateTime      @default(now())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([userId])
+  @@map("price_history")
 }
 
 enum MovementType {

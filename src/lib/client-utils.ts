@@ -48,6 +48,8 @@ export interface ProductData {
   quantity?: number;
   minStockLevel?: number;
   location?: string;
+  // Price change reason
+  changeReason?: string;
 }
 
 /**

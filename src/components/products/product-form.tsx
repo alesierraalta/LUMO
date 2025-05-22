@@ -60,6 +60,8 @@ const productSchema = z.object({
   quantity: z.coerce.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
   minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
   location: z.string().optional(),
+  // Price change reason
+  changeReason: z.string().optional(),
 }).refine((data) => {
   const price = data.price as number;
   const cost = data.cost as number;
@@ -99,6 +101,7 @@ export default function ProductForm({
   const [error, setError] = useState("");
   // Change default pricing mode to margin
   const [pricingMode, setPricingMode] = useState<"price" | "margin">("margin");
+  const [priceChanged, setPriceChanged] = useState(false);
 
   // Configurar el formulario con react-hook-form
   const {
@@ -107,7 +110,7 @@ export default function ProductForm({
     watch,
     setValue,
     getValues,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: initialData || {
@@ -122,8 +125,23 @@ export default function ProductForm({
       quantity: 0,
       minStockLevel: 5,
       location: "",
+      changeReason: "",
     },
   });
+
+  // Watch for changes in pricing fields
+  const cost = watch("cost");
+  const price = watch("price");
+  const margin = watch("margin");
+  
+  // Track if price-related fields have changed
+  useEffect(() => {
+    if (initialData && (dirtyFields.price || dirtyFields.cost || dirtyFields.margin)) {
+      setPriceChanged(true);
+    } else {
+      setPriceChanged(false);
+    }
+  }, [cost, price, margin, dirtyFields, initialData]);
 
   // Event handlers for interactive calculations
   const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,11 +218,6 @@ export default function ProductForm({
       }
     }
   };
-
-  // Observar los cambios en costo y precio para calcular el margen
-  const cost = watch("cost");
-  const price = watch("price");
-  const margin = watch("margin");
 
   // Initialize calculations on component mount
   useEffect(() => {
@@ -420,6 +433,21 @@ export default function ProductForm({
                 </p>
               )}
             </div>
+
+            {/* Change reason field - only shown when editing an existing product and price fields have changed */}
+            {initialData && priceChanged && (
+              <div className="grid gap-2">
+                <Label htmlFor="changeReason">Razón del cambio de precio</Label>
+                <Textarea
+                  id="changeReason"
+                  placeholder="Razón del cambio de precio (opcional)"
+                  {...register("changeReason")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Proporcione un motivo para este cambio de precio (ajuste de costos, promoción, etc.)
+                </p>
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="categoryId">Categoría</Label>

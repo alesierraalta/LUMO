@@ -120,11 +120,6 @@ export default function InventoryTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'normal' | 'low' | 'out_of_stock'>(activeTab);
 
-  // Update internal stockStatusFilter when activeTab prop changes
-  useEffect(() => {
-    setStockStatusFilter(activeTab);
-  }, [activeTab]);
-
   // Extract unique categories from inventory items or use provided categories
   useEffect(() => {
     if (allCategories && allCategories.length > 0) {

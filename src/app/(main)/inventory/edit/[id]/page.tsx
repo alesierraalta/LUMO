@@ -43,6 +43,11 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
   const [cost, setCost] = useState("")
   const [price, setPrice] = useState("")
   const [margin, setMargin] = useState("")
+  const [originalCost, setOriginalCost] = useState("")
+  const [originalPrice, setOriginalPrice] = useState("")
+  const [originalMargin, setOriginalMargin] = useState("")
+  const [changeReason, setChangeReason] = useState("")
+  const [financialsChanged, setFinancialsChanged] = useState(false)
   
   // First useEffect to safely extract the ID using useParams hook
   useEffect(() => {
@@ -93,9 +98,18 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
           })
           
           // Initialize the form state variables
-          setCost(productData.cost ? productData.cost.toString() : "0");
-          setPrice(productData.price ? productData.price.toString() : "0");
-          setMargin(productData.margin ? productData.margin.toString() : "0");
+          const costStr = productData.cost ? productData.cost.toString() : "0";
+          const priceStr = productData.price ? productData.price.toString() : "0";
+          const marginStr = productData.margin ? productData.margin.toString() : "0";
+          
+          setCost(costStr);
+          setPrice(priceStr);
+          setMargin(marginStr);
+          
+          // Store original values for comparison
+          setOriginalCost(costStr);
+          setOriginalPrice(priceStr);
+          setOriginalMargin(marginStr);
         }
         
         setCategories(categoriesData)
@@ -107,6 +121,17 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
     
     loadData()
   }, [productIdRef.current])
+
+  // Check if financial values have changed
+  useEffect(() => {
+    if (originalCost && originalPrice && originalMargin) {
+      const costChanged = cost !== originalCost;
+      const priceChanged = price !== originalPrice;
+      const marginChanged = margin !== originalMargin;
+      
+      setFinancialsChanged(costChanged || priceChanged || marginChanged);
+    }
+  }, [cost, price, margin, originalCost, originalPrice, originalMargin]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -129,7 +154,7 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
     }
 
     try {
-      // Update using the API route instead of direct service call
+      // Update basic product data
       const response = await fetch(`/api/products/${productIdRef.current}`, {
         method: 'PATCH',
         headers: {
@@ -141,6 +166,29 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Error updating product');
+      }
+      
+      // If financials were changed, update them separately to record history
+      if (financialsChanged) {
+        const financialsData = {
+          price: parseFloat(price),
+          cost: parseFloat(cost),
+          margin: parseFloat(margin),
+          changeReason: changeReason || "Updated price/cost"
+        };
+        
+        const financialsResponse = await fetch(`/api/inventory/${productIdRef.current}/financials`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(financialsData)
+        });
+        
+        if (!financialsResponse.ok) {
+          const errorData = await financialsResponse.json();
+          throw new Error(errorData.message || 'Error updating financials');
+        }
       }
       
       router.push("/inventory?tab=products")
@@ -303,6 +351,20 @@ export default function EditProductPage({ params: pageParams }: { params: { id: 
                 />
               </div>
             </div>
+            
+            {/* Reason field that appears when financial values change */}
+            {financialsChanged && (
+              <div className="space-y-2">
+                <Label htmlFor="changeReason">Razón del Cambio de Precio/Costo</Label>
+                <Textarea
+                  id="changeReason"
+                  value={changeReason}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  placeholder="Indique el motivo del cambio de precio o costo (ej: temporada, promoción, cambio de proveedor)"
+                  className="min-h-[80px]"
+                />
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="category">Categoría</Label>

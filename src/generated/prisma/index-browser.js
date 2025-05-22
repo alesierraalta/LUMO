@@ -215,6 +215,20 @@ exports.Prisma.RolePermissionScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.PriceHistoryScalarFieldEnum = {
+  id: 'id',
+  inventoryItemId: 'inventoryItemId',
+  oldPrice: 'oldPrice',
+  newPrice: 'newPrice',
+  oldCost: 'oldCost',
+  newCost: 'newCost',
+  oldMargin: 'oldMargin',
+  newMargin: 'newMargin',
+  changeReason: 'changeReason',
+  createdAt: 'createdAt',
+  userId: 'userId'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -262,7 +276,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   Role: 'Role',
   Permission: 'Permission',
-  RolePermission: 'RolePermission'
+  RolePermission: 'RolePermission',
+  PriceHistory: 'PriceHistory'
 };
 
 /**

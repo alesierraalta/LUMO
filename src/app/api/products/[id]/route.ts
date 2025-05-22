@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
+import { auth } from '@clerk/nextjs/server';
 
 const prisma = new PrismaClient();
 
@@ -19,7 +20,9 @@ const ProductUpdateSchema = z.object({
   // Inventory fields
   quantity: z.number().int().min(0).optional(),
   minStockLevel: z.number().int().min(0).optional(),
-  location: z.string().optional()
+  location: z.string().optional(),
+  // Optional change reason for price history
+  changeReason: z.string().optional()
 });
 
 // GET handler to fetch a single product
@@ -65,8 +68,15 @@ export async function PATCH(
     const id = params.id;
     const data = await req.json();
     
+    // Get current user from auth
+    const { userId } = await auth();
+    
     // Validate input data
     const validatedData = ProductUpdateSchema.parse(data);
+    
+    // Extract change reason and remove from update data
+    const changeReason = validatedData.changeReason;
+    delete validatedData.changeReason;
     
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
@@ -120,6 +130,12 @@ export async function PATCH(
     const newPrice = updateData.price !== undefined ? updateData.price : Number(existingProduct.price);
     const newMargin = updateData.margin !== undefined ? updateData.margin : Number(existingProduct.margin);
     
+    // Check if price, cost or margin is changing
+    const isPriceChanging = updateData.price !== undefined && updateData.price !== Number(existingProduct.price);
+    const isCostChanging = updateData.cost !== undefined && updateData.cost !== Number(existingProduct.cost);
+    const isMarginChanging = updateData.margin !== undefined && updateData.margin !== Number(existingProduct.margin);
+    const isPricingChanged = isPriceChanging || isCostChanging || isMarginChanging;
+    
     // Ensure price and margin are consistent based on which one was updated
     if (updateData.margin !== undefined && updateData.price === undefined) {
       // Margin was updated, recalculate price
@@ -156,6 +172,23 @@ export async function PATCH(
         await tx.inventoryItem.update({
           where: { productId: id },
           data: inventoryData
+        });
+      }
+      
+      // Create price history record if price, cost or margin changed
+      if (isPricingChanged) {
+        await tx.priceHistory.create({
+          data: {
+            inventoryItemId: id,
+            oldPrice: Number(existingProduct.price),
+            newPrice: Number(updatedProduct.price),
+            oldCost: Number(existingProduct.cost),
+            newCost: Number(updatedProduct.cost),
+            oldMargin: Number(existingProduct.margin),
+            newMargin: Number(updatedProduct.margin),
+            changeReason: changeReason || "Actualización de precio",
+            userId: userId || undefined
+          }
         });
       }
       

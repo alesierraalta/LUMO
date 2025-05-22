@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getProductById } from "@/services/productService";
 import ProductForm from "@/components/products/product-form";
 import ProductEditWrapper from "@/components/products/product-edit-wrapper";
+import PriceHistory from "@/components/products/price-history";
 import { getApiBaseUrl } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
@@ -45,6 +46,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             categories={categories}
           />
         </ProductEditWrapper>
+        
+        {/* Display price history component */}
+        <PriceHistory productId={id} />
       </div>
     );
   } catch (error) {

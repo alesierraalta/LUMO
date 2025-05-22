@@ -252,3 +252,16 @@ export function calculatePrice(cost: number, margin: number): number {
   
   return cost * (1 + margin / 100);
 }
+
+/**
+ * Formats a number as a percentage
+ * @param value The number to format as percentage
+ * @param showSign Whether to add a sign (+ or -) for the percentage
+ * @returns Formatted percentage string
+ */
+export function formatPercentage(value: number, showSign: boolean = false): string {
+  const absValue = Math.abs(value);
+  const sign = value > 0 && showSign ? '+' : '';
+  
+  return `${sign}${absValue.toFixed(2)}%`;
+}

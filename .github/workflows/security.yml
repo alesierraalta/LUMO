@@ -1,0 +1,140 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run npm audit
+      run: |
+        npm audit --audit-level=low --json > npm-audit-results.json || true
+        if [ -s npm-audit-results.json ]; then
+          echo "🔍 Security vulnerabilities found in dependencies:"
+          npm audit --audit-level=low
+        else
+          echo "✅ No security vulnerabilities found in dependencies"
+        fi
+
+    - name: Check for sensitive data
+      run: |
+        echo "🔍 Scanning for potential sensitive data..."
+        
+        # Check for common patterns that might indicate secrets
+        if grep -r -E "(password|secret|key|token)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ | grep -v "// " | grep -v "//" | head -10; then
+          echo "⚠️ Found potential sensitive data patterns. Please review."
+        else
+          echo "✅ No obvious sensitive data patterns found"
+        fi
+
+    - name: Check environment variable usage
+      run: |
+        echo "🔍 Checking environment variable patterns..."
+        
+        # Look for hardcoded values that should be environment variables
+        if grep -r -E "(http://|https://)" --include="*.ts" --include="*.tsx" src/ | grep -v "localhost" | grep -v "example.com" | head -5; then
+          echo "⚠️ Found hardcoded URLs. Consider using environment variables."
+        fi
+
+    - name: Check for TODO/FIXME security items
+      run: |
+        echo "🔍 Checking for security-related TODOs..."
+        
+        if grep -r -i -E "(TODO|FIXME).*(security|auth|password|token|secret)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ | head -10; then
+          echo "⚠️ Found security-related TODOs. Please review and address."
+        else
+          echo "✅ No security-related TODOs found"
+        fi
+
+    - name: Check Dockerfile security
+      run: |
+        echo "🔍 Checking Dockerfile security practices..."
+        
+        if [ -f Dockerfile ]; then
+          if grep -q "USER root" Dockerfile; then
+            echo "⚠️ Dockerfile runs as root user. Consider using a non-root user."
+          fi
+          
+          if ! grep -q "USER " Dockerfile; then
+            echo "⚠️ Dockerfile doesn't specify a user. Consider adding a non-root user."
+          fi
+          
+          if grep -q "ADD.*http" Dockerfile; then
+            echo "⚠️ Dockerfile uses ADD with HTTP URLs. Consider using COPY with verified downloads."
+          fi
+          
+          echo "✅ Dockerfile security check completed"
+        fi
+
+    - name: Check package.json for security
+      run: |
+        echo "🔍 Checking package.json security settings..."
+        
+        if grep -q '"start":.*"next start"' package.json; then
+          echo "✅ Using Next.js production server"
+        fi
+        
+        # Check for security-related packages
+        if grep -q -E "(helmet|cors|express-rate-limit)" package.json; then
+          echo "✅ Found security-related packages"
+        else
+          echo "ℹ️ Consider adding security packages like helmet, cors, or rate limiting"
+        fi
+
+    - name: Generate security report
+      if: always()
+      run: |
+        echo "📊 Security Scan Summary" > security-report.md
+        echo "========================" >> security-report.md
+        echo "" >> security-report.md
+        echo "Scan Date: $(date -u)" >> security-report.md
+        echo "Repository: ${{ github.repository }}" >> security-report.md
+        echo "Commit: ${{ github.sha }}" >> security-report.md
+        echo "" >> security-report.md
+        
+        if [ -s npm-audit-results.json ]; then
+          echo "🔍 NPM Audit Results:" >> security-report.md
+          echo "\`\`\`" >> security-report.md
+          npm audit --audit-level=low >> security-report.md || true
+          echo "\`\`\`" >> security-report.md
+        else
+          echo "✅ NPM Audit: No vulnerabilities found" >> security-report.md
+        fi
+        
+        echo "" >> security-report.md
+        echo "For detailed results, check the workflow logs." >> security-report.md
+
+    - name: Upload security report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.md
+        retention-days: 30
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f npm-audit-results.json security-report.md 

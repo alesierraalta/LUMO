@@ -7,8 +7,10 @@ on:
     branches: [ main, develop ]
 
 env:
-  DATABASE_URL: postgresql://test:test@localhost:5432/test
-  POSTGRES_PRISMA_URL: postgresql://test:test@localhost:5432/test
+  # Use SQLite for testing since the app supports it
+  DATABASE_URL: file:./test.db
+  CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST || 'test_clerk_key' }}
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_TEST || 'test_clerk_pub_key' }}
 
 jobs:
   test:
@@ -27,11 +29,25 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+    - name: Setup test database
+      run: |
+        npx prisma db push --accept-data-loss
+        echo "Database setup completed"
+
     - name: Run ESLint
       run: npm run lint
 
     - name: Run TypeScript type check
       run: npx tsc --noEmit
+
+    - name: Check Prisma schema
+      run: npx prisma validate
+
+    - name: Check for Prisma migrations drift
+      run: npx prisma db push --accept-data-loss --dry-run
 
     - name: Build application
       run: npm run build
@@ -39,16 +55,52 @@ jobs:
     - name: Run security audit
       run: npm audit --audit-level=high --omit=dev || true
 
+    - name: Check for vulnerable dependencies
+      run: |
+        npm audit --audit-level=moderate --json > audit-results.json || true
+        if [ -s audit-results.json ]; then
+          echo "Security vulnerabilities found:"
+          cat audit-results.json
+        fi
+
     - name: Test Docker build
       run: docker build -t lumo-app:test .
 
     - name: Test Docker container
       run: |
         docker run -d --name test-container -p 3001:3000 \
-          -e DATABASE_URL="${DATABASE_URL}" \
-          -e POSTGRES_PRISMA_URL="${POSTGRES_PRISMA_URL}" \
+          -e DATABASE_URL="file:./app.db" \
+          -e CLERK_SECRET_KEY="${CLERK_SECRET_KEY}" \
+          -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}" \
           lumo-app:test
-        sleep 40
-        curl -f http://localhost:3001/api/health || exit 1
+        
+        # Wait for container to be ready
+        echo "Waiting for container to start..."
+        for i in {1..30}; do
+          if docker exec test-container curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
+            echo "Container is ready!"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "Container failed to start properly"
+            docker logs test-container
+            exit 1
+          fi
+          sleep 2
+        done
+        
+        # Test health endpoint
+        docker exec test-container curl -f http://localhost:3000/api/health
+        
+        # Test that the app serves the main page
+        docker exec test-container curl -f http://localhost:3000 >/dev/null
+        
+        # Cleanup
         docker stop test-container
-        docker rm test-container 
+        docker rm test-container
+
+    - name: Cleanup test artifacts
+      if: always()
+      run: |
+        rm -f test.db audit-results.json
+        docker image prune -f --filter label=stage=test || true 

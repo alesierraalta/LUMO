@@ -13,15 +13,8 @@ const CategorySchema = z.object({
 // GET /api/categories - List all categories
 export async function GET() {
   try {
-    // Verificar permisos antes de devolver datos
-    const authCheck = await checkPermissionsWithDebug("admin");
-    
-    // Si el usuario no está autorizado, devolver un array vacío
-    if (!authCheck.authorized) {
-      return NextResponse.json([]);
-    }
-    
-    // Get all categories without trying to count related products
+    // Allow all authenticated users to view categories for product assignment
+    // Only restrict creation/modification to admins
     const categories = await prisma.category.findMany({
       orderBy: {
         name: "asc",

@@ -125,11 +125,21 @@ exports.Prisma.CategoryScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.LocationScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.InventoryItemScalarFieldEnum = {
   id: 'id',
   quantity: 'quantity',
   minStockLevel: 'minStockLevel',
   location: 'location',
+  locationId: 'locationId',
   lastUpdated: 'lastUpdated',
   active: 'active',
   categoryId: 'categoryId',
@@ -269,6 +279,7 @@ exports.SaleStatus = exports.$Enums.SaleStatus = {
 
 exports.Prisma.ModelName = {
   Category: 'Category',
+  Location: 'Location',
   InventoryItem: 'InventoryItem',
   StockMovement: 'StockMovement',
   Sale: 'Sale',

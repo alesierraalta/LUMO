@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, Home, Settings, Menu, X, Users, AlertCircle, Loader2 } from "lucide-react";
+import { BarChart3, Boxes, Home, Settings, Menu, X, Users, AlertCircle, Loader2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppAuth } from "@/components/auth/auth-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

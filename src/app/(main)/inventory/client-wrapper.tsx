@@ -25,7 +25,7 @@ export default function InventoryClientWrapper({
   const handleTabChange = (tab: 'all' | 'normal' | 'low' | 'out_of_stock') => {
     setActiveTab(tab);
     
-    // Update URL with the new tab
+    // Update URL with the new tab without causing navigation
     const params = new URLSearchParams(searchParams.toString());
     
     if (tab === 'all') {
@@ -34,9 +34,9 @@ export default function InventoryClientWrapper({
       params.set('tab', tab);
     }
     
-    // Create the new URL with updated search params
+    // Use replace instead of push to update URL without navigation
     const newUrl = `${pathname}?${params.toString()}`;
-    router.push(newUrl);
+    router.replace(newUrl, { scroll: false });
   };
 
   return (

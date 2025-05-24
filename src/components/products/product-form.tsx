@@ -31,6 +31,9 @@ import { calculateMargin, calculatePrice, createProductApi, updateProductApi } f
 // Import Radio Group components
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+// Import icons
+import { Tag, MapPin, ExternalLink } from "lucide-react";
+
 // Esquema de validación para el formulario
 const productSchema = z.object({
   name: z.string().min(1, { message: "El nombre del producto es requerido" }).max(100, { message: "El nombre no puede exceder los 100 caracteres" }),
@@ -92,6 +95,14 @@ type ProductFormProps = {
   categories: any[];
 };
 
+// Tipo para ubicaciones
+type Location = {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+};
+
 export default function ProductForm({
   initialData,
   categories,
@@ -99,9 +110,67 @@ export default function ProductForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
   // Change default pricing mode to margin
   const [pricingMode, setPricingMode] = useState<"price" | "margin">("margin");
   const [priceChanged, setPriceChanged] = useState(false);
+
+  // Initialize selectors when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      const categoryValue = initialData.categoryId || "uncategorized";
+      setSelectedCategory(categoryValue);
+      setSelectedLocation(initialData.location || "no-location");
+    } else {
+      setSelectedCategory("uncategorized");
+      setSelectedLocation("no-location");
+    }
+  }, [initialData]);
+
+  // Cargar ubicaciones
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch("/api/locations");
+        if (response.ok) {
+          const locationsData = await response.json();
+          // Filter out migration descriptions and clean up location data
+          const cleanedLocations = locationsData.map((location: Location) => ({
+            ...location,
+            description: location.description?.includes("migrada automáticamente") 
+              ? undefined 
+              : location.description
+          }));
+          setLocations(cleanedLocations);
+        } else {
+          console.error("Error fetching locations");
+        }
+      } catch (error) {
+        console.error("Error fetching locations:", error);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+
+    fetchLocations();
+  }, []);
+
+  // Update location selection when locations are loaded and we have initial data
+  useEffect(() => {
+    if (!loadingLocations && initialData?.location && locations.length > 0) {
+      // Check if the initial location exists in our cleaned locations
+      const foundLocation = locations.find(loc => loc.name === initialData.location);
+      if (foundLocation) {
+        setSelectedLocation(foundLocation.name);
+      } else {
+        // If not found, check if it's in the legacy format and try to find by name
+        setSelectedLocation("no-location");
+      }
+    }
+  }, [loadingLocations, locations, initialData]);
 
   // Configurar el formulario con react-hook-form
   const {
@@ -222,6 +291,10 @@ export default function ProductForm({
   // Initialize calculations on component mount
   useEffect(() => {
     if (initialData) {
+      // Set form values properly
+      setValue("categoryId", initialData.categoryId || "uncategorized");
+      setValue("location", initialData.location || "");
+      
       // If we have initial data, ensure margin is calculated correctly
       const initialCost = Number(initialData.cost || 0);
       const initialPrice = Number(initialData.price || 0);
@@ -295,19 +368,19 @@ export default function ProductForm({
   };
 
   return (
-    <Card>
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>{initialData ? "Editar Producto" : "Nuevo Producto"}</CardTitle>
       </CardHeader>
       {error && (
-        <div className="px-6 mb-2">
+        <div className="px-4 sm:px-6 mb-2">
           <div className="bg-destructive/20 text-destructive p-3 rounded-md text-sm">
             {error}
           </div>
         </div>
       )}
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
-        <div className="px-6 space-y-6">
+        <div className="px-4 sm:px-6 space-y-6">
           {/* Form fields */}
           <div className="grid gap-4">
             <div className="grid gap-2">
@@ -327,6 +400,7 @@ export default function ProductForm({
               <Textarea
                 id="description"
                 placeholder="Descripción del producto"
+                className="min-h-[80px] resize-y"
                 {...register("description")}
               />
               {errors.description && (
@@ -352,20 +426,20 @@ export default function ProductForm({
               <RadioGroup 
                 value={pricingMode} 
                 onValueChange={handlePricingModeChange}
-                className="flex flex-row gap-4"
+                className="flex flex-col sm:flex-row gap-4"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="price" id="price-mode" />
-                  <Label htmlFor="price-mode">Especificar Precio</Label>
+                  <Label htmlFor="price-mode" className="text-sm">Especificar Precio</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="margin" id="margin-mode" />
-                  <Label htmlFor="margin-mode">Especificar Margen (Cálculo automático del precio)</Label>
+                  <Label htmlFor="margin-mode" className="text-sm">Especificar Margen (Cálculo automático del precio)</Label>
                 </div>
               </RadioGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="cost">Costo</Label>
                 <Input
@@ -449,39 +523,85 @@ export default function ProductForm({
               </div>
             )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="categoryId">Categoría</Label>
-              <Select
-                defaultValue={initialData?.categoryId || "uncategorized"}
-                onValueChange={(value) => setValue("categoryId", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uncategorized">Sin categoría</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="categoryId" className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  Categoría
+                </Label>
+                
+                <Select
+                  key={`category-${initialData?.id || 'new'}-${selectedCategory}`}
+                  value={selectedCategory}
+                  onValueChange={(value) => {
+                    setSelectedCategory(value);
+                    setValue("categoryId", value === "uncategorized" ? undefined : value);
+                  }}
+                >
+                  <SelectTrigger className="h-10">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Seleccionar categoría" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uncategorized">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        Sin categoría
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {categories.length > 0 ? categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-primary" />
+                          {category.name}
+                        </div>
+                      </SelectItem>
+                    )) : (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          Cargando categorías...
+                        </div>
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.categoryId && (
+                  <p className="text-sm text-destructive">{errors.categoryId.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  <span>¿No encuentras tu categoría? </span>
+                  <a 
+                    href="/categories" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Crear nueva categoría
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </p>
+              </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="imageUrl">URL de Imagen</Label>
-              <Input
-                id="imageUrl"
-                placeholder="https://ejemplo.com/imagen.jpg"
-                {...register("imageUrl")}
-              />
+              <div className="grid gap-2">
+                <Label htmlFor="imageUrl">URL de Imagen</Label>
+                <Input
+                  id="imageUrl"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  {...register("imageUrl")}
+                />
+                {errors.imageUrl && (
+                  <p className="text-sm text-destructive">{errors.imageUrl.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Inventory Fields */}
             <div className="border-t pt-4 mt-4">
               <h3 className="text-lg font-medium mb-4">Información de Inventario</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="grid gap-2">
                   <Label htmlFor="quantity">Cantidad Inicial</Label>
                   <Input
@@ -509,36 +629,100 @@ export default function ProductForm({
                   />
                   {errors.minStockLevel && (
                     <p className="text-sm text-destructive">{errors.minStockLevel.message}</p>
-              )}
+                  )}
                 </div>
                 
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    {...register("location")}
-                    placeholder="Almacén, Estante, etc."
-                  />
+                <div className="grid gap-2 sm:col-span-2 lg:col-span-1">
+                  <Label htmlFor="location" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Ubicación
+                  </Label>
+                  <Select
+                    key={`location-${initialData?.id || 'new'}`}
+                    value={selectedLocation}
+                    onValueChange={(value) => {
+                      setSelectedLocation(value);
+                      setValue("location", value === "no-location" ? "" : value);
+                    }}
+                    disabled={loadingLocations}
+                  >
+                    <SelectTrigger className={`h-10 ${loadingLocations ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <div className="flex items-center gap-2">
+                        <MapPin className={`h-4 w-4 ${loadingLocations ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
+                        <SelectValue placeholder={
+                          loadingLocations ? "Cargando ubicaciones..." : "Seleccionar ubicación"
+                        } />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no-location">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          Sin ubicación
+                        </div>
+                      </SelectItem>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.name}>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-primary mt-0.5" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{location.name}</span>
+                              {location.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {location.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {locations.length === 0 && !loadingLocations && (
+                        <SelectItem value="no-location" disabled>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            No hay ubicaciones disponibles
+                          </div>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    <span>¿No encuentras tu ubicación? </span>
+                    <a 
+                      href="/locations" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      Crear nueva ubicación
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         </div>
         
-        <div className="px-6 py-4 flex justify-end gap-4">
+        <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-end gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push("/products")}
             disabled={isLoading}
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
             {isLoading ? "Guardando..." : initialData ? "Actualizar" : "Crear"}
           </Button>
         </div>
       </form>
     </Card>
   );
-} 
+}

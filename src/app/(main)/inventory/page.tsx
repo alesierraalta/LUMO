@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3, BatteryLow } from "lucide-react";
+import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3, BatteryLow, MapPin } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -181,6 +181,154 @@ function CategoriesSection({ categories }: { categories: any[] }) {
   );
 }
 
+// Componente Sección de Ubicaciones
+function LocationsSection({ locations }: { locations: any[] }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 shadow-sm">
+            <MapPin className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              Ubicaciones de Almacén
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Gestiona las ubicaciones físicas de tu inventario
+              <Badge variant="outline" className="ml-2 font-medium text-xs bg-background">
+                {locations.length} disponibles
+              </Badge>
+            </p>
+          </div>
+        </div>
+        <Button 
+          asChild 
+          className="mt-4 sm:mt-0 transition-all hover:shadow-md bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+        >
+          <Link href="/locations" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            <span>Añadir Ubicación</span>
+          </Link>
+        </Button>
+      </div>
+
+      {locations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border-2 border-dashed border-primary/20 transition-all overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background/80 opacity-70"></div>
+          
+          <div className="relative z-10">
+            <div className="p-5 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 shadow-md mb-6 relative">
+              <div className="absolute inset-0 rounded-full animate-pulse bg-primary/5"></div>
+              <MapPin className="h-16 w-16 text-primary" />
+            </div>
+            
+            <h3 className="text-2xl font-semibold mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              No Se Encontraron Ubicaciones
+            </h3>
+            
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto px-6 leading-relaxed">
+              Aún no has creado ubicaciones de almacén. Las ubicaciones te ayudan a organizar físicamente tu inventario y facilitar la búsqueda de productos.
+            </p>
+            
+            <Button 
+              asChild 
+              size="lg" 
+              className="px-6 py-6 h-auto text-base transition-all duration-300 hover:shadow-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+            >
+              <Link href="/locations" className="flex items-center gap-2">
+                <div className="p-1.5 rounded-full bg-primary-foreground/20">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <span>Crear Primera Ubicación</span>
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {locations.map(location => (
+            <Card 
+              key={location.id} 
+              className="group overflow-hidden transition-all duration-300 hover:shadow-xl border border-border/40 hover:border-primary/30 relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              
+              <CardHeader className="pb-2 space-y-2 relative z-10">
+                <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full opacity-70 transform translate-x-6 -translate-y-6" />
+                
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors duration-300 shadow-sm">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="font-semibold">{location.name}</span>
+                </CardTitle>
+                
+                {location.description && !location.description.includes("migrada automáticamente") && (
+                  <CardDescription className="line-clamp-2 text-sm">
+                    {location.description}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              
+              <CardContent className="py-4 relative z-10">
+                <div className="min-h-[60px] flex items-center">
+                  {!location.description || location.description.includes("migrada automáticamente") ? (
+                    <p className="text-muted-foreground text-sm italic">Sin descripción</p>
+                  ) : null}
+                </div>
+              </CardContent>
+              
+              <CardFooter className="border-t p-4 flex justify-between items-center bg-muted/5 relative z-10">
+                <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 bg-background/80 shadow-sm group-hover:bg-background group-hover:shadow-md transition-all duration-300">
+                  <PackageOpen className="h-3.5 w-3.5 text-primary/70" />
+                  <span className="text-xs font-medium">{location._count?.inventory || 0} productos</span>
+                </Badge>
+                
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" asChild className="h-9 px-2.5 rounded-md hover:bg-background">
+                    <Link href="/locations">
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Gestionar
+                    </Link>
+                  </Button>
+                  
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    asChild 
+                    className="h-9 px-4 rounded-md bg-gradient-to-br from-background to-muted hover:from-primary hover:to-primary hover:text-primary-foreground transition-all duration-300 shadow-sm hover:shadow-md"
+                  >
+                    <Link href={`/inventory?location=${location.id}`}>
+                      Ver
+                    </Link>
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+      
+      <div className="flex justify-center mt-10">
+        <Button 
+          variant="outline" 
+          size="lg" 
+          asChild 
+          className="px-8 py-6 h-auto text-base rounded-lg bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+        >
+          <Link href="/locations" className="flex items-center gap-2">
+            <span>Gestionar Todas las Ubicaciones</span>
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1">
+              <path d="M8.14645 3.14645C8.34171 2.95118 8.65829 2.95118 8.85355 3.14645L12.8536 7.14645C13.0488 7.34171 13.0488 7.65829 12.8536 7.85355L8.85355 11.8536C8.65829 12.0488 8.34171 12.0488 8.14645 11.8536C7.95118 11.6583 7.95118 11.3417 8.14645 11.1464L11.2929 8H2.5C2.22386 8 2 7.77614 2 7.5C2 7.22386 2.22386 7 2.5 7H11.2929L8.14645 3.85355C7.95118 3.65829 7.95118 3.34171 8.14645 3.14645Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default async function InventoryPage({
   searchParams
 }: {
@@ -200,18 +348,36 @@ export default async function InventoryPage({
   try {
     let inventoryItems: any[] = [];
     let categories: any[] = [];
+    let locations: any[] = [];
 
     // Solo cargar datos si el usuario está autorizado
     if (authCheck.authorized) {
-      // Usar consulta basada en string para evitar errores de TypeScript con discrepancias de esquema
+      // Consulta optimizada con todas las relaciones necesarias
       inventoryItems = await prisma.$queryRaw`
         SELECT 
-          i.id, i.name, i.description, i.sku, 
-          i.price, i.cost, i.margin, 
-          i.quantity, i."minStockLevel", 
-          i.location, i."imageUrl", i.active, 
-          i."categoryId", i."lastUpdated"
-        FROM inventory_items i 
+          i.id,
+          i.name,
+          i.description,
+          i.sku,
+          i.price,
+          i.cost,
+          i.margin,
+          i."categoryId",
+          i."locationId",
+          i.location as legacy_location,
+          i.quantity,
+          i."minStockLevel",
+          i."lastUpdated",
+          i.active,
+          i."createdAt",
+          i."updatedAt",
+          c.name as category_name,
+          l.name as location_name,
+          l.description as location_description
+        FROM inventory_items i
+        LEFT JOIN categories c ON i."categoryId" = c.id
+        LEFT JOIN locations l ON i."locationId" = l.id
+        WHERE i.active = true
         ORDER BY i."updatedAt" DESC
       ` as any[];
 
@@ -223,18 +389,38 @@ export default async function InventoryPage({
           }
         }
       }) as any[];
+
+      // Obtener ubicaciones con recuento de inventario
+      locations = await prisma.location.findMany({
+        include: {
+          _count: {
+            select: { inventory: true }
+          }
+        }
+      }) as any[];
     }
 
     // Unión manual para evitar problemas de serialización (solo si hay datos)
     const itemsWithCategories = authCheck.authorized 
       ? inventoryItems.map(item => {
-          const category = item.categoryId 
-            ? categories.find(c => c.id === item.categoryId) 
+          const category = item.category_name 
+            ? { id: item.categoryId, name: item.category_name }
+            : null;
+
+          const location = item.location_name
+            ? { 
+                id: item.locationId, 
+                name: item.location_name, 
+                description: item.location_description 
+              }
             : null;
           
           return {
             ...item,
-            category
+            category,
+            locationRelation: location,
+            // Mantener compatibilidad con el campo legacy
+            location: item.legacy_location || item.location_name
           };
         })
       : [];
@@ -400,6 +586,9 @@ export default async function InventoryPage({
 
         {/* Sección de categorías */}
         <CategoriesSection categories={categories} />
+
+        {/* Sección de ubicaciones */}
+        <LocationsSection locations={locations} />
       </div>
     );
   } catch (error) {

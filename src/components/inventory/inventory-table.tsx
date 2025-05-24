@@ -83,6 +83,10 @@ type InventoryItem = {
   active: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
+  locationRelation?: {
+    name: string;
+    description?: string;
+  };
   [key: string]: any; // Allow any other properties
 };
 
@@ -160,9 +164,14 @@ export default function InventoryTable({
     
     // Apply category filter
     if (categoryFilter !== "all") {
-      results = results.filter((item) => 
-        item.categoryId === categoryFilter
-      );
+      results = results.filter((item) => {
+        // Handle "uncategorized" filter
+        if (categoryFilter === "uncategorized") {
+          return !item.categoryId || item.categoryId === null;
+        }
+        // Handle specific category filter
+        return item.categoryId === categoryFilter;
+      });
     }
     
     // Apply search filter (case insensitive)
@@ -277,10 +286,12 @@ export default function InventoryTable({
   
   // Handle stock status tab change
   const handleStockStatusChange = (status: 'all' | 'normal' | 'low' | 'out_of_stock') => {
+    // Always update local state first for immediate UI response
+    setStockStatusFilter(status);
+    
+    // If onTabChange is provided, call it for URL updates
     if (onTabChange) {
       onTabChange(status);
-    } else {
-      setStockStatusFilter(status);
     }
   };
 
@@ -328,20 +339,29 @@ export default function InventoryTable({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Select 
-            defaultValue="all" 
+            value={categoryFilter}
             onValueChange={(value) => setCategoryFilter(value)}
           >
             <SelectTrigger className="w-full sm:w-[180px] bg-secondary" aria-label="Filtrar por categoría">
               <div className="flex items-center gap-2">
-                <Tag className="h-3.5 w-3.5" />
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                 <SelectValue placeholder="Filtrar por categoría" />
               </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="font-medium">Todas las Categorías</SelectItem>
+              <SelectItem value="uncategorized" className="text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-3.5 w-3.5" />
+                  Sin categoría
+                </div>
+              </SelectItem>
               {categories.map(category => (
                 <SelectItem key={category.id} value={category.id}>
-                  {category.name}
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-3.5 w-3.5 text-primary" />
+                    {category.name}
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -457,59 +477,66 @@ export default function InventoryTable({
           <TableHeader>
             <TableRow>
               <TableHead 
-                className="w-[80px] cursor-pointer hover:text-primary"
+                className="w-[80px] cursor-pointer hover:text-primary py-3"
                 onClick={() => handleSort('sku')}
               >
-                <div className="flex items-center">
-                  SKU {renderSortIcon('sku')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">SKU</span>
+                  {renderSortIcon('sku')}
                 </div>
               </TableHead>
               <TableHead 
-                className="min-w-[150px] cursor-pointer hover:text-primary"
+                className="min-w-[150px] cursor-pointer hover:text-primary py-3"
                 onClick={() => handleSort('name')}
               >
-                <div className="flex items-center">
-                  Producto {renderSortIcon('name')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">Producto</span>
+                  {renderSortIcon('name')}
                 </div>
               </TableHead>
-              <TableHead className="min-w-[200px]">Descripción</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead className="min-w-[200px] py-3">Descripción</TableHead>
+              <TableHead className="py-3">Categoría</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary py-3"
                 onClick={() => handleSort('price')}
               >
-                <div className="flex items-center">
-                  Precio {renderSortIcon('price')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">Precio</span>
+                  {renderSortIcon('price')}
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary py-3"
                 onClick={() => handleSort('cost')}
               >
-                <div className="flex items-center">
-                  Costo {renderSortIcon('cost')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">Costo</span>
+                  {renderSortIcon('cost')}
                 </div>
               </TableHead>
-              <TableHead>Margen</TableHead>
+              <TableHead className="py-3">Margen</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary py-3"
                 onClick={() => handleSort('quantity')}
               >
-                <div className="flex items-center">
-                  Stock Actual {renderSortIcon('quantity')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">Stock Actual</span>
+                  {renderSortIcon('quantity')}
                 </div>
               </TableHead>
-              <TableHead>Nivel Mínimo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="py-3">Nivel Mínimo</TableHead>
+              <TableHead className="py-3">Estado</TableHead>
+              <TableHead className="py-3">Ubicación</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary py-3 min-w-[140px]"
                 onClick={() => handleSort('lastUpdated')}
               >
-                <div className="flex items-center">
-                  Última Actualización {renderSortIcon('lastUpdated')}
+                <div className="flex items-center min-h-[24px] gap-1">
+                  <span className="whitespace-nowrap">Última Actualización</span>
+                  {renderSortIcon('lastUpdated')}
                 </div>
               </TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="text-right py-3">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -593,6 +620,27 @@ export default function InventoryTable({
                     </div>
                     <Progress value={stockPercentage} className="h-1 w-[60px]" />
                   </TableCell>
+                  <TableCell>
+                    {item.locationRelation ? (
+                      <div className="flex items-center text-sm">
+                        <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
+                        <span>{item.locationRelation.name}</span>
+                        {item.locationRelation.description && (
+                          <span className="text-muted-foreground text-xs ml-2">
+                            - {item.locationRelation.description}
+                          </span>
+                        )}
+                      </div>
+                    ) : item.location ? (
+                      <div className="flex items-center text-sm text-amber-600">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        <span>{item.location}</span>
+                        <span className="text-xs ml-2">(legacy)</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm italic">Sin ubicación</span>
+                    )}
+                  </TableCell>
                   <TableCell>                    {formatDate(ensureValidDate(item.lastUpdated))}
                   </TableCell>
                   <TableCell className="text-right">
@@ -647,7 +695,7 @@ export default function InventoryTable({
             })}
             {filteredItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center">
+                <TableCell colSpan={13} className="h-24 text-center">
                   No se encontraron items en el inventario.
                 </TableCell>
               </TableRow>

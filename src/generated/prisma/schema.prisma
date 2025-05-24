@@ -20,29 +20,44 @@ model Category {
   @@map("categories")
 }
 
+model Location {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  inventory   InventoryItem[]
+
+  @@map("locations")
+}
+
 model InventoryItem {
-  id             String            @id @default(cuid())
-  quantity       Int               @default(0)
-  minStockLevel  Int               @default(5)
-  location       String?
-  lastUpdated    DateTime          @default(now())
-  active         Boolean           @default(true)
-  categoryId     String?
-  cost           Float             @default(0)
-  createdAt      DateTime          @default(now())
-  description    String?
-  imageUrl       String?
-  margin         Float             @default(0)
-  name           String
-  price          Float
-  sku            String            @unique
-  updatedAt      DateTime          @updatedAt
-  category       Category?         @relation(fields: [categoryId], references: [id])
-  transactions   SaleTransaction[]
-  stockMovements StockMovement[]
-  priceHistory   PriceHistory[]
+  id               String            @id @default(cuid())
+  quantity         Int               @default(0)
+  minStockLevel    Int               @default(5)
+  location         String? // Mantener para compatibilidad temporalmente
+  locationId       String? // Nueva relación
+  lastUpdated      DateTime          @default(now())
+  active           Boolean           @default(true)
+  categoryId       String?
+  cost             Float             @default(0)
+  createdAt        DateTime          @default(now())
+  description      String?
+  imageUrl         String?
+  margin           Float             @default(0)
+  name             String
+  price            Float
+  sku              String            @unique
+  updatedAt        DateTime          @updatedAt
+  category         Category?         @relation(fields: [categoryId], references: [id])
+  locationRelation Location?         @relation(fields: [locationId], references: [id])
+  transactions     SaleTransaction[]
+  stockMovements   StockMovement[]
+  priceHistory     PriceHistory[]
 
   @@index([categoryId])
+  @@index([locationId])
   @@map("inventory_items")
 }
 

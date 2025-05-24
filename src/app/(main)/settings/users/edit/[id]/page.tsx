@@ -14,6 +14,7 @@ import UserRoleForm from "@/components/auth/user-role-form";
 import Protected from "@/components/auth/protected";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/auth";
+import { formatDate } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{
@@ -79,7 +80,7 @@ export default async function EditUserRolePage({ params }: PageProps) {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Created At</h3>
-                <p>{new Date(user.createdAt).toLocaleDateString()}</p>
+                <p>{formatDate(user.createdAt)}</p>
               </div>
             </div>
 

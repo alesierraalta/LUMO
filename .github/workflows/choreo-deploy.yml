@@ -40,7 +40,14 @@ jobs:
       run: npm ci
 
     - name: Generate Prisma client
-      run: npx prisma generate
+      run: |
+        echo "Verificando la estructura del directorio prisma..."
+        ls -la prisma/
+        
+        echo "Generando el cliente Prisma..."
+        npx prisma generate
+        
+        echo "✅ Cliente Prisma generado correctamente"
 
     - name: Run ESLint
       run: npm run lint
@@ -68,8 +75,16 @@ jobs:
 
     - name: Deploy to Choreo
       run: |
-        # Create artifact package
-        tar -czf deploy.tar.gz .next node_modules public package.json next.config.ts prisma
+        # Create artifact package (incluye todo lo necesario para Prisma)
+        tar -czf deploy.tar.gz \
+          .next \
+          node_modules \
+          public \
+          package.json \
+          package-lock.json \
+          next.config.ts \
+          tsconfig.json \
+          prisma
         
         # Deploy to Choreo component
         choreo components deploy \

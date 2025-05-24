@@ -3,9 +3,20 @@
 # Stage 1: Install dependencies and build
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Copiar package.json y package-lock.json primero
 COPY package.json package-lock.json ./
+
+# Copiar el directorio prisma antes de instalar dependencias
+COPY prisma ./prisma/
+
+# Instalar dependencias
 RUN npm ci --omit=dev
+
+# Copiar el resto de los archivos
 COPY . .
+
+# Construir la aplicación
 RUN npm run build
 
 # Stage 2: Production image

@@ -28,6 +28,19 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Verify Prisma setup
+      run: |
+        echo "🔍 Verificando la estructura del directorio prisma..."
+        ls -la prisma/
+        
+        echo "🔍 Verificando el archivo schema.prisma..."
+        if [ -f prisma/schema.prisma ]; then
+          echo "✅ schema.prisma encontrado correctamente"
+        else
+          echo "❌ ERROR: schema.prisma no encontrado"
+          exit 1
+        fi
+
     - name: Run npm audit
       run: |
         npm audit --audit-level=low --json > npm-audit-results.json || true

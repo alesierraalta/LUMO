@@ -184,13 +184,14 @@ function CategoriesSection({ categories }: { categories: any[] }) {
 export default async function InventoryPage({
   searchParams
 }: {
-  searchParams: { tab?: string }
+  searchParams: Promise<{ tab?: string }>
 }) {
   // Get the tab from the URL parameters, defaulting to 'all'
-  const activeTab = searchParams.tab === 'normal' || 
-                   searchParams.tab === 'low' || 
-                   searchParams.tab === 'out_of_stock' 
-                   ? searchParams.tab 
+  const resolvedSearchParams = await searchParams;
+  const activeTab = resolvedSearchParams.tab === 'normal' || 
+                   resolvedSearchParams.tab === 'low' || 
+                   resolvedSearchParams.tab === 'out_of_stock' 
+                   ? resolvedSearchParams.tab 
                    : 'all';
 
   // Verificar permisos para mostrar datos reales

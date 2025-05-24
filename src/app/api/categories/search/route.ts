@@ -20,20 +20,18 @@ export async function GET(req: Request) {
           {
             name: {
               contains: query,
-              mode: 'insensitive',
             },
           },
           {
             description: {
               contains: query,
-              mode: 'insensitive',
             },
           },
         ],
       },
       include: {
         _count: {
-          select: { products: true },
+          select: { inventory: true },
         },
       },
       orderBy: {

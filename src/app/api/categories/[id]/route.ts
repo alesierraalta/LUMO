@@ -10,11 +10,12 @@ const CategoryUpdateSchema = z.object({
 // GET /api/categories/[id] - Get a single category
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const category = await prisma.category.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     });
 
     if (!category) {
@@ -37,14 +38,15 @@ export async function GET(
 // PUT /api/categories/[id] - Update a category
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const body = await req.json();
     const validatedData = CategoryUpdateSchema.parse(body);
 
     const category = await prisma.category.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: validatedData,
     });
 
@@ -75,11 +77,12 @@ export async function PUT(
 // DELETE /api/categories/[id] - Delete a category
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     await prisma.category.delete({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     });
 
     return new NextResponse(null, { status: 204 });

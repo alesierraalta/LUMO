@@ -5,18 +5,19 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
 
-async function getSalesReport(searchParams: { [key: string]: string | string[] | undefined }) {
+async function getSalesReport(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
+  const resolvedSearchParams = await searchParams;
   const params = new URLSearchParams();
   
   // Add search params to query
-  Object.entries(searchParams).forEach(([key, value]) => {
+  Object.entries(resolvedSearchParams).forEach(([key, value]) => {
     if (value) params.append(key, value.toString());
   });
 
   // Validate dates if they exist in the search params
-  if (searchParams.startDate) {
+  if (resolvedSearchParams.startDate) {
     try {
-      const startDate = new Date(searchParams.startDate.toString());
+      const startDate = new Date(resolvedSearchParams.startDate.toString());
       if (isNaN(startDate.getTime())) {
         throw new Error('Invalid start date');
       }
@@ -26,9 +27,9 @@ async function getSalesReport(searchParams: { [key: string]: string | string[] |
     }
   }
 
-  if (searchParams.endDate) {
+  if (resolvedSearchParams.endDate) {
     try {
-      const endDate = new Date(searchParams.endDate.toString());
+      const endDate = new Date(resolvedSearchParams.endDate.toString());
       if (isNaN(endDate.getTime())) {
         throw new Error('Invalid end date');
       }
@@ -49,11 +50,12 @@ async function getSalesReport(searchParams: { [key: string]: string | string[] |
   return response.json();
 }
 
-export default async function SalesReportPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+interface PageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function SalesReportPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
   const { sales, totals } = await getSalesReport(searchParams);
 
   return (
@@ -68,7 +70,7 @@ export default async function SalesReportPage({
             <Input
               type="date"
               id="startDate"
-              defaultValue={searchParams.startDate?.toString()}
+              defaultValue={resolvedSearchParams.startDate?.toString()}
             />
             <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
           </div>
@@ -79,7 +81,7 @@ export default async function SalesReportPage({
             <Input
               type="date"
               id="endDate"
-              defaultValue={searchParams.endDate?.toString()}
+              defaultValue={resolvedSearchParams.endDate?.toString()}
             />
             <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
           </div>

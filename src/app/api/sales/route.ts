@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@/generated/prisma';
 import { z } from 'zod';
-
-const prismaClient = new PrismaClient();
 
 // Schema for validating sale creation
 const SaleItemSchema = z.object({
-  productId: z.string(),
+  inventoryItemId: z.string(),
   quantity: z.number().positive(),
   unitPrice: z.number().positive(),
 });
@@ -20,117 +18,90 @@ const CreateSaleSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { productId, quantity = 1 } = body;
-
-    // Validate input
-    if (!productId || typeof productId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid product ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      return NextResponse.json(
-        { error: 'Invalid quantity' },
-        { status: 400 }
-      );
-    }
+    const validatedData = CreateSaleSchema.parse(body);
 
     // Create the sale and update inventory in a transaction
-    const result = await prisma.$transaction(async (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>) => {
-      // Get the product with its current inventory
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-        include: {
-          inventory: true,
-        },
-      });
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Validate inventory for all items
+      for (const item of validatedData.items) {
+        const inventoryItem = await tx.inventoryItem.findUnique({
+          where: { id: item.inventoryItemId },
+        });
 
-      if (!product) {
-        throw new Error('Product not found');
+        if (!inventoryItem) {
+          throw new Error(`Product not found: ${item.inventoryItemId}`);
+        }
+
+        if (inventoryItem.quantity < item.quantity) {
+          throw new Error(`Insufficient inventory for ${inventoryItem.name}. Available: ${inventoryItem.quantity}, Requested: ${item.quantity}`);
+        }
       }
 
-      if (!product.inventory) {
-        throw new Error('Product inventory not found');
-      }
+      // Calculate totals
+      const subtotal = validatedData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      const tax = subtotal * 0.16; // 16% tax
+      const total = subtotal + tax;
 
-      if (product.inventory.quantity < quantity) {
-        throw new Error(`Insufficient inventory. Available: ${product.inventory.quantity}, Requested: ${quantity}`);
-      }
-
-      // Create inventory movement record
-      const movement = await tx.inventoryMovement.create({
-        data: {
-          productId,
-          quantity: -quantity,
-          type: 'SALE',
-          notes: 'Product sold',
-        },
-      });
-
-      // Update inventory
-      const updatedInventory = await tx.inventory.update({
-        where: { productId },
-        data: {
-          quantity: {
-            decrement: quantity,
-          },
-          lastUpdated: new Date(),
-        },
-      });
-
-      // Create sale record
+      // Create sale
       const sale = await tx.sale.create({
         data: {
-          productId,
-          quantity,
-          price: product.price,
-          movementId: movement.id,
+          subtotal,
+          tax,
+          total,
+          notes: validatedData.notes,
+          transactions: {
+            create: validatedData.items.map(item => ({
+              inventoryItemId: item.inventoryItemId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              subtotal: item.quantity * item.unitPrice,
+            }))
+          }
         },
         include: {
-          product: {
-            select: {
-              name: true,
-              sku: true,
+          transactions: {
+            include: {
+              inventoryItem: true,
             },
           },
         },
       });
 
-      // Check if we need to create a low stock alert
-      if (updatedInventory.quantity <= (product.inventory.minQuantity || 0)) {
-        await tx.alert.create({
+      // Update inventory and create stock movements
+      for (const item of validatedData.items) {
+        await tx.inventoryItem.update({
+          where: { id: item.inventoryItemId },
           data: {
-            type: 'LOW_STOCK',
-            productId,
-            message: `Low stock alert: ${product.name} (${product.sku}) - ${updatedInventory.quantity} units remaining`,
-            severity: 'WARNING',
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            inventoryItemId: item.inventoryItemId,
+            quantity: item.quantity,
+            type: 'STOCK_OUT',
+            notes: `Sale: ${sale.id}`,
           },
         });
       }
 
-      return { sale, updatedInventory };
+      return sale;
     });
 
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error processing sale:', error);
 
-    // Handle Prisma errors
-    if (
-      error instanceof Error &&
-      error.constructor.name === 'PrismaClientKnownRequestError' &&
-      'code' in error &&
-      error.code === 'P2002'
-    ) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Duplicate sale record' },
+        { error: 'Invalid data', details: error.errors },
         { status: 400 }
       );
     }
 
-    // Handle custom errors
     if (error instanceof Error) {
       if (error.message.includes('Insufficient inventory')) {
         return NextResponse.json(
@@ -160,7 +131,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const productId = searchParams.get('productId');
+    const inventoryItemId = searchParams.get('productId'); // Keep productId for API compatibility
 
     // Build where clause based on filters
     const where: any = {};
@@ -172,24 +143,24 @@ export async function GET(request: Request) {
       };
     }
 
-    if (productId) {
+    if (inventoryItemId) {
       where.transactions = {
         some: {
-          productId,
+          inventoryItemId,
         },
       };
     }
 
     // Get total count for pagination
-    const total = await prismaClient.sale.count({ where });
+    const total = await prisma.sale.count({ where });
 
     // Get paginated results
-    const sales = await prismaClient.sale.findMany({
+    const sales = await prisma.sale.findMany({
       where,
       include: {
         transactions: {
           include: {
-            product: true,
+            inventoryItem: true,
           },
         },
       },
@@ -203,10 +174,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       sales,
       pagination: {
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit),
-        currentPage: page,
-        perPage: limit,
       },
     });
   } catch (error) {

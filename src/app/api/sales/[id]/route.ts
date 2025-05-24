@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Prisma } from '@/generated/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
-  request: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,7 +13,7 @@ export async function GET(
       include: {
         transactions: {
           include: {
-            product: true,
+            inventoryItem: true,
           },
         },
       },
@@ -39,11 +38,12 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const sale = await prisma.sale.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         transactions: true,
       },
@@ -67,25 +67,28 @@ export async function DELETE(
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update sale status
       await tx.sale.update({
-        where: { id: params.id },
+        where: { id: resolvedParams.id },
         data: { status: 'CANCELLED' },
       });
 
       // Restore inventory for each product
       for (const transaction of sale.transactions) {
         await tx.inventoryItem.update({
-          where: { productId: transaction.productId },
+          where: { id: transaction.inventoryItemId },
           data: {
             quantity: {
               increment: transaction.quantity
-            },
-            stockMovements: {
-              create: {
-                quantity: transaction.quantity,
-                type: 'ADJUSTMENT',
-                notes: `Sale cancelled: ${sale.id}`,
-              }
             }
+          }
+        });
+
+        // Create stock movement record
+        await tx.stockMovement.create({
+          data: {
+            inventoryItemId: transaction.inventoryItemId,
+            quantity: transaction.quantity,
+            type: 'ADJUSTMENT',
+            notes: `Sale cancelled: ${sale.id}`,
           }
         });
       }

@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma";
 import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils";
 
 /**
@@ -232,9 +232,9 @@ export async function searchProducts(
   // Agregar condiciones de búsqueda por texto si hay un término de búsqueda
   if (searchTerm) {
     where.OR = [
-      { name: { contains: searchTerm, mode: "insensitive" } },
-      { description: { contains: searchTerm, mode: "insensitive" } },
-      { sku: { contains: searchTerm, mode: "insensitive" } },
+      { name: { contains: searchTerm } },
+      { description: { contains: searchTerm } },
+      { sku: { contains: searchTerm } },
     ];
   }
   
@@ -367,17 +367,12 @@ export async function createProduct(productData: CreateProductInput) {
       margin,
       categoryId: productData.categoryId,
       imageUrl: productData.imageUrl,
-      inventory: {
-        create: {
-              quantity,
-              minStockLevel,
-              location,
-        },
-      },
+      quantity,
+      minStockLevel,
+      location,
     },
     include: {
       category: true,
-      inventory: true,
     },
       });
       
@@ -453,10 +448,7 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
 
   // Verificar si el producto existe
   const existingProduct = await prisma.inventoryItem.findUnique({
-    where: { id },
-    include: {
-      inventory: true
-    }
+    where: { id }
   });
 
   if (!existingProduct) {
@@ -477,21 +469,6 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
   // Preparar los datos para actualizar, calculando el margen si se modificó el costo o precio
   let updateData = { ...productData };
 
-  // Extraer datos de inventario
-  const inventoryData: any = {};
-  if (productData.quantity !== undefined) {
-    inventoryData.quantity = productData.quantity;
-    delete updateData.quantity;
-  }
-  if (productData.minStockLevel !== undefined) {
-    inventoryData.minStockLevel = productData.minStockLevel;
-    delete updateData.minStockLevel;
-  }
-  if (productData.location !== undefined) {
-    inventoryData.location = productData.location;
-    delete updateData.location;
-  }
-
   // Si se actualiza el precio o el costo, recalcular el margen
   if ((productData.cost !== undefined || productData.price !== undefined) && productData.margin === undefined) {
     const newCost = productData.cost !== undefined ? productData.cost : Number(existingProduct.cost);
@@ -500,40 +477,16 @@ export async function updateProduct(id: string, productData: UpdateProductInput)
   }
 
   try {
-    // Usar una transacción para actualizar el producto y su inventario de forma atómica
-    const product = await prisma.$transaction(async (tx) => {
-  // Actualizar el producto
-      const updatedProduct = await tx.inventoryItem.update({
-    where: { id },
-    data: updateData,
-    include: {
-      category: true,
-      inventory: true,
-    },
-      });
-      
-      // Actualizar el inventario si es necesario
-      if (Object.keys(inventoryData).length > 0 && existingProduct.inventory) {
-        await tx.inventoryItem.update({
-          where: { productId: id },
-          data: inventoryData
-        });
-      } else if (Object.keys(inventoryData).length > 0 && !existingProduct.inventory) {
-        // Si no existe registro de inventario, crearlo
-        await tx.inventoryItem.create({
-          data: {
-            productId: id,
-            quantity: inventoryData.quantity || 0,
-            minStockLevel: inventoryData.minStockLevel || 5,
-            location: inventoryData.location
-          }
-        });
-      }
-      
-      return updatedProduct;
-  });
-  
-  return serializeDecimal(product);
+    // Actualizar el producto
+    const updatedProduct = await prisma.inventoryItem.update({
+      where: { id },
+      data: updateData,
+      include: {
+        category: true,
+      },
+    });
+    
+    return serializeDecimal(updatedProduct);
   } catch (error: any) {
     console.error('Error al actualizar el producto:', error);
     throw new Error(error.message || 'Ha ocurrido un error al actualizar el producto');
@@ -590,7 +543,7 @@ export async function getAllCategories() {
   const categories = await prisma.category.findMany({
     include: {
       _count: {
-        select: { products: true },
+        select: { inventory: true },
       },
     },
     orderBy: {
@@ -636,23 +589,29 @@ export async function deleteCategory(id: string) {
 }
 
 export async function getProductsWithLowStock() {
-  const products = await prisma.inventoryItem.findMany({
-    where: {
-      inventory: {
-        quantity: {
-          lte: prisma.inventoryItem.fields.minStockLevel
-        }
-      }
-    },
-    include: {
-      inventory: true
-    },
-    orderBy: {
-      name: 'asc'
-    }
-  });
+  // Use raw query since we need to compare two fields from the same record
+  const products = await prisma.$queryRaw`
+    SELECT * FROM inventory_items 
+    WHERE quantity <= minStockLevel 
+    AND active = true
+    ORDER BY name ASC
+  `;
 
-  return serializeDecimal(products);
+  // Get category information for each product
+  const productsWithCategories = await Promise.all(
+    (products as any[]).map(async (product) => {
+      const category = product.categoryId ? 
+        await prisma.category.findUnique({ where: { id: product.categoryId } }) : 
+        null;
+      
+      return {
+        ...product,
+        category
+      };
+    })
+  );
+
+  return serializeDecimal(productsWithCategories);
 }
 
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }) {
@@ -664,8 +623,8 @@ export async function getProducts(searchParams: { [key: string]: string | string
   if (search) {
     conditions.push({
       OR: [
-        { name: { contains: search.toString(), mode: 'insensitive' as Prisma.QueryMode } },
-        { sku: { contains: search.toString(), mode: 'insensitive' as Prisma.QueryMode } }
+        { name: { contains: search.toString() } },
+        { sku: { contains: search.toString() } }
       ]
     });
   }

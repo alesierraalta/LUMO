@@ -13,6 +13,9 @@ import { UsersTable } from "@/components/ui/users-table";
 import { prisma } from "@/lib/prisma";
 import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 
+// Mark as dynamic since we use headers() in auth check
+export const dynamic = 'force-dynamic';
+
 export default async function UsersPage() {
   // Verificar permisos antes de cargar los datos
   const authCheck = await checkPermissionsWithDebug("admin");

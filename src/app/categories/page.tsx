@@ -13,15 +13,15 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 async function getCategories(query?: string) {
   const categories = await prisma.category.findMany({
     where: query ? {
       OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query } },
+        { description: { contains: query } },
       ],
     } : undefined,
     include: {
@@ -39,7 +39,8 @@ async function getCategories(query?: string) {
 
 export default async function CategoriesPage({ searchParams }: PageProps) {
   // Convert search parameter to string
-  const query = typeof searchParams.q === 'string' ? searchParams.q : undefined;
+  const resolvedSearchParams = await searchParams;
+  const query = typeof resolvedSearchParams.q === 'string' ? resolvedSearchParams.q : undefined;
   const categories = await getCategories(query);
   const totalProducts = categories.reduce((sum, category) => sum + category._count.inventory, 0);
 

@@ -16,9 +16,9 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/auth";
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function EditUserRolePage({ params }: PageProps) {
@@ -28,8 +28,9 @@ export default async function EditUserRolePage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
+  const resolvedParams = await params;
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
     include: {
       role: true,
     },

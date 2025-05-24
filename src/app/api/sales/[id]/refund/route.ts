@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
 
 interface SaleTransaction {
   id: string;
-  productId: string;
+  inventoryItemId: string;
   quantity: number;
   unitPrice: number;
 }
@@ -23,15 +22,16 @@ const RefundSchema = z.object({
 });
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json();
+    const resolvedParams = await params;
+    const body = await req.json();
     const validatedData = RefundSchema.parse(body);
 
     const sale = await prisma.sale.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         transactions: true,
       },
@@ -80,30 +80,33 @@ export async function POST(
 
         // Restore inventory
         await tx.inventoryItem.update({
-          where: { productId: transaction.productId },
+          where: { id: transaction.inventoryItemId },
           data: {
             quantity: {
               increment: refundItem.quantity
-            },
-            stockMovements: {
-              create: {
-                quantity: refundItem.quantity,
-                type: 'ADJUSTMENT',
-                notes: `Refund from sale: ${sale.id}`,
-              }
             }
+          }
+        });
+
+        // Create stock movement record
+        await tx.stockMovement.create({
+          data: {
+            inventoryItemId: transaction.inventoryItemId,
+            quantity: refundItem.quantity,
+            type: 'ADJUSTMENT',
+            notes: `Refund from sale: ${sale.id}`,
           }
         });
       }
 
       // Calculate new totals
       const newSubtotal = Number(sale.subtotal) - totalRefundAmount;
-      const newTax = newSubtotal * 0.15; // Keep same tax rate
+      const newTax = newSubtotal * 0.16; // Keep same tax rate
       const newTotal = newSubtotal + newTax;
 
       // Update sale with new amounts
       const updatedSale = await tx.sale.update({
-        where: { id: params.id },
+        where: { id: resolvedParams.id },
         data: {
           subtotal: newSubtotal,
           tax: newTax,

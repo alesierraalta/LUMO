@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/tooltip";
 import { calculateMargin } from "@/lib/client-utils";
 import { getMarginCategory, getMarginColor, getMarginLabel } from "@/lib/margin-settings";
+import { toast } from "sonner";
 
 // Updated to match the actual data from Prisma
 type InventoryItem = {
@@ -140,6 +141,11 @@ export default function InventoryTable({
     }
   }, [inventoryItems, allCategories]);
 
+  // Sync local filter state with activeTab prop
+  useEffect(() => {
+    setStockStatusFilter(activeTab);
+  }, [activeTab]);
+
   // Apply filters and sorting whenever state changes
   useEffect(() => {
     let results = [...inventoryItems];
@@ -166,6 +172,7 @@ export default function InventoryTable({
         item.name.toLowerCase().includes(query) ||
         item.id.toLowerCase().includes(query) ||
         item.sku.toLowerCase().includes(query) ||
+        (item.description && item.description.toLowerCase().includes(query)) ||
         (item.location && item.location.toLowerCase().includes(query))
       );
     }
@@ -290,6 +297,32 @@ export default function InventoryTable({
     item => calculateStockStatus(item.quantity, item.minStockLevel) === StockStatus.OUT_OF_STOCK
   ).length;
   
+  const handleDeleteItem = async (id: string, name: string) => {
+    const confirmed = window.confirm(
+      `¿Estás seguro de que quieres eliminar "${name}" del inventario?\n\nEsta acción no se puede deshacer.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al eliminar el item');
+      }
+      
+      toast.success(`Item "${name}" ha sido eliminado del inventario.`);
+      
+      // Reload the page to refresh the data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error(`Error al eliminar "${name}". Inténtalo de nuevo.`);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -318,7 +351,7 @@ export default function InventoryTable({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               type="text" 
-              placeholder="Buscar inventario..." 
+              placeholder="Buscar por nombre, SKU, descripción o ubicación..." 
               className="pl-9 w-full sm:w-[220px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -586,6 +619,16 @@ export default function InventoryTable({
                           <Edit className="h-4 w-4 mr-1" />
                           Editar
                         </Link>
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="font-medium"
+                        onClick={() => handleDeleteItem(item.id, item.name)}
+                        title="Eliminar Item"
+                      >
+                        <Trash className="h-4 w-4 mr-1" />
+                        Eliminar
                       </Button>
                     </div>
                   </TableCell>

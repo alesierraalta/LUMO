@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Sale } from '@prisma/client';
 
 export async function GET(request: Request) {
   try {
@@ -16,14 +15,18 @@ export async function GET(request: Request) {
       },
     };
 
-    // Get sales with product details
+    // Get sales with transaction details
     const sales = await prisma.sale.findMany({
       where,
       include: {
-        product: {
-          select: {
-            name: true,
-            sku: true,
+        transactions: {
+          include: {
+            inventoryItem: {
+              select: {
+                name: true,
+                sku: true,
+              },
+            },
           },
         },
       },
@@ -35,9 +38,9 @@ export async function GET(request: Request) {
     // Calculate totals
     const totals = {
       count: sales.length,
-      revenue: sales.reduce((sum: number, sale: Sale) => sum + (sale.price * sale.quantity), 0),
+      revenue: sales.reduce((sum: number, sale: any) => sum + Number(sale.total), 0),
       average: sales.length > 0
-        ? sales.reduce((sum: number, sale: Sale) => sum + (sale.price * sale.quantity), 0) / sales.length
+        ? sales.reduce((sum: number, sale: any) => sum + Number(sale.total), 0) / sales.length
         : 0,
     };
 

@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { PrismaClient, Prisma } from "@prisma/client";
+import type { Prisma } from "../generated/prisma";
 import { serializeDecimal } from "../lib/utils";
 
 /**

@@ -4,7 +4,7 @@ import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-d
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verificar permisos antes de eliminar datos
@@ -20,7 +20,8 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
 
     if (!id) {
       return NextResponse.json(
@@ -59,13 +60,13 @@ export async function DELETE(
 }
 
 export async function GET(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verificar permisos antes de devolver datos
     const authCheck = await checkPermissionsWithDebug("admin");
-    
+
     if (!authCheck.authorized) {
       return NextResponse.json(
         { 
@@ -76,7 +77,8 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
 
     if (!id) {
       return NextResponse.json(

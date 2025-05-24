@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface ProductSale {
-  productId: string;
+  inventoryItemId: string;
   _sum: {
     quantity: number | null;
     subtotal: number | null;
@@ -23,7 +21,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const groupBy = searchParams.get('groupBy') || 'day'; // day, week, month
-    const productId = searchParams.get('productId');
+    const inventoryItemId = searchParams.get('productId'); // Keep productId for API compatibility
 
     // Base where clause
     const where: any = {};
@@ -35,10 +33,10 @@ export async function GET(request: Request) {
       };
     }
 
-    if (productId) {
+    if (inventoryItemId) {
       where.transactions = {
         some: {
-          productId,
+          inventoryItemId,
         },
       };
     }
@@ -56,7 +54,7 @@ export async function GET(request: Request) {
 
     // Get product-wise sales
     const productSales = await prisma.saleTransaction.groupBy({
-      by: ['productId'],
+      by: ['inventoryItemId'],
       where: where.transactions?.some || {},
       _sum: {
         quantity: true,
@@ -68,13 +66,13 @@ export async function GET(request: Request) {
         },
       },
       take: 10, // Top 10 products
-    }) as ProductSale[];
+    });
 
     // Fetch product details for the sales
-    const productDetails = await prisma.product.findMany({
+    const productDetails = await prisma.inventoryItem.findMany({
       where: {
         id: {
-          in: productSales.map((sale: ProductSale) => sale.productId),
+          in: productSales.map((sale: ProductSale) => sale.inventoryItemId),
         },
       },
       select: {
@@ -109,7 +107,7 @@ export async function GET(request: Request) {
     // Combine product sales with product details
     const topProducts = productSales.map((sale: ProductSale) => ({
       ...sale,
-      product: productDetails.find((p: ProductDetail) => p.id === sale.productId),
+      product: productDetails.find((p: ProductDetail) => p.id === sale.inventoryItemId),
     }));
 
     return NextResponse.json({

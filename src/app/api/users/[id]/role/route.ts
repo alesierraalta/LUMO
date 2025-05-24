@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check if the current user is an admin
     const admin = await isAdmin();
     if (!admin) {
@@ -17,7 +18,7 @@ export async function PUT(
     }
 
     // Get the user ID from the URL parameters
-    const userId = params.id;
+    const userId = resolvedParams.id;
 
     // Get the role ID from the request body
     const { roleId } = await request.json();

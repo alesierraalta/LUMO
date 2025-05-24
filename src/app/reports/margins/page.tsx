@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getAllProducts } from "@/services/productService";
+import { getAllProducts, getAllCategories } from "@/services/productService";
 import dynamic from "next/dynamic";
 import PrintHeader from "@/components/reports/print-header";
 import ReportActionsClientWrapper from "@/components/reports/ReportActionsClientWrapper";
@@ -25,16 +25,9 @@ const MARGIN_CATEGORIES = {
 };
 
 export default async function MarginReportsPage() {
-  // Fetch products data
+  // Fetch products and categories data directly from services
   const products = await getAllProducts(true); // Include inactive products for complete analysis
-  
-  // Fetch categories data from API with proper base URL
-  const apiBaseUrl = getApiBaseUrl();
-  const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
-  if (!categoriesResponse.ok) {
-    throw new Error('Error al obtener categorías');
-  }
-  const categories = await categoriesResponse.json();
+  const categories = await getAllCategories();
   
   // Helper function to get category for a margin value
   const getMarginCategory = (margin: number) => {
@@ -104,7 +97,7 @@ export default async function MarginReportsPage() {
   };
   
   // For category-based margin analysis
-  const categoriesWithStats = categories.map(category => {
+  const categoriesWithStats = categories.map((category: any) => {
     const productsInCategory = products.filter(p => p.categoryId === category.id);
     const avgMargin = productsInCategory.length > 0 
       ? (productsInCategory.reduce((sum, p) => sum + Number(p.margin), 0) / productsInCategory.length).toFixed(2)
@@ -115,12 +108,12 @@ export default async function MarginReportsPage() {
       productCount: productsInCategory.length,
       avgMargin
     };
-  }).sort((a, b) => Number(b.avgMargin) - Number(a.avgMargin));
+  }).sort((a: any, b: any) => Number(b.avgMargin) - Number(a.avgMargin));
   
   return (
     <div className="space-y-6">
       {/* Print Header - only visible when printing */}
-      <PrintHeader reportType="margins" />
+      <PrintHeader title="Reportes de Márgenes" />
       
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Reportes de Márgenes</h1>
@@ -182,7 +175,7 @@ export default async function MarginReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categoriesWithStats.map(category => {
+              {categoriesWithStats.map((category: any) => {
                 const marginCategory = getMarginCategory(Number(category.avgMargin));
                 return (
                   <TableRow key={category.id}>

@@ -1,6 +1,5 @@
 "use client"
 
-import { Product } from '@prisma/client';
 import ProductCard from './ProductCard';
 import { getProducts } from '@/services/productService';
 

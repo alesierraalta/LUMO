@@ -1,5 +1,5 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '../generated/prisma';
 
-export interface CustomNodeJsGlobal extends NodeJS.Global {
+export interface CustomNodeJsGlobal {
   prisma: PrismaClient;
 } 

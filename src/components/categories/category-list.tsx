@@ -138,6 +138,14 @@ export function CategoryList({ categories }: CategoryListProps) {
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   Edit
                 </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => handleDelete(category)}
+                >
+                  <Trash className="h-3.5 w-3.5 mr-1" />
+                  Delete
+                </Button>
               </div>
             </CardFooter>
           </Card>

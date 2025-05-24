@@ -57,8 +57,8 @@ const productSchema = z.object({
   categoryId: z.string().optional(),
   imageUrl: z.string().optional(),
   // Inventory fields
-  quantity: z.coerce.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
-  minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
+  quantity: z.coerce.number().int().min(0, { message: "La cantidad no puede ser negativa" }).optional(),
+  minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).optional(),
   location: z.string().optional(),
   // Price change reason
   changeReason: z.string().optional(),

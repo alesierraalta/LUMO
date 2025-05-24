@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
 import { auth } from '@clerk/nextjs/server';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Product update validation schema
 const ProductUpdateSchema = z.object({
@@ -25,77 +24,71 @@ const ProductUpdateSchema = z.object({
   changeReason: z.string().optional()
 });
 
-// GET handler to fetch a single product
+// GET /api/products/[id] - Get a single product
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
-    
-    // Fetch the product with its relationships
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const resolvedParams = await params;
+    const product = await prisma.inventoryItem.findUnique({
+      where: { id: resolvedParams.id },
       include: {
         category: true,
-        inventory: true,
       },
     });
     
     if (!product) {
       return NextResponse.json(
-        { message: `Producto con ID '${id}' no encontrado` },
+        { error: 'Product not found' },
         { status: 404 }
       );
     }
     
-    // Return the serialized product
     return NextResponse.json(serializeDecimal(product));
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching product:', error);
     return NextResponse.json(
-      { message: error.message || 'Error al obtener el producto' },
+      { error: 'Failed to fetch product' },
       { status: 500 }
     );
   }
 }
 
+// PATCH /api/products/[id] - Update a product
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
-    const data = await req.json();
+    const resolvedParams = await params;
+    const body = await req.json();
     
     // Get current user from auth
     const { userId } = await auth();
     
     // Validate input data
-    const validatedData = ProductUpdateSchema.parse(data);
+    const validatedData = ProductUpdateSchema.parse(body);
     
     // Extract change reason and remove from update data
     const changeReason = validatedData.changeReason;
     delete validatedData.changeReason;
     
     // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        inventory: true
-      }
+    const existingProduct = await prisma.inventoryItem.findUnique({
+      where: { id: resolvedParams.id }
     });
     
     if (!existingProduct) {
       return NextResponse.json(
-        { message: `Producto con ID '${id}' no encontrado` },
+        { error: 'Product not found' },
         { status: 404 }
       );
     }
     
     // If SKU is being updated, check it doesn't exist
     if (validatedData.sku && validatedData.sku !== existingProduct.sku) {
-      const duplicateSku = await prisma.product.findUnique({
+      const duplicateSku = await prisma.inventoryItem.findUnique({
         where: { sku: validatedData.sku },
       });
 
@@ -109,21 +102,6 @@ export async function PATCH(
     
     // Prepare update data
     let updateData = { ...validatedData };
-    
-    // Extract inventory data
-    const inventoryData: any = {};
-    if (validatedData.quantity !== undefined) {
-      inventoryData.quantity = validatedData.quantity;
-      delete updateData.quantity;
-    }
-    if (validatedData.minStockLevel !== undefined) {
-      inventoryData.minStockLevel = validatedData.minStockLevel;
-      delete updateData.minStockLevel;
-    }
-    if (validatedData.location !== undefined) {
-      inventoryData.location = validatedData.location;
-      delete updateData.location;
-    }
     
     // Get current values for calculations
     const newCost = updateData.cost !== undefined ? updateData.cost : Number(existingProduct.cost);
@@ -155,31 +133,22 @@ export async function PATCH(
       updateData.price = calculatePrice(newCost, updateData.margin);
     }
     
-    // Prepare transaction to update both product and inventory
+    // Update the inventory item in a transaction
     const product = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Update product
-      const updatedProduct = await tx.product.update({
-        where: { id },
+      // Update inventory item
+      const updatedProduct = await tx.inventoryItem.update({
+        where: { id: resolvedParams.id },
         data: updateData,
         include: {
           category: true,
-          inventory: true,
         },
       });
-      
-      // Update inventory if needed
-      if (Object.keys(inventoryData).length > 0 && existingProduct.inventory) {
-        await tx.inventoryItem.update({
-          where: { productId: id },
-          data: inventoryData
-        });
-      }
       
       // Create price history record if price, cost or margin changed
       if (isPricingChanged) {
         await tx.priceHistory.create({
           data: {
-            inventoryItemId: id,
+            inventoryItemId: resolvedParams.id,
             oldPrice: Number(existingProduct.price),
             newPrice: Number(updatedProduct.price),
             oldCost: Number(existingProduct.cost),
@@ -196,27 +165,53 @@ export async function PATCH(
     });
     
     return NextResponse.json(serializeDecimal(product));
-  } catch (error: any) {
-    console.error('Error updating product:', error);
-    
-    // Handle validation errors
-    if (error.name === 'ZodError') {
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: 'Validation error', errors: error.errors },
+        { error: 'Invalid data', details: error.errors },
         { status: 400 }
       );
     }
-    
+
+    if ((error as any).code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    console.error('Error updating product:', error);
     return NextResponse.json(
-      { message: error.message || 'Error al actualizar el producto' },
-      { status: 400 }
+      { error: 'Failed to update product' },
+      { status: 500 }
     );
   }
 }
 
+// DELETE /api/products/[id] - Delete a product
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Existing code
+  try {
+    const resolvedParams = await params;
+    await prisma.inventoryItem.delete({
+      where: { id: resolvedParams.id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    if ((error as any).code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    console.error('Error deleting product:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete product' },
+      { status: 500 }
+    );
+  }
 } 

@@ -14,9 +14,7 @@ interface Product {
   sku: string;
   price: number;
   imageUrl?: string | null;
-  inventory: {
-    quantity: number;
-  };
+  quantity: number;
 }
 
 interface ProductCardProps {
@@ -78,8 +76,8 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-lg font-bold">
             {formatCurrency(product.price)}
           </span>
-          <Badge variant={product.inventory.quantity > 0 ? "success" : "destructive"}>
-            {product.inventory.quantity > 0 ? 'In Stock' : 'Out of Stock'}
+          <Badge variant={product.quantity > 0 ? "success" : "destructive"}>
+            {product.quantity > 0 ? 'In Stock' : 'Out of Stock'}
           </Badge>
         </div>
       </div>
@@ -88,7 +86,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="flex gap-2">
         <Button 
           className="flex-1"
-          disabled={product.inventory.quantity === 0}
+          disabled={product.quantity === 0}
         >
           <ShoppingCart className="w-4 h-4 mr-2" />
           Add to Cart
@@ -96,7 +94,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <Button
           variant="secondary"
           className="flex-1"
-          disabled={product.inventory.quantity === 0 || loading}
+          disabled={product.quantity === 0 || loading}
           onClick={handleMarkAsSold}
         >
           {loading ? (

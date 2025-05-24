@@ -262,7 +262,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\src\\generated\\prisma",
+      "value": "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -278,7 +278,7 @@ const config = {
     "previewFeatures": [
       "driverAdapters"
     ],
-    "sourceFilePath": "C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 async function getProducts(query?: string, categoryId?: string) {
@@ -22,9 +22,9 @@ async function getProducts(query?: string, categoryId?: string) {
       AND: [
         query ? {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { sku: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query } },
+            { description: { contains: query } },
+            { sku: { contains: query } },
           ],
         } : {},
         categoryId ? { categoryId } : {},
@@ -69,8 +69,9 @@ async function getCategories() {
 
 export default async function ProductsPage({ searchParams }: PageProps) {
   // Extract and handle searchParams safely - converted to string
-  const query = typeof searchParams.q === 'string' ? searchParams.q : undefined;
-  const categoryId = typeof searchParams.category === 'string' ? searchParams.category : undefined;
+  const resolvedSearchParams = await searchParams;
+  const query = typeof resolvedSearchParams.q === 'string' ? resolvedSearchParams.q : undefined;
+  const categoryId = typeof resolvedSearchParams.category === 'string' ? resolvedSearchParams.category : undefined;
 
   const [products, categories] = await Promise.all([
     getProducts(query, categoryId),

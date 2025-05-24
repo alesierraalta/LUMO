@@ -24,9 +24,10 @@ async function getCategory(id: string) {
 export default async function EditCategoryPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const category = await getCategory(params.id);
+  const resolvedParams = await params;
+  const category = await getCategory(resolvedParams.id);
 
   return (
     <div className="container mx-auto py-10">

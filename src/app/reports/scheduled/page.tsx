@@ -128,11 +128,11 @@ export default function ScheduledReportsPage() {
     const newReportWithId = {
       ...newReport,
       id: Math.random().toString(36).substring(2, 9),
-      lastRun: null,
-      nextRun: null
+      lastRun: null as string | null,
+      nextRun: null as string | null
     };
     
-    setScheduledReports([...scheduledReports, newReportWithId]);
+    setScheduledReports([...scheduledReports, newReportWithId as any]);
     setIsCreateDialogOpen(false);
     
     toast({

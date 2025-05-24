@@ -3,7 +3,7 @@ import { serializeDecimal } from "../lib/utils";
 import type { Sale } from "../generated/prisma/index";
 
 export type CreateSaleTransactionInput = {
-  productId: string;
+  inventoryItemId: string;
   quantity: number;
   unitPrice: number;
 };
@@ -27,7 +27,7 @@ export async function getAllSales() {
     include: {
       transactions: {
         include: {
-          product: true
+          inventoryItem: true
         }
       }
     },
@@ -48,7 +48,7 @@ export async function getSaleById(id: string) {
     include: {
       transactions: {
         include: {
-          product: true
+          inventoryItem: true
         }
       }
     }
@@ -65,15 +65,15 @@ export async function createSale(data: CreateSaleInput) {
   const transactions = await Promise.all(data.transactions.map(async (t) => {
     // Get product to check stock
     const inventoryItem = await prisma.inventoryItem.findUnique({
-      where: { productId: t.productId }
+      where: { id: t.inventoryItemId }
     });
 
     if (!inventoryItem) {
-      throw new Error(`No inventory found for product ${t.productId}`);
+      throw new Error(`No inventory found for product ${t.inventoryItemId}`);
     }
 
     if (inventoryItem.quantity < t.quantity) {
-      throw new Error(`Insufficient stock for product ${t.productId}`);
+      throw new Error(`Insufficient stock for product ${t.inventoryItemId}`);
     }
 
     return {
@@ -99,7 +99,7 @@ export async function createSale(data: CreateSaleInput) {
         notes: data.notes,
         transactions: {
           create: transactions.map(t => ({
-            productId: t.productId,
+            inventoryItemId: t.inventoryItemId,
             quantity: t.quantity,
             unitPrice: t.unitPrice,
             subtotal: t.subtotal
@@ -109,7 +109,7 @@ export async function createSale(data: CreateSaleInput) {
       include: {
         transactions: {
           include: {
-            product: true
+            inventoryItem: true
           }
         }
       }
@@ -118,7 +118,7 @@ export async function createSale(data: CreateSaleInput) {
     // Update inventory for each product
     for (const transaction of transactions) {
       await tx.inventoryItem.update({
-        where: { productId: transaction.productId },
+        where: { id: transaction.inventoryItemId },
         data: {
           quantity: {
             decrement: transaction.quantity
@@ -129,9 +129,7 @@ export async function createSale(data: CreateSaleInput) {
       // Create stock movement record
       await tx.stockMovement.create({
         data: {
-          inventoryItemId: (await tx.inventoryItem.findUnique({
-            where: { productId: transaction.productId }
-          }))!.id,
+          inventoryItemId: transaction.inventoryItemId,
           quantity: transaction.quantity,
           type: 'STOCK_OUT',
           notes: `Sale: ${newSale.id}`
@@ -155,7 +153,7 @@ export async function updateSale(id: string, data: UpdateSaleInput) {
     include: {
       transactions: {
         include: {
-          product: true
+          inventoryItem: true
         }
       }
     }
@@ -187,7 +185,7 @@ export async function getSalesStats(startDate: Date, endDate: Date) {
     
     // Top selling products
     prisma.saleTransaction.groupBy({
-      by: ['productId'],
+      by: ['inventoryItemId'],
       where: {
         sale: {
           date: {

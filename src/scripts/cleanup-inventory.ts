@@ -24,7 +24,7 @@ async function cleanupDatabase() {
     console.log(`Found ${allProducts.length} total products in the database`);
     
     // 2. Identify products without inventory entries
-    const productsWithoutInventory = allProducts.filter(product => !product.inventory);
+    const productsWithoutInventory = allProducts.filter((product: any) => !product.inventory);
     console.log(`Found ${productsWithoutInventory.length} products without inventory entries`);
     
     if (productsWithoutInventory.length > 0) {

@@ -57,7 +57,7 @@ async function ensureUserIsSynced(): Promise<void> {
  * Get the current authenticated user with role and permissions
  */
 export async function getCurrentUser(): Promise<UserData | null> {
-  const auth = getAuth();
+  const auth = await getAuth();
   const userId = auth.userId;
   
   if (!userId) {

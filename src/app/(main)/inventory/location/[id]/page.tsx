@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,9 @@ import { updateLocationAction } from "./actions";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { MapPin } from "lucide-react";
 
-export default function LocationInventoryPage({ params }: { params: { id: string } }) {
+export default function LocationInventoryPage() {
   const router = useRouter();
+  const params = useParams();
   const [inventoryItem, setInventoryItem] = useState<any>(null);
   const [location, setLocation] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -34,17 +35,19 @@ export default function LocationInventoryPage({ params }: { params: { id: string
       }
     }
 
-    fetchInventoryItem();
+    if (params.id) {
+      fetchInventoryItem();
+    }
   }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!inventoryItem) return;
+    if (!inventoryItem || !params.id) return;
 
     try {
       await updateLocationAction(
-        params.id,
+        params.id as string,
         inventoryItem.location,
         {
           quantity: inventoryItem.quantity,

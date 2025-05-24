@@ -33,7 +33,7 @@ interface Category {
   name: string
 }
 
-export default function EditProductPage({ params: pageParams }: { params: { id: string } }) {
+export default function EditProductPage() {
   const router = useRouter()
   const params = useParams() // Get params from hook
   const [loading, setLoading] = useState(false)

@@ -13,7 +13,7 @@ export default async function LocationsPage() {
   }
 
   // Obtener todas las ubicaciones
-  const locations = await prisma.location.findMany({
+  const locationsData = await prisma.location.findMany({
     orderBy: {
       name: "asc"
     },
@@ -25,6 +25,19 @@ export default async function LocationsPage() {
       }
     }
   });
+
+  // Transformar los datos para que coincidan con el tipo Location del cliente
+  const locations = locationsData.map(loc => ({
+    id: loc.id,
+    name: loc.name,
+    description: loc.description, // description ya es string | null
+    isActive: loc.isActive,
+    createdAt: loc.createdAt.toISOString(), // Convertir Date a string
+    updatedAt: loc.updatedAt.toISOString(), // Convertir Date a string
+    _count: {
+      inventory: loc._count.inventory
+    }
+  }));
 
   return (
     <div className="container mx-auto px-4 py-6">

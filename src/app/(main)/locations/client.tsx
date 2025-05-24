@@ -37,10 +37,10 @@ import { formatDate } from "@/lib/utils";
 type Location = {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
   _count: {
     inventory: number;
   };

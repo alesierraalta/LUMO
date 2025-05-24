@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: lumo-app-dev
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_PRISMA_URL=${POSTGRES_PRISMA_URL}
+      - NEXT_PUBLIC_STACK_PROJECT_ID=${NEXT_PUBLIC_STACK_PROJECT_ID}
+      - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
+      - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev 

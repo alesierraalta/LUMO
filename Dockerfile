@@ -10,11 +10,17 @@ COPY package.json package-lock.json ./
 # Copiar el directorio prisma antes de instalar dependencias
 COPY prisma ./prisma/
 
-# Instalar dependencias
-RUN npm ci --omit=dev
+# Instalar todas las dependencias, incluyendo las de desarrollo necesarias para compilar
+RUN npm ci
 
-# Copiar el resto de los archivos
+# Copiar el archivo de configuración de PostCSS
+COPY postcss.config.mjs ./
+
+# Copiar todos los archivos del proyecto
 COPY . .
+
+# Mover @tailwindcss/postcss de devDependencies a dependencies para que esté disponible en producción
+RUN npm install --save @tailwindcss/postcss tailwindcss
 
 # Construir la aplicación
 RUN npm run build
@@ -23,13 +29,16 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/package.json ./
+
+# Instalar solo dependencias de producción
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Copiar archivos necesarios para la ejecución
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/tsconfig.json ./
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1

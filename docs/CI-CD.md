@@ -57,6 +57,24 @@ LUMO uses a comprehensive CI/CD pipeline built with GitHub Actions to ensure cod
 - **Security Best Practices**: Dockerfile and configuration checks
 - **Report Generation**: Automated security reports
 
+### 4. Choreo Deployment (`choreo-deploy.yml`)
+
+**Triggers:**
+- Push to `main` branch
+- Manual workflow dispatch with environment selection
+
+**Jobs:**
+- **Build & Deploy**: Construye y despliega la aplicación en Choreo
+- **Environment Management**: Soporta despliegue en múltiples ambientes
+- **Health Validation**: Verificación del endpoint de salud
+- **Deployment Reporting**: Generación de resumen de despliegue
+
+**Key Features:**
+- Integración con Choreo CLI
+- Despliegue multi-ambiente (dev, staging, prod)
+- Verificación automática post-despliegue
+- Resumen de despliegue con enlaces directos
+
 ## Environment Configuration
 
 ### Required Environment Variables
@@ -220,4 +238,35 @@ Planned enhancements to the CI/CD pipeline:
 - [ ] Automated backup and restore procedures
 - [ ] Enhanced monitoring and alerting
 - [ ] Code coverage reporting
-- [ ] Dependency vulnerability auto-fixing 
+- [ ] Dependency vulnerability auto-fixing
+
+## Platform Integrations
+
+### Choreo (WSO2)
+
+LUMO está configurado para despliegue en la plataforma Choreo de WSO2, con las siguientes características:
+
+**Configuración:**
+- Archivo `choreo.yaml` para definición de componente
+- Gestión de secretos y variables de entorno
+- Configuración de recursos y escalado automático
+
+**Características:**
+- Despliegue automatizado via GitHub Actions
+- Verificación de salud con el endpoint `/api/health`
+- Soporte para múltiples ambientes
+- Escalado automático basado en carga
+
+**Secrets requeridos:**
+```bash
+# GitHub Secrets
+CHOREO_API_KEY=your_choreo_api_key
+CHOREO_PROJECT_ID=your_choreo_project_id
+
+# Choreo Secrets
+DATABASE_URL=your_database_url
+CLERK_SECRET_KEY=your_clerk_secret_key
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+```
+
+Para instrucciones detalladas sobre despliegue en Choreo, consulta [CHOREO-DEPLOYMENT.md](./CHOREO-DEPLOYMENT.md) 

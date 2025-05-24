@@ -1,0 +1,126 @@
+name: Choreo Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  CHOREO_PROJECT: ${{ secrets.CHOREO_PROJECT_ID }}
+  CHOREO_APP_NAME: "lumo-inventory"
+
+jobs:
+  deploy-to-choreo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Run TypeScript type check
+      run: npx tsc --noEmit
+
+    - name: Build application
+      run: npm run build
+      
+    - name: Install Choreo CLI
+      run: |
+        curl -fsSL https://wso2.com/choreo/install/cli | sh
+        echo "$HOME/.choreo/bin" >> $GITHUB_PATH
+        
+    - name: Authenticate with Choreo
+      run: |
+        choreo login --api-key ${{ secrets.CHOREO_API_KEY }}
+        
+    - name: Set deployment environment
+      run: |
+        DEPLOY_ENV=${{ github.event.inputs.environment || 'dev' }}
+        echo "Deploying to Choreo environment: $DEPLOY_ENV"
+        echo "DEPLOY_ENV=$DEPLOY_ENV" >> $GITHUB_ENV
+
+    - name: Deploy to Choreo
+      run: |
+        # Create artifact package
+        tar -czf deploy.tar.gz .next node_modules public package.json next.config.ts prisma
+        
+        # Deploy to Choreo component
+        choreo components deploy \
+          --project $CHOREO_PROJECT \
+          --name $CHOREO_APP_NAME-$DEPLOY_ENV \
+          --artifact deploy.tar.gz
+          
+    - name: Wait for deployment
+      run: |
+        echo "Waiting for deployment to complete..."
+        # Poll deployment status
+        for i in {1..30}; do
+          STATUS=$(choreo components get-status \
+            --project $CHOREO_PROJECT \
+            --name $CHOREO_APP_NAME-$DEPLOY_ENV)
+            
+          if [[ "$STATUS" == *"Running"* ]]; then
+            echo "✅ Deployment successful and running!"
+            break
+          fi
+          
+          if [[ $i -eq 30 ]]; then
+            echo "⚠️ Deployment taking longer than expected. Check Choreo dashboard."
+          fi
+          
+          sleep 10
+        done
+        
+    - name: Verify deployment
+      run: |
+        # Get deployment URL
+        DEPLOY_URL=$(choreo components get-url \
+          --project $CHOREO_PROJECT \
+          --name $CHOREO_APP_NAME-$DEPLOY_ENV)
+          
+        echo "Deployment URL: $DEPLOY_URL"
+        
+        # Check health endpoint
+        if curl -s -f "$DEPLOY_URL/api/health" > health_response.json; then
+          echo "Health check passed! Response:"
+          cat health_response.json
+        else
+          echo "⚠️ Health check failed. Check logs in Choreo dashboard."
+          exit 1
+        fi
+        
+    - name: Deployment Summary
+      run: |
+        echo "## Choreo Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🚀 **Environment:** $DEPLOY_ENV" >> $GITHUB_STEP_SUMMARY
+        echo "📊 **Application:** $CHOREO_APP_NAME-$DEPLOY_ENV" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 **Deployment URL:** $(choreo components get-url --project $CHOREO_PROJECT --name $CHOREO_APP_NAME-$DEPLOY_ENV)" >> $GITHUB_STEP_SUMMARY
+        echo "⏰ **Deployed at:** $(date -u)" >> $GITHUB_STEP_SUMMARY 

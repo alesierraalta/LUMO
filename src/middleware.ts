@@ -8,6 +8,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/(.*)auth(.*)"
 ]);
 
+// Define API routes that should be protected but handle their own authentication
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
+
 // Apply middleware with custom verification
 export default clerkMiddleware(async (auth, req) => {
   // If the user is trying to access the root, allow
@@ -18,6 +21,11 @@ export default clerkMiddleware(async (auth, req) => {
   
   // If it's a public route, allow
   if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+  
+  // If it's an API route, let it handle its own authentication
+  if (isApiRoute(req)) {
     return NextResponse.next();
   }
   

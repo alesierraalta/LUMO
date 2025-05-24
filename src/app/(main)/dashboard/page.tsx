@@ -13,6 +13,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 import { ActionLink } from "@/components/ui/action-link";
+import { prisma } from "@/lib/prisma";
 
 interface Product {
   id: string;
@@ -56,11 +57,16 @@ export default async function DashboardPage() {
       getLowStockItems()
     ]) as [Product[], any[]];
 
-    // Fetch categories from API with proper base URL
-    const apiBaseUrl = getApiBaseUrl();
-    const categoriesResponse = await fetch(`${apiBaseUrl}/api/categories`);
-    if (categoriesResponse.ok) {
-      categories = await categoriesResponse.json();
+    // Get categories directly from database instead of API call
+    try {
+      categories = await prisma.category.findMany({
+        orderBy: {
+          name: "asc",
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      categories = [];
     }
   }
 

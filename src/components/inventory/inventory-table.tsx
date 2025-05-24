@@ -472,6 +472,7 @@ export default function InventoryTable({
                   Producto {renderSortIcon('name')}
                 </div>
               </TableHead>
+              <TableHead className="min-w-[200px]">Descripción</TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead 
                 className="cursor-pointer hover:text-primary"
@@ -530,6 +531,15 @@ export default function InventoryTable({
                 <TableRow key={item.id} className="group">
                   <TableCell className="font-medium">{item.sku}</TableCell>
                   <TableCell>{item.name}</TableCell>
+                  <TableCell className="max-w-[200px]">
+                    {item.description ? (
+                      <div className="truncate" title={item.description}>
+                        {item.description}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm italic">Sin descripción</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {item.category ? (
                       <Link 
@@ -595,7 +605,7 @@ export default function InventoryTable({
                       >
                         <Link href={`/inventory/adjust/${item.id}/add`} title="Sumar Stock">
                           <span className="text-xs font-medium mr-1">+</span>
-                          Sumar
+                          Stock
                         </Link>
                       </Button>
                       <Button 
@@ -606,7 +616,7 @@ export default function InventoryTable({
                       >
                         <Link href={`/inventory/adjust/${item.id}/remove`} title="Restar Stock">
                           <span className="text-xs font-medium mr-1">-</span>
-                          Restar
+                          Stock
                         </Link>
                       </Button>
                       <Button 
@@ -615,9 +625,9 @@ export default function InventoryTable({
                         size="sm" 
                         className="font-medium"
                       >
-                        <Link href={`/inventory/adjust/${item.id}`} title="Editar Stock">
+                        <Link href={`/products/edit/${item.id}`} title="Editar Producto">
                           <Edit className="h-4 w-4 mr-1" />
-                          Editar
+                          Producto
                         </Link>
                       </Button>
                       <Button 
@@ -637,7 +647,7 @@ export default function InventoryTable({
             })}
             {filteredItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="h-24 text-center">
+                <TableCell colSpan={12} className="h-24 text-center">
                   No se encontraron items en el inventario.
                 </TableCell>
               </TableRow>

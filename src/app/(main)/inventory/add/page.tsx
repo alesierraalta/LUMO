@@ -19,6 +19,9 @@ import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
+
 export default function AddProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)

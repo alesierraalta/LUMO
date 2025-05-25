@@ -18,17 +18,21 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Skip static generation to avoid Clerk authentication errors during build
+  // Completely disable static generation and other optimizations during build
   output: 'standalone',
-  generateStaticParams: false,
   generateEtags: false,
-  // Disable static page generation completely for all pages
   distDir: process.env.NEXT_DIST_DIR || '.next',
-  // Override build-time environment variables with defaults for Clerk
+  // Provide build-time environment variables for Clerk auth
   env: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dummy-key-for-build',
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_dummy-key-for-build',
     NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'true'
+  },
+  // Force all pages to be server-side rendered and disable static generation
+  reactStrictMode: true,
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
   }
 };
 

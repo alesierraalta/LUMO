@@ -4,6 +4,9 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { UserNav } from "@/components/auth/UserNav";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 
+// Disable static generation for main layout
+export const dynamic = 'force-dynamic';
+
 export default function MainLayout({
   children,
 }: Readonly<{

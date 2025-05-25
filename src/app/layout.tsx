@@ -9,6 +9,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { UserNav } from "@/components/auth/UserNav";
 import { AuthProvider } from "@/components/auth/auth-provider";
 
+// Disable static generation for all pages
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

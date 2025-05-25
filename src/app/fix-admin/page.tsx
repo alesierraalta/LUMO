@@ -15,6 +15,9 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import { AlertCircle, CheckCircle, RefreshCw, ArrowLeft, UsersRound } from "lucide-react";
 import Link from "next/link";
 
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
+
 export default function FixAdminPage() {
   const router = useRouter();
   const { user } = useUser();

@@ -22,6 +22,14 @@ const nextConfig = {
   output: 'standalone',
   generateStaticParams: false,
   generateEtags: false,
+  // Disable static page generation completely for all pages
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  // Override build-time environment variables with defaults for Clerk
+  env: {
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dummy-key-for-build',
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_dummy-key-for-build',
+    NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'true'
+  }
 };
 
 export default nextConfig;

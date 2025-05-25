@@ -12,6 +12,13 @@ spec:
     version: "20"
   build:
     command: npm run build
+    env:
+      - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+        value: "true"
+      - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        value: "pk_test_dummy-key-for-build"
+      - name: CLERK_SECRET_KEY
+        value: "sk_test_dummy-key-for-build"
   deploy:
     command: npm run start
   env:
@@ -31,6 +38,8 @@ spec:
           name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     - name: NEXT_PUBLIC_APP_VERSION
       value: ${GITHUB_SHA}
+    - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+      value: "false"
   resources:
     cpu:
       units: 1.0

@@ -4,6 +4,16 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Add build arguments for environment variables
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG CLERK_SECRET_KEY
+ARG NEXT_PUBLIC_APP_VERSION
+
+# Set environment variables for build time
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
+ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
+ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
+
 # Copiar package.json y package-lock.json primero
 COPY package.json package-lock.json ./
 
@@ -29,6 +39,12 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Set runtime environment variables
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG CLERK_SECRET_KEY
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
+ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
 
 # Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
 COPY --from=builder /app/prisma ./prisma

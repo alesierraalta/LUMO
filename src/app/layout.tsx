@@ -29,20 +29,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // For Docker builds, we may need to skip Clerk authentication
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  // Wrap with ClerkProvider only if not in a build environment with skip auth
+  const content = (
+    <html lang="es" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ThemeProvider defaultTheme="system">
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
+        <Toaster />
+      </body>
+    </html>
+  );
+
+  if (skipClerkAuth) {
+    return content;
+  }
+
   return (
     <ClerkProvider>
-      <html lang="es" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <ThemeProvider defaultTheme="system">
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </ThemeProvider>
-          <Toaster />
-        </body>
-      </html>
+      {content}
     </ClerkProvider>
   );
 }

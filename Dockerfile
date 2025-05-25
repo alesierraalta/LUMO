@@ -8,11 +8,13 @@ WORKDIR /app
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
 ARG NEXT_PUBLIC_APP_VERSION
+ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
 
 # Set environment variables for build time
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
 ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
 ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
+ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
 
 # Copiar package.json y package-lock.json primero
 COPY package.json package-lock.json ./
@@ -43,8 +45,10 @@ ENV NODE_ENV=production
 # Set runtime environment variables
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
+ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
 ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
+ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
 
 # Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
 COPY --from=builder /app/prisma ./prisma

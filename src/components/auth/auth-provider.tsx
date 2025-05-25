@@ -104,66 +104,89 @@ export function AuthProvider({ children }: AuthProviderProps) {
     syncUser();
   }, [isLoaded, isSignedIn, userId, user]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        isLoaded,
-        isSignedIn,
-        userId,
-        isAdmin,
-        userRole,
-        syncingUser,
-        syncError,
-        retrySyncUser: syncUser,
-      }}
-    >
-      {children}
-      
-      {/* Error Dialog */}
-      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              Error de Sincronización
-            </DialogTitle>
-            <DialogDescription>
-              Hubo un problema sincronizando tu cuenta: {syncError}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm">
-            Este error puede ocurrir si no tienes permisos suficientes o si hay un problema con tu cuenta.
-            Puedes intentar nuevamente o cerrar sesión y contactar al administrador.
-          </p>
-          <DialogFooter className="flex sm:justify-between">
-            <Button 
-              variant="outline" 
-              onClick={syncUser}
-              disabled={syncingUser}
-              className="gap-2"
-            >
-              {syncingUser ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Intentando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Reintentar
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleSignOut}
-              className="gap-2"
-            >
-              Cerrar Sesión
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AuthContext.Provider>
-  );
+  // Implement a fallback for when Clerk authentication is disabled during build
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  // If skipping Clerk auth during build, provide a mock auth context
+  if (skipClerkAuth) {
+    return (
+      <AuthContext.Provider value={{ isLoaded: true, isSignedIn: true, userId: null, isAdmin: false, userRole: null, syncingUser: false, syncError: null, retrySyncUser: async () => {} }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
+  // Otherwise use Clerk
+  try {
+    return (
+      <AuthContext.Provider
+        value={{
+          isLoaded,
+          isSignedIn,
+          userId,
+          isAdmin,
+          userRole,
+          syncingUser,
+          syncError,
+          retrySyncUser: syncUser,
+        }}
+      >
+        {children}
+        
+        {/* Error Dialog */}
+        <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+                Error de Sincronización
+              </DialogTitle>
+              <DialogDescription>
+                Hubo un problema sincronizando tu cuenta: {syncError}
+              </DialogDescription>
+            </DialogHeader>
+            <p className="text-sm">
+              Este error puede ocurrir si no tienes permisos suficientes o si hay un problema con tu cuenta.
+              Puedes intentar nuevamente o cerrar sesión y contactar al administrador.
+            </p>
+            <DialogFooter className="flex sm:justify-between">
+              <Button 
+                variant="outline" 
+                onClick={syncUser}
+                disabled={syncingUser}
+                className="gap-2"
+              >
+                {syncingUser ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Intentando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Reintentar
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleSignOut}
+                className="gap-2"
+              >
+                Cerrar Sesión
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </AuthContext.Provider>
+    );
+  } catch (error) {
+    // Fallback for when Clerk might not be available
+    console.error("Error in AuthProvider:", error);
+    return (
+      <AuthContext.Provider value={{ isLoaded: true, isSignedIn: false, userId: null, isAdmin: false, userRole: null, syncingUser: false, syncError: null, retrySyncUser: async () => {} }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 } 

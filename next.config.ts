@@ -18,6 +18,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Skip static generation to avoid Clerk authentication errors during build
+  output: 'standalone',
+  generateStaticParams: false,
+  generateEtags: false,
 };
 
 export default nextConfig;

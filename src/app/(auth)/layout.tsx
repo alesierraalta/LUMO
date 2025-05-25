@@ -1,20 +1,32 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Autenticación - Sistema de Inventario",
   description: "Acceda a su cuenta del sistema de gestión de inventario",
 };
 
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+interface AuthLayoutProps {
+  children: ReactNode;
+}
+
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  // For Docker builds, we may need to skip Clerk authentication
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  if (skipClerkAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <ClerkProvider>
-      <div className="h-screen bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         {children}
       </div>
     </ClerkProvider>

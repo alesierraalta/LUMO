@@ -7,8 +7,10 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "postinstall": "prisma generate",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "node .next/standalone/server.js",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.19.2",

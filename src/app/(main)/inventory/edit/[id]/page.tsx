@@ -17,6 +17,9 @@ import {
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { calculateMargin, calculatePrice } from "@/lib/client-utils"
 
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
+
 interface Product {
   id: string
   name: string

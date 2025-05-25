@@ -3,6 +3,9 @@ import "../globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode } from "react";
 
+// Disable static generation for auth pages
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Autenticación - Sistema de Inventario",
   description: "Acceda a su cuenta del sistema de gestión de inventario",

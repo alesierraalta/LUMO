@@ -30,7 +30,6 @@ const nextConfig = {
   },
   // Force all pages to be server-side rendered and disable static generation
   reactStrictMode: true,
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
   }

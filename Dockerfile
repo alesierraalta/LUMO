@@ -30,6 +30,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
+COPY --from=builder /app/prisma ./prisma
+
 # Instalar solo dependencias de producción
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
@@ -37,7 +40,6 @@ RUN npm ci --omit=dev
 # Copiar archivos necesarios para la ejecución
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./
 
 EXPOSE 3000

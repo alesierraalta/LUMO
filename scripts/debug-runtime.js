@@ -224,12 +224,24 @@ try {
       if (!buildManifest.entryCSSFiles) {
         console.log('[DEBUG] Adding missing entryCSSFiles to build manifest');
         buildManifest.entryCSSFiles = {};
+      } else {
+        console.log('[DEBUG] entryCSSFiles already exists in build manifest');
       }
       
       // Ensure other required CSS fields exist
       if (!buildManifest.entryJSFiles) {
         buildManifest.entryJSFiles = {};
       }
+      
+      // Add specific entries that Next.js might expect
+      if (!buildManifest.entryCSSFiles['/_app']) {
+        buildManifest.entryCSSFiles['/_app'] = [];
+      }
+      if (!buildManifest.entryCSSFiles['/']) {
+        buildManifest.entryCSSFiles['/'] = [];
+      }
+      
+      console.log('[DEBUG] entryCSSFiles structure:', Object.keys(buildManifest.entryCSSFiles));
       
       // Write back the fixed manifest
       fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));
@@ -269,13 +281,40 @@ try {
   if (fs.existsSync(appBuildManifestPath)) {
     try {
       const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, 'utf8'));
+      console.log('[DEBUG] App build manifest keys:', Object.keys(appBuildManifest));
+      
       if (!appBuildManifest.pages) {
         appBuildManifest.pages = {};
       }
+      
+      // Ensure CSS-related fields exist in app manifest too
+      if (!appBuildManifest.entryCSSFiles) {
+        console.log('[DEBUG] Adding entryCSSFiles to app-build-manifest.json');
+        appBuildManifest.entryCSSFiles = {};
+      }
+      
       fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));
-      console.log('[DEBUG] app-build-manifest.json verified');
+      console.log('[DEBUG] app-build-manifest.json verified and enhanced');
     } catch (e) {
       console.log('[DEBUG] Error with app-build-manifest.json:', e.message);
+    }
+  }
+  
+  // Also check and fix react-loadable-manifest.json
+  const reactLoadableManifestPath = '.next/react-loadable-manifest.json';
+  if (fs.existsSync(reactLoadableManifestPath)) {
+    try {
+      const reactManifest = JSON.parse(fs.readFileSync(reactLoadableManifestPath, 'utf8'));
+      console.log('[DEBUG] React loadable manifest keys:', Object.keys(reactManifest));
+      
+      // Ensure CSS fields exist
+      if (typeof reactManifest === 'object' && !reactManifest.entryCSSFiles) {
+        reactManifest.entryCSSFiles = {};
+        fs.writeFileSync(reactLoadableManifestPath, JSON.stringify(reactManifest, null, 2));
+        console.log('[DEBUG] react-loadable-manifest.json enhanced with CSS fields');
+      }
+    } catch (e) {
+      console.log('[DEBUG] Error with react-loadable-manifest.json:', e.message);
     }
   }
   

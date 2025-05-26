@@ -50,37 +50,48 @@ const existingProdEnv = readEnvFile('.env.production');
 console.log('\n=== CONFIGURACIÓN DE CLERK AUTHENTICATION ===');
 
 // Determinar si estamos en entorno de desarrollo o producción
-const isDevelopment = process.env.NODE_ENV !== 'production';
-console.log(`Entorno: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
+// Detectar el comando específico ejecutado
+const isDevClerkCommand = process.argv.some(arg => arg.includes('dev:clerk'));
+const isProdKeysCommand = process.argv.some(arg => arg.includes('dev:prod-keys')) || process.env.NODE_ENV === 'production';
 
-// Función para validar si una clave es real o placeholder
+let isDevelopment;
+if (isProdKeysCommand) {
+  isDevelopment = false; // Forzar producción para dev:prod-keys
+} else if (isDevClerkCommand || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+  isDevelopment = true; // Forzar desarrollo para dev:clerk o cuando NODE_ENV no está definido
+} else {
+  isDevelopment = process.env.NODE_ENV !== 'production';
+}
+
+console.log(`Entorno: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
+console.log(`Debug - Comando detectado: ${isDevClerkCommand ? 'dev:clerk' : isProdKeysCommand ? 'dev:prod-keys' : 'default'}`);
+
+// Función para validar si una clave es real y válida
 function isValidClerkKey(key, type) {
   if (!key) return false;
   
   if (type === 'publishable') {
     const hasValidPrefix = key.startsWith('pk_test_') || key.startsWith('pk_live_');
-    const isNotPlaceholder = !key.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk');
-    const hasValidLength = key.length > 50;
-    return hasValidPrefix && isNotPlaceholder && hasValidLength;
+    const hasMinimumLength = key.length > 20; // Más flexible con la longitud
+    return hasValidPrefix && hasMinimumLength;
   } else if (type === 'secret') {
     const hasValidPrefix = key.startsWith('sk_test_') || key.startsWith('sk_live_');
-    const isNotPlaceholder = !key.includes('rTkj5DbHcyLgpKATCHl8HfSRxXwZ14o3qGsT7HYkzm');
-    const hasValidLength = key.length > 40;
-    return hasValidPrefix && isNotPlaceholder && hasValidLength;
+    const hasMinimumLength = key.length > 20; // Más flexible con la longitud
+    return hasValidPrefix && hasMinimumLength;
   }
   return false;
 }
 
-// Claves para entorno de desarrollo - usar las existentes si son válidas
+// Claves para entorno de desarrollo - solo usar variables de entorno
 const devKeys = {
-  publishable: existingEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_DEV_PUBLISHABLE_KEY || 'pk_test_Y2xlcmsuY2hvcmVvYXBwcy5kZXYk',
-  secret: existingEnv.CLERK_SECRET_KEY || process.env.CLERK_DEV_SECRET_KEY || 'sk_test_rTkj5DbHcyLgpKATCHl8HfSRxXwZ14o3qGsT7HYkzm'
+  publishable: existingEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_DEV_PUBLISHABLE_KEY,
+  secret: existingEnv.CLERK_SECRET_KEY || process.env.CLERK_DEV_SECRET_KEY
 };
 
-// Claves para entorno de producción - usar las existentes si son válidas
+// Claves para entorno de producción - solo usar variables de entorno
 const prodKeys = {
-  publishable: existingProdEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PROD_PUBLISHABLE_KEY || 'pk_live_Y2xlcmsuY2hvcmVvYXBwcy5kZXYk',
-  secret: existingProdEnv.CLERK_SECRET_KEY || process.env.CLERK_PROD_SECRET_KEY || 'sk_live_rTkj5DbHcyLgpKATCHl8HfSRxXwZ14o3qGsT7HYkzm'
+  publishable: existingEnv.CLERK_PROD_PUBLISHABLE_KEY || existingProdEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PROD_PUBLISHABLE_KEY,
+  secret: existingEnv.CLERK_PROD_SECRET_KEY || existingProdEnv.CLERK_SECRET_KEY || process.env.CLERK_PROD_SECRET_KEY
 };
 
 // Usar las claves apropiadas según el entorno
@@ -89,22 +100,36 @@ console.log(`Usando claves de: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`)
 
 // Debug: mostrar qué claves se están usando
 console.log(`Debug - Publishable key source: ${existingEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'existing .env' : 'fallback'}`);
-console.log(`Debug - Publishable key: ${keys.publishable.substring(0, 30)}...`);
+console.log(`Debug - Publishable key: ${keys.publishable ? keys.publishable.substring(0, 30) : 'undefined'}...`);
+console.log(`Debug - Secret key: ${keys.secret ? keys.secret.substring(0, 10) : 'undefined'}...`);
+console.log(`Debug - Publishable key length: ${keys.publishable ? keys.publishable.length : 0}`);
+console.log(`Debug - Secret key length: ${keys.secret ? keys.secret.length : 0}`);
 
 // Validar las claves
 const publishableKeyValid = isValidClerkKey(keys.publishable, 'publishable');
 const secretKeyValid = isValidClerkKey(keys.secret, 'secret');
 
-if (!publishableKeyValid || !secretKeyValid) {
-  console.log('\n⚠️  ADVERTENCIA: Usando claves placeholder (no reales)');
-  console.log('   Estas claves NO funcionarán para autenticación real.');
+console.log(`Debug - Publishable key valid: ${publishableKeyValid}`);
+console.log(`Debug - Secret key valid: ${secretKeyValid}`);
+
+if (!keys.publishable || !keys.secret) {
+  console.log('\n❌ ERROR: No se encontraron claves de Clerk en las variables de entorno');
   console.log('   Para usar Clerk Authentication necesitas:');
   console.log('   1. Crear una cuenta en https://clerk.com');
   console.log('   2. Obtener tus claves reales del dashboard');
-  console.log('   3. Actualizar tu archivo .env con las claves reales');
+  console.log('   3. Configurar las siguientes variables de entorno:');
+  console.log('      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...');
+  console.log('      - CLERK_SECRET_KEY=sk_test_...');
+  console.log('\n   Para desarrollo sin autenticación, usa: npm run dev:no-auth');
+  process.exit(1);
+} else if (!publishableKeyValid || !secretKeyValid) {
+  console.log('\n⚠️  ADVERTENCIA: Las claves de Clerk tienen formato inválido');
+  console.log('   Verifica que las claves tengan el formato correcto:');
+  console.log('   - Publishable key debe empezar con "pk_"');
+  console.log('   - Secret key debe empezar con "sk_"');
   console.log('\n   Para desarrollo sin autenticación, usa: npm run dev:no-auth');
 } else {
-  console.log('\n✅ ENCONTRADAS claves reales de Clerk en archivos existentes');
+  console.log('\n✅ ENCONTRADAS claves válidas de Clerk en variables de entorno');
   console.log('   Las claves son válidas y deberían funcionar correctamente.');
 }
 
@@ -115,17 +140,21 @@ console.log(`Omitir autenticación: ${skipAuth === 'true' ? 'SÍ' : 'NO'}`);
 // Preservar otras variables de entorno del archivo existente
 const preservedVars = {
   ...existingEnv,
-  // Sobrescribir solo las variables de Clerk
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: keys.publishable,
-  CLERK_SECRET_KEY: keys.secret,
+  // Sobrescribir solo las variables de Clerk si están disponibles
+  ...(keys.publishable && { NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: keys.publishable }),
+  ...(keys.secret && { CLERK_SECRET_KEY: keys.secret }),
   NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth,
   NODE_ENV: isDevelopment ? 'development' : 'production'
 };
 
 // Generar contenido del .env.local preservando variables existentes
 let envContent = '# Clerk Authentication Keys\n';
-envContent += `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${preservedVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}\n`;
-envContent += `CLERK_SECRET_KEY=${preservedVars.CLERK_SECRET_KEY}\n`;
+if (preservedVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  envContent += `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${preservedVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}\n`;
+}
+if (preservedVars.CLERK_SECRET_KEY) {
+  envContent += `CLERK_SECRET_KEY=${preservedVars.CLERK_SECRET_KEY}\n`;
+}
 envContent += `NEXT_PUBLIC_SKIP_CLERK_AUTH=${preservedVars.NEXT_PUBLIC_SKIP_CLERK_AUTH}\n\n`;
 
 // Añadir URLs de Clerk
@@ -178,16 +207,18 @@ console.log(`\nArchivo .env.local creado en: ${envLocalPath}`);
 
 // Mostrar un resumen de la configuración
 console.log('\n=== RESUMEN DE CONFIGURACIÓN ===');
-console.log(`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${keys.publishable.substring(0, 10)}...`);
-console.log(`CLERK_SECRET_KEY: ${keys.secret.substring(0, 10)}...`);
+if (keys.publishable) {
+  console.log(`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${keys.publishable.substring(0, 10)}...`);
+} else {
+  console.log(`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: NO CONFIGURADA`);
+}
+if (keys.secret) {
+  console.log(`CLERK_SECRET_KEY: ${keys.secret.substring(0, 10)}...`);
+} else {
+  console.log(`CLERK_SECRET_KEY: NO CONFIGURADA`);
+}
 console.log(`NEXT_PUBLIC_SKIP_CLERK_AUTH: ${skipAuth}`);
 console.log(`NODE_ENV: ${preservedVars.NODE_ENV}`);
-
-if (!publishableKeyValid || !secretKeyValid) {
-  console.log('\n🚨 ESTADO: Usando claves placeholder (autenticación fallará)');
-} else {
-  console.log('\n✅ ESTADO: Usando claves válidas de Clerk');
-}
 
 console.log('\n=== COMANDOS DISPONIBLES ===');
 console.log('npm run dev           - Ejecutar la aplicación con la configuración actual');

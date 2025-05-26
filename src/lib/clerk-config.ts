@@ -2,6 +2,8 @@
  * Configuración para Clerk según el entorno (desarrollo o producción)
  */
 
+import { validateClerkEnvVars, getValidatedClerkPublishableKey, isAuthEnabled } from './env-validation';
+
 // Determinar si estamos en entorno de desarrollo
 export function isDevEnvironment(): boolean {
   // Verificar si estamos en el navegador
@@ -17,20 +19,59 @@ export function isDevEnvironment(): boolean {
 
 // Determinar si debemos omitir la autenticación
 export function shouldSkipAuth(): boolean {
-  return process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  return !isAuthEnabled();
 }
 
-// Obtener la clave pública de Clerk según el entorno
+// Obtener la clave pública de Clerk usando validación
 export function getClerkPublishableKey(): string {
-  // Si hay una clave explícita en las variables de entorno, la usamos
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  return getValidatedClerkPublishableKey();
+}
+
+// Verificar si estamos usando claves de producción
+export function isUsingProductionKeys(): boolean {
+  try {
+    const key = getClerkPublishableKey();
+    return key.startsWith('pk_live_');
+  } catch {
+    return false;
   }
-  
-  // De lo contrario, usamos las claves según el entorno
-  return isDevEnvironment() 
-    ? 'pk_test_Y2xlcmsuY2hvcmVvYXBwcy5kZXYk'  // Clave de desarrollo
-    : 'pk_live_Y2xlcmsuY2hvcmVvYXBwcy5kZXYk'; // Clave de producción
+}
+
+// Verificar si hay problemas potenciales con la configuración actual
+export function checkClerkConfiguration(): {
+  isValid: boolean;
+  warnings: string[];
+  recommendations: string[];
+} {
+  const warnings: string[] = [];
+  const recommendations: string[] = [];
+  let isValid = true;
+
+  try {
+    const isProduction = isUsingProductionKeys();
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (isProduction && isLocalhost) {
+      isValid = false;
+      warnings.push('Using production Clerk keys (pk_live_) on localhost may cause loading errors');
+      recommendations.push('Use development keys: npm run dev:clerk');
+      recommendations.push('Configure your Clerk app to allow localhost in production settings');
+      recommendations.push('Use your production domain instead of localhost');
+    }
+
+    if (!isProduction && !isLocalhost) {
+      warnings.push('Using development keys on a production-like domain');
+      recommendations.push('Consider using production keys for non-localhost environments');
+    }
+
+  } catch (error) {
+    isValid = false;
+    warnings.push('Failed to load Clerk configuration');
+    recommendations.push('Check your environment variables');
+  }
+
+  return { isValid, warnings, recommendations };
 }
 
 // Obtener el dominio de Clerk

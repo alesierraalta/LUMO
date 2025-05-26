@@ -18,7 +18,6 @@ import { createProductApi, ProductData, calculateMargin, calculatePrice } from "
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { ClerkProvider } from "@clerk/nextjs"
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -309,7 +308,7 @@ function AddProductContent() {
   )
 }
 
-// Export the page with proper ClerkProvider wrapping
+// Export the page with proper Clerk context (already provided by layout)
 export default function AddProductPage() {
   // Check if we should skip Clerk authentication (used during build)
   const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
@@ -317,15 +316,17 @@ export default function AddProductPage() {
   if (skipClerkAuth) {
     return (
       <div className="p-6">
-        <p>Inventory Add form (Auth bypassed during build)</p>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Add Product</h1>
+          <p className="text-muted-foreground">Authentication bypassed for development</p>
+          <div className="mt-4">
+            <AddProductContent />
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Wrap with ClerkProvider for runtime
-  return (
-    <ClerkProvider>
-      <AddProductContent />
-    </ClerkProvider>
-  );
+  // No need for ClerkProvider wrapper - already provided by layout
+  return <AddProductContent />;
 } 

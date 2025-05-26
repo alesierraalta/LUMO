@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { calculateMargin, calculatePrice } from "@/lib/client-utils"
-import { ClerkProvider } from "@clerk/nextjs"
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -406,7 +405,7 @@ function EditProductContent() {
   )
 }
 
-// Export the page with proper ClerkProvider wrapping
+// Export the page with proper Clerk context (already provided by layout)
 export default function EditProductPage() {
   // Check if we should skip Clerk authentication (used during build)
   const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
@@ -414,15 +413,17 @@ export default function EditProductPage() {
   if (skipClerkAuth) {
     return (
       <div className="p-6">
-        <p>Edit Product form (Auth bypassed during build)</p>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Edit Product</h1>
+          <p className="text-muted-foreground">Authentication bypassed for development</p>
+          <div className="mt-4">
+            <EditProductContent />
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Wrap with ClerkProvider for runtime
-  return (
-    <ClerkProvider>
-      <EditProductContent />
-    </ClerkProvider>
-  );
+  // No need for ClerkProvider wrapper - already provided by layout
+  return <EditProductContent />;
 } 

@@ -1,0 +1,58 @@
+# =================================================================
+# CLERK AUTHENTICATION KEYS - OBTENER DE https://dashboard.clerk.com
+# =================================================================
+
+# 🔧 CLAVES DE DESARROLLO (pk_test_* y sk_test_*)
+# Estas son las que tienes actualmente funcionando:
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA
+CLERK_SECRET_KEY=sk_test_1Jp4sGbIWG5KhI8m8hVmQZ3GmDHVkoc7y4Nzsa00nL
+
+# 🚀 CLAVES DE PRODUCCIÓN (pk_live_* y sk_live_*)
+# Necesitas obtener estas del dashboard de Clerk:
+# CLERK_PROD_PUBLISHABLE_KEY=pk_live_TU_CLAVE_REAL_DE_PRODUCCION_AQUI
+# CLERK_PROD_SECRET_KEY=sk_live_TU_CLAVE_SECRETA_REAL_DE_PRODUCCION_AQUI
+
+# =================================================================
+# CONFIGURACIÓN DE CLERK
+# =================================================================
+NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+
+# =================================================================
+# DATABASE CONFIGURATION
+# =================================================================
+DATABASE_URL=postgres://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+# Database Parameters
+PGHOST=ep-jolly-feather-a5zw59mq-pooler.us-east-2.aws.neon.tech
+PGHOST_UNPOOLED=ep-jolly-feather-a5zw59mq.us-east-2.aws.neon.tech
+PGUSER=neondb_owner
+PGDATABASE=neondb
+PGPASSWORD=npg_U56jCTFfzKtH
+
+# Vercel Postgres Templates
+POSTGRES_URL=postgres://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+POSTGRES_URL_NON_POOLING=postgres://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq.us-east-2.aws.neon.tech/neondb?sslmode=require
+POSTGRES_USER=neondb_owner
+POSTGRES_HOST=ep-jolly-feather-a5zw59mq-pooler.us-east-2.aws.neon.tech
+POSTGRES_PASSWORD=npg_U56jCTFfzKtH
+POSTGRES_DATABASE=neondb
+POSTGRES_URL_NO_SSL=postgres://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq.us-east-2.aws.neon.tech/neondb
+POSTGRES_PRISMA_URL=postgres://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq.us-east-2.aws.neon.tech/neondb?connect_timeout=15&sslmode=require
+
+# =================================================================
+# NEON AUTH ENVIRONMENT VARIABLES
+# =================================================================
+NEXT_PUBLIC_STACK_PROJECT_ID=****************************
+NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=****************************************
+STACK_SECRET_SERVER_KEY=***********************
+
+# =================================================================
+# DEBUG & DEVELOPMENT
+# =================================================================
+DEBUG_LOGS=false
+NODE_ENV=development 

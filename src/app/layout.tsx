@@ -5,9 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Sidebar, MobileNav } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner"
-import { ClerkProvider } from "@clerk/nextjs";
 import { UserNav } from "@/components/auth/UserNav";
-import { AuthProvider } from "@/components/auth/auth-provider";
 import { AuthErrorBoundary } from "@/components/auth/ErrorBoundary";
 import { AppClerkProvider } from "@/components/auth/clerk-provider-config";
 
@@ -42,9 +40,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system">
           <AuthErrorBoundary>
             <AppClerkProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
+              {children}
             </AppClerkProvider>
           </AuthErrorBoundary>
         </ThemeProvider>

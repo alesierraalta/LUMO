@@ -11,8 +11,22 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Debug logging for Choreo deployment troubleshooting
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  const skipAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH;
+  
+  console.log('[MIDDLEWARE DEBUG]', {
+    path: req.nextUrl.pathname,
+    publishable_key_exists: !!publishableKey,
+    publishable_key_prefix: publishableKey ? publishableKey.substring(0, 10) + '...' : 'MISSING',
+    secret_key_exists: !!secretKey,
+    skip_auth: skipAuth,
+    node_env: process.env.NODE_ENV
+  });
+
   // Check if we should skip Clerk authentication (used during development)
-  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  const skipClerkAuth = skipAuth === 'true';
 
   // Si estamos en modo de desarrollo sin autenticación, permitir todas las rutas
   if (skipClerkAuth) {

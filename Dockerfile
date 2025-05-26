@@ -17,25 +17,25 @@ ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
 # Default to skipping auth during build to avoid API calls
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
 
-# Copiar package.json y package-lock.json primero
+# Copy package files
 COPY package.json package-lock.json ./
 
-# Copiar el directorio prisma antes de instalar dependencias
+# Copy prisma directory
 COPY prisma ./prisma/
 
-# Instalar todas las dependencias, incluyendo las de desarrollo necesarias para compilar
+# Install all dependencies
 RUN npm ci
 
-# Copiar el archivo de configuración de PostCSS
+# Copy configuration files
 COPY postcss.config.mjs ./
+COPY next.config.ts ./
+COPY components.json ./
+COPY tsconfig.json ./
 
-# Copiar todos los archivos del proyecto
+# Copy all source files
 COPY . .
 
-# Mover @tailwindcss/postcss de devDependencies a dependencies para que esté disponible en producción
-RUN npm install --save @tailwindcss/postcss tailwindcss
-
-# Construir la aplicación
+# Build the application
 RUN npm run build
 
 # Stage 2: Production image
@@ -48,34 +48,35 @@ ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
 ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
 
-# Use real Clerk API keys in production, fallback only for development
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
 ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-# Default to enabling auth in production unless explicitly disabled
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
 
-# Add validation to check if environment variables are set
+# Validation warning
 RUN if [ "$NEXT_PUBLIC_SKIP_CLERK_AUTH" != "true" ] && [ -z "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" ]; then \
     echo "Warning: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not provided. Ensure it's set via secrets in deployment."; \
 fi
 
-# Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
+# Copy prisma directory
 COPY --from=builder /app/prisma ./prisma
 
-# Instalar dependencias de producción + algunas dev necesarias para runtime
+# Install production dependencies and CSS packages
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm install --save @tailwindcss/postcss tailwindcss postcss
+RUN npm ci --omit=dev && \
+    npm install --save postcss autoprefixer @tailwindcss/postcss tailwindcss
 
-# Copiar archivos necesarios para la ejecución
-COPY --from=builder /app/.next ./.next
+# Copy standalone build files
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+
+# Copy configuration files
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/scripts ./scripts
-# Copiar archivos de configuración adicionales
 COPY --from=builder /app/postcss.config.mjs ./
 COPY --from=builder /app/components.json ./
+COPY --from=builder /app/scripts ./scripts
 
 EXPOSE 8080
 ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
-CMD ["npm", "start"] 
+CMD ["node", "server.js"] 

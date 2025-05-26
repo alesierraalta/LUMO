@@ -12,10 +12,17 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   },
-  // Simplified image configuration
+  // Enhanced configuration for CSS and static files in standalone mode
   images: {
     domains: [],
+    unoptimized: true, // Disable image optimization for standalone builds
   },
+  // Ensure proper CSS handling in standalone mode
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
+  },
+  // Better handling of static files in standalone builds
+  assetPrefix: process.env.NODE_ENV === 'production' ? undefined : undefined,
 };
 
 export default nextConfig;

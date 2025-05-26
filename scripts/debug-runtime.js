@@ -2,7 +2,7 @@
 
 /**
  * Runtime debugging script for Choreo deployment
- * Helps identify the source of the clientModules error
+ * Helps identify the source of Next.js standalone errors
  */
 
 console.log('[DEBUG] Starting runtime debugging...');
@@ -25,35 +25,81 @@ const fs = require('fs');
 const path = require('path');
 
 console.log('[DEBUG] Current working directory:', process.cwd());
-console.log('[DEBUG] .next directory exists:', fs.existsSync('.next'));
-console.log('[DEBUG] .next/standalone directory exists:', fs.existsSync('.next/standalone'));
-console.log('[DEBUG] server.js exists:', fs.existsSync('.next/standalone/server.js'));
 
-// List files in .next directory
+// Check critical Next.js standalone files
+const criticalFiles = [
+  'server.js',
+  '.next/static',
+  'public',
+  'next.config.ts',
+  'postcss.config.mjs'
+];
+
+criticalFiles.forEach(file => {
+  const exists = fs.existsSync(file);
+  console.log(`[DEBUG] ${file} exists:`, exists);
+  if (exists && file === '.next/static') {
+    try {
+      const staticFiles = fs.readdirSync('.next/static');
+      console.log(`[DEBUG] Files in .next/static:`, staticFiles.slice(0, 5)); // Show first 5
+    } catch (e) {
+      console.log(`[DEBUG] Error reading .next/static:`, e.message);
+    }
+  }
+});
+
+// Check for CSS and manifest files
 try {
-  const nextFiles = fs.readdirSync('.next');
-  console.log('[DEBUG] Files in .next:', nextFiles);
+  if (fs.existsSync('.next')) {
+    const nextFiles = fs.readdirSync('.next');
+    console.log('[DEBUG] Files in .next (first 10):', nextFiles.slice(0, 10));
+    
+    // Look for manifest files
+    const manifestFiles = nextFiles.filter(f => f.includes('manifest') || f.includes('css'));
+    console.log('[DEBUG] Manifest/CSS files:', manifestFiles);
+  }
 } catch (error) {
   console.log('[DEBUG] Error reading .next directory:', error.message);
 }
 
-// Check package.json
+// Check package.json and dependencies
 try {
   const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   console.log('[DEBUG] App name:', packageJson.name);
   console.log('[DEBUG] App version:', packageJson.version);
   console.log('[DEBUG] Next.js version:', packageJson.dependencies?.['next'] || 'not found');
+  console.log('[DEBUG] PostCSS available:', !!packageJson.dependencies?.['postcss']);
+  console.log('[DEBUG] Tailwind available:', !!packageJson.dependencies?.['tailwindcss']);
 } catch (error) {
   console.log('[DEBUG] Error reading package.json:', error.message);
 }
 
-// Try to import and check Next.js modules
+// Check if we can import Next.js modules
 try {
-  console.log('[DEBUG] Attempting to require Next.js...');
+  console.log('[DEBUG] Testing Next.js import...');
   const nextPackage = require('next/package.json');
   console.log('[DEBUG] Next.js package version:', nextPackage.version);
 } catch (error) {
-  console.log('[DEBUG] Error requiring Next.js:', error.message);
+  console.log('[DEBUG] Error importing Next.js:', error.message);
+}
+
+// Check for common CSS processing modules
+const cssModules = ['postcss', 'tailwindcss', '@tailwindcss/postcss'];
+cssModules.forEach(module => {
+  try {
+    require.resolve(module);
+    console.log(`[DEBUG] ${module}: available`);
+  } catch (e) {
+    console.log(`[DEBUG] ${module}: NOT available`);
+  }
+});
+
+// List current directory structure
+try {
+  const currentDirFiles = fs.readdirSync('.');
+  console.log('[DEBUG] Current directory files:', currentDirFiles);
+} catch (error) {
+  console.log('[DEBUG] Error listing current directory:', error.message);
 }
 
 console.log('[DEBUG] Debug complete. Starting application...'); 

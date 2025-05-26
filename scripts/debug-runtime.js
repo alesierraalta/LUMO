@@ -48,7 +48,7 @@ criticalFiles.forEach(file => {
   }
 });
 
-// Check for CSS and manifest files
+// Enhanced CSS manifest checks
 try {
   if (fs.existsSync('.next')) {
     const nextFiles = fs.readdirSync('.next');
@@ -57,6 +57,27 @@ try {
     // Look for manifest files
     const manifestFiles = nextFiles.filter(f => f.includes('manifest') || f.includes('css'));
     console.log('[DEBUG] Manifest/CSS files:', manifestFiles);
+    
+    // Check for required-server-files.json
+    if (fs.existsSync('.next/required-server-files.json')) {
+      try {
+        const requiredFiles = JSON.parse(fs.readFileSync('.next/required-server-files.json', 'utf8'));
+        console.log('[DEBUG] Required server files config exists');
+        if (requiredFiles.files) {
+          console.log('[DEBUG] Required files count:', requiredFiles.files.length);
+        }
+      } catch (e) {
+        console.log('[DEBUG] Error reading required-server-files.json:', e.message);
+      }
+    } else {
+      console.log('[DEBUG] required-server-files.json NOT found');
+    }
+    
+    // Try to create missing CSS manifest if needed
+    if (!fs.existsSync('.next/static/css')) {
+      console.log('[DEBUG] Creating missing .next/static/css directory...');
+      fs.mkdirSync('.next/static/css', { recursive: true });
+    }
   }
 } catch (error) {
   console.log('[DEBUG] Error reading .next directory:', error.message);
@@ -100,6 +121,23 @@ try {
   console.log('[DEBUG] Current directory files:', currentDirFiles);
 } catch (error) {
   console.log('[DEBUG] Error listing current directory:', error.message);
+}
+
+// Create CSS manifest fallback to prevent entryCSSFiles error
+try {
+  const manifestPath = '.next/static/chunks/manifest.json';
+  if (!fs.existsSync(manifestPath)) {
+    console.log('[DEBUG] Creating CSS manifest fallback...');
+    const fallbackManifest = {
+      entryCSSFiles: {},
+      entryJSFiles: {},
+      polyfillFiles: []
+    };
+    fs.writeFileSync(manifestPath, JSON.stringify(fallbackManifest, null, 2));
+    console.log('[DEBUG] CSS manifest fallback created');
+  }
+} catch (error) {
+  console.log('[DEBUG] Error creating CSS manifest fallback:', error.message);
 }
 
 console.log('[DEBUG] Debug complete. Starting application...'); 

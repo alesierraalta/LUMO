@@ -11,18 +11,22 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    // Disable CSS-related experimental features that might cause issues
+    optimizeCss: false,
   },
-  // Enhanced configuration for CSS and static files in standalone mode
+  // Disable image optimization and use conservative settings
   images: {
     domains: [],
-    unoptimized: true, // Disable image optimization for standalone builds
+    unoptimized: true,
   },
-  // Ensure proper CSS handling in standalone mode
+  // Conservative compiler settings to avoid CSS manifest issues
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
+    removeConsole: false, // Keep console logs for debugging
   },
-  // Better handling of static files in standalone builds
-  assetPrefix: process.env.NODE_ENV === 'production' ? undefined : undefined,
+  // Simple CSS handling to avoid entryCSSFiles error
+  swcMinify: false,
+  // Disable some optimizations that might cause CSS loading issues
+  optimizeFonts: false,
 };
 
 export default nextConfig;

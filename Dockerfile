@@ -65,7 +65,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && \
     npm install --save postcss autoprefixer @tailwindcss/postcss tailwindcss
 
-# Copy standalone build files
+# Copy standalone build files - fix for CSS loading
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
@@ -76,7 +76,15 @@ COPY --from=builder /app/postcss.config.mjs ./
 COPY --from=builder /app/components.json ./
 COPY --from=builder /app/scripts ./scripts
 
+# Create startup script with debugging
+RUN echo '#!/bin/sh' > start.sh && \
+    echo 'echo "[STARTUP] Starting application..."' >> start.sh && \
+    echo 'node scripts/debug-runtime.js' >> start.sh && \
+    echo 'echo "[STARTUP] Debug complete, starting server..."' >> start.sh && \
+    echo 'exec node server.js' >> start.sh && \
+    chmod +x start.sh
+
 EXPOSE 8080
 ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
-CMD ["node", "server.js"] 
+CMD ["./start.sh"] 

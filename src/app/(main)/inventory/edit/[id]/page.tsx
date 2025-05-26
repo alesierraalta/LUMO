@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { calculateMargin, calculatePrice } from "@/lib/client-utils"
+import { ClerkProvider } from "@clerk/nextjs"
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,8 @@ interface Category {
   name: string
 }
 
-export default function EditProductPage() {
+// Main component content that uses Clerk hooks
+function EditProductContent() {
   const router = useRouter()
   const params = useParams() // Get params from hook
   const [loading, setLoading] = useState(false)
@@ -402,4 +404,25 @@ export default function EditProductPage() {
       </Card>
     </div>
   )
+}
+
+// Export the page with proper ClerkProvider wrapping
+export default function EditProductPage() {
+  // Check if we should skip Clerk authentication (used during build)
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+
+  if (skipClerkAuth) {
+    return (
+      <div className="p-6">
+        <p>Edit Product form (Auth bypassed during build)</p>
+      </div>
+    );
+  }
+
+  // Wrap with ClerkProvider for runtime
+  return (
+    <ClerkProvider>
+      <EditProductContent />
+    </ClerkProvider>
+  );
 } 

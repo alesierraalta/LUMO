@@ -17,10 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useClerk, ClerkProvider } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AlertCircle, RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+
+// Add dynamic export to prevent static generation
+export const dynamic = 'force-dynamic';
 
 type DebugResult = {
   authorized: boolean;
@@ -36,7 +39,8 @@ type DebugResult = {
   };
 };
 
-export default function PermissionDebugPage() {
+// Component that uses Clerk hooks
+function PermissionDebugContent() {
   const router = useRouter();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -45,7 +49,7 @@ export default function PermissionDebugPage() {
   const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Función para verificar los permisos con información de depuración
+  // Function to check permissions with debug info
   const checkPermissions = async () => {
     try {
       setLoading(true);
@@ -71,7 +75,7 @@ export default function PermissionDebugPage() {
     }
   };
 
-  // Verificar permisos al cargar la página y cuando cambie el rol seleccionado
+  // Check permissions when the page loads and when the selected role changes
   useEffect(() => {
     if (user) {
       checkPermissions();
@@ -98,7 +102,7 @@ export default function PermissionDebugPage() {
         throw new Error(errorData.error || "Error al forzar rol de administrador");
       }
       
-      // Recargar la página después de forzar el rol
+      // Reload the page after forcing the role
       window.location.reload();
     } catch (error: any) {
       console.error("Error:", error);
@@ -303,7 +307,7 @@ export default function PermissionDebugPage() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex gap-2 justify-between">
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
           <div className="flex gap-2">
             <Link href="/">
               <Button variant="outline">Inicio</Button>
@@ -320,5 +324,26 @@ export default function PermissionDebugPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// Export the main page component with ClerkProvider wrapping
+export default function PermissionDebugPage() {
+  // Check if we should skip Clerk authentication (used during build)
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+
+  if (skipClerkAuth) {
+    return (
+      <div className="p-6">
+        <p>Permission Debug Tool (Auth bypassed during build)</p>
+      </div>
+    );
+  }
+
+  // Wrap with ClerkProvider for runtime
+  return (
+    <ClerkProvider>
+      <PermissionDebugContent />
+    </ClerkProvider>
   );
 } 

@@ -11,14 +11,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useClerk, ClerkProvider } from "@clerk/nextjs";
 import { AlertCircle, CheckCircle, RefreshCw, ArrowLeft, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
-export default function FixAdminPage() {
+// Component that uses Clerk hooks
+function FixAdminContent() {
   const router = useRouter();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -233,5 +234,26 @@ export default function FixAdminPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// Export the page with proper ClerkProvider wrapping
+export default function FixAdminPage() {
+  // Check if we should skip Clerk authentication (used during build)
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+
+  if (skipClerkAuth) {
+    return (
+      <div className="p-6">
+        <p>Fix Admin Tool (Auth bypassed during build)</p>
+      </div>
+    );
+  }
+
+  // Wrap with ClerkProvider for runtime
+  return (
+    <ClerkProvider>
+      <FixAdminContent />
+    </ClerkProvider>
   );
 } 

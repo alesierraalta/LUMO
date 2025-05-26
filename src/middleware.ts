@@ -5,14 +5,23 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)", 
   "/sign-up(.*)",
-  "/api/(.*)auth(.*)"
+  "/api/(.*)auth(.*)",
+  "/api/health"  // Always allow health checks
 ]);
 
 // Define API routes that should be protected but handle their own authentication
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
-// Apply middleware with custom verification
+// Apply middleware with custom verification and fallback
 export default clerkMiddleware(async (auth, req) => {
+  // Check if we should skip Clerk authentication (used during build)
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  // If skipping auth, bypass checks
+  if (skipClerkAuth) {
+    return NextResponse.next();
+  }
+  
   // If the user is trying to access the root, allow
   // (the root page will handle the redirection based on authentication)
   if (req.nextUrl.pathname === '/') {
@@ -29,12 +38,14 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
   
-  // If not authenticated, redirect to sign-in
   try {
     // Protect the route
     await auth.protect();
     return NextResponse.next();
   } catch (error) {
+    // For deployment/debugging, add more detailed error logging
+    console.error("Clerk authentication error:", error);
+    
     const signInUrl = new URL('/sign-in', req.url);
     return NextResponse.redirect(signInUrl);
   }

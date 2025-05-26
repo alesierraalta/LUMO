@@ -23,24 +23,6 @@ const nextConfig = {
     removeConsole: false, // Keep console logs for debugging
   },
 
-  // More robust CSS handling
-  webpack: (config: any, { isServer }: { isServer: boolean }) => {
-    // Handle CSS more gracefully
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-      };
-    }
-    
-    // Ensure CSS modules work properly
-    config.module.rules.push({
-      test: /\.css$/,
-      use: ['style-loader', 'css-loader'],
-    });
-    
-    return config;
-  },
 };
 
 export default nextConfig;

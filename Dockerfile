@@ -68,10 +68,9 @@ fi
 # Copy prisma directory
 COPY --from=builder /app/prisma ./prisma
 
-# Install production dependencies and CSS packages (CRITICAL FIX)
+# Install production dependencies (CSS packages now in dependencies)
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && \
-    npm install --save postcss autoprefixer @tailwindcss/postcss tailwindcss
+RUN npm ci --omit=dev
 
 # Copy ALL standalone files (CRITICAL FIX - copy everything from standalone)
 COPY --from=builder /app/.next/standalone/ ./

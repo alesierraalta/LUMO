@@ -10,11 +10,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
     // Disable CSS-related experimental features that might cause issues
     optimizeCss: false,
-    // Enable CSS-in-JS support for better CSS handling
-    cssChunking: false,
   },
   // Disable image optimization and use conservative settings
   images: {
@@ -25,10 +22,7 @@ const nextConfig = {
   compiler: {
     removeConsole: false, // Keep console logs for debugging
   },
-  // Simple CSS handling to avoid entryCSSFiles error
-  swcMinify: false,
-  // Disable some optimizations that might cause CSS loading issues
-  optimizeFonts: false,
+
   // More robust CSS handling
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Handle CSS more gracefully

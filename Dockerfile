@@ -38,6 +38,14 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify standalone build completed correctly
+RUN echo "[BUILD-DEBUG] Checking standalone build..." && \
+    ls -la .next/ && \
+    echo "[BUILD-DEBUG] Standalone directory contents:" && \
+    ls -la .next/standalone/ && \
+    echo "[BUILD-DEBUG] server.js exists in standalone:" && \
+    [ -f .next/standalone/server.js ] && echo "YES" || echo "NO"
+
 # Stage 2: Production image
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -60,14 +68,16 @@ fi
 # Copy prisma directory
 COPY --from=builder /app/prisma ./prisma
 
-# Install production dependencies and CSS packages
+# Install production dependencies and CSS packages (CRITICAL FIX)
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && \
     npm install --save postcss autoprefixer @tailwindcss/postcss tailwindcss
 
-# Copy standalone build files - fix for CSS loading
-COPY --from=builder /app/.next/standalone ./
+# Copy ALL standalone files (CRITICAL FIX - copy everything from standalone)
+COPY --from=builder /app/.next/standalone/ ./
+# Copy static files to the correct location
 COPY --from=builder /app/.next/static ./.next/static
+# Copy public files
 COPY --from=builder /app/public ./public
 
 # Copy configuration files
@@ -75,6 +85,12 @@ COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/postcss.config.mjs ./
 COPY --from=builder /app/components.json ./
 COPY --from=builder /app/scripts ./scripts
+
+# Verify server.js exists after copy
+RUN echo "[COPY-DEBUG] Verifying server.js after copy..." && \
+    ls -la server.js && \
+    echo "[COPY-DEBUG] server.js file size:" && \
+    wc -c server.js
 
 # Create multiple startup debugging scripts
 RUN echo '#!/bin/sh' > start.sh && \

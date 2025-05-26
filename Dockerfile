@@ -62,15 +62,18 @@ fi
 # Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
 COPY --from=builder /app/prisma ./prisma
 
-# Instalar solo dependencias de producción
+# Instalar dependencias de producción + algunas dev necesarias para runtime
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm install --save @tailwindcss/postcss tailwindcss postcss
 
 # Copiar archivos necesarios para la ejecución
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/scripts ./scripts
+# Copiar archivos de configuración adicionales
+COPY --from=builder /app/postcss.config.mjs ./
+COPY --from=builder /app/components.json ./
 
 EXPOSE 8080
 ENV PORT=8080

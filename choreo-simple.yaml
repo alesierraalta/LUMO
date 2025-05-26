@@ -1,0 +1,56 @@
+apiVersion: core.choreo.dev/v1alpha1
+kind: Component
+metadata:
+  name: lumo-inventory
+  projectName: ${CHOREO_PROJECT}
+  description: "LUMO Inventory Management System"
+spec:
+  type: Web Application
+  buildPack: Node.js
+  runtime:
+    type: nodejs
+    version: "20"
+  build:
+    command: npm run build
+    env:
+      - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+        value: "true"
+      - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        value: "pk_test_dummy-key-for-build"
+      - name: CLERK_SECRET_KEY
+        value: "sk_test_dummy-key-for-build"
+  deploy:
+    command: node .next/standalone/server.js
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: NEXT_PUBLIC_APP_VERSION
+      value: ${GITHUB_SHA}
+    - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+      value: "false"
+    # These will be set manually in Choreo dashboard as regular environment variables
+    # NOT as secrets - just regular env vars
+  resources:
+    cpu:
+      units: 1.0
+    memory:
+      units: 1.0Gi
+  scaling:
+    minReplicas: 1
+    maxReplicas: 3
+  healthCheck:
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 20
+      periodSeconds: 5
+    livenessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+  expose:
+    type: HTTP
+    port: 8080 

@@ -20,17 +20,35 @@ spec:
       - name: CLERK_SECRET_KEY
         value: "sk_test_dummy-key-for-build"
   deploy:
-    command: node scripts/start-with-secrets.js
+    command: node scripts/debug-runtime.js && node .next/standalone/server.js
   env:
     - name: NODE_ENV
       value: production
+    - name: DATABASE_URL
+      valueFrom:
+        secretRef:
+          name: DATABASE_URL
+    - name: CLERK_SECRET_KEY
+      valueFrom:
+        secretRef:
+          name: CLERK_SECRET_KEY
+    - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      valueFrom:
+        secretRef:
+          name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     - name: NEXT_PUBLIC_APP_VERSION
       value: ${GITHUB_SHA}
     - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
       value: "false"
-    # Secrets will be loaded from mounted files
-    - name: SECRETS_PATH
-      value: "/etc/secrets"
+    # Add your actual Clerk keys here temporarily for testing
+    # Replace with your real values:
+    - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      value: "pk_live_REPLACE_WITH_YOUR_REAL_KEY"
+    - name: CLERK_SECRET_KEY
+      value: "sk_live_REPLACE_WITH_YOUR_REAL_SECRET"
+    # Add your database URL
+    - name: DATABASE_URL
+      value: "postgresql://REPLACE_WITH_YOUR_DATABASE_URL"
   resources:
     cpu:
       units: 1.0

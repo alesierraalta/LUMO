@@ -20,7 +20,36 @@ spec:
       - name: CLERK_SECRET_KEY
         value: "sk_test_dummy-key-for-build"
   deploy:
-    command: node scripts/debug-runtime.js && node .next/standalone/server.js
+    command: |
+      echo "[DEPLOY-DEBUG] =========================="
+      echo "[DEPLOY-DEBUG] Starting deployment debug"
+      echo "[DEPLOY-DEBUG] =========================="
+      echo "[DEPLOY-DEBUG] Current directory: $(pwd)"
+      echo "[DEPLOY-DEBUG] Available files:"
+      ls -la
+      echo "[DEPLOY-DEBUG] Checking critical files:"
+      [ -f server.js ] && echo "[DEPLOY-DEBUG] server.js: EXISTS" || echo "[DEPLOY-DEBUG] server.js: MISSING"
+      [ -f start.sh ] && echo "[DEPLOY-DEBUG] start.sh: EXISTS" || echo "[DEPLOY-DEBUG] start.sh: MISSING"
+      [ -f debug-quick.sh ] && echo "[DEPLOY-DEBUG] debug-quick.sh: EXISTS" || echo "[DEPLOY-DEBUG] debug-quick.sh: MISSING"
+      [ -f server-debug.js ] && echo "[DEPLOY-DEBUG] server-debug.js: EXISTS" || echo "[DEPLOY-DEBUG] server-debug.js: MISSING"
+      echo "[DEPLOY-DEBUG] Environment check:"
+      echo "[DEPLOY-DEBUG] NODE_ENV: $NODE_ENV"
+      echo "[DEPLOY-DEBUG] PORT: $PORT"
+      echo "[DEPLOY-DEBUG] Trying startup script..."
+      if [ -f start.sh ]; then
+        echo "[DEPLOY-DEBUG] Running start.sh"
+        ./start.sh
+      elif [ -f server-debug.js ]; then
+        echo "[DEPLOY-DEBUG] Running server-debug.js"
+        node server-debug.js
+      elif [ -f server.js ]; then
+        echo "[DEPLOY-DEBUG] Running server.js directly"
+        node server.js
+      else
+        echo "[DEPLOY-DEBUG] No server files found!"
+        ls -la
+        exit 1
+      fi
   env:
     - name: NODE_ENV
       value: production

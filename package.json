@@ -11,7 +11,7 @@
     "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
     "build": "next build",
     "postinstall": "prisma generate",
-    "start": "node .next/standalone/server.js",
+    "start": "echo '[NPM-START] Starting with debugging...' && node scripts/debug-runtime.js && echo '[NPM-START] Debug complete, starting server...' && node .next/standalone/server.js",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",

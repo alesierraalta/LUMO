@@ -76,13 +76,51 @@ COPY --from=builder /app/postcss.config.mjs ./
 COPY --from=builder /app/components.json ./
 COPY --from=builder /app/scripts ./scripts
 
-# Create startup script with debugging
+# Create multiple startup debugging scripts
 RUN echo '#!/bin/sh' > start.sh && \
-    echo 'echo "[STARTUP] Starting application..."' >> start.sh && \
-    echo 'node scripts/debug-runtime.js' >> start.sh && \
-    echo 'echo "[STARTUP] Debug complete, starting server..."' >> start.sh && \
+    echo 'echo "[STARTUP] ==================================="' >> start.sh && \
+    echo 'echo "[STARTUP] STARTING APPLICATION WITH DEBUG"' >> start.sh && \
+    echo 'echo "[STARTUP] ==================================="' >> start.sh && \
+    echo 'echo "[STARTUP] Working directory: $(pwd)"' >> start.sh && \
+    echo 'echo "[STARTUP] Node version: $(node --version)"' >> start.sh && \
+    echo 'echo "[STARTUP] Files in current directory:"' >> start.sh && \
+    echo 'ls -la' >> start.sh && \
+    echo 'echo "[STARTUP] Files in .next directory:"' >> start.sh && \
+    echo 'ls -la .next/ 2>/dev/null || echo "No .next directory"' >> start.sh && \
+    echo 'echo "[STARTUP] Files in .next/static:"' >> start.sh && \
+    echo 'ls -la .next/static/ 2>/dev/null || echo "No .next/static directory"' >> start.sh && \
+    echo 'echo "[STARTUP] Environment variables:"' >> start.sh && \
+    echo 'echo "NODE_ENV: $NODE_ENV"' >> start.sh && \
+    echo 'echo "PORT: $PORT"' >> start.sh && \
+    echo 'echo "CLERK_SECRET_KEY exists: $([ -n \"$CLERK_SECRET_KEY\" ] && echo true || echo false)"' >> start.sh && \
+    echo 'echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY exists: $([ -n \"$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY\" ] && echo true || echo false)"' >> start.sh && \
+    echo 'node scripts/debug-runtime.js 2>&1 || echo "[STARTUP] Debug script failed"' >> start.sh && \
+    echo 'echo "[STARTUP] Starting Next.js server..."' >> start.sh && \
     echo 'exec node server.js' >> start.sh && \
     chmod +x start.sh
+
+# Create alternative debug scripts that can be called from different entry points
+RUN echo '#!/bin/sh' > debug-quick.sh && \
+    echo 'echo "[QUICK-DEBUG] Files exist check:"' >> debug-quick.sh && \
+    echo 'echo "server.js: $([ -f server.js ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
+    echo 'echo ".next/static: $([ -d .next/static ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
+    echo 'echo "scripts/debug-runtime.js: $([ -f scripts/debug-runtime.js ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
+    chmod +x debug-quick.sh
+
+# Add debugging to the server.js file itself by creating a wrapper
+RUN echo 'console.log("[SERVER-DEBUG] Starting server.js with debugging...");' > server-debug.js && \
+    echo 'console.log("[SERVER-DEBUG] Current working directory:", process.cwd());' >> server-debug.js && \
+    echo 'console.log("[SERVER-DEBUG] Node version:", process.version);' >> server-debug.js && \
+    echo 'const fs = require("fs");' >> server-debug.js && \
+    echo 'console.log("[SERVER-DEBUG] server.js exists:", fs.existsSync("server.js"));' >> server-debug.js && \
+    echo 'console.log("[SERVER-DEBUG] .next/static exists:", fs.existsSync(".next/static"));' >> server-debug.js && \
+    echo 'try {' >> server-debug.js && \
+    echo '  console.log("[SERVER-DEBUG] Loading original server.js...");' >> server-debug.js && \
+    echo '  require("./server.js");' >> server-debug.js && \
+    echo '} catch (error) {' >> server-debug.js && \
+    echo '  console.error("[SERVER-DEBUG] Error loading server.js:", error.message);' >> server-debug.js && \
+    echo '  console.error("[SERVER-DEBUG] Error stack:", error.stack);' >> server-debug.js && \
+    echo '}' >> server-debug.js
 
 EXPOSE 8080
 ENV PORT=8080

@@ -11,9 +11,10 @@ ARG NEXT_PUBLIC_APP_VERSION
 ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
 
 # Set environment variables for build time
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
-ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-pk_test_dummy-key-for-build}
+ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-sk_test_dummy-key-for-build}
 ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
+# Default to skipping auth during build to avoid API calls
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
 
 # Copiar package.json y package-lock.json primero
@@ -46,9 +47,18 @@ ENV NODE_ENV=production
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
 ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-test_clerk_pub_key}
-ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-test_clerk_key}
+
+# Use real Clerk API keys in production, fallback only for development
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+# Default to enabling auth in production unless explicitly disabled
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
+
+# Add validation to check if environment variables are set
+RUN if [ "$NEXT_PUBLIC_SKIP_CLERK_AUTH" != "true" ] && [ -z "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" ]; then \
+    echo "Error: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be provided when auth is enabled."; \
+    exit 1; \
+fi
 
 # Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
 COPY --from=builder /app/prisma ./prisma

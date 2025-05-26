@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ClerkProvider } from "@clerk/nextjs";
 import { UserNav } from "@/components/auth/UserNav";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { AuthErrorBoundary } from "@/components/auth/ErrorBoundary";
 
 // Disable static generation for all pages
 export const dynamic = 'force-dynamic';
@@ -35,28 +36,37 @@ export default function RootLayout({
   // For Docker builds, we may need to skip Clerk authentication
   const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
   
-  // Wrap with ClerkProvider only if not in a build environment with skip auth
+  // Create the content that will be rendered
   const content = (
     <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider defaultTheme="system">
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthErrorBoundary>
+            {skipClerkAuth ? (
+              // Direct render without Clerk auth context
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            ) : (
+              // Use AuthProvider which depends on ClerkProvider
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            )}
+          </AuthErrorBoundary>
         </ThemeProvider>
         <Toaster />
       </body>
     </html>
   );
 
-  if (skipClerkAuth) {
-    return content;
-  }
-
+  // Always wrap with ClerkProvider, but with appropriate options
+  // This ensures that the ClerkProvider context is always available
+  // but authentication can be optionally disabled
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       {content}
     </ClerkProvider>
   );

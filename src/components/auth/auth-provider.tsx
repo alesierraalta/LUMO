@@ -42,18 +42,41 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { isLoaded, isSignedIn: clerkIsSignedIn, userId: clerkUserId } = useAuth();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  // Check if we should skip Clerk authentication
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  // Create state variables for auth state
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [syncingUser, setSyncingUser] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   
-  // Convert potentially undefined values to required types
-  const isSignedIn = clerkIsSignedIn === undefined ? null : clerkIsSignedIn;
-  const userId = clerkUserId || null;
+  // Default values for when Clerk is not available
+  let isLoaded = true;
+  let isSignedIn: boolean | null = false;
+  let userId: string | null = null;
+  let user: any = null;
+  let signOut: any = async () => {};
+  
+  try {
+    if (!skipClerkAuth) {
+      // Use Clerk hooks inside a try/catch to handle potential errors
+      const auth = useAuth();
+      const userResult = useUser();
+      const clerk = useClerk();
+      
+      isLoaded = auth.isLoaded;
+      isSignedIn = auth.isSignedIn ?? false;
+      userId = auth.userId ?? null;
+      user = userResult.user;
+      signOut = clerk.signOut;
+    }
+  } catch (error: any) {
+    console.error("Error using Clerk hooks:", error);
+    setAuthError(error.message || "Failed to initialize authentication");
+  }
 
   // Sync user with our database
   const syncUser = async () => {
@@ -96,97 +119,141 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const handleSignOut = () => {
-    signOut(() => { window.location.href = '/'; });
+    signOut().then(() => { window.location.href = '/'; });
   };
 
   // Sync user when auth state changes
   useEffect(() => {
-    syncUser();
-  }, [isLoaded, isSignedIn, userId, user]);
+    if (!skipClerkAuth) {
+      syncUser();
+    }
+  }, [isLoaded, isSignedIn, userId, user, skipClerkAuth]);
 
-  // Implement a fallback for when Clerk authentication is disabled during build
-  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-  
   // If skipping Clerk auth during build, provide a mock auth context
   if (skipClerkAuth) {
     return (
-      <AuthContext.Provider value={{ isLoaded: true, isSignedIn: true, userId: null, isAdmin: false, userRole: null, syncingUser: false, syncError: null, retrySyncUser: async () => {} }}>
+      <AuthContext.Provider value={{ 
+        isLoaded: true, 
+        isSignedIn: true, 
+        userId: "mock-user-id", 
+        isAdmin: true, 
+        userRole: "admin", 
+        syncingUser: false, 
+        syncError: null, 
+        retrySyncUser: async () => {} 
+      }}>
         {children}
       </AuthContext.Provider>
     );
   }
 
-  // Otherwise use Clerk
-  try {
+  // Check for Clerk initialization errors
+  if (authError) {
     return (
-      <AuthContext.Provider
-        value={{
-          isLoaded,
-          isSignedIn,
-          userId,
-          isAdmin,
-          userRole,
-          syncingUser,
-          syncError,
-          retrySyncUser: syncUser,
-        }}
-      >
+      <AuthContext.Provider value={{ 
+        isLoaded: true, 
+        isSignedIn: false, 
+        userId: null, 
+        isAdmin: false, 
+        userRole: null, 
+        syncingUser: false, 
+        syncError: authError, 
+        retrySyncUser: async () => {} 
+      }}>
         {children}
         
-        {/* Error Dialog */}
-        <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <Dialog open={true} onOpenChange={() => {}}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-destructive">
                 <AlertCircle className="h-5 w-5" />
-                Error de Sincronización
+                Error de Autenticación
               </DialogTitle>
               <DialogDescription>
-                Hubo un problema sincronizando tu cuenta: {syncError}
+                Hubo un problema con el sistema de autenticación: {authError}
               </DialogDescription>
             </DialogHeader>
             <p className="text-sm">
-              Este error puede ocurrir si no tienes permisos suficientes o si hay un problema con tu cuenta.
-              Puedes intentar nuevamente o cerrar sesión y contactar al administrador.
+              Este error puede ocurrir si las claves de API de autenticación no están configuradas correctamente.
+              Por favor contacte al administrador del sistema.
             </p>
             <DialogFooter className="flex sm:justify-between">
               <Button 
                 variant="outline" 
-                onClick={syncUser}
-                disabled={syncingUser}
+                onClick={() => window.location.reload()}
                 className="gap-2"
               >
-                {syncingUser ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Intentando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Reintentar
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleSignOut}
-                className="gap-2"
-              >
-                Cerrar Sesión
+                <RefreshCw className="h-4 w-4" />
+                Reintentar
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </AuthContext.Provider>
     );
-  } catch (error) {
-    // Fallback for when Clerk might not be available
-    console.error("Error in AuthProvider:", error);
-    return (
-      <AuthContext.Provider value={{ isLoaded: true, isSignedIn: false, userId: null, isAdmin: false, userRole: null, syncingUser: false, syncError: null, retrySyncUser: async () => {} }}>
-        {children}
-      </AuthContext.Provider>
-    );
   }
+
+  // Otherwise use Clerk
+  return (
+    <AuthContext.Provider
+      value={{
+        isLoaded,
+        isSignedIn,
+        userId,
+        isAdmin,
+        userRole,
+        syncingUser,
+        syncError,
+        retrySyncUser: syncUser,
+      }}
+    >
+      {children}
+      
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Error de Sincronización
+            </DialogTitle>
+            <DialogDescription>
+              Hubo un problema sincronizando tu cuenta: {syncError}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">
+            Este error puede ocurrir si no tienes permisos suficientes o si hay un problema con tu cuenta.
+            Puedes intentar nuevamente o cerrar sesión y contactar al administrador.
+          </p>
+          <DialogFooter className="flex sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={syncUser}
+              disabled={syncingUser}
+              className="gap-2"
+            >
+              {syncingUser ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Intentando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Reintentar
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleSignOut}
+              className="gap-2"
+            >
+              Cerrar Sesión
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AuthContext.Provider>
+  );
 } 

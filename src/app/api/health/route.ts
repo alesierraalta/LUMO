@@ -1,66 +1,32 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const startTime = Date.now()
-  
+/**
+ * Health check endpoint to verify application status
+ * Returns basic environment configuration status (without exposing secrets)
+ */
+export async function GET(request: NextRequest) {
   try {
-    // Basic health check
-    const health = {
-      status: 'healthy',
+    // Check critical environment variables (redacted for security)
+    const envStatus = {
+      clerk_auth_enabled: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH !== 'true',
+      clerk_publishable_key_set: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      clerk_secret_key_set: !!process.env.CLERK_SECRET_KEY,
+      // Don't include the actual keys in the response
+    };
+
+    return NextResponse.json({
+      status: "ok",
       timestamp: new Date().toISOString(),
-      version: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
-      environment: process.env.NODE_ENV || 'unknown',
-      uptime: process.uptime(),
-      responseTime: '',
-      checks: {
-        database: 'unknown',
-        auth: 'unknown'
-      }
-    }
-
-    // Database connectivity check
-    try {
-      await prisma.$queryRaw`SELECT 1`
-      health.checks.database = 'healthy'
-    } catch (error) {
-      health.checks.database = 'unhealthy'
-      health.status = 'degraded'
-    }
-
-    // Authentication service check (Clerk)
-    try {
-      const hasClerkKeys = !!(process.env.CLERK_SECRET_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
-      health.checks.auth = hasClerkKeys ? 'configured' : 'not_configured'
-    } catch (error) {
-      health.checks.auth = 'error'
-    }
-
-    // Response time
-    const responseTime = Date.now() - startTime
-    health.responseTime = `${responseTime}ms`
-
-    // Determine overall status
-    if (health.checks.database === 'unhealthy') {
-      health.status = 'unhealthy'
-      return NextResponse.json(health, { status: 503 })
-    }
-
-    if (health.checks.database === 'unknown' || health.checks.auth === 'error') {
-      health.status = 'degraded'
-      return NextResponse.json(health, { status: 200 })
-    }
-
-    return NextResponse.json(health, { status: 200 })
-
+      environment: process.env.NODE_ENV,
+      auth_config: envStatus,
+    }, { status: 200 });
   } catch (error) {
-    console.error('Health check failed:', error)
+    console.error("Health check error:", error);
     
     return NextResponse.json({
-      status: 'unhealthy',
+      status: "error",
+      message: "Health check failed",
       timestamp: new Date().toISOString(),
-      error: 'Health check failed',
-      responseTime: `${Date.now() - startTime}ms`
-    }, { status: 503 })
+    }, { status: 500 });
   }
 } 

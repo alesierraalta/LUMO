@@ -246,6 +246,61 @@ Para configurar el despliegue en Choreo:
 3. Despliega manualmente o mediante push a la rama principal
 
 Para instrucciones detalladas, consulta [docs/CHOREO-DEPLOYMENT.md](docs/CHOREO-DEPLOYMENT.md)
+
+# Environment Variables
+
+This application requires specific environment variables to function properly. Set these up before running the application.
+
+## Authentication Environment Variables
+
+For Clerk authentication, you need the following variables:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Your Clerk publishable key
+- `CLERK_SECRET_KEY`: Your Clerk secret key
+- `NEXT_PUBLIC_SKIP_CLERK_AUTH`: Set to 'true' to bypass authentication (development only)
+
+### Local Development
+
+Create a `.env.local` file with these variables:
+
+```
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/inventory?schema=public"
+
+# Application
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### Production Deployment
+
+For production deployments, ensure these environment variables are set in your environment:
+
+- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+- CLERK_SECRET_KEY
+- NEXT_PUBLIC_SKIP_CLERK_AUTH (defaults to 'false')
+
+When running with Docker, pass these as build arguments:
+
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key \
+  --build-arg CLERK_SECRET_KEY=your_secret \
+  -t inventory-app .
+```
+
+## Troubleshooting Authentication
+
+If you encounter authentication errors:
+
+1. Verify that your Clerk API keys are valid and correctly set
+2. Check that ClerkProvider is properly wrapping your application
+3. Set `NEXT_PUBLIC_SKIP_CLERK_AUTH=true` temporarily to bypass authentication for debugging
+4. Ensure you don't have multiple versions of Clerk packages installed
 #   L U M O 
  
  

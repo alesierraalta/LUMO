@@ -37,7 +37,7 @@ CLERK_SECRET_KEY=sk_live_your_production_secret_key
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Choreo       │    │   Next.js App    │    │   Database      │
 │   Load Balancer│───▶│   (Standalone)   │───▶│   (External)    │
-│   Port: 3000   │    │   Port: 3000     │    │                 │
+│   Port: 8080   │    │   Port: 8080     │    │                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -47,7 +47,7 @@ CLERK_SECRET_KEY=sk_live_your_production_secret_key
 - ✅ Configured for Node.js 20
 - ✅ Standalone deployment command
 - ✅ Health checks on `/api/health`
-- ✅ Port 3000 (corrected)
+- ✅ Port 8080 (Choreo standard)
 - ✅ Resource limits: 1 CPU, 1GB RAM
 - ✅ Auto-scaling: 1-3 replicas
 
@@ -121,7 +121,7 @@ npm start
 ### Debug Commands
 
 ```bash
-# Check health endpoint locally
+# Check health endpoint locally (local dev uses 3000, Choreo uses 8080)
 curl http://localhost:3000/api/health
 
 # Test database connection

@@ -22,15 +22,6 @@ const nextConfig = {
   output: 'standalone',
   generateEtags: false,
   distDir: process.env.NEXT_DIST_DIR || '.next',
-  // Provide build-time environment variables for Clerk auth
-  env: {
-    // For build time, use environment variables or fallback to dummy values
-    // In production, these should be overridden by actual environment variables
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dummy-key-for-build',
-    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || 'sk_test_dummy-key-for-build',
-    // Default to false for authentication in production, but allow override
-    NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'false'
-  },
   // Force all pages to be server-side rendered and disable static generation
   reactStrictMode: true,
   compiler: {

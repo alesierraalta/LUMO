@@ -60,8 +60,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   let user: any = null;
   let signOut: any = async () => {};
   
-  try {
-    if (!skipClerkAuth) {
+  // Si skipClerkAuth es true, no intentamos usar los hooks de Clerk
+  if (!skipClerkAuth) {
+    try {
       // Use Clerk hooks inside a try/catch to handle potential errors
       const auth = useAuth();
       const userResult = useUser();
@@ -72,14 +73,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       userId = auth.userId ?? null;
       user = userResult.user;
       signOut = clerk.signOut;
+    } catch (error: any) {
+      console.error("Error using Clerk hooks:", error);
+      // Usamos useState para no causar un bucle infinito de renderizaciones
+      if (!authError) {
+        setAuthError(error.message || "Failed to initialize authentication");
+      }
     }
-  } catch (error: any) {
-    console.error("Error using Clerk hooks:", error);
-    setAuthError(error.message || "Failed to initialize authentication");
   }
 
   // Sync user with our database
   const syncUser = async () => {
+    if (skipClerkAuth) {
+      // En modo de desarrollo, simular un usuario admin
+      setIsAdmin(true);
+      setUserRole("admin");
+      return;
+    }
+    
     if (!isLoaded || !isSignedIn || !userId) return;
     
     try {
@@ -119,12 +130,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const handleSignOut = () => {
-    signOut().then(() => { window.location.href = '/'; });
+    if (skipClerkAuth) {
+      window.location.href = '/';
+    } else {
+      signOut().then(() => { window.location.href = '/'; });
+    }
   };
 
   // Sync user when auth state changes
   useEffect(() => {
-    if (!skipClerkAuth) {
+    if (!skipClerkAuth && isSignedIn) {
       syncUser();
     }
   }, [isLoaded, isSignedIn, userId, user, skipClerkAuth]);

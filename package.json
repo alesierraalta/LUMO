@@ -5,12 +5,20 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
+    "dev:clerk": "node create-env-local.js && next dev",
+    "dev:no-auth": "node create-env-local.js --skip-auth && next dev",
+    "dev:prod-keys": "cross-env NODE_ENV=production node create-env-local.js && next dev",
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "node .next/standalone/server.js",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "db:init": "node src/scripts/init-db.js",
+    "db:migrate": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force",
+    "db:push": "prisma db push",
+    "db:setup": "prisma migrate deploy && node src/scripts/init-db.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.19.2",
@@ -48,6 +56,7 @@
     "react-icons": "^5.5.0",
     "recharts": "^2.15.3",
     "sonner": "^2.0.3",
+    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.2.0",
     "zod": "^3.24.3"
   },
@@ -58,6 +67,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/webpack": "^5.28.5",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "tailwindcss": "^4",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "../globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode } from "react";
+import { shouldSkipAuth } from "@/lib/clerk-config";
 
 // Disable static generation for auth pages
 export const dynamic = 'force-dynamic';
@@ -16,22 +16,11 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
-  // For Docker builds, we may need to skip Clerk authentication
-  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-  
-  if (skipClerkAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        {children}
-      </div>
-    );
-  }
-
+  // Ya no necesitamos envolver en ClerkProvider aquí,
+  // ya que el layout principal (app/layout.tsx) ya usa AppClerkProvider
   return (
-    <ClerkProvider>
-      <div className="min-h-screen flex items-center justify-center">
-        {children}
-      </div>
-    </ClerkProvider>
+    <div className="min-h-screen flex items-center justify-center">
+      {children}
+    </div>
   );
 } 

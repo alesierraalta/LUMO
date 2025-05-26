@@ -12,6 +12,22 @@ interface ErrorBoundaryProps {
 export function AuthErrorBoundary({ children }: ErrorBoundaryProps) {
   const [hasError, setHasError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [envInfo, setEnvInfo] = useState<any>(null);
+
+  // Función para verificar la configuración de entorno
+  const checkEnvironment = async () => {
+    try {
+      const response = await fetch("/api/debug-env");
+      if (response.ok) {
+        const data = await response.json();
+        setEnvInfo(data);
+        return data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch environment info:", err);
+    }
+    return null;
+  };
 
   useEffect(() => {
     // Listen for unhandled auth errors
@@ -22,12 +38,16 @@ export function AuthErrorBoundary({ children }: ErrorBoundaryProps) {
         event.error?.message?.includes("ClerkProvider") ||
         event.error?.message?.includes("useUser") ||
         event.error?.message?.includes("useAuth") ||
-        event.error?.message?.includes("authentication")
+        event.error?.message?.includes("authentication") ||
+        event.error?.message?.includes("Publishable key not valid")
       ) {
         event.preventDefault();
         setHasError(true);
         setError(event.error);
         console.error("Auth error caught by boundary:", event.error);
+        
+        // Verificar la configuración de entorno cuando ocurre un error
+        checkEnvironment();
       }
     };
 
@@ -57,6 +77,15 @@ export function AuthErrorBoundary({ children }: ErrorBoundaryProps) {
               </ul>
             </p>
             
+            {envInfo && (
+              <div className="p-4 border rounded mb-4 bg-muted/30 text-xs">
+                <p className="font-bold mb-1">Información de entorno:</p>
+                <pre className="whitespace-pre-wrap">
+                  {JSON.stringify(envInfo, null, 2)}
+                </pre>
+              </div>
+            )}
+            
             <Button 
               variant="default" 
               className="gap-2"
@@ -77,18 +106,13 @@ export function AuthErrorBoundary({ children }: ErrorBoundaryProps) {
             <Button 
               variant="link" 
               className="gap-2 mt-2"
-              onClick={() => {
-                // Check environment configuration
-                fetch("/api/health")
-                  .then(res => res.json())
-                  .then(data => {
-                    console.log("Health check:", data);
-                    alert(`Estado del sistema: ${JSON.stringify(data, null, 2)}`);
-                  })
-                  .catch(err => {
-                    console.error("Health check failed:", err);
-                    alert("No se pudo verificar el estado del sistema");
-                  });
+              onClick={async () => {
+                const data = await checkEnvironment();
+                if (data) {
+                  alert(`Estado del sistema: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                  alert("No se pudo verificar el estado del sistema");
+                }
               }}
             >
               Verificar Estado del Sistema

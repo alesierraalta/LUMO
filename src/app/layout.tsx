@@ -9,6 +9,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { UserNav } from "@/components/auth/UserNav";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { AuthErrorBoundary } from "@/components/auth/ErrorBoundary";
+import { AppClerkProvider } from "@/components/auth/clerk-provider-config";
 
 // Disable static generation for all pages
 export const dynamic = 'force-dynamic';
@@ -33,41 +34,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // For Docker builds, we may need to skip Clerk authentication
-  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-  
-  // Create the content that will be rendered
-  const content = (
+  return (
     <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider defaultTheme="system">
           <AuthErrorBoundary>
-            {skipClerkAuth ? (
-              // Direct render without Clerk auth context
+            <AppClerkProvider>
               <AuthProvider>
                 {children}
               </AuthProvider>
-            ) : (
-              // Use AuthProvider which depends on ClerkProvider
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            )}
+            </AppClerkProvider>
           </AuthErrorBoundary>
         </ThemeProvider>
         <Toaster />
       </body>
     </html>
-  );
-
-  // Always wrap with ClerkProvider, but with appropriate options
-  // This ensures that the ClerkProvider context is always available
-  // but authentication can be optionally disabled
-  return (
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
-      {content}
-    </ClerkProvider>
   );
 }

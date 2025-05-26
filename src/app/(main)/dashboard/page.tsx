@@ -34,10 +34,46 @@ const MARGIN_CATEGORIES = {
   HIGH: { label: "Margen Alto", min: 30, max: Infinity, color: "var(--chart-3)" }
 };
 
-export default async function DashboardPage() {
-  const { userId } = await auth();
+// Función auxiliar para manejar el modo de desarrollo
+async function getAuthInfo() {
+  // Verificar si estamos en modo de desarrollo sin autenticación
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
   
-  if (!userId) {
+  if (skipClerkAuth) {
+    return { 
+      userId: 'dev-user-id', 
+      skipClerkAuth: true 
+    };
+  }
+  
+  try {
+    // Solo llamar a auth() si no estamos en modo de desarrollo
+    const session = await auth();
+    return { 
+      userId: session.userId, 
+      skipClerkAuth: false 
+    };
+  } catch (error) {
+    console.error("Error obteniendo sesión:", error);
+    // Si hay un error y estamos en modo de desarrollo, simular un userId
+    if (skipClerkAuth) {
+      return { 
+        userId: 'dev-user-id', 
+        skipClerkAuth: true 
+      };
+    }
+    return { 
+      userId: null, 
+      skipClerkAuth: false 
+    };
+  }
+}
+
+export default async function DashboardPage() {
+  // Usar la función auxiliar en lugar de llamar a auth() directamente
+  const { userId, skipClerkAuth } = await getAuthInfo();
+  
+  if (!userId && !skipClerkAuth) {
     redirect("/sign-in");
   }
   

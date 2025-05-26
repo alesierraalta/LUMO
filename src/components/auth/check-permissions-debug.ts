@@ -6,6 +6,22 @@ import { UserRole } from "@/lib/auth";
 
 export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
   try {
+    // Check if we should skip Clerk authentication
+    const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+    
+    // Si estamos en modo de desarrollo sin autenticación, permitir todo
+    if (skipClerkAuth) {
+      return {
+        authorized: true,
+        debugInfo: {
+          message: "Modo de desarrollo sin autenticación",
+          skipClerkAuth: true,
+          role: "admin",
+          requiredRole
+        }
+      };
+    }
+    
     // Obtener el ID del usuario de Clerk
     const session = await auth();
     const userId = session.userId;
@@ -73,6 +89,19 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     };
   } catch (error: any) {
     console.error("Error en la verificación de permisos:", error);
+    
+    // Si hay un error y estamos en modo de desarrollo, permitir acceso
+    if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
+      return {
+        authorized: true,
+        debugInfo: {
+          message: "Modo de desarrollo sin autenticación (error manejado)",
+          error: error.message,
+          skipClerkAuth: true
+        }
+      };
+    }
+    
     return {
       authorized: false,
       debugInfo: {

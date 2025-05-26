@@ -1,47 +1,35 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { SignIn } from '@clerk/nextjs';
+import { shouldSkipAuth } from '@/lib/clerk-config';
 
 export default function SignInPage() {
-  const [imgSrc, setImgSrc] = useState("/inventory-logo.svg");
+  const router = useRouter();
+  const skipAuth = shouldSkipAuth();
 
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-      <div className="w-full max-w-md p-6">
-        <div className="flex flex-col items-center justify-center text-center mb-8">
-          {/* Logo con manejo de errores */}
-          <div className="mx-auto mb-4">
-            <Image
-              src={imgSrc}
-              alt="Logo"
-              width={80}
-              height={80}
-              priority
-              onError={() => setImgSrc("/next.svg")}
-            />
-          </div>
-          
-          <h1 className="text-3xl font-bold">Iniciar Sesión</h1>
-          <p className="text-muted-foreground mt-2">
-            Accede a tu cuenta para gestionar tu inventario
-          </p>
-        </div>
-        
-        <div className="bg-card border rounded-lg shadow-sm">
-          <SignIn 
-            appearance={{
-              elements: {
-                rootBox: "mx-auto",
-                card: "shadow-none border-0",
-                header: "hidden",
-                footer: "hidden"
-              }
-            }}
-          />
-        </div>
+  useEffect(() => {
+    // Si estamos en modo sin autenticación, redirigir al dashboard
+    if (skipAuth) {
+      router.push('/dashboard');
+    }
+  }, [router, skipAuth]);
+
+  // En modo sin autenticación, mostrar un mensaje de carga
+  if (skipAuth) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-2xl font-bold mb-4">Modo de desarrollo sin autenticación</h1>
+        <p className="text-gray-500 mb-8">Redirigiendo al dashboard...</p>
       </div>
+    );
+  }
+
+  // En modo con autenticación, mostrar el componente SignIn de Clerk
+  return (
+    <div className="w-full max-w-md p-4">
+      <SignIn />
     </div>
   );
 } 

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
-const ADMIN_EMAIL = "alesierraalta@gmail.com";
+// Lista de correos electrónicos que siempre tendrán rol de administrador
+// Esto se puede modificar para agregar más administradores según sea necesario
+const ADMIN_EMAILS = [
+  "alesierraalta@gmail.com",
+  // Agrega más correos electrónicos de administradores aquí
+];
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,14 +27,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User has no primary email" }, { status: 400 });
     }
 
-    const isAdminEmail = primaryEmail.emailAddress === ADMIN_EMAIL;
+    const isAdminEmail = ADMIN_EMAILS.includes(primaryEmail.emailAddress);
+    console.log(`Sync user: ${primaryEmail.emailAddress}, isAdmin: ${isAdminEmail}`);
 
     // Find admin and viewer roles
     const adminRole = await prisma.role.findUnique({ where: { name: "admin" } });
     const viewerRole = await prisma.role.findUnique({ where: { name: "viewer" } });
 
     if (!adminRole || !viewerRole) {
-      return NextResponse.json({ error: "Required roles not found" }, { status: 404 });
+      console.error("Required roles not found in database. Creating them now...");
+      
+      // Si no existen los roles, créalos
+      if (!adminRole) {
+        await prisma.role.create({
+          data: {
+            name: 'admin',
+            description: 'Acceso completo a todas las funcionalidades',
+          }
+        });
+      }
+      
+      if (!viewerRole) {
+        await prisma.role.create({
+          data: {
+            name: 'viewer',
+            description: 'Acceso de solo lectura a la aplicación',
+          }
+        });
+      }
+      
+      return NextResponse.json({ 
+        error: "Roles were missing and have been created. Please try again." 
+      }, { status: 503 });
     }
 
     // Check if the user already exists in our database

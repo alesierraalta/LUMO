@@ -11,7 +11,7 @@
     "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
     "build": "next build",
     "postinstall": "prisma generate",
-    "start": "echo '[NPM-START] Starting with debugging...' && node scripts/debug-runtime.js && echo '[NPM-START] Debug complete, starting server...' && node .next/standalone/server.js",
+    "start": "echo '[NPM-START] Starting with debugging...' && node scripts/debug-runtime.js && echo '[NPM-START] Debug complete, determining startup method...' && ([ -f .next/standalone/server.js ] && echo '[NPM-START] Using standalone server' && node .next/standalone/server.js) || ([ -f server.js ] && echo '[NPM-START] Using root server.js' && node server.js) || (echo '[NPM-START] No standalone server found, using Next.js start' && npx next start)",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",

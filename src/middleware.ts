@@ -1,11 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Add comprehensive debugging
+// Add Edge Runtime compatible debugging
 console.log('[MIDDLEWARE] Middleware loading...');
 console.log('[MIDDLEWARE] Next.js version:', process.env.npm_package_version || 'unknown');
-console.log('[MIDDLEWARE] Node version:', process.version);
-console.log('[MIDDLEWARE] Working directory:', process.cwd());
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -28,38 +26,10 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     secret_key_exists: !!process.env.CLERK_SECRET_KEY,
     skip_auth: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH,
     node_env: process.env.NODE_ENV,
-    request_headers: Object.fromEntries(req.headers.entries()),
     user_agent: req.headers.get('user-agent'),
     method: req.method,
     url: req.url,
   });
-
-  // Add file system debugging for CSS-related files
-  try {
-    const fs = require('fs');
-    const cssDebug = {
-      static_dir_exists: fs.existsSync('.next/static'),
-      css_dir_exists: fs.existsSync('.next/static/css'),
-      chunks_dir_exists: fs.existsSync('.next/static/chunks'),
-      server_js_exists: fs.existsSync('.next/standalone/server.js'),
-    };
-    
-    if (req.nextUrl.pathname === '/') {
-      console.log('[MIDDLEWARE CSS-DEBUG]', cssDebug);
-      
-      // Try to read manifest files
-      try {
-        if (fs.existsSync('.next/static/chunks')) {
-          const chunks = fs.readdirSync('.next/static/chunks');
-          console.log('[MIDDLEWARE] Chunks available:', chunks.slice(0, 5));
-        }
-             } catch (e) {
-         console.log('[MIDDLEWARE] Error reading chunks:', (e as Error).message);
-       }
-     }
-   } catch (e) {
-     console.log('[MIDDLEWARE] Error in CSS debugging:', (e as Error).message);
-  }
 
   // Skip authentication for public routes
   if (isPublicRoute(req)) {

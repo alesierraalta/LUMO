@@ -30,6 +30,9 @@ console.log('[DEBUG] Current working directory:', process.cwd());
 const criticalFiles = [
   'server.js',
   '.next/static',
+  '.next/server',
+  '.next/standalone',
+  '.next/standalone/server.js',
   'public',
   'next.config.ts',
   'postcss.config.mjs'
@@ -46,7 +49,90 @@ criticalFiles.forEach(file => {
       console.log(`[DEBUG] Error reading .next/static:`, e.message);
     }
   }
+  if (exists && file === '.next/server') {
+    try {
+      const serverFiles = fs.readdirSync('.next/server');
+      console.log(`[DEBUG] Files in .next/server:`, serverFiles.slice(0, 5)); // Show first 5
+    } catch (e) {
+      console.log(`[DEBUG] Error reading .next/server:`, e.message);
+    }
+  }
 });
+
+// CRITICAL: Check for server.js in multiple locations and try to create a working startup
+console.log('[DEBUG] Checking for server.js in multiple locations...');
+
+const serverLocations = [
+  'server.js',
+  '.next/standalone/server.js',
+  '.next/server.js'
+];
+
+let serverFound = false;
+let serverLocation = null;
+
+for (const location of serverLocations) {
+  if (fs.existsSync(location)) {
+    console.log(`[DEBUG] Found server at: ${location}`);
+    serverFound = true;
+    serverLocation = location;
+    break;
+  }
+}
+
+if (!serverFound) {
+  console.log('[DEBUG] No server.js found in expected locations');
+  
+  // Try to create a custom server.js that uses Next.js server
+  console.log('[DEBUG] Attempting to create a custom server.js...');
+  try {
+    const customServer = `
+const { createServer } = require('http');
+const next = require('next');
+
+const dev = process.env.NODE_ENV !== 'production';
+const app = next({ dev });
+const handle = app.getRequestHandler();
+const port = process.env.PORT || 8080;
+
+console.log('[CUSTOM-SERVER] Starting Next.js application...');
+console.log('[CUSTOM-SERVER] Environment:', process.env.NODE_ENV);
+console.log('[CUSTOM-SERVER] Port:', port);
+
+app.prepare().then(() => {
+  createServer((req, res) => {
+    handle(req, res);
+  }).listen(port, '0.0.0.0', (err) => {
+    if (err) throw err;
+    console.log('[CUSTOM-SERVER] Next.js server ready on port', port);
+  });
+}).catch((ex) => {
+  console.error('[CUSTOM-SERVER] Error starting server:', ex.message);
+  process.exit(1);
+});
+`;
+    
+    fs.writeFileSync('server.js', customServer);
+    console.log('[DEBUG] Custom server.js created successfully!');
+    serverFound = true;
+    serverLocation = 'server.js';
+  } catch (error) {
+    console.log('[DEBUG] Error creating custom server.js:', error.message);
+  }
+}
+
+// If server.js exists in standalone but not in root, copy it
+if (!fs.existsSync('server.js') && fs.existsSync('.next/standalone/server.js')) {
+  console.log('[DEBUG] Found server.js in .next/standalone, copying to root...');
+  try {
+    fs.copyFileSync('.next/standalone/server.js', 'server.js');
+    console.log('[DEBUG] server.js copied successfully!');
+    serverFound = true;
+    serverLocation = 'server.js';
+  } catch (error) {
+    console.log('[DEBUG] Error copying server.js:', error.message);
+  }
+}
 
 // Enhanced CSS manifest checks
 try {
@@ -139,5 +225,9 @@ try {
 } catch (error) {
   console.log('[DEBUG] Error creating CSS manifest fallback:', error.message);
 }
+
+// Final check after all operations
+console.log('[DEBUG] Final server.js check:', fs.existsSync('server.js') ? 'EXISTS' : 'MISSING');
+console.log('[DEBUG] Recommended startup method:', serverFound ? `node ${serverLocation}` : 'npx next start');
 
 console.log('[DEBUG] Debug complete. Starting application...'); 

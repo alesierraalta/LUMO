@@ -12,6 +12,21 @@ export default function GlobalError({
   useEffect(() => {
     // Log the error to the console for debugging
     console.error('Global error caught:', error);
+    
+    // Special handling for CSS-related errors
+    if (error.message?.includes('entryCSSFiles') || 
+        error.message?.includes('Cannot read properties of undefined') ||
+        error.message?.includes('CSS')) {
+      console.error('CSS loading error detected. This might be due to missing CSS manifest files.');
+      console.log('Attempting to reload the page to retry CSS loading...');
+      
+      // Try to reload after a short delay for CSS errors
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }, 2000);
+    }
   }, [error]);
 
   return (
@@ -29,7 +44,10 @@ export default function GlobalError({
             🚨 Application Error
           </h2>
           <p style={{ marginBottom: '16px' }}>
-            Something went wrong in the application.
+            {error.message?.includes('entryCSSFiles') || error.message?.includes('CSS') 
+              ? 'CSS loading error detected. The page will reload automatically in 2 seconds to retry.'
+              : 'Something went wrong in the application.'
+            }
           </p>
           <details style={{ marginBottom: '16px' }}>
             <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>

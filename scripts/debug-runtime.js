@@ -209,21 +209,92 @@ try {
   console.log('[DEBUG] Error listing current directory:', error.message);
 }
 
-// Create CSS manifest fallback to prevent entryCSSFiles error
+// Fix CSS manifest files to prevent entryCSSFiles error
 try {
-  const manifestPath = '.next/static/chunks/manifest.json';
-  if (!fs.existsSync(manifestPath)) {
-    console.log('[DEBUG] Creating CSS manifest fallback...');
-    const fallbackManifest = {
+  console.log('[DEBUG] Fixing CSS manifest files...');
+  
+  // Fix build-manifest.json (most critical for entryCSSFiles error)
+  const buildManifestPath = '.next/build-manifest.json';
+  if (fs.existsSync(buildManifestPath)) {
+    try {
+      const buildManifest = JSON.parse(fs.readFileSync(buildManifestPath, 'utf8'));
+      console.log('[DEBUG] Current build manifest keys:', Object.keys(buildManifest));
+      
+      // Ensure entryCSSFiles exists
+      if (!buildManifest.entryCSSFiles) {
+        console.log('[DEBUG] Adding missing entryCSSFiles to build manifest');
+        buildManifest.entryCSSFiles = {};
+      }
+      
+      // Ensure other required CSS fields exist
+      if (!buildManifest.entryJSFiles) {
+        buildManifest.entryJSFiles = {};
+      }
+      
+      // Write back the fixed manifest
+      fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));
+      console.log('[DEBUG] build-manifest.json fixed');
+    } catch (e) {
+      console.log('[DEBUG] Error reading build-manifest.json:', e.message);
+      console.log('[DEBUG] Creating new build-manifest.json');
+      const fallbackBuildManifest = {
+        polyfillFiles: [],
+        entryCSSFiles: {},
+        entryJSFiles: {},
+        devFiles: [],
+        ampDevFiles: [],
+        lowPriorityFiles: [],
+        rootMainFiles: [],
+        pages: {}
+      };
+      fs.writeFileSync(buildManifestPath, JSON.stringify(fallbackBuildManifest, null, 2));
+    }
+  } else {
+    console.log('[DEBUG] Creating missing build-manifest.json');
+    const fallbackBuildManifest = {
+      polyfillFiles: [],
+      entryCSSFiles: {},
+      entryJSFiles: {},
+      devFiles: [],
+      ampDevFiles: [],
+      lowPriorityFiles: [],
+      rootMainFiles: [],
+      pages: {}
+    };
+    fs.writeFileSync(buildManifestPath, JSON.stringify(fallbackBuildManifest, null, 2));
+  }
+  
+  // Fix app-build-manifest.json if it exists
+  const appBuildManifestPath = '.next/app-build-manifest.json';
+  if (fs.existsSync(appBuildManifestPath)) {
+    try {
+      const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, 'utf8'));
+      if (!appBuildManifest.pages) {
+        appBuildManifest.pages = {};
+      }
+      fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));
+      console.log('[DEBUG] app-build-manifest.json verified');
+    } catch (e) {
+      console.log('[DEBUG] Error with app-build-manifest.json:', e.message);
+    }
+  }
+  
+  // Create chunks manifest fallback
+  fs.mkdirSync('.next/static/chunks', { recursive: true });
+  const chunksManifestPath = '.next/static/chunks/manifest.json';
+  if (!fs.existsSync(chunksManifestPath)) {
+    const fallbackChunksManifest = {
       entryCSSFiles: {},
       entryJSFiles: {},
       polyfillFiles: []
     };
-    fs.writeFileSync(manifestPath, JSON.stringify(fallbackManifest, null, 2));
-    console.log('[DEBUG] CSS manifest fallback created');
+    fs.writeFileSync(chunksManifestPath, JSON.stringify(fallbackChunksManifest, null, 2));
+    console.log('[DEBUG] chunks manifest created');
   }
+  
+  console.log('[DEBUG] CSS manifest fixes completed');
 } catch (error) {
-  console.log('[DEBUG] Error creating CSS manifest fallback:', error.message);
+  console.log('[DEBUG] Error fixing CSS manifests:', error.message);
 }
 
 // Final check after all operations

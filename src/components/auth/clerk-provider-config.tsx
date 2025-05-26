@@ -99,9 +99,10 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
   const isProductionKey = publishableKey.startsWith('pk_live_');
   const isLocalhost = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isForced = process.env.FORCE_PRODUCTION_ON_LOCALHOST === 'true';
 
-  // Show warning if using production keys on localhost
-  if (isProductionKey && isLocalhost) {
+  // Show warning if using production keys on localhost (but not if forced)
+  if (isProductionKey && isLocalhost && !isForced) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="max-w-lg text-center">
@@ -138,8 +139,15 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
   console.log('[CLERK] Using configuration:', {
     isProductionKey,
     isLocalhost,
-    warning: isProductionKey && isLocalhost ? 'Production keys may not work on localhost' : null
+    isForced,
+    mode: isForced && isProductionKey && isLocalhost ? 'PRODUCTION_TEST_MODE' : 'NORMAL',
+    warning: isProductionKey && isLocalhost && !isForced ? 'Production keys may not work on localhost' : null
   });
+
+  // Add special message for production test mode
+  if (isForced && isProductionKey && isLocalhost) {
+    console.log('🧪 [CLERK] Production Test Mode Active - Using production keys on localhost');
+  }
 
   // Normal Clerk provider case
   return (

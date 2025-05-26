@@ -52,12 +52,18 @@ export function checkClerkConfiguration(): {
     const isLocalhost = typeof window !== 'undefined' && 
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    if (isProduction && isLocalhost) {
+    const isForced = typeof window !== 'undefined' && process.env.FORCE_PRODUCTION_ON_LOCALHOST === 'true';
+    
+    if (isProduction && isLocalhost && !isForced) {
       isValid = false;
       warnings.push('Using production Clerk keys (pk_live_) on localhost may cause loading errors');
       recommendations.push('Use development keys: npm run dev:clerk');
+      recommendations.push('Use production test mode: npm run dev:prod-test');
       recommendations.push('Configure your Clerk app to allow localhost in production settings');
       recommendations.push('Use your production domain instead of localhost');
+    } else if (isProduction && isLocalhost && isForced) {
+      // Production test mode - show info but no warnings
+      warnings.push('🧪 Production test mode: Using production keys on localhost (forced)');
     }
 
     if (!isProduction && !isLocalhost) {

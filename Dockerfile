@@ -56,8 +56,7 @@ ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
 
 # Add validation to check if environment variables are set
 RUN if [ "$NEXT_PUBLIC_SKIP_CLERK_AUTH" != "true" ] && [ -z "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" ]; then \
-    echo "Error: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be provided when auth is enabled."; \
-    exit 1; \
+    echo "Warning: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not provided. Ensure it's set via secrets in deployment."; \
 fi
 
 # Copiar prisma directory antes de instalar dependencias para que prisma generate funcione
@@ -73,5 +72,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
 
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+ENV PORT=3000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 CMD ["npm", "start"] 

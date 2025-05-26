@@ -53,9 +53,15 @@ console.log('\n=== CONFIGURACIÓN DE CLERK AUTHENTICATION ===');
 // Detectar el comando específico ejecutado
 const isDevClerkCommand = process.argv.some(arg => arg.includes('dev:clerk'));
 const isProdKeysCommand = process.argv.some(arg => arg.includes('dev:prod-keys')) || process.env.NODE_ENV === 'production';
+const isProdTestCommand = process.argv.some(arg => arg.includes('dev:prod-test'));
 
 let isDevelopment;
-if (isProdKeysCommand) {
+let forceProductionOnLocalhost = false;
+
+if (isProdTestCommand) {
+  isDevelopment = false; // Usar claves de producción
+  forceProductionOnLocalhost = true; // Pero permitir en localhost
+} else if (isProdKeysCommand) {
   isDevelopment = false; // Forzar producción para dev:prod-keys
 } else if (isDevClerkCommand || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
   isDevelopment = true; // Forzar desarrollo para dev:clerk o cuando NODE_ENV no está definido
@@ -64,7 +70,10 @@ if (isProdKeysCommand) {
 }
 
 console.log(`Entorno: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-console.log(`Debug - Comando detectado: ${isDevClerkCommand ? 'dev:clerk' : isProdKeysCommand ? 'dev:prod-keys' : 'default'}`);
+if (forceProductionOnLocalhost) {
+  console.log('🧪 MODO TEST: Claves de producción forzadas en localhost');
+}
+console.log(`Debug - Comando detectado: ${isDevClerkCommand ? 'dev:clerk' : isProdKeysCommand ? 'dev:prod-keys' : isProdTestCommand ? 'dev:prod-test' : 'default'}`);
 
 // Función para validar si una clave es real y válida
 function isValidClerkKey(key, type) {
@@ -144,6 +153,7 @@ const preservedVars = {
   ...(keys.publishable && { NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: keys.publishable }),
   ...(keys.secret && { CLERK_SECRET_KEY: keys.secret }),
   NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth,
+  FORCE_PRODUCTION_ON_LOCALHOST: forceProductionOnLocalhost ? 'true' : 'false',
   NODE_ENV: isDevelopment ? 'development' : 'production'
 };
 
@@ -155,7 +165,11 @@ if (preservedVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
 if (preservedVars.CLERK_SECRET_KEY) {
   envContent += `CLERK_SECRET_KEY=${preservedVars.CLERK_SECRET_KEY}\n`;
 }
-envContent += `NEXT_PUBLIC_SKIP_CLERK_AUTH=${preservedVars.NEXT_PUBLIC_SKIP_CLERK_AUTH}\n\n`;
+envContent += `NEXT_PUBLIC_SKIP_CLERK_AUTH=${preservedVars.NEXT_PUBLIC_SKIP_CLERK_AUTH}\n`;
+if (preservedVars.FORCE_PRODUCTION_ON_LOCALHOST === 'true') {
+  envContent += `FORCE_PRODUCTION_ON_LOCALHOST=${preservedVars.FORCE_PRODUCTION_ON_LOCALHOST}\n`;
+}
+envContent += '\n';
 
 // Añadir URLs de Clerk
 envContent += '# Clerk URLs\n';

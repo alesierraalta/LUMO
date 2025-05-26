@@ -8,6 +8,7 @@
     "dev:clerk": "node create-env-local.js && next dev",
     "dev:no-auth": "node create-env-local.js --skip-auth && next dev",
     "dev:prod-keys": "cross-env NODE_ENV=production node create-env-local.js && next dev",
+    "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "node .next/standalone/server.js",

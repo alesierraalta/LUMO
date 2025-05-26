@@ -20,11 +20,13 @@ export default function ClerkDiagnosticsPage() {
     const env = {
       NODE_ENV: process.env.NODE_ENV || 'unknown',
       NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'false',
+      FORCE_PRODUCTION_ON_LOCALHOST: process.env.FORCE_PRODUCTION_ON_LOCALHOST || 'false',
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.substring(0, 15) + '...' || 'not set',
       isProduction: isUsingProductionKeys() ? 'yes' : 'no',
       currentDomain: window.location.hostname,
       currentProtocol: window.location.protocol,
-      currentPort: window.location.port
+      currentPort: window.location.port,
+      testMode: process.env.FORCE_PRODUCTION_ON_LOCALHOST === 'true' && isUsingProductionKeys() ? 'ACTIVE' : 'INACTIVE'
     };
     setEnvVars(env);
   }, []);
@@ -129,9 +131,13 @@ export default function ClerkDiagnosticsPage() {
       <div className="mt-6 text-sm text-gray-600">
         <h4 className="font-medium mb-2">Need help?</h4>
         <p>
-          If you're experiencing issues, try running <code className="bg-gray-100 px-1 rounded">npm run dev:clerk</code> 
-          to use development keys, or check your Clerk dashboard configuration.
+          If you're experiencing issues, try:
         </p>
+        <ul className="list-disc list-inside mt-2 space-y-1">
+          <li><code className="bg-gray-100 px-1 rounded">npm run dev:clerk</code> - Use development keys</li>
+          <li><code className="bg-gray-100 px-1 rounded">npm run dev:prod-test</code> - Test production keys on localhost</li>
+          <li><code className="bg-gray-100 px-1 rounded">npm run dev:prod-keys</code> - Use production keys (requires proper domain)</li>
+        </ul>
       </div>
     </div>
   );

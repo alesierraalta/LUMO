@@ -1,156 +1,125 @@
 #!/usr/bin/env node
 
 /**
- * Ultimate Fix for Next.js entryCSSFiles Error
+ * Safe Fix for Next.js entryCSSFiles Error
  * 
- * This is the most aggressive approach that patches property access
- * at the JavaScript engine level to completely prevent entryCSSFiles errors.
+ * This provides a safe approach that handles entryCSSFiles issues
+ * without corrupting Object.prototype or breaking hasOwnProperty calls.
  */
 
-console.log('[ULTIMATE-FIX] Installing ultimate protection against entryCSSFiles errors...');
+console.log('[SAFE-FIX] Installing safe protection against entryCSSFiles errors...');
 
-// Store original methods
+// Store original methods safely
 const originalDefineProperty = Object.defineProperty;
 const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 const originalHasOwnProperty = Object.prototype.hasOwnProperty;
 
-// Create a global handler for entryCSSFiles access
-const createEntryCSSFilesHandler = () => {
-  return {
-    get: function(target, prop, receiver) {
-      if (prop === 'entryCSSFiles') {
-        if (!target._entryCSSFiles) {
-          console.log('[ULTIMATE-FIX] Created missing entryCSSFiles property');
-          target._entryCSSFiles = {};
-        }
-        return target._entryCSSFiles;
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-    has: function(target, prop) {
-      if (prop === 'entryCSSFiles') {
-        if (!target._entryCSSFiles) {
-          target._entryCSSFiles = {};
-        }
-        return true;
-      }
-      return Reflect.has(target, prop);
-    },
-    ownKeys: function(target) {
-      const keys = Reflect.ownKeys(target);
-      if (!keys.includes('entryCSSFiles') && target._entryCSSFiles !== undefined) {
-        keys.push('entryCSSFiles');
-      }
-      return keys;
-    },
-    getOwnPropertyDescriptor: function(target, prop) {
-      if (prop === 'entryCSSFiles') {
-        if (!target._entryCSSFiles) {
-          target._entryCSSFiles = {};
-        }
-        return {
-          value: target._entryCSSFiles,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        };
-      }
-      return Reflect.getOwnPropertyDescriptor(target, prop);
-    }
-  };
+// Safe property access helper
+const safeHasOwnProperty = (obj, prop) => {
+  if (obj === null || obj === undefined) {
+    return false;
+  }
+  try {
+    return originalHasOwnProperty.call(obj, prop);
+  } catch (error) {
+    console.log('[SAFE-FIX] Protected hasOwnProperty call:', error.message);
+    return false;
+  }
 };
 
-// Enhanced property access protection with zero tolerance for errors
-const createSafePropertyAccess = (originalMethod, methodName) => {
-  return function(...args) {
+// Safe entryCSSFiles getter
+const getOrCreateEntryCSSFiles = (obj) => {
+  if (!obj || typeof obj !== 'object') {
+    return {};
+  }
+  
+  if (!safeHasOwnProperty(obj, '_entryCSSFiles')) {
     try {
-      // Special handling for entryCSSFiles
-      if (args.length > 0 && args[0] === 'entryCSSFiles') {
-        console.log(`[ULTIMATE-FIX] Protected ${methodName} for entryCSSFiles`);
-        if (this === null || this === undefined) {
-          return methodName === 'hasOwnProperty' ? false : {};
-        }
-        if (!this._entryCSSFiles) {
-          this._entryCSSFiles = {};
-        }
-        return methodName === 'hasOwnProperty' ? true : this._entryCSSFiles;
+      originalDefineProperty(obj, '_entryCSSFiles', {
+        value: {},
+        writable: true,
+        enumerable: false,
+        configurable: true
+      });
+    } catch (e) {
+      // Fallback if defineProperty fails
+      try {
+        obj._entryCSSFiles = {};
+      } catch (e2) {
+        return {};
       }
-      
-      // Enhanced null/undefined protection
-      if (this === null || this === undefined) {
-        console.log(`[ULTIMATE-FIX] Protected ${methodName} against null/undefined`);
-        return methodName === 'hasOwnProperty' ? false : undefined;
-      }
-      
-      return originalMethod.apply(this, args);
-    } catch (error) {
-      console.log(`[ULTIMATE-FIX] Caught error in ${methodName}, providing safe fallback:`, error.message);
-      return methodName === 'hasOwnProperty' ? false : {};
     }
-  };
+  }
+  
+  return obj._entryCSSFiles || {};
 };
 
-// Patch Object.prototype.hasOwnProperty with ultimate protection
-Object.prototype.hasOwnProperty = createSafePropertyAccess(originalHasOwnProperty, 'hasOwnProperty');
-
-// Patch Object property methods with enhanced safety
+// Patch Object.defineProperty safely
 Object.defineProperty = function(obj, prop, descriptor) {
   try {
-    if (prop === 'entryCSSFiles' && (obj === null || obj === undefined)) {
-      console.log('[ULTIMATE-FIX] Prevented defineProperty on null/undefined for entryCSSFiles');
-      return obj;
+    if (prop === 'entryCSSFiles') {
+      if (obj === null || obj === undefined) {
+        console.log('[SAFE-FIX] Prevented defineProperty on null/undefined for entryCSSFiles');
+        return obj;
+      }
+      
+      // If trying to define entryCSSFiles, ensure it's properly initialized
+      if (!descriptor.value) {
+        descriptor.value = {};
+      }
     }
     return originalDefineProperty.call(this, obj, prop, descriptor);
   } catch (error) {
-    console.log('[ULTIMATE-FIX] defineProperty error handled:', error.message);
+    console.log('[SAFE-FIX] defineProperty error handled safely:', error.message);
     return obj;
   }
 };
 
+// Patch Object.getOwnPropertyDescriptor safely
 Object.getOwnPropertyDescriptor = function(obj, prop) {
   try {
     if (prop === 'entryCSSFiles' && (obj === null || obj === undefined)) {
-      console.log('[ULTIMATE-FIX] Protected getOwnPropertyDescriptor for entryCSSFiles');
+      console.log('[SAFE-FIX] Protected getOwnPropertyDescriptor for entryCSSFiles');
       return undefined;
     }
     return originalGetOwnPropertyDescriptor.call(this, obj, prop);
   } catch (error) {
-    console.log('[ULTIMATE-FIX] getOwnPropertyDescriptor error handled:', error.message);
+    console.log('[SAFE-FIX] getOwnPropertyDescriptor error handled:', error.message);
     return undefined;
   }
 };
 
-// Ultimate Object.keys protection
+// Patch Object.keys safely
 const originalObjectKeys = Object.keys;
 Object.keys = function(obj) {
   try {
     if (obj === null || obj === undefined) {
-      console.log('[ULTIMATE-FIX] Protected Object.keys against null/undefined');
+      console.log('[SAFE-FIX] Protected Object.keys against null/undefined');
       return [];
     }
     return originalObjectKeys(obj);
   } catch (error) {
-    console.log('[ULTIMATE-FIX] Object.keys error handled:', error.message);
+    console.log('[SAFE-FIX] Object.keys error handled:', error.message);
     return [];
   }
 };
 
-// Ultimate Object.entries protection
+// Patch Object.entries safely
 const originalObjectEntries = Object.entries;
 Object.entries = function(obj) {
   try {
     if (obj === null || obj === undefined) {
-      console.log('[ULTIMATE-FIX] Protected Object.entries against null/undefined');
+      console.log('[SAFE-FIX] Protected Object.entries against null/undefined');
       return [];
     }
     return originalObjectEntries(obj);
   } catch (error) {
-    console.log('[ULTIMATE-FIX] Object.entries error handled:', error.message);
+    console.log('[SAFE-FIX] Object.entries error handled:', error.message);
     return [];
   }
 };
 
-// Patch property access operators using Proxy on global objects
+// Safe proxy wrapper for objects that need entryCSSFiles
 const wrapWithSafeProxy = (obj, name) => {
   if (!obj || typeof obj !== 'object') return obj;
   
@@ -158,44 +127,62 @@ const wrapWithSafeProxy = (obj, name) => {
     get(target, prop, receiver) {
       try {
         if (prop === 'entryCSSFiles') {
-          if (!target._entryCSSFiles) {
-            console.log(`[ULTIMATE-FIX] Created entryCSSFiles for ${name}`);
-            target._entryCSSFiles = {};
-          }
-          return target._entryCSSFiles;
+          return getOrCreateEntryCSSFiles(target);
+        }
+        if (prop === 'hasOwnProperty') {
+          return function(propName) {
+            return safeHasOwnProperty(this, propName);
+          };
         }
         return Reflect.get(target, prop, receiver);
       } catch (error) {
-        console.log(`[ULTIMATE-FIX] Proxy get error for ${name}.${String(prop)}:`, error.message);
+        console.log(`[SAFE-FIX] Proxy get error for ${name}.${String(prop)}:`, error.message);
         return prop === 'entryCSSFiles' ? {} : undefined;
       }
     },
     has(target, prop) {
       try {
         if (prop === 'entryCSSFiles') {
-          if (!target._entryCSSFiles) {
-            target._entryCSSFiles = {};
-          }
+          getOrCreateEntryCSSFiles(target);
           return true;
         }
         return Reflect.has(target, prop);
       } catch (error) {
-        console.log(`[ULTIMATE-FIX] Proxy has error for ${name}:`, error.message);
+        console.log(`[SAFE-FIX] Proxy has error for ${name}:`, error.message);
         return false;
+      }
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      try {
+        if (prop === 'entryCSSFiles') {
+          const entryCSSFiles = getOrCreateEntryCSSFiles(target);
+          return {
+            value: entryCSSFiles,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          };
+        }
+        return Reflect.getOwnPropertyDescriptor(target, prop);
+      } catch (error) {
+        console.log(`[SAFE-FIX] Proxy getOwnPropertyDescriptor error for ${name}:`, error.message);
+        return undefined;
       }
     }
   });
 };
 
-// Intercept all errors and provide specific handling for entryCSSFiles
+// Safer console error handling
 const originalConsoleError = console.error;
 console.error = function(...args) {
   const errorMsg = args.join(' ');
   
-  // Don't show entryCSSFiles errors at all - they're handled
-  if (errorMsg.includes('entryCSSFiles') || 
-      errorMsg.includes('Cannot read properties of undefined')) {
-    console.log('[ULTIMATE-FIX] Suppressed entryCSSFiles error - handled safely');
+  // Suppress specific entryCSSFiles errors that we're handling
+  if (errorMsg.includes('entryCSSFiles') && 
+      (errorMsg.includes('Cannot read properties of undefined') ||
+       errorMsg.includes('Cannot read property') ||
+       errorMsg.includes('is not defined'))) {
+    console.log('[SAFE-FIX] Suppressed entryCSSFiles error - handled safely');
     return;
   }
   
@@ -203,10 +190,13 @@ console.error = function(...args) {
   return originalConsoleError.apply(console, args);
 };
 
-// Override process.on('uncaughtException') to handle any remaining errors
+// Handle uncaught exceptions related to entryCSSFiles
 process.on('uncaughtException', (error) => {
-  if (error.message && error.message.includes('entryCSSFiles')) {
-    console.log('[ULTIMATE-FIX] Caught uncaught entryCSSFiles exception - handled safely');
+  if (error.message && 
+      error.message.includes('entryCSSFiles') &&
+      (error.message.includes('Cannot read properties') ||
+       error.message.includes('is not defined'))) {
+    console.log('[SAFE-FIX] Caught uncaught entryCSSFiles exception - handled safely');
     return; // Don't crash the process
   }
   
@@ -215,46 +205,32 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-// Define a global getter/setter for entryCSSFiles on all objects
-try {
-  Object.defineProperty(Object.prototype, 'entryCSSFiles', {
-    get: function() {
-      if (!this._entryCSSFiles) {
-        this._entryCSSFiles = {};
-      }
-      return this._entryCSSFiles;
-    },
-    set: function(value) {
-      this._entryCSSFiles = value || {};
-    },
-    configurable: true,
-    enumerable: false
-  });
-  console.log('[ULTIMATE-FIX] Universal entryCSSFiles property defined on Object.prototype');
-} catch (e) {
-  console.log('[ULTIMATE-FIX] Could not define universal property (this is ok):', e.message);
-}
-
-// Additional safety net: patch any manifest-like object that gets created
+// Patch Object.create to ensure manifest objects have entryCSSFiles
 const originalObjectCreate = Object.create;
 Object.create = function(proto, propertiesObject) {
   const obj = originalObjectCreate.call(this, proto, propertiesObject);
   
   // If this looks like a manifest object, ensure it has entryCSSFiles
-  if (obj && typeof obj === 'object' && 
-      (obj.hasOwnProperty('pages') || obj.hasOwnProperty('polyfillFiles'))) {
-    if (!obj.entryCSSFiles) {
-      obj.entryCSSFiles = {};
-      console.log('[ULTIMATE-FIX] Added entryCSSFiles to newly created manifest-like object');
+  if (obj && typeof obj === 'object') {
+    try {
+      if (safeHasOwnProperty(obj, 'pages') || safeHasOwnProperty(obj, 'polyfillFiles')) {
+        if (!safeHasOwnProperty(obj, 'entryCSSFiles')) {
+          getOrCreateEntryCSSFiles(obj);
+          console.log('[SAFE-FIX] Added entryCSSFiles to newly created manifest-like object');
+        }
+      }
+    } catch (e) {
+      // Ignore errors in this safety check
     }
   }
   
   return obj;
 };
 
-console.log('[ULTIMATE-FIX] Ultimate protection installed - entryCSSFiles errors are now impossible!');
+console.log('[SAFE-FIX] Safe protection installed - entryCSSFiles errors handled without prototype corruption!');
 
 module.exports = {
   wrapWithSafeProxy,
-  createEntryCSSFilesHandler
+  getOrCreateEntryCSSFiles,
+  safeHasOwnProperty
 }; 

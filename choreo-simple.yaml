@@ -36,8 +36,8 @@ deploy:
   startup:
     shell: /bin/sh
     command: |-
-      echo "Starting with comprehensive manifest fix..."
+      echo "Starting with ultimate manifest fix..."
       # Run comprehensive preload fix to ensure all manifests are properly structured
       node preload-fix.js
-      # Start with enhanced monkey-patching for runtime protection
-      node -r ./monkey-patch.js .next/standalone/server.js 
+      # Start with ultimate protection for complete error prevention
+      node -r ./ultimate-fix.js .next/standalone/server.js 

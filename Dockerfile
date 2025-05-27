@@ -67,6 +67,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/scripts/fix-manifests.js ./scripts/fix-manifests.js
 COPY --from=builder /app/monkey-patch.js ./monkey-patch.js
+COPY --from=builder /app/preload-fix.js ./preload-fix.js
 
 # Create scripts directory if not exists
 RUN mkdir -p scripts
@@ -74,19 +75,19 @@ RUN mkdir -p scripts
 # Install production dependencies
 RUN npm ci --omit=dev
 
-# Make fix-manifests.js executable
-RUN chmod +x scripts/fix-manifests.js
+# Make scripts executable
+RUN chmod +x scripts/fix-manifests.js && chmod +x preload-fix.js
 
 # Create a startup script
 RUN echo '#!/bin/sh' > start.sh && \
-    echo 'echo "[STARTUP] Running fix-manifests script..."' >> start.sh && \
-    echo 'node scripts/fix-manifests.js' >> start.sh && \
-    echo 'echo "[STARTUP] Starting with monkey-patching for entryCSSFiles fix..."' >> start.sh && \
+    echo 'echo "[STARTUP] Running comprehensive preload fix..."' >> start.sh && \
+    echo 'node preload-fix.js' >> start.sh && \
+    echo 'echo "[STARTUP] Starting with enhanced monkey-patching..."' >> start.sh && \
     echo 'if [ -f .next/standalone/server.js ]; then' >> start.sh && \
-    echo '    echo "[STARTUP] Using standalone server with monkey-patching"' >> start.sh && \
+    echo '    echo "[STARTUP] Using standalone server with comprehensive protection"' >> start.sh && \
     echo '    exec node -r ./monkey-patch.js .next/standalone/server.js' >> start.sh && \
     echo 'else' >> start.sh && \
-    echo '    echo "[STARTUP] Using custom server with monkey-patching"' >> start.sh && \
+    echo '    echo "[STARTUP] Using custom server with comprehensive protection"' >> start.sh && \
     echo '    exec node -r ./monkey-patch.js server.js' >> start.sh && \
     echo 'fi' >> start.sh && \
     chmod +x start.sh

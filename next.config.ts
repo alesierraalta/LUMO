@@ -16,9 +16,8 @@ const nextConfig = {
     forceSwcTransforms: false,
     // Disable CSS chunking completely
     optimizePackageImports: [],
-    // Add these options to prevent missing CSS manifest issues
+    // Use correct option name (removed bundlePagesExternals)
     serverMinification: false,
-    bundlePagesExternals: false,
   },
   // Disable image optimization and use conservative settings
   images: {
@@ -35,8 +34,6 @@ const nextConfig = {
   staticPageGenerationTimeout: 120,
   // Add trailing slash to prevent CSS path issues
   trailingSlash: true,
-  // Force static optimization off to use more consistent server-side rendering
-  staticOptimization: false,
 };
 
 export default nextConfig;

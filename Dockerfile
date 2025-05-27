@@ -65,55 +65,29 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/server.js ./
+COPY --from=builder /app/scripts/fix-manifests.js ./scripts/fix-manifests.js
+
+# Create scripts directory if not exists
+RUN mkdir -p scripts
 
 # Install production dependencies
 RUN npm ci --omit=dev
 
-# Create a fix-manifests script
-RUN echo '#!/usr/bin/env node' > fix-manifests.js && \
-    echo 'console.log("[FIX-MANIFESTS] Starting CSS manifest fix...");' >> fix-manifests.js && \
-    echo 'const fs = require("fs");' >> fix-manifests.js && \
-    echo 'const path = require("path");' >> fix-manifests.js && \
-    echo '' >> fix-manifests.js && \
-    echo '// Ensure .next/static/css directory exists' >> fix-manifests.js && \
-    echo 'fs.mkdirSync(path.join(process.cwd(), ".next/static/css"), { recursive: true });' >> fix-manifests.js && \
-    echo '' >> fix-manifests.js && \
-    echo '// Fix build-manifest.json' >> fix-manifests.js && \
-    echo 'const buildManifestPath = path.join(process.cwd(), ".next/build-manifest.json");' >> fix-manifests.js && \
-    echo 'if (fs.existsSync(buildManifestPath)) {' >> fix-manifests.js && \
-    echo '  try {' >> fix-manifests.js && \
-    echo '    const buildManifest = JSON.parse(fs.readFileSync(buildManifestPath, "utf8"));' >> fix-manifests.js && \
-    echo '    buildManifest.entryCSSFiles = buildManifest.entryCSSFiles || {};' >> fix-manifests.js && \
-    echo '    buildManifest.entryCSSFiles["/_app"] = buildManifest.entryCSSFiles["/_app"] || [];' >> fix-manifests.js && \
-    echo '    buildManifest.entryCSSFiles["/"] = buildManifest.entryCSSFiles["/"] || [];' >> fix-manifests.js && \
-    echo '    fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));' >> fix-manifests.js && \
-    echo '    console.log("[FIX-MANIFESTS] Fixed build-manifest.json");' >> fix-manifests.js && \
-    echo '  } catch (e) {' >> fix-manifests.js && \
-    echo '    console.error("[FIX-MANIFESTS] Error fixing build-manifest.json:", e.message);' >> fix-manifests.js && \
-    echo '  }' >> fix-manifests.js && \
-    echo '}' >> fix-manifests.js && \
-    echo '' >> fix-manifests.js && \
-    echo '// Fix app-build-manifest.json' >> fix-manifests.js && \
-    echo 'const appBuildManifestPath = path.join(process.cwd(), ".next/app-build-manifest.json");' >> fix-manifests.js && \
-    echo 'if (fs.existsSync(appBuildManifestPath)) {' >> fix-manifests.js && \
-    echo '  try {' >> fix-manifests.js && \
-    echo '    const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, "utf8"));' >> fix-manifests.js && \
-    echo '    appBuildManifest.entryCSSFiles = appBuildManifest.entryCSSFiles || {};' >> fix-manifests.js && \
-    echo '    fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));' >> fix-manifests.js && \
-    echo '    console.log("[FIX-MANIFESTS] Fixed app-build-manifest.json");' >> fix-manifests.js && \
-    echo '  } catch (e) {' >> fix-manifests.js && \
-    echo '    console.error("[FIX-MANIFESTS] Error fixing app-build-manifest.json:", e.message);' >> fix-manifests.js && \
-    echo '  }' >> fix-manifests.js && \
-    echo '}' >> fix-manifests.js && \
-    echo 'console.log("[FIX-MANIFESTS] CSS manifest fix complete");' >> fix-manifests.js && \
-    chmod +x fix-manifests.js
+# Make fix-manifests.js executable
+RUN chmod +x scripts/fix-manifests.js
 
 # Create a startup script
 RUN echo '#!/bin/sh' > start.sh && \
-    echo 'echo "[STARTUP] Starting CSS manifest fix..."' >> start.sh && \
-    echo 'node fix-manifests.js' >> start.sh && \
-    echo 'echo "[STARTUP] Starting server..."' >> start.sh && \
-    echo 'exec node server.js' >> start.sh && \
+    echo 'echo "[STARTUP] Running fix-manifests script..."' >> start.sh && \
+    echo 'node scripts/fix-manifests.js' >> start.sh && \
+    echo 'echo "[STARTUP] Checking if standalone server exists..."' >> start.sh && \
+    echo 'if [ -f .next/standalone/server.js ]; then' >> start.sh && \
+    echo '    echo "[STARTUP] Using standalone server"' >> start.sh && \
+    echo '    exec node .next/standalone/server.js' >> start.sh && \
+    echo 'else' >> start.sh && \
+    echo '    echo "[STARTUP] Using custom server"' >> start.sh && \
+    echo '    exec node server.js' >> start.sh && \
+    echo 'fi' >> start.sh && \
     chmod +x start.sh
 
 EXPOSE 8080

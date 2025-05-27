@@ -36,5 +36,5 @@ deploy:
   startup:
     shell: /bin/sh
     command: |-
-      echo "Starting Next.js application directly with server.js"
-      node server.js 
+      echo "Starting with enhanced debug startup script..."
+      node debug-startup.js 

@@ -66,6 +66,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/scripts/fix-manifests.js ./scripts/fix-manifests.js
+COPY --from=builder /app/monkey-patch.js ./monkey-patch.js
 
 # Create scripts directory if not exists
 RUN mkdir -p scripts
@@ -80,13 +81,13 @@ RUN chmod +x scripts/fix-manifests.js
 RUN echo '#!/bin/sh' > start.sh && \
     echo 'echo "[STARTUP] Running fix-manifests script..."' >> start.sh && \
     echo 'node scripts/fix-manifests.js' >> start.sh && \
-    echo 'echo "[STARTUP] Checking if standalone server exists..."' >> start.sh && \
+    echo 'echo "[STARTUP] Starting with monkey-patching for entryCSSFiles fix..."' >> start.sh && \
     echo 'if [ -f .next/standalone/server.js ]; then' >> start.sh && \
-    echo '    echo "[STARTUP] Using standalone server"' >> start.sh && \
-    echo '    exec node .next/standalone/server.js' >> start.sh && \
+    echo '    echo "[STARTUP] Using standalone server with monkey-patching"' >> start.sh && \
+    echo '    exec node -r ./monkey-patch.js .next/standalone/server.js' >> start.sh && \
     echo 'else' >> start.sh && \
-    echo '    echo "[STARTUP] Using custom server"' >> start.sh && \
-    echo '    exec node server.js' >> start.sh && \
+    echo '    echo "[STARTUP] Using custom server with monkey-patching"' >> start.sh && \
+    echo '    exec node -r ./monkey-patch.js server.js' >> start.sh && \
     echo 'fi' >> start.sh && \
     chmod +x start.sh
 

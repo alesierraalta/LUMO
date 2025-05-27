@@ -36,5 +36,8 @@ deploy:
   startup:
     shell: /bin/sh
     command: |-
-      echo "Starting with enhanced debug startup script..."
-      node debug-startup.js 
+      echo "Starting with monkey-patching for entryCSSFiles fix..."
+      # Run fix-manifests first to ensure CSS files exist
+      node scripts/fix-manifests.js
+      # Start with monkey-patching to handle any remaining issues
+      node -r ./monkey-patch.js .next/standalone/server.js 

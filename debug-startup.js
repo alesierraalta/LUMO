@@ -32,6 +32,40 @@ criticalFiles.forEach(file => {
   console.log(`- ${file}: ${fs.existsSync(path.join(process.cwd(), file)) ? 'EXISTS' : 'MISSING'}`);
 });
 
+// CRITICAL STEP: Monkey patch Next.js core modules to handle missing entryCSSFiles
+console.log('\n[DEBUG-STARTUP] Monkey patching Next.js core modules...');
+
+// This is the most critical part that prevents the entryCSSFiles error
+// We're overriding the Object.prototype.hasOwnProperty method specifically for 'entryCSSFiles'
+const originalHasOwnProperty = Object.prototype.hasOwnProperty;
+Object.prototype.hasOwnProperty = function(prop) {
+  // If checking for entryCSSFiles and this object is null/undefined, return false instead of throwing
+  if (prop === 'entryCSSFiles' && (this === undefined || this === null)) {
+    console.log('[DEBUG-PATCH] Protected against entryCSSFiles access on undefined');
+    return false;
+  }
+  return originalHasOwnProperty.call(this, prop);
+};
+
+// Patch for Object.entries to handle undefined for CSS manifests
+const originalEntries = Object.entries;
+Object.entries = function(obj) {
+  if (obj === undefined || obj === null) {
+    console.log('[DEBUG-PATCH] Protected against Object.entries on undefined/null');
+    return [];
+  }
+  return originalEntries(obj);
+};
+
+// Create a safe accessor for entryCSSFiles that always returns an object
+global.safeGetEntryCSSFiles = function(manifest) {
+  if (!manifest) return {};
+  if (!manifest.entryCSSFiles) manifest.entryCSSFiles = {};
+  return manifest.entryCSSFiles;
+};
+
+console.log('[DEBUG-PATCH] Installed global Next.js protections against undefined entryCSSFiles');
+
 // Step 1: Run fix-manifests.js
 console.log('\n[DEBUG-STARTUP] Step 1: Running fix-manifests.js...');
 try {
@@ -82,8 +116,77 @@ try {
   console.error('[DEBUG-STARTUP] Continuing anyway...');
 }
 
-// Step 2: Determine which server.js to use
-console.log('\n[DEBUG-STARTUP] Step 2: Determining which server.js to use...');
+// Step 2: Copy manifest files to all possible locations the standalone server might look
+console.log('\n[DEBUG-STARTUP] Step 2: Ensuring manifest files exist in all possible locations...');
+
+// Fix standalone directory manifests if needed
+const standaloneDir = path.join(process.cwd(), '.next/standalone');
+if (fs.existsSync(standaloneDir)) {
+  console.log('[DEBUG-STARTUP] Found standalone directory, ensuring manifests are copied there...');
+  
+  // Create standalone .next directory
+  const standaloneNextDir = path.join(standaloneDir, '.next');
+  if (!fs.existsSync(standaloneNextDir)) {
+    fs.mkdirSync(standaloneNextDir, { recursive: true });
+  }
+  
+  // Copy manifest files from .next to standalone/.next
+  const manifestFiles = [
+    'build-manifest.json',
+    'app-build-manifest.json',
+    'react-loadable-manifest.json'
+  ];
+  
+  manifestFiles.forEach(file => {
+    const sourcePath = path.join(process.cwd(), '.next', file);
+    const destPath = path.join(standaloneNextDir, file);
+    if (fs.existsSync(sourcePath)) {
+      try {
+        fs.copyFileSync(sourcePath, destPath);
+        console.log(`[DEBUG-STARTUP] Copied ${file} to standalone directory`);
+      } catch (e) {
+        console.error(`[DEBUG-STARTUP] Error copying ${file} to standalone:`, e.message);
+      }
+    }
+  });
+  
+  // Create standalone/static/css directory
+  const standaloneStaticDir = path.join(standaloneNextDir, 'static');
+  if (!fs.existsSync(standaloneStaticDir)) {
+    fs.mkdirSync(standaloneStaticDir, { recursive: true });
+  }
+  
+  const standaloneCssDir = path.join(standaloneStaticDir, 'css');
+  if (!fs.existsSync(standaloneCssDir)) {
+    fs.mkdirSync(standaloneCssDir, { recursive: true });
+  }
+  
+  // Create chunks directory and manifest
+  const standaloneChunksDir = path.join(standaloneStaticDir, 'chunks');
+  if (!fs.existsSync(standaloneChunksDir)) {
+    fs.mkdirSync(standaloneChunksDir, { recursive: true });
+  }
+  
+  // Copy or create chunks manifest
+  const chunksManifestPath = path.join(process.cwd(), '.next/static/chunks/manifest.json');
+  const standaloneChunksManifestPath = path.join(standaloneChunksDir, 'manifest.json');
+  
+  if (fs.existsSync(chunksManifestPath)) {
+    fs.copyFileSync(chunksManifestPath, standaloneChunksManifestPath);
+  } else {
+    const chunksManifest = {
+      polyfillFiles: [],
+      entryCSSFiles: {},
+      entryJSFiles: {}
+    };
+    fs.writeFileSync(standaloneChunksManifestPath, JSON.stringify(chunksManifest, null, 2));
+  }
+  
+  console.log('[DEBUG-STARTUP] Standalone directory preparation complete');
+}
+
+// Step 3: Determine which server.js to use
+console.log('\n[DEBUG-STARTUP] Step 3: Determining which server.js to use...');
 
 const standaloneServerPath = path.join(process.cwd(), '.next/standalone/server.js');
 const regularServerPath = path.join(process.cwd(), 'server.js');
@@ -131,16 +234,11 @@ app.prepare().then(() => {
   serverToUse = regularServerPath;
 }
 
-// Step 3: Start the server
-console.log(`\n[DEBUG-STARTUP] Step 3: Starting server from ${serverToUse}...`);
+// Step 4: Start the server
+console.log(`\n[DEBUG-STARTUP] Step 4: Starting server from ${serverToUse}...`);
 
 try {
-  // Instead of requiring the server file, use spawn to start it as a separate process
-  // This ensures we see all console output from the server
   console.log('[DEBUG-STARTUP] Handing over to server process...\n');
-  
-  // Forward all arguments to the server
-  const args = process.argv.slice(2);
   
   // Directly execute Node with the server file
   require(serverToUse);

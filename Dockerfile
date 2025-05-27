@@ -19,20 +19,12 @@ ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
 
 # Copy package files
 COPY package.json package-lock.json ./
-
-# Copy prisma directory
 COPY prisma ./prisma/
 
-# Install all dependencies
+# Install dependencies
 RUN npm ci
 
-# Copy configuration files
-COPY postcss.config.mjs ./
-COPY next.config.ts ./
-COPY components.json ./
-COPY tsconfig.json ./
-
-# Copy all source files
+# Copy source files
 COPY . .
 
 # Build the application
@@ -46,10 +38,11 @@ RUN echo "[BUILD-DEBUG] Checking standalone build..." && \
     echo "[BUILD-DEBUG] server.js exists in standalone:" && \
     [ -f .next/standalone/server.js ] && echo "YES" || echo "NO"
 
-# Stage 2: Production image
+# Create a production image
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=8080
 
 # Set runtime environment variables
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -65,79 +58,64 @@ RUN if [ "$NEXT_PUBLIC_SKIP_CLERK_AUTH" != "true" ] && [ -z "$NEXT_PUBLIC_CLERK_
     echo "Warning: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not provided. Ensure it's set via secrets in deployment."; \
 fi
 
-# Copy prisma directory
+# Copy necessary files from builder
+COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/server.js ./
 
-# Install production dependencies (CSS packages now in dependencies)
-COPY package.json package-lock.json ./
+# Install production dependencies
 RUN npm ci --omit=dev
 
-# Copy ALL standalone files (CRITICAL FIX - copy everything from standalone)
-COPY --from=builder /app/.next/standalone/ ./
-# Copy static files to the correct location
-COPY --from=builder /app/.next/static ./.next/static
-# Copy public files
-COPY --from=builder /app/public ./public
+# Create a fix-manifests script
+RUN echo '#!/usr/bin/env node' > fix-manifests.js && \
+    echo 'console.log("[FIX-MANIFESTS] Starting CSS manifest fix...");' >> fix-manifests.js && \
+    echo 'const fs = require("fs");' >> fix-manifests.js && \
+    echo 'const path = require("path");' >> fix-manifests.js && \
+    echo '' >> fix-manifests.js && \
+    echo '// Ensure .next/static/css directory exists' >> fix-manifests.js && \
+    echo 'fs.mkdirSync(path.join(process.cwd(), ".next/static/css"), { recursive: true });' >> fix-manifests.js && \
+    echo '' >> fix-manifests.js && \
+    echo '// Fix build-manifest.json' >> fix-manifests.js && \
+    echo 'const buildManifestPath = path.join(process.cwd(), ".next/build-manifest.json");' >> fix-manifests.js && \
+    echo 'if (fs.existsSync(buildManifestPath)) {' >> fix-manifests.js && \
+    echo '  try {' >> fix-manifests.js && \
+    echo '    const buildManifest = JSON.parse(fs.readFileSync(buildManifestPath, "utf8"));' >> fix-manifests.js && \
+    echo '    buildManifest.entryCSSFiles = buildManifest.entryCSSFiles || {};' >> fix-manifests.js && \
+    echo '    buildManifest.entryCSSFiles["/_app"] = buildManifest.entryCSSFiles["/_app"] || [];' >> fix-manifests.js && \
+    echo '    buildManifest.entryCSSFiles["/"] = buildManifest.entryCSSFiles["/"] || [];' >> fix-manifests.js && \
+    echo '    fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));' >> fix-manifests.js && \
+    echo '    console.log("[FIX-MANIFESTS] Fixed build-manifest.json");' >> fix-manifests.js && \
+    echo '  } catch (e) {' >> fix-manifests.js && \
+    echo '    console.error("[FIX-MANIFESTS] Error fixing build-manifest.json:", e.message);' >> fix-manifests.js && \
+    echo '  }' >> fix-manifests.js && \
+    echo '}' >> fix-manifests.js && \
+    echo '' >> fix-manifests.js && \
+    echo '// Fix app-build-manifest.json' >> fix-manifests.js && \
+    echo 'const appBuildManifestPath = path.join(process.cwd(), ".next/app-build-manifest.json");' >> fix-manifests.js && \
+    echo 'if (fs.existsSync(appBuildManifestPath)) {' >> fix-manifests.js && \
+    echo '  try {' >> fix-manifests.js && \
+    echo '    const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, "utf8"));' >> fix-manifests.js && \
+    echo '    appBuildManifest.entryCSSFiles = appBuildManifest.entryCSSFiles || {};' >> fix-manifests.js && \
+    echo '    fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));' >> fix-manifests.js && \
+    echo '    console.log("[FIX-MANIFESTS] Fixed app-build-manifest.json");' >> fix-manifests.js && \
+    echo '  } catch (e) {' >> fix-manifests.js && \
+    echo '    console.error("[FIX-MANIFESTS] Error fixing app-build-manifest.json:", e.message);' >> fix-manifests.js && \
+    echo '  }' >> fix-manifests.js && \
+    echo '}' >> fix-manifests.js && \
+    echo 'console.log("[FIX-MANIFESTS] CSS manifest fix complete");' >> fix-manifests.js && \
+    chmod +x fix-manifests.js
 
-# Copy configuration files
-COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/postcss.config.mjs ./
-COPY --from=builder /app/components.json ./
-COPY --from=builder /app/scripts ./scripts
-
-# Verify server.js exists after copy
-RUN echo "[COPY-DEBUG] Verifying server.js after copy..." && \
-    ls -la server.js && \
-    echo "[COPY-DEBUG] server.js file size:" && \
-    wc -c server.js
-
-# Create multiple startup debugging scripts
+# Create a startup script
 RUN echo '#!/bin/sh' > start.sh && \
-    echo 'echo "[STARTUP] ==================================="' >> start.sh && \
-    echo 'echo "[STARTUP] STARTING APPLICATION WITH DEBUG"' >> start.sh && \
-    echo 'echo "[STARTUP] ==================================="' >> start.sh && \
-    echo 'echo "[STARTUP] Working directory: $(pwd)"' >> start.sh && \
-    echo 'echo "[STARTUP] Node version: $(node --version)"' >> start.sh && \
-    echo 'echo "[STARTUP] Files in current directory:"' >> start.sh && \
-    echo 'ls -la' >> start.sh && \
-    echo 'echo "[STARTUP] Files in .next directory:"' >> start.sh && \
-    echo 'ls -la .next/ 2>/dev/null || echo "No .next directory"' >> start.sh && \
-    echo 'echo "[STARTUP] Files in .next/static:"' >> start.sh && \
-    echo 'ls -la .next/static/ 2>/dev/null || echo "No .next/static directory"' >> start.sh && \
-    echo 'echo "[STARTUP] Environment variables:"' >> start.sh && \
-    echo 'echo "NODE_ENV: $NODE_ENV"' >> start.sh && \
-    echo 'echo "PORT: $PORT"' >> start.sh && \
-    echo 'echo "CLERK_SECRET_KEY exists: $([ -n \"$CLERK_SECRET_KEY\" ] && echo true || echo false)"' >> start.sh && \
-    echo 'echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY exists: $([ -n \"$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY\" ] && echo true || echo false)"' >> start.sh && \
-    echo 'node scripts/debug-runtime.js 2>&1 || echo "[STARTUP] Debug script failed"' >> start.sh && \
-    echo 'echo "[STARTUP] Starting Next.js server..."' >> start.sh && \
+    echo 'echo "[STARTUP] Starting CSS manifest fix..."' >> start.sh && \
+    echo 'node fix-manifests.js' >> start.sh && \
+    echo 'echo "[STARTUP] Starting server..."' >> start.sh && \
     echo 'exec node server.js' >> start.sh && \
     chmod +x start.sh
 
-# Create alternative debug scripts that can be called from different entry points
-RUN echo '#!/bin/sh' > debug-quick.sh && \
-    echo 'echo "[QUICK-DEBUG] Files exist check:"' >> debug-quick.sh && \
-    echo 'echo "server.js: $([ -f server.js ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
-    echo 'echo ".next/static: $([ -d .next/static ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
-    echo 'echo "scripts/debug-runtime.js: $([ -f scripts/debug-runtime.js ] && echo EXISTS || echo MISSING)"' >> debug-quick.sh && \
-    chmod +x debug-quick.sh
-
-# Add debugging to the server.js file itself by creating a wrapper
-RUN echo 'console.log("[SERVER-DEBUG] Starting server.js with debugging...");' > server-debug.js && \
-    echo 'console.log("[SERVER-DEBUG] Current working directory:", process.cwd());' >> server-debug.js && \
-    echo 'console.log("[SERVER-DEBUG] Node version:", process.version);' >> server-debug.js && \
-    echo 'const fs = require("fs");' >> server-debug.js && \
-    echo 'console.log("[SERVER-DEBUG] server.js exists:", fs.existsSync("server.js"));' >> server-debug.js && \
-    echo 'console.log("[SERVER-DEBUG] .next/static exists:", fs.existsSync(".next/static"));' >> server-debug.js && \
-    echo 'try {' >> server-debug.js && \
-    echo '  console.log("[SERVER-DEBUG] Loading original server.js...");' >> server-debug.js && \
-    echo '  require("./server.js");' >> server-debug.js && \
-    echo '} catch (error) {' >> server-debug.js && \
-    echo '  console.error("[SERVER-DEBUG] Error loading server.js:", error.message);' >> server-debug.js && \
-    echo '  console.error("[SERVER-DEBUG] Error stack:", error.stack);' >> server-debug.js && \
-    echo '}' >> server-debug.js
-
 EXPOSE 8080
-ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 CMD ["./start.sh"] 

@@ -139,4 +139,127 @@ printenv | grep NEXT_PUBLIC
 4. **Verify**: Ensure secrets were created BEFORE the deployment
 
 ---
-**If all secrets are configured correctly and the issue persists, there may be a Choreo platform issue with secret injection.** 
+**If all secrets are configured correctly and the issue persists, there may be a Choreo platform issue with secret injection.**
+
+# Fixing the entryCSSFiles Error in Choreo Deployment
+
+This document explains how to fix the `Cannot read properties of undefined (reading 'entryCSSFiles')` error when deploying a Next.js application to Choreo.
+
+## Problem Description
+
+The error occurs when deploying a Next.js application that uses CSS/styling in Choreo. The error message is:
+
+```
+[TypeError: Cannot read properties of undefined (reading 'entryCSSFiles')]
+```
+
+This happens because the CSS manifest files in the Next.js build output are not properly initialized or are missing the `entryCSSFiles` property.
+
+## Solution Overview
+
+We've implemented several fixes to resolve this issue:
+
+1. **Simplified server.js**: Created a more robust server.js file that initializes CSS manifests at startup
+2. **Fixed start script**: Simplified the npm start script to use the server.js directly
+3. **Updated Dockerfile**: Created a cleaner Dockerfile with a specific CSS manifest fix script
+4. **Updated Next.js config**: Modified next.config.ts to better handle CSS in production builds
+
+## Implementation Details
+
+### 1. Server.js
+
+The server.js file now includes code to check and fix CSS manifest files before starting the Next.js server:
+
+```javascript
+// At the beginning of server.js
+const fs = require('fs');
+const path = require('path');
+
+// Fix CSS manifest files to prevent entryCSSFiles error
+try {
+  console.log('[SERVER] Fixing CSS manifest files...');
+  
+  // Fix build-manifest.json
+  const buildManifestPath = path.join(process.cwd(), '.next/build-manifest.json');
+  if (fs.existsSync(buildManifestPath)) {
+    const buildManifest = JSON.parse(fs.readFileSync(buildManifestPath, 'utf8'));
+    
+    // Ensure entryCSSFiles exists and has proper structure
+    if (!buildManifest.entryCSSFiles || typeof buildManifest.entryCSSFiles !== 'object') {
+      buildManifest.entryCSSFiles = {
+        '/_app': [],
+        '/': []
+      };
+      fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));
+    }
+  }
+  
+  // Fix app-build-manifest.json if it exists
+  const appBuildManifestPath = path.join(process.cwd(), '.next/app-build-manifest.json');
+  if (fs.existsSync(appBuildManifestPath)) {
+    const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, 'utf8'));
+    
+    // Ensure entryCSSFiles exists
+    if (!appBuildManifest.entryCSSFiles || typeof appBuildManifest.entryCSSFiles !== 'object') {
+      appBuildManifest.entryCSSFiles = {};
+      fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));
+    }
+  }
+} catch (error) {
+  console.log('[SERVER] Error fixing CSS manifests:', error.message);
+}
+
+// Rest of the server.js code...
+```
+
+### 2. Package.json Start Script
+
+The start script has been simplified to:
+
+```json
+"start": "node server.js"
+```
+
+### 3. Docker Startup Script
+
+The Docker startup script now includes a specific CSS manifest fix:
+
+```bash
+#!/bin/sh
+echo "[STARTUP] Starting CSS manifest fix..."
+node fix-manifests.js
+echo "[STARTUP] Starting server..."
+exec node server.js
+```
+
+### 4. Next.js Configuration
+
+The next.config.ts file has been updated with settings to better handle CSS:
+
+```typescript
+experimental: {
+  optimizeCss: false,
+  forceSwcTransforms: false,
+  optimizePackageImports: [],
+  serverMinification: false,
+  bundlePagesExternals: false,
+},
+```
+
+## Deploying to Choreo
+
+When deploying to Choreo:
+
+1. Use the simplified choreo-simple.yaml configuration
+2. Make sure your server.js file includes the CSS manifest fix
+3. Check that package.json uses the simple start script
+
+## Troubleshooting
+
+If you still encounter CSS-related errors:
+
+1. Check the server logs for specific error messages
+2. Verify that the .next/build-manifest.json file contains an entryCSSFiles property
+3. Try running the fix-manifests.js script manually before starting the server
+
+For further assistance, please open an issue on the repository. 

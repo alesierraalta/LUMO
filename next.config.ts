@@ -10,8 +10,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    // Disable CSS-related experimental features that might cause issues
+    // Completely disable CSS optimization to avoid manifest issues
     optimizeCss: false,
+    // Disable other experimental features that might interfere
+    forceSwcTransforms: false,
+    // Disable CSS chunking completely
+    optimizePackageImports: [],
   },
   // Disable image optimization and use conservative settings
   images: {
@@ -22,7 +26,8 @@ const nextConfig = {
   compiler: {
     removeConsole: false, // Keep console logs for debugging
   },
-
+  // Simplify CSS handling completely
+  transpilePackages: ['@tailwindcss/postcss'],
 };
 
 export default nextConfig;

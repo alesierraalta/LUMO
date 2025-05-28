@@ -20,6 +20,17 @@ console.log('[SERVER] Development mode:', dev);
 console.log('[SERVER] Hostname:', hostname);
 console.log('[SERVER] Port:', port);
 
+// Run runtime environment fix for production
+if (!dev) {
+  console.log('[SERVER] Running runtime environment fix...');
+  try {
+    const runtimeFix = require('./scripts/runtime-env-fix');
+    runtimeFix.main();
+  } catch (error) {
+    console.warn('[SERVER] Runtime environment fix failed:', error.message);
+  }
+}
+
 // For standalone mode, use the generated server
 if (!dev && fs.existsSync('.next/standalone/server.js')) {
   console.log('[SERVER] Using Next.js standalone server');

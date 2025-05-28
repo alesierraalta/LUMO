@@ -8,6 +8,42 @@
 const fs = require('fs');
 const path = require('path');
 
+// Load environment variables from .env files
+function loadEnvFiles() {
+  console.log('[EMBED-ENV] Loading environment files...');
+  
+  // Try to load common .env files
+  const envFiles = ['.env', '.env.local', '.env.production'];
+  
+  envFiles.forEach(envFile => {
+    const envPath = path.join(process.cwd(), envFile);
+    if (fs.existsSync(envPath)) {
+      console.log(`[EMBED-ENV] Loading ${envFile}...`);
+      try {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const lines = envContent.split('\n');
+        
+        lines.forEach(line => {
+          const trimmedLine = line.trim();
+          if (trimmedLine && !trimmedLine.startsWith('#') && trimmedLine.includes('=')) {
+            const [key, ...valueParts] = trimmedLine.split('=');
+            const value = valueParts.join('=');
+            if (key && value && !process.env[key.trim()]) {
+              process.env[key.trim()] = value.trim();
+            }
+          }
+        });
+        
+        console.log(`[EMBED-ENV] ✅ Loaded ${envFile}`);
+      } catch (error) {
+        console.log(`[EMBED-ENV] ⚠️ Error loading ${envFile}:`, error.message);
+      }
+    } else {
+      console.log(`[EMBED-ENV] ${envFile} not found`);
+    }
+  });
+}
+
 function createClientEnvFile() {
   console.log('[EMBED-ENV] Creating client environment configuration...');
   
@@ -81,8 +117,19 @@ function injectEnvScriptIntoHtml() {
 
 function main() {
   console.log('[EMBED-ENV] Starting environment variable embedding process...');
+  console.log('[EMBED-ENV] Current working directory:', process.cwd());
+  console.log('[EMBED-ENV] All environment variables starting with NEXT_PUBLIC_:');
+  
+  Object.keys(process.env).forEach(key => {
+    if (key.startsWith('NEXT_PUBLIC_')) {
+      console.log(`[EMBED-ENV]   ${key}: ${process.env[key] ? process.env[key].substring(0, 15) + '...' : 'undefined'}`);
+    }
+  });
   
   try {
+    // Load environment files first
+    loadEnvFiles();
+    
     const envVars = createClientEnvFile();
     injectEnvScriptIntoHtml();
     
@@ -90,6 +137,14 @@ function main() {
     if (!envVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
       console.log('[EMBED-ENV] ⚠️ WARNING: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set!');
       console.log('[EMBED-ENV] This will cause client-side authentication to fail.');
+      console.log('[EMBED-ENV] Available NEXT_PUBLIC_ environment variables:');
+      Object.keys(process.env).forEach(key => {
+        if (key.startsWith('NEXT_PUBLIC_')) {
+          console.log(`[EMBED-ENV]   ${key}: ${process.env[key] ? 'SET' : 'NOT SET'}`);
+        }
+      });
+    } else {
+      console.log('[EMBED-ENV] ✅ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is properly set');
     }
     
     console.log('[EMBED-ENV] ✅ Environment embedding completed successfully');

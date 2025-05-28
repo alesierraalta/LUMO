@@ -31,13 +31,50 @@ if (isStandalone) {
     console.log('[SAFE-SERVER] Attempting to use standalone server...');
     
     try {
+      // Check if static files are properly located
+      const standaloneStaticPath = path.join(process.cwd(), '.next/standalone/.next/static');
+      const mainStaticPath = path.join(process.cwd(), '.next/static');
+      
+      if (!fs.existsSync(standaloneStaticPath) && fs.existsSync(mainStaticPath)) {
+        console.log('[SAFE-SERVER] Copying static files to standalone directory...');
+        
+        // Ensure the standalone .next directory exists
+        const standaloneNextDir = path.join(process.cwd(), '.next/standalone/.next');
+        fs.mkdirSync(standaloneNextDir, { recursive: true });
+        
+        // Copy static files
+        copyDirectorySync(mainStaticPath, standaloneStaticPath);
+        console.log('[SAFE-SERVER] Static files copied successfully');
+      }
+      
+      // Also copy public directory if it exists
+      const publicPath = path.join(process.cwd(), 'public');
+      const standalonePublicPath = path.join(process.cwd(), '.next/standalone/public');
+      
+      if (fs.existsSync(publicPath) && !fs.existsSync(standalonePublicPath)) {
+        console.log('[SAFE-SERVER] Copying public files to standalone directory...');
+        copyDirectorySync(publicPath, standalonePublicPath);
+        console.log('[SAFE-SERVER] Public files copied successfully');
+      }
+      
+      // Set working directory to standalone
+      process.chdir(path.join(process.cwd(), '.next/standalone'));
+      console.log('[SAFE-SERVER] Changed working directory to standalone mode');
+      
       // Simple require without complex error handling
-      require(standaloneServerPath);
+      require('./server.js');
       console.log('[SAFE-SERVER] Standalone server loaded successfully');
       // If we get here, standalone server is running
     } catch (error) {
       console.log('[SAFE-SERVER] Standalone server failed:', error.message);
       console.log('[SAFE-SERVER] Falling back to custom Next.js server...');
+      
+      // Reset working directory if it was changed
+      try {
+        process.chdir(path.resolve(__dirname));
+      } catch (e) {
+        // Ignore chdir errors
+      }
       
       // Fallback to our implementation
       startCustomServer();
@@ -49,6 +86,30 @@ if (isStandalone) {
 } else {
   console.log('[SAFE-SERVER] Not in standalone mode, using custom server');
   startCustomServer();
+}
+
+// Helper function to copy directories recursively
+function copyDirectorySync(src, dest) {
+  try {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      
+      if (entry.isDirectory()) {
+        copyDirectorySync(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  } catch (error) {
+    console.log(`[SAFE-SERVER] Error copying ${src} to ${dest}:`, error.message);
+  }
 }
 
 function startCustomServer() {
@@ -63,6 +124,66 @@ function startCustomServer() {
     const server = createServer((req, res) => {
       // Add basic error handling for requests
       try {
+        // Handle static files manually if needed
+        if (req.url && req.url.startsWith('/_next/static/')) {
+          const staticFilePath = path.join(process.cwd(), '.next', req.url.replace('/_next/', ''));
+          
+          if (fs.existsSync(staticFilePath)) {
+            const ext = path.extname(staticFilePath);
+            const mimeTypes = {
+              '.js': 'application/javascript',
+              '.css': 'text/css',
+              '.json': 'application/json',
+              '.woff': 'font/woff',
+              '.woff2': 'font/woff2',
+              '.ttf': 'font/ttf',
+              '.eot': 'application/vnd.ms-fontobject',
+              '.svg': 'image/svg+xml',
+              '.png': 'image/png',
+              '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.gif': 'image/gif',
+              '.ico': 'image/x-icon'
+            };
+            
+            res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            
+            const fileStream = fs.createReadStream(staticFilePath);
+            fileStream.pipe(res);
+            return;
+          }
+        }
+        
+        // Handle public files
+        if (req.url && !req.url.startsWith('/_next/') && !req.url.startsWith('/api/')) {
+          const publicFilePath = path.join(process.cwd(), 'public', req.url === '/' ? 'index.html' : req.url);
+          
+          if (fs.existsSync(publicFilePath) && fs.statSync(publicFilePath).isFile()) {
+            const ext = path.extname(publicFilePath);
+            const mimeTypes = {
+              '.html': 'text/html',
+              '.css': 'text/css',
+              '.js': 'application/javascript',
+              '.json': 'application/json',
+              '.png': 'image/png',
+              '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.gif': 'image/gif',
+              '.svg': 'image/svg+xml',
+              '.ico': 'image/x-icon',
+              '.woff': 'font/woff',
+              '.woff2': 'font/woff2'
+            };
+            
+            res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+            
+            const fileStream = fs.createReadStream(publicFilePath);
+            fileStream.pipe(res);
+            return;
+          }
+        }
+        
         handle(req, res);
       } catch (error) {
         console.error('[SAFE-SERVER] Request handling error:', error.message);

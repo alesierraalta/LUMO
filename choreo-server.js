@@ -11,6 +11,13 @@ try {
   console.log('[CHOREO-SERVER] Runtime protection not found, continuing without it');
 }
 
+// Load React-specific protection
+try {
+  require('./react-protection.js');
+} catch (e) {
+  console.log('[CHOREO-SERVER] React protection not found, continuing without it');
+}
+
 console.log('[CHOREO-SERVER] Starting Next.js application for Choreo deployment...');
 
 // Environment configuration
@@ -167,6 +174,10 @@ function startServer() {
         const originalCwd = process.cwd();
         process.chdir(standaloneDir);
         
+        // Set environment variables for standalone mode
+        process.env.HOSTNAME = hostname;
+        process.env.PORT = String(port);
+        
         // Require the standalone server
         require('./server.js');
         console.log('[CHOREO-SERVER] Standalone server started successfully');
@@ -176,7 +187,7 @@ function startServer() {
         
         // Reset working directory
         try {
-          process.chdir(path.dirname(__filename));
+          process.chdir(originalCwd);
         } catch (e) {
           // Ignore chdir errors
         }

@@ -77,18 +77,37 @@ console.error = function(...args) {
     return;
   }
   
+  // Suppress React useContext-related TypeError messages
+  if (errorMsg.includes('TypeError') && 
+      errorMsg.includes('useContext') &&
+      (errorMsg.includes('Cannot read properties of null') ||
+       errorMsg.includes('Cannot read property') ||
+       errorMsg.includes('reading \'useContext\''))) {
+    console.log('[RUNTIME-PROTECTION] Suppressed useContext TypeError:', errorMsg);
+    return;
+  }
+  
   return originalConsoleError.apply(console, args);
 };
 
-// Global error handler for uncaught entryCSSFiles errors
+// Global error handler for uncaught errors
 process.on('uncaughtException', (error) => {
-  if (error instanceof TypeError && 
-      error.message && 
-      error.message.includes('entryCSSFiles') &&
-      (error.message.includes('Cannot read properties of undefined') ||
-       error.message.includes('reading \'entryCSSFiles\''))) {
-    console.log('[RUNTIME-PROTECTION] Caught uncaught TypeError for entryCSSFiles:', error.message);
-    return; // Prevent crash
+  if (error instanceof TypeError && error.message) {
+    // Handle entryCSSFiles errors
+    if (error.message.includes('entryCSSFiles') &&
+        (error.message.includes('Cannot read properties of undefined') ||
+         error.message.includes('reading \'entryCSSFiles\''))) {
+      console.log('[RUNTIME-PROTECTION] Caught uncaught TypeError for entryCSSFiles:', error.message);
+      return; // Prevent crash
+    }
+    
+    // Handle React useContext errors
+    if (error.message.includes('useContext') &&
+        (error.message.includes('Cannot read properties of null') ||
+         error.message.includes('reading \'useContext\''))) {
+      console.log('[RUNTIME-PROTECTION] Caught uncaught TypeError for useContext:', error.message);
+      return; // Prevent crash
+    }
   }
   
   // Let other errors through

@@ -1,6 +1,5 @@
 node_modules
 npm-debug.log*
-.next
 .git
 .gitignore
 README.md
@@ -11,4 +10,17 @@ docker-compose*.yml
 coverage
 .nyc_output
 .DS_Store
-*.pem 
+*.pem
+.vscode
+.idea
+*.log
+
+# Exclude .next during build, but include in copy step
+# (Dockerfile handles copying .next explicitly)
+.next/cache
+.next/trace
+
+# Keep these for production builds
+# .next/standalone
+# .next/static
+# .next/*.json 

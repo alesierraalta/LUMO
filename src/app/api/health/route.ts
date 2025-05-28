@@ -222,7 +222,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     const errorResult: HealthCheckResult = {
       status: 'unhealthy',
-      timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '0.1.0',
       checks: {
         server: false,
@@ -232,8 +232,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         authentication: false
       },
       details: {
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
         manifests: {},
         css: {},
         environment: process.env.NODE_ENV || 'unknown'

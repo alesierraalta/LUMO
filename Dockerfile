@@ -80,6 +80,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma/
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /app/server.js ./
+COPY --from=builder --chown=nextjs:nodejs /app/choreo-server.js ./
+COPY --from=builder --chown=nextjs:nodejs /app/debug-choreo.js ./
 
 # Copy Next.js build artifacts
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -89,7 +91,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Ensure proper permissions
 RUN chown -R nextjs:nodejs /app && \
     chmod +x scripts/manifest-validator.js && \
-    chmod +x server.js
+    chmod +x server.js && \
+    chmod +x choreo-server.js && \
+    chmod +x debug-choreo.js
 
 # Switch to non-root user
 USER nextjs
@@ -101,5 +105,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/api/health || exit 1
 
-# Use dumb-init for proper signal handling and start with manifest validation
-CMD ["dumb-init", "node", "scripts/manifest-validator.js", "&&", "node", "server.js"] 
+# Use Choreo-optimized server with proper signal handling
+CMD ["dumb-init", "node", "choreo-server.js"] 

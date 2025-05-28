@@ -11,7 +11,7 @@
     "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
     "prebuild": "node scripts/manifest-validator.js",
     "build": "next build",
-    "postbuild": "node scripts/manifest-validator.js",
+    "postbuild": "node scripts/manifest-validator.js && node scripts/copy-static-files.js",
     "postinstall": "prisma generate",
     "start": "node scripts/manifest-validator.js && node server.js",
     "start:production": "NODE_ENV=production node scripts/manifest-validator.js && node server.js",

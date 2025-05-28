@@ -68,6 +68,8 @@ COPY --from=builder /app/server.js ./
 COPY --from=builder /app/scripts/fix-manifests.js ./scripts/fix-manifests.js
 COPY --from=builder /app/monkey-patch.js ./monkey-patch.js
 COPY --from=builder /app/ultimate-fix.js ./ultimate-fix.js
+COPY --from=builder /app/runtime-fix.js ./runtime-fix.js
+COPY --from=builder /app/css-fix-server.js ./css-fix-server.js
 COPY --from=builder /app/preload-fix.js ./preload-fix.js
 
 # Create scripts directory if not exists
@@ -83,13 +85,13 @@ RUN chmod +x scripts/fix-manifests.js && chmod +x preload-fix.js
 RUN echo '#!/bin/sh' > start.sh && \
     echo 'echo "[STARTUP] Running comprehensive preload fix..."' >> start.sh && \
     echo 'node preload-fix.js' >> start.sh && \
-    echo 'echo "[STARTUP] Starting with ultimate protection..."' >> start.sh && \
+    echo 'echo "[STARTUP] Starting with targeted CSS runtime fix..."' >> start.sh && \
     echo 'if [ -f .next/standalone/server.js ]; then' >> start.sh && \
-    echo '    echo "[STARTUP] Using standalone server with ultimate protection"' >> start.sh && \
-    echo '    exec node -r ./ultimate-fix.js .next/standalone/server.js' >> start.sh && \
+    echo '    echo "[STARTUP] Using standalone server with targeted CSS fix"' >> start.sh && \
+    echo '    exec node -r ./runtime-fix.js .next/standalone/server.js' >> start.sh && \
     echo 'else' >> start.sh && \
-    echo '    echo "[STARTUP] Using custom server with ultimate protection"' >> start.sh && \
-    echo '    exec node -r ./ultimate-fix.js server.js' >> start.sh && \
+    echo '    echo "[STARTUP] Using custom server with targeted CSS fix"' >> start.sh && \
+    echo '    exec node -r ./runtime-fix.js server.js' >> start.sh && \
     echo 'fi' >> start.sh && \
     chmod +x start.sh
 

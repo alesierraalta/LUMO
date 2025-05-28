@@ -36,8 +36,8 @@ deploy:
   startup:
     shell: /bin/sh
     command: |-
-      echo "Starting with Choreo-optimized server..."
-      # Run minimal fix to ensure manifests are properly structured
+      echo "Starting with CSS-specific fix server..."
+      # Run minimal fix first to ensure directory structure
       node minimal-fix.js
-      # Start with Choreo-specific server implementation
-      node choreo-server.js 
+      # Use dedicated CSS fix server with runtime patching
+      node -r ./runtime-fix.js css-fix-server.js 

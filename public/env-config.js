@@ -1,4 +1,3 @@
-
 // Auto-generated client environment configuration
 // This file ensures NEXT_PUBLIC environment variables are available client-side
 window.__NEXT_ENV__ = {

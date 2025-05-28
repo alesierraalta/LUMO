@@ -54,20 +54,20 @@ export function EnvProvider({ children }: { children: React.ReactNode }) {
             if (checkEnvLoaded()) {
               resolve();
             } else {
-              console.warn('[ENV-PROVIDER] Environment script loaded but no variables found');
-              resolve(); // Continue anyway
+              console.warn('[ENV-PROVIDER] Environment script loaded but no variables found, trying API fallback...');
+              tryApiFallback().then(resolve).catch(() => resolve());
             }
           });
           
           existingScript.addEventListener('error', () => {
-            console.warn('[ENV-PROVIDER] Error loading existing environment script');
-            resolve(); // Continue anyway
+            console.warn('[ENV-PROVIDER] Error loading existing environment script, trying API fallback...');
+            tryApiFallback().then(resolve).catch(() => resolve());
           });
           
           return;
         }
 
-        // Create new script element
+        // Create new script element for static file
         const script = document.createElement('script');
         script.src = '/env-config.js';
         script.onload = () => {
@@ -75,17 +75,42 @@ export function EnvProvider({ children }: { children: React.ReactNode }) {
           if (checkEnvLoaded()) {
             resolve();
           } else {
-            console.warn('[ENV-PROVIDER] Environment script loaded but no variables found');
-            resolve(); // Continue anyway
+            console.warn('[ENV-PROVIDER] Environment script loaded but no variables found, trying API fallback...');
+            tryApiFallback().then(resolve).catch(() => resolve());
           }
         };
         script.onerror = () => {
-          console.warn('[ENV-PROVIDER] Could not load environment configuration from /env-config.js');
-          resolve(); // Continue anyway
+          console.warn('[ENV-PROVIDER] Could not load environment configuration from /env-config.js, trying API fallback...');
+          tryApiFallback().then(resolve).catch(() => resolve());
         };
         
         document.head.appendChild(script);
       });
+    };
+
+    // Fallback: try to load from API endpoint
+    const tryApiFallback = async (): Promise<void> => {
+      try {
+        console.log('[ENV-PROVIDER] Trying API fallback: /api/env-config');
+        const response = await fetch('/api/env-config');
+        if (response.ok) {
+          const jsContent = await response.text();
+          // Execute the JavaScript content
+          const script = document.createElement('script');
+          script.textContent = jsContent;
+          document.head.appendChild(script);
+          
+          if (checkEnvLoaded()) {
+            console.log('[ENV-PROVIDER] ✅ Environment loaded successfully via API fallback');
+          } else {
+            console.warn('[ENV-PROVIDER] ⚠️ API fallback loaded but no variables found');
+          }
+        } else {
+          console.warn('[ENV-PROVIDER] API fallback failed with status:', response.status);
+        }
+      } catch (error) {
+        console.warn('[ENV-PROVIDER] Error with API fallback:', error);
+      }
     };
 
     loadEnvScript().then(() => {

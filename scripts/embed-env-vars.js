@@ -19,14 +19,14 @@ function createClientEnvFile() {
   };
   
   console.log('[EMBED-ENV] Environment variables to embed:', {
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'configured' : 'missing',
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 
+      publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.substring(0, 15) + '...' : 'missing',
     NEXT_PUBLIC_SKIP_CLERK_AUTH: publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH,
     NODE_ENV: publicEnvVars.NODE_ENV
   });
   
-  // Create client-side environment configuration
-  const clientEnvContent = `
-// Auto-generated client environment configuration
+  // Create the JavaScript content
+  const jsContent = `// Auto-generated client environment configuration
 // This file ensures NEXT_PUBLIC environment variables are available client-side
 window.__NEXT_ENV__ = ${JSON.stringify(publicEnvVars, null, 2)};
 
@@ -36,39 +36,46 @@ if (typeof window !== 'undefined' && !window.process) {
 }
 `;
 
-  // Write to public directory so it's accessible client-side
-  const publicDir = path.join(process.cwd(), 'public');
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-  }
+  // Write to public directory
+  const publicEnvPath = path.join(process.cwd(), 'public', 'env-config.js');
+  fs.writeFileSync(publicEnvPath, jsContent, 'utf8');
+  console.log('[EMBED-ENV] ✅ Created client environment file:', publicEnvPath);
   
-  const envFilePath = path.join(publicDir, 'env-config.js');
-  fs.writeFileSync(envFilePath, clientEnvContent);
-  console.log(`[EMBED-ENV] ✅ Created client environment file: ${envFilePath}`);
-  
-  // Also create a copy in standalone public directory if it exists
+  // ALSO copy to standalone public directory if it exists
   const standalonePublicDir = path.join(process.cwd(), '.next', 'standalone', 'public');
   if (fs.existsSync(standalonePublicDir)) {
     const standaloneEnvPath = path.join(standalonePublicDir, 'env-config.js');
-    fs.writeFileSync(standaloneEnvPath, clientEnvContent);
-    console.log(`[EMBED-ENV] ✅ Created standalone environment file: ${standaloneEnvPath}`);
+    fs.writeFileSync(standaloneEnvPath, jsContent, 'utf8');
+    console.log('[EMBED-ENV] ✅ Also copied to standalone public:', standaloneEnvPath);
+  } else {
+    console.log('[EMBED-ENV] ⚠️ Standalone public directory not found, creating it...');
+    fs.mkdirSync(standalonePublicDir, { recursive: true });
+    const standaloneEnvPath = path.join(standalonePublicDir, 'env-config.js');
+    fs.writeFileSync(standaloneEnvPath, jsContent, 'utf8');
+    console.log('[EMBED-ENV] ✅ Created standalone public directory and copied env file');
+  }
+  
+  // ALSO copy to standalone root if it exists (some deployments serve from here)
+  const standaloneRootDir = path.join(process.cwd(), '.next', 'standalone');
+  if (fs.existsSync(standaloneRootDir)) {
+    const standaloneRootEnvPath = path.join(standaloneRootDir, 'env-config.js');
+    fs.writeFileSync(standaloneRootEnvPath, jsContent, 'utf8');
+    console.log('[EMBED-ENV] ✅ Also copied to standalone root:', standaloneRootEnvPath);
   }
   
   return publicEnvVars;
 }
 
-function injectEnvScript() {
+function injectEnvScriptIntoHtml() {
   console.log('[EMBED-ENV] Checking for HTML files to inject environment script...');
   
-  const buildDir = path.join(process.cwd(), '.next');
-  const staticDir = path.join(buildDir, 'static');
-  
-  // Look for the build manifest to find HTML entry points
-  const manifestPath = path.join(buildDir, 'build-manifest.json');
-  if (fs.existsSync(manifestPath)) {
+  // Check if build manifest exists to ensure we're in a built environment
+  const buildManifestPath = path.join(process.cwd(), '.next', 'build-manifest.json');
+  if (fs.existsSync(buildManifestPath)) {
     console.log('[EMBED-ENV] ✅ Build manifest found');
   } else {
-    console.log('[EMBED-ENV] ⚠️ No build manifest found, skipping HTML injection');
+    console.log('[EMBED-ENV] ⚠️ Build manifest not found, skipping HTML injection');
+    return;
   }
 }
 
@@ -77,26 +84,22 @@ function main() {
   
   try {
     const envVars = createClientEnvFile();
-    injectEnvScript();
+    injectEnvScriptIntoHtml();
     
-    // Verify critical environment variables
+    // Warn about missing critical environment variables
     if (!envVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      console.warn('[EMBED-ENV] ⚠️ WARNING: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set!');
-      console.warn('[EMBED-ENV] This will cause client-side authentication to fail.');
-    } else {
-      console.log('[EMBED-ENV] ✅ All critical environment variables are configured');
+      console.log('[EMBED-ENV] ⚠️ WARNING: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set!');
+      console.log('[EMBED-ENV] This will cause client-side authentication to fail.');
     }
     
     console.log('[EMBED-ENV] ✅ Environment embedding completed successfully');
-    
   } catch (error) {
-    console.error('[EMBED-ENV] ❌ Error embedding environment variables:', error);
-    // Don't exit with error, as this shouldn't break the build
+    console.error('[EMBED-ENV] ❌ Error during environment embedding:', error);
+    process.exit(1);
   }
 }
 
-if (require.main === module) {
-  main();
-}
+// Run the script
+main();
 
 module.exports = { main, createClientEnvFile }; 

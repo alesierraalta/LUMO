@@ -31,65 +31,131 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
-function main() {
+function copyStaticFiles() {
   console.log('[COPY-STATIC] Starting static file copy process...');
   
-  const staticSource = path.join(process.cwd(), '.next', 'static');
-  const standaloneStatic = path.join(process.cwd(), '.next', 'standalone', '.next', 'static');
-  
-  if (!fs.existsSync(staticSource)) {
-    console.log('[COPY-STATIC] No static files found to copy');
-    return;
-  }
-  
-  if (!fs.existsSync(standaloneStatic)) {
-    fs.mkdirSync(standaloneStatic, { recursive: true });
-    console.log('[COPY-STATIC] Created standalone static directory');
-  }
+  // Define source and destination paths
+  const srcStatic = path.join(process.cwd(), '.next', 'static');
+  const destStatic = path.join(process.cwd(), '.next', 'standalone', '.next', 'static');
   
   console.log('[COPY-STATIC] Copying static files...');
-  console.log(`[COPY-STATIC] Source: ${staticSource}`);
-  console.log(`[COPY-STATIC] Destination: ${standaloneStatic}`);
+  console.log(`[COPY-STATIC] Source: ${srcStatic}`);
+  console.log(`[COPY-STATIC] Destination: ${destStatic}`);
   
-  try {
-    copyRecursiveSync(staticSource, standaloneStatic);
+  // Copy all static files
+  if (fs.existsSync(srcStatic)) {
+    copyRecursiveSync(srcStatic, destStatic);
+  } else {
+    console.log('[COPY-STATIC] ⚠️ Source static directory not found');
+  }
+  
+  // Copy public files (including env-config.js)
+  const srcPublic = path.join(process.cwd(), 'public');
+  const destPublic = path.join(process.cwd(), '.next', 'standalone', 'public');
+  
+  if (fs.existsSync(srcPublic)) {
+    console.log('[COPY-STATIC] Copying public files...');
+    console.log(`[COPY-STATIC] Source: ${srcPublic}`);
+    console.log(`[COPY-STATIC] Destination: ${destPublic}`);
     
-    // Verify critical directories exist
-    const criticalDirs = ['chunks', 'css', 'media'];
-    const sourceContents = fs.readdirSync(staticSource);
-    const buildIdDir = sourceContents.find(dir => dir.length > 10 && !criticalDirs.includes(dir));
-    
-    if (buildIdDir) {
-      criticalDirs.push(buildIdDir);
-      console.log(`[COPY-STATIC] Found build ID directory: ${buildIdDir}`);
+    // Ensure destination exists
+    if (!fs.existsSync(destPublic)) {
+      fs.mkdirSync(destPublic, { recursive: true });
     }
     
-    for (const dir of criticalDirs) {
-      const sourcePath = path.join(staticSource, dir);
-      const destPath = path.join(standaloneStatic, dir);
+    // Copy all public files
+    fs.readdirSync(srcPublic).forEach(file => {
+      const srcFile = path.join(srcPublic, file);
+      const destFile = path.join(destPublic, file);
       
-      if (fs.existsSync(sourcePath)) {
-        if (!fs.existsSync(destPath)) {
-          copyRecursiveSync(sourcePath, destPath);
-          console.log(`[COPY-STATIC] ✅ Copied directory: ${dir}`);
-        } else {
-          console.log(`[COPY-STATIC] ✅ Directory exists: ${dir}`);
-        }
-      } else {
-        console.log(`[COPY-STATIC] ⚠️ Missing source directory: ${dir}`);
+      if (fs.statSync(srcFile).isFile()) {
+        fs.copyFileSync(srcFile, destFile);
+        console.log(`[COPY-STATIC] Copied public file: ${file}`);
       }
+    });
+  } else {
+    console.log('[COPY-STATIC] ⚠️ Public directory not found');
+  }
+  
+  // Special handling for env-config.js - ensure it's available at multiple locations
+  const envConfigSrc = path.join(process.cwd(), 'public', 'env-config.js');
+  if (fs.existsSync(envConfigSrc)) {
+    console.log('[COPY-STATIC] Ensuring env-config.js is available at all required locations...');
+    
+    // Copy to standalone public
+    const envConfigPublicDest = path.join(process.cwd(), '.next', 'standalone', 'public', 'env-config.js');
+    if (!fs.existsSync(path.dirname(envConfigPublicDest))) {
+      fs.mkdirSync(path.dirname(envConfigPublicDest), { recursive: true });
+    }
+    fs.copyFileSync(envConfigSrc, envConfigPublicDest);
+    console.log(`[COPY-STATIC] ✅ env-config.js copied to: ${envConfigPublicDest}`);
+    
+    // Copy to standalone root (for direct serving)
+    const envConfigRootDest = path.join(process.cwd(), '.next', 'standalone', 'env-config.js');
+    fs.copyFileSync(envConfigSrc, envConfigRootDest);
+    console.log(`[COPY-STATIC] ✅ env-config.js copied to: ${envConfigRootDest}`);
+    
+    // Copy to standalone .next root (backup location)
+    const envConfigNextDest = path.join(process.cwd(), '.next', 'standalone', '.next', 'env-config.js');
+    fs.copyFileSync(envConfigSrc, envConfigNextDest);
+    console.log(`[COPY-STATIC] ✅ env-config.js copied to: ${envConfigNextDest}`);
+  } else {
+    console.log('[COPY-STATIC] ⚠️ env-config.js not found in public directory');
+  }
+  
+  // Verify critical directories exist
+  const criticalDirs = ['chunks', 'css', 'media'];
+  const buildId = findBuildId();
+  if (buildId) {
+    criticalDirs.push(buildId);
+  }
+  
+  criticalDirs.forEach(dir => {
+    const dirPath = path.join(destStatic, dir);
+    if (fs.existsSync(dirPath)) {
+      console.log(`[COPY-STATIC] ✅ Directory exists: ${dir}`);
+    } else {
+      console.log(`[COPY-STATIC] ⚠️ Directory missing: ${dir}`);
+    }
+  });
+}
+
+function findBuildId() {
+  try {
+    const staticDir = path.join(process.cwd(), '.next', 'static');
+    if (!fs.existsSync(staticDir)) return null;
+    
+    const items = fs.readdirSync(staticDir);
+    const buildId = items.find(item => {
+      const itemPath = path.join(staticDir, item);
+      return fs.statSync(itemPath).isDirectory() && 
+             item !== 'chunks' && 
+             item !== 'css' && 
+             item !== 'media';
+    });
+    
+    if (buildId) {
+      console.log(`[COPY-STATIC] Found build ID directory: ${buildId}`);
     }
     
+    return buildId;
+  } catch (error) {
+    console.log('[COPY-STATIC] Could not determine build ID:', error.message);
+    return null;
+  }
+}
+
+function main() {
+  try {
+    copyStaticFiles();
     console.log('[COPY-STATIC] ✅ Static file copy completed successfully');
-    
   } catch (error) {
     console.error('[COPY-STATIC] ❌ Error copying static files:', error);
     process.exit(1);
   }
 }
 
-if (require.main === module) {
-  main();
-}
+// Run the script
+main();
 
-module.exports = { main }; 
+module.exports = { copyStaticFiles, main }; 

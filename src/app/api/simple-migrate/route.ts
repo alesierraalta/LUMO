@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
+import { connectSafely, disconnectSafely } from '../../../lib/prisma';
 
 // Simple endpoint para migrar la base de datos PostgreSQL
 export async function GET() {
   try {
-    const { PrismaClient } = await import('../../../generated/prisma');
-    const prisma = new PrismaClient();
-
-    // Verificar conexión
-    await prisma.$connect();
+    // Usar conexión segura
+    const prisma = await connectSafely();
     console.log('✅ Database connected successfully');
 
     // Hacer un query simple para verificar que las tablas existen
@@ -33,13 +31,14 @@ export async function GET() {
         message: 'Database connected but tables need to be created',
         error: tableError.message,
         instructions: [
-          'Run: npx prisma db push',
-          'Then run: npx prisma db seed'
+          'Database URL is configured but tables are missing',
+          'Run migration: npx prisma db push',
+          'Then seed: npx prisma db seed'
         ],
         timestamp: new Date().toISOString()
       });
     } finally {
-      await prisma.$disconnect();
+      await disconnectSafely();
     }
     
   } catch (error: any) {

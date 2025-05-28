@@ -6,29 +6,57 @@ import { PrismaClient } from '../generated/prisma';
 // Learn more:
 // https://pris.ly/d/help/next-js-best-practices
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-// Database URL configuration
-const databaseUrl = process.env.DATABASE_URL || "file:../prisma/dev.db";
-
-// Log para depuración
-if (process.env.NODE_ENV === 'development') {
-  console.log(`[Prisma] Usando base de datos SQLite para desarrollo local`);
-} else {
-  console.log(`[Prisma] Usando base de datos de producción: ${databaseUrl ? 'Configurada' : 'NO CONFIGURADA'}`);
+declare global {
+  var prisma: PrismaClient | undefined;
 }
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+// Crear cliente Prisma con manejo de errores robusto
+function createPrismaClient(): PrismaClient | undefined {
+  try {
+    const client = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      errorFormat: 'minimal',
+    });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+    // No hacer conexión automática durante startup para evitar crashes
+    return client;
+  } catch (error) {
+    console.error('❌ Error creating Prisma client:', error);
+    // Retornar undefined en lugar de null para evitar crashes
+    return undefined;
+  }
+}
+
+const prisma = globalThis.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.prisma = prisma;
+}
+
+// Función helper para conexión segura
+export async function connectSafely() {
+  if (!prisma) {
+    throw new Error('Prisma client not available');
+  }
+  
+  try {
+    await prisma.$connect();
+    return prisma;
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    throw error;
+  }
+}
+
+// Función helper para desconexión segura
+export async function disconnectSafely() {
+  if (prisma) {
+    try {
+      await prisma.$disconnect();
+    } catch (error) {
+      console.error('⚠️ Error disconnecting from database:', error);
+    }
+  }
+}
 
 export default prisma; 

@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('url');
 
+// Configure global timeout
+const DEFAULT_TIMEOUT = 60000; // 60 seconds
+const STATIC_FILE_CACHE = new Map(); // Simple cache for static files
+
 // Load runtime protection for entryCSSFiles errors
 try {
   require('./runtime-protection.js');
@@ -19,6 +23,7 @@ try {
 }
 
 console.log('[CHOREO-SERVER] Starting Next.js application for Choreo deployment...');
+console.log('[CHOREO-SERVER] Server version: 1.1.0 (enhanced network resilience)');
 
 // Environment configuration
 const dev = process.env.NODE_ENV !== 'production';
@@ -51,6 +56,8 @@ function ensureDeploymentStructure() {
         console.log('[CHOREO-SERVER] Static files copied successfully');
       } catch (error) {
         console.log('[CHOREO-SERVER] Error copying static files:', error.message);
+        // Create directory if it doesn't exist
+        fs.mkdirSync(staticDest, { recursive: true });
       }
     }
     
@@ -65,6 +72,8 @@ function ensureDeploymentStructure() {
         console.log('[CHOREO-SERVER] Public files copied successfully');
       } catch (error) {
         console.log('[CHOREO-SERVER] Error copying public files:', error.message);
+        // Create directory if it doesn't exist
+        fs.mkdirSync(publicDest, { recursive: true });
       }
     }
     
@@ -74,29 +83,67 @@ function ensureDeploymentStructure() {
   return null;
 }
 
-// Helper function to copy directories recursively
-function copyDirectoryRecursive(src, dest) {
+// Helper function to copy directories recursively with retry logic
+function copyDirectoryRecursive(src, dest, retries = 3) {
   if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest, { recursive: true });
+    try {
+      fs.mkdirSync(dest, { recursive: true });
+    } catch (err) {
+      if (retries > 0) {
+        console.log(`[CHOREO-SERVER] Retrying directory creation (${retries} attempts left)...`);
+        setTimeout(() => copyDirectoryRecursive(src, dest, retries - 1), 1000);
+        return;
+      }
+      throw err;
+    }
   }
   
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
+  try {
+    const entries = fs.readdirSync(src, { withFileTypes: true });
     
-    if (entry.isDirectory()) {
-      copyDirectoryRecursive(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      
+      if (entry.isDirectory()) {
+        copyDirectoryRecursive(srcPath, destPath);
+      } else {
+        try {
+          fs.copyFileSync(srcPath, destPath);
+        } catch (err) {
+          // Skip large files that might cause issues
+          if (err.code === 'ENOSPC' || err.code === 'EIO') {
+            console.log(`[CHOREO-SERVER] Skipping problematic file: ${srcPath}`);
+            continue;
+          }
+          throw err;
+        }
+      }
     }
+  } catch (err) {
+    if (retries > 0) {
+      console.log(`[CHOREO-SERVER] Retrying copy operation (${retries} attempts left)...`);
+      setTimeout(() => copyDirectoryRecursive(src, dest, retries - 1), 1000);
+      return;
+    }
+    throw err;
   }
 }
 
-// Function to serve static files
+// Function to serve static files with caching
 function serveStaticFile(req, res, filePath) {
   try {
+    // Check cache first
+    if (STATIC_FILE_CACHE.has(filePath)) {
+      const cachedData = STATIC_FILE_CACHE.get(filePath);
+      res.setHeader('Content-Type', cachedData.contentType);
+      res.setHeader('Content-Length', cachedData.size);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('X-Cache', 'HIT');
+      res.end(cachedData.content);
+      return true;
+    }
+    
     if (!fs.existsSync(filePath)) {
       return false;
     }
@@ -129,6 +176,7 @@ function serveStaticFile(req, res, filePath) {
     
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', stat.size);
+    res.setHeader('X-Cache', 'MISS');
     
     // Set caching headers for static assets
     if (req.url.includes('/_next/static/')) {
@@ -137,6 +185,20 @@ function serveStaticFile(req, res, filePath) {
       res.setHeader('Cache-Control', 'public, max-age=3600');
     }
     
+    // For small files (under 1MB), cache in memory
+    if (stat.size < 1024 * 1024) {
+      const content = fs.readFileSync(filePath);
+      STATIC_FILE_CACHE.set(filePath, {
+        content,
+        contentType,
+        size: stat.size
+      });
+      
+      res.end(content);
+      return true;
+    }
+    
+    // For larger files, stream them
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
     
@@ -153,6 +215,105 @@ function serveStaticFile(req, res, filePath) {
     console.log('[CHOREO-SERVER] Error serving static file:', error.message);
     return false;
   }
+}
+
+// Function to serve a fallback page
+function serveFallbackPage(res, message = 'Application is loading...') {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.end(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Inventory Management System</title>
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 600px;
+            width: 90%;
+          }
+          .logo { font-size: 3em; margin-bottom: 20px; }
+          h1 { margin-bottom: 20px; font-weight: 300; }
+          .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+          }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          .message { margin: 20px 0; font-size: 1.1em; }
+          .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+          }
+          .btn:hover { background: rgba(255, 255, 255, 0.3); }
+          .status { font-size: 0.9em; opacity: 0.8; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">📦</div>
+          <h1>Inventory Management System</h1>
+          <div class="spinner"></div>
+          <div class="message">${message}</div>
+          <button class="btn" onclick="window.location.reload()">Refresh</button>
+          <button class="btn" onclick="checkStatus()">Check Status</button>
+          <div class="status">Server is running • ${new Date().toLocaleTimeString()}</div>
+        </div>
+        <script>
+          // Auto-refresh after 5 seconds
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+          
+          function checkStatus() {
+            fetch('/api/health')
+              .then(response => response.json())
+              .then(data => {
+                console.log('Server status:', data);
+                if (data.status === 'healthy') {
+                  window.location.href = '/';
+                } else {
+                  window.location.reload();
+                }
+              })
+              .catch(err => {
+                console.error('Status check failed:', err);
+                window.location.reload();
+              });
+          }
+        </script>
+      </body>
+    </html>
+  `);
 }
 
 // Main server function
@@ -198,37 +359,59 @@ function startServer() {
   // Fallback to custom Next.js server
   console.log('[CHOREO-SERVER] Using custom Next.js server...');
   
-  const app = next({ dev, dir: process.cwd() });
-  const handle = app.getRequestHandler();
+  // Enhanced error handling for Next.js initialization
+  let nextAppInitRetries = 0;
+  const MAX_RETRIES = 3;
   
-  app.prepare().then(() => {
-    console.log('[CHOREO-SERVER] Next.js app prepared successfully');
+  function initNextApp() {
+    const app = next({ dev, dir: process.cwd() });
+    
+    app.prepare().then(() => {
+      console.log('[CHOREO-SERVER] Next.js app prepared successfully');
+      startHttpServer(app);
+    }).catch((error) => {
+      console.error('[CHOREO-SERVER] Failed to prepare Next.js app:', error);
+      
+      if (nextAppInitRetries < MAX_RETRIES) {
+        nextAppInitRetries++;
+        console.log(`[CHOREO-SERVER] Retrying Next.js initialization (${nextAppInitRetries}/${MAX_RETRIES})...`);
+        setTimeout(initNextApp, 3000 * nextAppInitRetries);
+      } else {
+        console.log('[CHOREO-SERVER] Max retries reached, starting fallback server');
+        startFallbackServer();
+      }
+    });
+  }
+  
+  function startHttpServer(app) {
+    const handle = app.getRequestHandler();
     
     const server = createServer(async (req, res) => {
       // Set a timeout to ensure responses don't hang
       const timeout = setTimeout(() => {
         if (!res.headersSent) {
           console.log('[CHOREO-SERVER] Request timeout, sending error response');
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'text/html');
-          res.end(`
-            <!DOCTYPE html>
-            <html>
-              <head><title>Request Timeout</title></head>
-              <body>
-                <h1>Request Timeout</h1>
-                <p>The server took too long to respond.</p>
-              </body>
-            </html>
-          `);
+          serveFallbackPage(res, 'Request took too long to process. Please try again.');
         }
-      }, 30000); // 30 second timeout
+      }, DEFAULT_TIMEOUT);
       
       try {
         const parsedUrl = parse(req.url, true);
         const { pathname } = parsedUrl;
         
-        console.log(`[CHOREO-SERVER] Handling request: ${req.method} ${pathname}`);
+        // Handle health check immediately
+        if (pathname === '/api/health' || pathname === '/health') {
+          clearTimeout(timeout);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+            uptime: process.uptime(),
+            version: '1.1.0'
+          }));
+          return;
+        }
         
         // Handle static files
         if (pathname.startsWith('/_next/static/')) {
@@ -259,41 +442,7 @@ function startServer() {
           console.error('[CHOREO-SERVER] Next.js handler error:', nextError.message);
           
           if (!res.headersSent) {
-            // Try to send a basic HTML response
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.end(`
-              <!DOCTYPE html>
-              <html lang="en">
-                <head>
-                  <meta charset="utf-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <title>Inventory App</title>
-                  <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; }
-                    .container { max-width: 800px; margin: 0 auto; }
-                    .error { background: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; border-radius: 5px; }
-                  </style>
-                </head>
-                <body>
-                  <div class="container">
-                    <h1>Inventory Management System</h1>
-                    <div class="error">
-                      <h3>Application is starting up...</h3>
-                      <p>The application is initializing. Please try refreshing the page in a moment.</p>
-                      <p><strong>Status:</strong> Server is running but application components are still loading.</p>
-                      <button onclick="window.location.reload()">Refresh Page</button>
-                    </div>
-                  </div>
-                  <script>
-                    // Auto-refresh after 3 seconds
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 3000);
-                  </script>
-                </body>
-              </html>
-            `);
+            serveFallbackPage(res, 'Application is starting up. Please wait a moment and refresh.');
           }
         }
         
@@ -302,38 +451,7 @@ function startServer() {
         console.error('[CHOREO-SERVER] Request handling error:', error.message);
         
         if (!res.headersSent) {
-          res.statusCode = 200; // Send 200 instead of 500 to avoid browser errors
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.end(`
-            <!DOCTYPE html>
-            <html lang="en">
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Inventory App - Loading</title>
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-                  .loading { background: #e3f2fd; border: 1px solid #2196f3; padding: 40px; border-radius: 10px; }
-                  .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2196f3; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-                  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                </style>
-              </head>
-              <body>
-                <div class="loading">
-                  <h1>🏢 Inventory Management System</h1>
-                  <div class="spinner"></div>
-                  <h3>Application is loading...</h3>
-                  <p>Please wait while the system initializes.</p>
-                  <p><small>If this takes too long, please contact support.</small></p>
-                </div>
-                <script>
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 5000);
-                </script>
-              </body>
-            </html>
-          `);
+          serveFallbackPage(res, 'We encountered an error. The application is initializing.');
         }
       }
     });
@@ -356,15 +474,45 @@ function startServer() {
         console.log('[CHOREO-SERVER] Server closed successfully');
         process.exit(0);
       });
+      
+      // Force exit after 10 seconds
+      setTimeout(() => {
+        console.log('[CHOREO-SERVER] Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
     };
     
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
+  }
+  
+  function startFallbackServer() {
+    console.log('[CHOREO-SERVER] Starting minimal fallback server');
     
-  }).catch((error) => {
-    console.error('[CHOREO-SERVER] Failed to prepare Next.js app:', error);
-    process.exit(1);
-  });
+    const server = createServer((req, res) => {
+      const { pathname } = parse(req.url, true);
+      
+      // Handle health check
+      if (pathname === '/api/health' || pathname === '/health') {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+          status: 'initializing',
+          timestamp: new Date().toISOString(),
+          message: 'Application is starting in fallback mode'
+        }));
+        return;
+      }
+      
+      serveFallbackPage(res, 'Application is starting in fallback mode. Please wait...');
+    });
+    
+    server.listen(port, hostname, () => {
+      console.log(`[CHOREO-SERVER] Fallback server running on http://${hostname}:${port}`);
+    });
+  }
+  
+  // Start the Next.js application
+  initNextApp();
 }
 
 // Start the server

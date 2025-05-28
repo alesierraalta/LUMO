@@ -1,166 +1,125 @@
 #!/usr/bin/env node
 
 /**
- * Minimal Fix for Next.js entryCSSFiles Error
+ * Minimal Runtime Fixes for Next.js Deployment
  * 
- * This provides a minimal, safe approach that handles entryCSSFiles issues
- * without ANY prototype modifications or dangerous monkey-patching.
+ * This script applies critical runtime fixes for Next.js deployment 
+ * issues in containerized environments like Choreo.
  */
 
-console.log('[MINIMAL-FIX] Installing minimal protection against entryCSSFiles errors...');
+// Fix process.env.APP_NEXT_ROOT_DIR
+if (!process.env.APP_NEXT_ROOT_DIR) {
+  process.env.APP_NEXT_ROOT_DIR = process.cwd();
+  console.log('[MINIMAL-FIX] Set APP_NEXT_ROOT_DIR to', process.env.APP_NEXT_ROOT_DIR);
+}
 
-const fs = require('fs');
-const path = require('path');
+// Set next telemetry to disabled
+process.env.NEXT_TELEMETRY_DISABLED = '1';
 
-// Ensure all manifest files have proper entryCSSFiles structure
-const ensureManifestStructure = () => {
-  const baseDir = process.cwd();
-  const nextDir = path.join(baseDir, '.next');
-  
-  // Files to check and fix
-  const manifestFiles = [
-    { path: path.join(nextDir, 'build-manifest.json'), type: 'build' },
-    { path: path.join(nextDir, 'app-build-manifest.json'), type: 'app' },
-    { path: path.join(nextDir, 'react-loadable-manifest.json'), type: 'loadable' }
-  ];
-  
-  manifestFiles.forEach(({ path: filePath, type }) => {
-    try {
-      let manifest = {};
-      let needsUpdate = false;
-      
-      if (fs.existsSync(filePath)) {
-        try {
-          manifest = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        } catch (e) {
-          console.log(`[MINIMAL-FIX] Error parsing ${type} manifest, creating new one`);
-          manifest = {};
-          needsUpdate = true;
-        }
-      } else {
-        console.log(`[MINIMAL-FIX] Creating missing ${type} manifest`);
-        needsUpdate = true;
+// Fix document missing error
+try {
+  if (typeof globalThis.document === 'undefined' && typeof document === 'undefined') {
+    globalThis.document = {
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      documentElement: {
+        style: {},
+        setAttribute: () => {}
       }
-      
-      // Ensure entryCSSFiles exists and is an object
-      if (!manifest.entryCSSFiles || typeof manifest.entryCSSFiles !== 'object') {
-        manifest.entryCSSFiles = {};
-        needsUpdate = true;
-      }
-      
-      // Add default structure for build manifest
-      if (type === 'build') {
-        if (!manifest.pages) { manifest.pages = {}; needsUpdate = true; }
-        if (!manifest.polyfillFiles) { manifest.polyfillFiles = []; needsUpdate = true; }
-        if (!manifest.rootMainFiles) { manifest.rootMainFiles = []; needsUpdate = true; }
-        if (!manifest.devFiles) { manifest.devFiles = []; needsUpdate = true; }
-        if (!manifest.ampDevFiles) { manifest.ampDevFiles = []; needsUpdate = true; }
-        if (!manifest.lowPriorityFiles) { manifest.lowPriorityFiles = []; needsUpdate = true; }
-      }
-      
-      // Add default structure for app manifest
-      if (type === 'app') {
-        if (!manifest.pages) { manifest.pages = {}; needsUpdate = true; }
-      }
-      
-      if (needsUpdate) {
-        // Ensure directory exists
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-        fs.writeFileSync(filePath, JSON.stringify(manifest, null, 2));
-        console.log(`[MINIMAL-FIX] Updated ${type} manifest: ${filePath}`);
-      }
-    } catch (error) {
-      console.log(`[MINIMAL-FIX] Error handling ${type} manifest:`, error.message);
-    }
-  });
-  
-  // Handle standalone manifests if they exist
-  const standaloneDir = path.join(nextDir, 'standalone', '.next');
-  if (fs.existsSync(standaloneDir)) {
-    console.log('[MINIMAL-FIX] Fixing standalone manifests...');
-    
-    manifestFiles.forEach(({ path: originalPath, type }) => {
-      const fileName = path.basename(originalPath);
-      const standalonePath = path.join(standaloneDir, fileName);
-      
-      try {
-        let manifest = {};
-        let needsUpdate = false;
-        
-        if (fs.existsSync(standalonePath)) {
-          try {
-            manifest = JSON.parse(fs.readFileSync(standalonePath, 'utf8'));
-          } catch (e) {
-            manifest = {};
-            needsUpdate = true;
-          }
-        } else if (fs.existsSync(originalPath)) {
-          // Copy from main manifest
-          try {
-            manifest = JSON.parse(fs.readFileSync(originalPath, 'utf8'));
-            needsUpdate = true;
-          } catch (e) {
-            manifest = {};
-            needsUpdate = true;
-          }
-        } else {
-          needsUpdate = true;
-        }
-        
-        // Ensure entryCSSFiles exists
-        if (!manifest.entryCSSFiles || typeof manifest.entryCSSFiles !== 'object') {
-          manifest.entryCSSFiles = {};
-          needsUpdate = true;
-        }
-        
-        if (needsUpdate) {
-          fs.mkdirSync(path.dirname(standalonePath), { recursive: true });
-          fs.writeFileSync(standalonePath, JSON.stringify(manifest, null, 2));
-          console.log(`[MINIMAL-FIX] Updated standalone ${type} manifest`);
-        }
-      } catch (error) {
-        console.log(`[MINIMAL-FIX] Error handling standalone ${type} manifest:`, error.message);
-      }
-    });
+    };
+    console.log('[MINIMAL-FIX] Added placeholder document for SSR');
   }
-};
+} catch (e) {
+  console.log('[MINIMAL-FIX] Error fixing document:', e.message);
+}
 
-// Handle process errors related to entryCSSFiles without crashing
-process.on('uncaughtException', (error) => {
-  if (error.message && 
-      error.message.includes('entryCSSFiles') &&
-      (error.message.includes('Cannot read properties') ||
-       error.message.includes('Cannot read property') ||
-       error.message.includes('is not defined'))) {
-    console.log('[MINIMAL-FIX] Caught uncaught entryCSSFiles exception - handled safely');
-    console.log('[MINIMAL-FIX] Error details:', error.message);
-    return; // Don't crash the process
-  }
-  
-  // Don't interfere with other uncaught exceptions
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Suppress specific console errors
+// Patch console to avoid breaking on circular references
+const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
-console.error = function(...args) {
-  const errorMsg = args.join(' ');
+
+try {
+  console.log = function(...args) {
+    try {
+      originalConsoleLog.apply(console, args);
+    } catch (e) {
+      originalConsoleLog('Error in console.log (circular reference):', e.message);
+    }
+  };
   
-  if (errorMsg.includes('entryCSSFiles') && 
-      (errorMsg.includes('Cannot read properties of undefined') ||
-       errorMsg.includes('Cannot read property') ||
-       errorMsg.includes('is not defined'))) {
-    console.log('[MINIMAL-FIX] Suppressed entryCSSFiles error:', errorMsg);
-    return;
+  console.error = function(...args) {
+    try {
+      originalConsoleError.apply(console, args);
+    } catch (e) {
+      originalConsoleLog('Error in console.error (circular reference):', e.message);
+    }
+  };
+} catch (e) {
+  console.log = originalConsoleLog;
+  console.error = originalConsoleError;
+}
+
+// Fix entryCSSFiles not iterable error
+try {
+  const nextRequire = require('next/dist/server/require');
+  if (nextRequire && nextRequire.default && nextRequire.default.onConfigurationChange) {
+    const original = nextRequire.default.onConfigurationChange;
+    nextRequire.default.onConfigurationChange = function(configuration) {
+      try {
+        return original(configuration);
+      } catch (e) {
+        if (e.message && e.message.includes('entryCSSFiles')) {
+          console.log('[MINIMAL-FIX] Caught and fixed entryCSSFiles error');
+          if (!configuration.entryCSSFiles) {
+            configuration.entryCSSFiles = new Map();
+          }
+          return original(configuration);
+        }
+        throw e;
+      }
+    };
+    console.log('[MINIMAL-FIX] Patched next/dist/server/require');
   }
+} catch (e) {
+  console.log('[MINIMAL-FIX] Could not patch entryCSSFiles error:', e.message);
+}
+
+// Fix potential 'Cannot read properties of null' error from React
+try {
+  const originalCreateElement = require('react').createElement;
+  if (originalCreateElement) {
+    require('react').createElement = function(type, props, ...children) {
+      if (props === null) props = {};
+      return originalCreateElement(type, props, ...children);
+    };
+    console.log('[MINIMAL-FIX] Patched React.createElement for null props');
+  }
+} catch (e) {
+  console.log('[MINIMAL-FIX] Could not patch React.createElement:', e.message);
+}
+
+// Network connectivity check
+try {
+  const http = require('http');
+  const testConnectivity = () => {
+    const req = http.get('http://127.0.0.1:' + (process.env.PORT || 8080) + '/health', res => {
+      console.log('[MINIMAL-FIX] Local connectivity test: HTTP', res.statusCode);
+    });
+    
+    req.on('error', (e) => {
+      console.log('[MINIMAL-FIX] Local connectivity test: Failed -', e.message);
+    });
+    
+    req.setTimeout(1000, () => {
+      req.destroy();
+    });
+  };
   
-  return originalConsoleError.apply(console, args);
-};
+  // Run connectivity test after server startup (assume 5 seconds)
+  setTimeout(testConnectivity, 5000);
+} catch (e) {
+  console.log('[MINIMAL-FIX] Connectivity test error:', e.message);
+}
 
-// Run the manifest fix
-ensureManifestStructure();
-
-console.log('[MINIMAL-FIX] Minimal protection installed successfully!');
+console.log('[MINIMAL-FIX] Applied minimal runtime fixes for Next.js deployment');
 
 module.exports = { ensureManifestStructure }; 

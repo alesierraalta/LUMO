@@ -19,6 +19,10 @@ spec:
         value: "pk_test_dummy-key-for-build"
       - name: CLERK_SECRET_KEY
         value: "sk_test_dummy-key-for-build"
+    retryCount: 5
+    timeoutSeconds: 600
+    network:
+      connectTimeoutSeconds: 60
   deploy:
     command: |
       echo "[DEPLOY-DEBUG] =========================="
@@ -78,11 +82,13 @@ spec:
     # Add your database URL
     - name: DATABASE_URL
       value: "postgresql://REPLACE_WITH_YOUR_DATABASE_URL"
+    - name: PORT
+      value: "8080"
   resources:
     cpu:
-      units: 1.0
+      units: 0.5
     memory:
-      units: 1.0Gi
+      units: 1Gi
   scaling:
     minReplicas: 1
     maxReplicas: 3
@@ -91,8 +97,10 @@ spec:
       httpGet:
         path: /api/health
         port: 8080
-      initialDelaySeconds: 20
-      periodSeconds: 5
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
     livenessProbe:
       httpGet:
         path: /api/health

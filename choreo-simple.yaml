@@ -36,8 +36,8 @@ deploy:
   startup:
     shell: /bin/sh
     command: |-
-      echo "Starting with ultimate manifest fix..."
-      # Run comprehensive preload fix to ensure all manifests are properly structured
-      node preload-fix.js
-      # Start with ultimate protection for complete error prevention
-      node -r ./ultimate-fix.js .next/standalone/server.js 
+      echo "Starting with Choreo-optimized server..."
+      # Run minimal fix to ensure manifests are properly structured
+      node minimal-fix.js
+      # Start with Choreo-specific server implementation
+      node choreo-server.js 

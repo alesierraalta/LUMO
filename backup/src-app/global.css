@@ -1,0 +1,79 @@
+@media print {
+  /* Hide non-printable elements */
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Optimize page layout for printing */
+  body.print-mode {
+    background: white;
+    font-size: 12pt;
+    color: black;
+  }
+  
+  /* Full-width layout for print view */
+  body.print-mode .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Ensure charts and tables fit within page */
+  body.print-mode .h-80 {
+    height: auto !important;
+    max-height: 500px !important;
+  }
+  
+  /* Add page breaks before major sections */
+  body.print-mode .card {
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+  
+  /* Enhance table readability for printing */
+  body.print-mode table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  body.print-mode th,
+  body.print-mode td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  
+  body.print-mode th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  /* Report header for print view */
+  body.print-mode .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  body.print-mode .print-header h1 {
+    font-size: 24pt;
+    margin-bottom: 10px;
+  }
+  
+  body.print-mode .print-header .print-date {
+    font-size: 10pt;
+    color: #666;
+  }
+  
+  /* Ensure all card content is visible */
+  body.print-mode .card-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* Ensure responsive charts are visible */
+  body.print-mode .recharts-responsive-container {
+    width: 100% !important;
+    height: auto !important;
+  }
+} 

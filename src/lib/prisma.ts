@@ -8,8 +8,13 @@ import { PrismaClient } from '../generated/prisma';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// Use the hardcoded SQLite URL
+// Usar SQLite para desarrollo local
 const databaseUrl = "file:../prisma/dev.db";
+
+// Log para depuración
+if (process.env.NODE_ENV === 'development') {
+  console.log(`[Prisma] Usando base de datos SQLite para desarrollo local`);
+}
 
 export const prisma =
   globalForPrisma.prisma ||

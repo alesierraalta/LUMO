@@ -41,19 +41,35 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const { isLoaded, isSignedIn: clerkIsSignedIn, userId: clerkUserId } = useAuth();
+// Component for when Clerk auth is skipped
+function SkippedAuthProvider({ children }: AuthProviderProps) {
+  return (
+    <AuthContext.Provider value={{ 
+      isLoaded: true, 
+      isSignedIn: true, 
+      userId: "dev-user-id", 
+      isAdmin: true, 
+      userRole: "admin", 
+      syncingUser: false, 
+      syncError: null, 
+      retrySyncUser: async () => {} 
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// Component for when Clerk auth is enabled
+function ClerkAuthProvider({ children }: AuthProviderProps) {
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [syncingUser, setSyncingUser] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
-  
-  // Convert potentially undefined values to required types
-  const isSignedIn = clerkIsSignedIn === undefined ? null : clerkIsSignedIn;
-  const userId = clerkUserId || null;
 
   // Sync user with our database
   const syncUser = async () => {
@@ -96,27 +112,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const handleSignOut = () => {
-    signOut(() => { window.location.href = '/'; });
+    signOut().then(() => { window.location.href = '/'; });
   };
 
   // Sync user when auth state changes
   useEffect(() => {
-    syncUser();
+    if (isSignedIn) {
+      syncUser();
+    }
   }, [isLoaded, isSignedIn, userId, user]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        isLoaded,
-        isSignedIn,
-        userId,
-        isAdmin,
-        userRole,
-        syncingUser,
-        syncError,
-        retrySyncUser: syncUser,
-      }}
-    >
+    <AuthContext.Provider value={{ 
+      isLoaded, 
+      isSignedIn: isSignedIn ?? false, 
+      userId: userId ?? null, 
+      isAdmin, 
+      userRole, 
+      syncingUser, 
+      syncError, 
+      retrySyncUser: syncUser 
+    }}>
       {children}
       
       {/* Error Dialog */}
@@ -128,14 +144,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
               Error de Sincronización
             </DialogTitle>
             <DialogDescription>
-              Hubo un problema sincronizando tu cuenta: {syncError}
+              No se pudo sincronizar tu información de usuario.
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm">
-            Este error puede ocurrir si no tienes permisos suficientes o si hay un problema con tu cuenta.
-            Puedes intentar nuevamente o cerrar sesión y contactar al administrador.
+            {syncError}
           </p>
           <DialogFooter className="flex sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Recargar Página
+            </Button>
             <Button 
               variant="outline" 
               onClick={syncUser}
@@ -143,22 +166,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
               className="gap-2"
             >
               {syncingUser ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Intentando...
-                </>
+                <RefreshCw className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Reintentar
-                </>
+                <RefreshCw className="h-4 w-4" />
               )}
+              Reintentar
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleSignOut}
-              className="gap-2"
-            >
+            <Button onClick={handleSignOut}>
               Cerrar Sesión
             </Button>
           </DialogFooter>
@@ -166,4 +180,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       </Dialog>
     </AuthContext.Provider>
   );
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  // Check if we should skip Clerk authentication
+  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+  
+  if (skipClerkAuth) {
+    console.log('[AUTH] Using skipped auth provider');
+    return <SkippedAuthProvider>{children}</SkippedAuthProvider>;
+  }
+  
+  console.log('[AUTH] Using Clerk auth provider');
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
 } 

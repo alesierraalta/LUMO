@@ -1,26 +1,14 @@
 @echo off
-echo ================================
-echo Installing Next.js Inventory App
-echo ================================
-echo.
+echo Configurando la aplicación de inventario...
 
-echo Installing npm dependencies...
-call npm install
+echo Generando archivos Prisma...
+npx prisma generate
 
-echo.
-echo Generating Prisma client...
-call npx prisma generate
+echo Ejecutando migraciones de base de datos...
+npx prisma migrate deploy
 
-echo.
-echo Setting up the database...
-call npx prisma db push
+echo Inicializando datos básicos...
+node src/scripts/init-db.js
 
-echo.
-echo ================================
-echo Installation completed!
-echo.
-echo To start the application, run:
-echo   start.bat
-echo ================================
-echo.
-pause 
+echo Configuración completada con éxito!
+echo Puedes iniciar la aplicación con: npm run dev 

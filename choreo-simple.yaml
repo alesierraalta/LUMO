@@ -1,0 +1,43 @@
+version: 1.0
+build:
+  buildpacks:
+    - name: nodejs
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: "8080"
+deploy:
+  resources:
+    cpu: 1.0
+    memory: 1Gi
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: "8080"
+  docker:
+    context: .
+    buildArgs:
+      NODE_ENV: production
+  health:
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 5
+    livenessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+  startup:
+    shell: /bin/sh
+    command: |-
+      echo "Starting with CSS-specific fix server..."
+      # Run minimal fix first to ensure directory structure
+      node minimal-fix.js
+      # Use dedicated CSS fix server with runtime patching
+      node -r ./runtime-fix.js css-fix-server.js 

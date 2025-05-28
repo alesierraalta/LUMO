@@ -9,14 +9,24 @@ import { useState } from "react";
 
 export function AuthErrorBanner() {
   const { syncError, syncingUser, retrySyncUser } = useAppAuth();
-  const { signOut } = useClerk();
   const [isDismissed, setIsDismissed] = useState(false);
   
-  const handleSignOut = () => {
-    signOut(() => { window.location.href = '/'; });
-  };
+  // Verificar si estamos en modo de desarrollo sin autenticación
+  const skipAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
   
-  if (!syncError || isDismissed) return null;
+  // Obtener la función signOut solo si no estamos en modo de desarrollo
+  let signOut = () => { window.location.href = '/'; };
+  if (!skipAuth) {
+    try {
+      const clerk = useClerk();
+      signOut = () => clerk.signOut(() => { window.location.href = '/'; });
+    } catch (error) {
+      console.error("Error al obtener useClerk:", error);
+    }
+  }
+  
+  // Si estamos en modo de desarrollo o no hay error, no mostrar nada
+  if (skipAuth || !syncError || isDismissed) return null;
   
   return (
     <Alert variant="destructive" className="mb-4">
@@ -52,7 +62,7 @@ export function AuthErrorBanner() {
                 size="sm" 
                 variant="destructive" 
                 className="gap-1"
-                onClick={handleSignOut}
+                onClick={signOut}
               >
                 Cerrar Sesión
               </Button>

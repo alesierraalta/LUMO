@@ -1,0 +1,112 @@
+apiVersion: core.choreo.dev/v1alpha1
+kind: Component
+metadata:
+  name: lumo-inventory
+  projectName: ${CHOREO_PROJECT}
+  description: "LUMO Inventory Management System"
+spec:
+  type: Web Application
+  buildPack: Node.js
+  runtime:
+    type: nodejs
+    version: "20"
+  build:
+    command: npm run build
+    env:
+      - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+        value: "true"
+      - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        value: "pk_test_dummy-key-for-build"
+      - name: CLERK_SECRET_KEY
+        value: "sk_test_dummy-key-for-build"
+    retryCount: 5
+    timeoutSeconds: 600
+    network:
+      connectTimeoutSeconds: 60
+  deploy:
+    command: |
+      echo "[DEPLOY-DEBUG] =========================="
+      echo "[DEPLOY-DEBUG] Starting deployment debug"
+      echo "[DEPLOY-DEBUG] =========================="
+      echo "[DEPLOY-DEBUG] Current directory: $(pwd)"
+      echo "[DEPLOY-DEBUG] Available files:"
+      ls -la
+      echo "[DEPLOY-DEBUG] Checking critical files:"
+      [ -f server.js ] && echo "[DEPLOY-DEBUG] server.js: EXISTS" || echo "[DEPLOY-DEBUG] server.js: MISSING"
+      [ -f start.sh ] && echo "[DEPLOY-DEBUG] start.sh: EXISTS" || echo "[DEPLOY-DEBUG] start.sh: MISSING"
+      [ -f debug-quick.sh ] && echo "[DEPLOY-DEBUG] debug-quick.sh: EXISTS" || echo "[DEPLOY-DEBUG] debug-quick.sh: MISSING"
+      [ -f server-debug.js ] && echo "[DEPLOY-DEBUG] server-debug.js: EXISTS" || echo "[DEPLOY-DEBUG] server-debug.js: MISSING"
+      echo "[DEPLOY-DEBUG] Environment check:"
+      echo "[DEPLOY-DEBUG] NODE_ENV: $NODE_ENV"
+      echo "[DEPLOY-DEBUG] PORT: $PORT"
+      echo "[DEPLOY-DEBUG] Trying startup script..."
+      if [ -f start.sh ]; then
+        echo "[DEPLOY-DEBUG] Running start.sh"
+        ./start.sh
+      elif [ -f server-debug.js ]; then
+        echo "[DEPLOY-DEBUG] Running server-debug.js"
+        node server-debug.js
+      elif [ -f server.js ]; then
+        echo "[DEPLOY-DEBUG] Running server.js directly"
+        node server.js
+      else
+        echo "[DEPLOY-DEBUG] No server files found!"
+        ls -la
+        exit 1
+      fi
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: DATABASE_URL
+      valueFrom:
+        secretRef:
+          name: DATABASE_URL
+    - name: CLERK_SECRET_KEY
+      valueFrom:
+        secretRef:
+          name: CLERK_SECRET_KEY
+    - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      valueFrom:
+        secretRef:
+          name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    - name: NEXT_PUBLIC_APP_VERSION
+      value: ${GITHUB_SHA}
+    - name: NEXT_PUBLIC_SKIP_CLERK_AUTH
+      value: "false"
+    # Add your actual Clerk keys here temporarily for testing
+    # Replace with your real values:
+    - name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      value: "pk_live_REPLACE_WITH_YOUR_REAL_KEY"
+    - name: CLERK_SECRET_KEY
+      value: "sk_live_REPLACE_WITH_YOUR_REAL_SECRET"
+    # Add your database URL
+    - name: DATABASE_URL
+      value: "postgresql://REPLACE_WITH_YOUR_DATABASE_URL"
+    - name: PORT
+      value: "8080"
+  resources:
+    cpu:
+      units: 0.5
+    memory:
+      units: 1Gi
+  scaling:
+    minReplicas: 1
+    maxReplicas: 3
+  healthCheck:
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+  expose:
+    type: HTTP
+    port: 8080 

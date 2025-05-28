@@ -23,15 +23,39 @@ export default function PermissionDenied({
   message = "No tienes permiso para acceder a esta página.", 
   requiredRole
 }: PermissionDeniedProps) {
-  const { signOut } = useClerk();
-  const { user } = useUser();
+  // Verificar si estamos en modo de desarrollo sin autenticación
+  const skipAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
   
-  const userEmail = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = userEmail === "alesierraalta@gmail.com";
+  // Valores por defecto para modo de desarrollo
+  let userEmail = "desarrollo@ejemplo.com";
+  let isAdmin = true;
   
+  // Función para cerrar sesión que funciona en ambos modos
   const handleSignOut = () => {
-    signOut(() => { window.location.href = '/'; });
+    if (skipAuth) {
+      window.location.href = '/';
+    } else {
+      try {
+        const { signOut } = useClerk();
+        signOut(() => { window.location.href = '/'; });
+      } catch (error) {
+        console.error("Error al cerrar sesión:", error);
+        window.location.href = '/';
+      }
+    }
   };
+  
+  // Solo usar hooks de Clerk si no estamos en modo de desarrollo
+  if (!skipAuth) {
+    try {
+      const clerk = useClerk();
+      const userHook = useUser();
+      userEmail = userHook.user?.primaryEmailAddress?.emailAddress || "";
+      isAdmin = userEmail === "alesierraalta@gmail.com";
+    } catch (error) {
+      console.error("Error usando hooks de Clerk:", error);
+    }
+  }
   
   return (
     <div className="flex items-center justify-center min-h-[50vh]">

@@ -3,6 +3,13 @@ const next = require('next');
 const fs = require('fs');
 const path = require('path');
 
+// Load runtime protection for entryCSSFiles errors
+try {
+  require('./runtime-protection.js');
+} catch (e) {
+  console.log('[SAFE-SERVER] Runtime protection not found, continuing without it');
+}
+
 console.log('[SAFE-SERVER] Starting Next.js application with safe implementation...');
 
 // Detect if we're running in standalone mode

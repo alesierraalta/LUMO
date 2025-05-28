@@ -1,19 +1,18 @@
 /**
  * Production Server for LUMO Inventory System
  * 
- * Clean, reliable Next.js server with proper CSS handling
- * and manifest validation integration.
+ * Properly configured for Next.js standalone mode
  */
 
 const { createServer } = require('http');
-const next = require('next');
+const { parse } = require('url');
 const path = require('path');
 const fs = require('fs');
 
 // Environment configuration
+const hostname = process.env.HOSTNAME || '0.0.0.0';
+const port = process.env.PORT || 8080;
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = process.env.HOSTNAME || 'localhost';
-const port = process.env.PORT || 3000;
 
 console.log('[SERVER] Starting LUMO Inventory System...');
 console.log('[SERVER] Environment:', process.env.NODE_ENV);
@@ -21,238 +20,194 @@ console.log('[SERVER] Development mode:', dev);
 console.log('[SERVER] Hostname:', hostname);
 console.log('[SERVER] Port:', port);
 
-// Initialize Next.js application
-const app = next({ 
-  dev, 
-  hostname, 
-  port,
-  // Use custom directory if needed
-  dir: process.cwd(),
-  // Ensure proper configuration loading
-  conf: undefined,
-  // Quiet mode for production
-  quiet: !dev
-});
-
-const handle = app.getRequestHandler();
-
-// Enhanced error handling for CSS-related issues
-const handleCSSErrors = (error, req, res) => {
-  console.error('[SERVER] CSS handling error:', {
-    url: req.url,
-    method: req.method,
-    error: error.message,
-    stack: error.stack
+// For standalone mode, use the generated server
+if (!dev && fs.existsSync('.next/standalone/server.js')) {
+  console.log('[SERVER] Using Next.js standalone server');
+  
+  // Set the correct working directory for standalone
+  process.chdir(path.join(__dirname, '.next/standalone'));
+  
+  // Set required environment variables for standalone
+  process.env.HOSTNAME = hostname;
+  process.env.PORT = port;
+  
+  // Load and start the standalone server
+  require('./server.js');
+  
+} else {
+  // For development or when standalone is not available, use Next.js directly
+  console.log('[SERVER] Using Next.js development server');
+  
+  const next = require('next');
+  
+  const app = next({ 
+    dev,
+    hostname,
+    port,
+    dir: __dirname
   });
+  
+  const handle = app.getRequestHandler();
+  
+  const requestHandler = async (req, res) => {
+    try {
+      // Add security headers
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('X-XSS-Protection', '1; mode=block');
 
-  // If it's a CSS file request that failed, serve fallback
-  if (req.url && req.url.includes('.css')) {
-    const fallbackCSS = `
-      /* Fallback CSS served due to error */
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        margin: 0;
-        padding: 20px;
-      }
-      .error-message {
-        color: #d73a49;
-        background: #ffeef0;
-        padding: 12px;
-        border-radius: 6px;
-        border: 1px solid #fdaeb7;
-        margin: 20px 0;
-      }
-    `;
-    
-    res.writeHead(200, {
-      'Content-Type': 'text/css',
-      'Cache-Control': 'no-cache',
-    });
-    res.end(fallbackCSS);
-    return;
-  }
-
-  // For other errors, let Next.js handle them
-  throw error;
-};
-
-// Custom request handler with enhanced error handling
-const customRequestHandler = async (req, res) => {
-  try {
-    // Add security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-
-    // Handle health check
-    if (req.url === '/health' || req.url === '/api/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        status: 'healthy', 
-        timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '0.1.0'
-      }));
-      return;
-    }
-
-    // Handle manifest validation endpoint
-    if (req.url === '/api/manifest-status') {
-      try {
-        const ManifestValidator = require('./scripts/manifest-validator');
-        const validator = new ManifestValidator();
-        const isValid = await validator.validate();
-        
+      // Handle health check
+      if (req.url === '/health' || req.url === '/api/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
-          manifestsValid: isValid,
-          errors: validator.errors,
-          warnings: validator.warnings,
-          fixes: validator.fixes
-        }));
-        return;
-      } catch (validationError) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          error: 'Manifest validation failed',
-          details: validationError.message
+          status: 'healthy', 
+          timestamp: new Date().toISOString(),
+          version: process.env.npm_package_version || '0.1.0',
+          mode: dev ? 'development' : 'production'
         }));
         return;
       }
-    }
 
-    // Enhanced static file serving for CSS files
-    if (req.url && req.url.startsWith('/static/css/')) {
-      const filePath = path.join(process.cwd(), '.next', req.url);
+      // Handle manifest validation endpoint
+      if (req.url === '/api/manifest-status') {
+        try {
+          const ManifestValidator = require('./scripts/manifest-validator');
+          const validator = new ManifestValidator();
+          const isValid = await validator.validate();
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            manifestsValid: isValid,
+            errors: validator.errors || [],
+            warnings: validator.warnings || [],
+            fixes: validator.fixes || 0
+          }));
+          return;
+        } catch (validationError) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: 'Manifest validation failed',
+            details: validationError.message
+          }));
+          return;
+        }
+      }
+
+      // Let Next.js handle all other requests
+      await handle(req, res);
       
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf8');
-        res.writeHead(200, {
-          'Content-Type': 'text/css',
-          'Cache-Control': 'public, max-age=31536000, immutable',
-        });
-        res.end(content);
-        return;
-      } else {
-        // Serve fallback CSS if file doesn't exist
-        console.warn(`[SERVER] CSS file not found: ${filePath}, serving fallback`);
-        handleCSSErrors(new Error('CSS file not found'), req, res);
-        return;
+    } catch (error) {
+      console.error('[SERVER] Request handling error:', {
+        url: req.url,
+        method: req.method,
+        error: error.message
+      });
+
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>LUMO - Server Error</title>
+              <style>
+                body { 
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                  margin: 40px; 
+                  background: #f8f9fa;
+                }
+                .error { 
+                  color: #721c24; 
+                  background: #f8d7da; 
+                  padding: 20px; 
+                  border-radius: 6px; 
+                  border: 1px solid #f5c6cb;
+                  max-width: 600px;
+                }
+                .logo { color: #007bff; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="logo">🔥 LUMO</div>
+              <div class="error">
+                <h1>Server Error</h1>
+                <p>LUMO encountered an error while processing your request.</p>
+                <details>
+                  <summary>Error Details</summary>
+                  <p><strong>Error:</strong> ${error.message}</p>
+                </details>
+                <p><a href="/">← Return to Dashboard</a></p>
+              </div>
+            </body>
+          </html>
+        `);
       }
     }
+  };
 
-    // Let Next.js handle all other requests
-    await handle(req, res);
+  // Graceful shutdown handling
+  const gracefulShutdown = (signal) => {
+    console.log(`[SERVER] Received ${signal}, starting graceful shutdown...`);
     
-  } catch (error) {
-    console.error('[SERVER] Request handling error:', {
-      url: req.url,
-      method: req.method,
-      error: error.message
-    });
+    if (server) {
+      server.close(() => {
+        console.log('[SERVER] HTTP server closed');
+        process.exit(0);
+      });
 
-    // Try to handle CSS-related errors gracefully
-    if (error.message && error.message.includes('entryCSSFiles')) {
-      handleCSSErrors(error, req, res);
-      return;
-    }
-
-    // For other errors, send a generic error response
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'text/html' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Server Error</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; }
-              .error { color: #d73a49; background: #ffeef0; padding: 20px; border-radius: 6px; }
-            </style>
-          </head>
-          <body>
-            <div class="error">
-              <h1>Server Error</h1>
-              <p>An error occurred while processing your request.</p>
-              <p><strong>Error:</strong> ${error.message}</p>
-            </div>
-          </body>
-        </html>
-      `);
-    }
-  }
-};
-
-// Graceful shutdown handling
-const gracefulShutdown = (signal) => {
-  console.log(`[SERVER] Received ${signal}, starting graceful shutdown...`);
-  
-  server.close(() => {
-    console.log('[SERVER] HTTP server closed');
-    process.exit(0);
-  });
-
-  // Force close after 10 seconds
-  setTimeout(() => {
-    console.error('[SERVER] Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-};
-
-// Main server startup
-app.prepare()
-  .then(() => {
-    console.log('[SERVER] Next.js application prepared successfully');
-    
-    // Create HTTP server
-    const server = createServer(customRequestHandler);
-    
-    // Handle server errors
-    server.on('error', (error) => {
-      console.error('[SERVER] HTTP server error:', error);
-      
-      if (error.code === 'EADDRINUSE') {
-        console.error(`[SERVER] Port ${port} is already in use`);
+      // Force close after 10 seconds
+      setTimeout(() => {
+        console.error('[SERVER] Forced shutdown after timeout');
         process.exit(1);
-      }
-    });
+      }, 10000);
+    } else {
+      process.exit(0);
+    }
+  };
 
-    // Start listening
-    server.listen(port, hostname, () => {
-      console.log(`[SERVER] Ready on http://${hostname}:${port}`);
-      console.log('[SERVER] Health check available at /health');
-      console.log('[SERVER] Manifest status available at /api/manifest-status');
-    });
-
-    // Setup graceful shutdown
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
-      console.error('[SERVER] Uncaught exception:', error);
+  // Main server startup
+  app.prepare()
+    .then(() => {
+      console.log('[SERVER] Next.js application prepared successfully');
       
-      // If it's a CSS-related error, log it but don't crash
-      if (error.message && error.message.includes('entryCSSFiles')) {
-        console.error('[SERVER] CSS manifest error caught, but server will continue running');
-        return;
-      }
+      // Create HTTP server
+      const server = createServer(requestHandler);
       
-      // For other critical errors, exit gracefully
-      gracefulShutdown('uncaughtException');
-    });
+      // Handle server errors
+      server.on('error', (error) => {
+        console.error('[SERVER] HTTP server error:', error);
+        
+        if (error.code === 'EADDRINUSE') {
+          console.error(`[SERVER] Port ${port} is already in use`);
+          process.exit(1);
+        }
+      });
 
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('[SERVER] Unhandled rejection at:', promise, 'reason:', reason);
-      
-      // If it's a CSS-related error, log it but don't crash
-      if (reason && reason.message && reason.message.includes('entryCSSFiles')) {
-        console.error('[SERVER] CSS manifest rejection caught, but server will continue running');
-        return;
-      }
-    });
+      // Start listening
+      server.listen(port, hostname, () => {
+        console.log(`[SERVER] Ready on http://${hostname}:${port}`);
+        console.log('[SERVER] Health check available at /health');
+        console.log('[SERVER] Manifest status available at /api/manifest-status');
+        console.log('[SERVER] LUMO Inventory System is now running!');
+      });
 
-  })
-  .catch((error) => {
-    console.error('[SERVER] Failed to start server:', error);
-    process.exit(1);
-  });
+      // Setup graceful shutdown
+      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+      // Handle uncaught exceptions
+      process.on('uncaughtException', (error) => {
+        console.error('[SERVER] Uncaught exception:', error);
+        gracefulShutdown('uncaughtException');
+      });
+
+      process.on('unhandledRejection', (reason, promise) => {
+        console.error('[SERVER] Unhandled rejection at:', promise, 'reason:', reason);
+      });
+
+    })
+    .catch((error) => {
+      console.error('[SERVER] Failed to start server:', error);
+      process.exit(1);
+    });
+}

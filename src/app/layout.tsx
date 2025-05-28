@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/sonner"
 import { UserNav } from "@/components/auth/UserNav";
 import { AuthErrorBoundary } from "@/components/auth/ErrorBoundary";
 import { AppClerkProvider } from "@/components/auth/clerk-provider-config";
+import { EnvProvider } from "@/components/providers/env-provider";
+import Script from "next/script";
 
 // Disable static generation for all pages
 export const dynamic = 'force-dynamic';
@@ -34,16 +36,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Load environment configuration before any other scripts */}
+        <script src="/env-config.js" async></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider defaultTheme="system">
-          <AuthErrorBoundary>
-            <AppClerkProvider>
-              {children}
-            </AppClerkProvider>
-          </AuthErrorBoundary>
-        </ThemeProvider>
+        <EnvProvider>
+          <ThemeProvider defaultTheme="system">
+            <AuthErrorBoundary>
+              <AppClerkProvider>
+                {children}
+              </AppClerkProvider>
+            </AuthErrorBoundary>
+          </ThemeProvider>
+        </EnvProvider>
         <Toaster />
       </body>
     </html>

@@ -19,13 +19,33 @@ function isClientSide(): boolean {
   return typeof window !== 'undefined';
 }
 
+// Get environment variable with fallback to embedded config
+function getEnvVar(key: string): string | undefined {
+  // First try process.env
+  let value = process.env[key];
+  
+  // On client side, also check embedded environment variables
+  if (!value && isClientSide()) {
+    // Check window.__NEXT_ENV__ (from our embedding script)
+    value = (window as any).__NEXT_ENV__?.[key];
+    
+    // Check window.process.env (polyfill)
+    if (!value && (window as any).process?.env) {
+      value = (window as any).process.env[key];
+    }
+  }
+  
+  return value;
+}
+
 // Validate Clerk environment variables (server-side only for secret key)
 export function validateClerkEnvVars(): ClerkEnvVars {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const secretKey = process.env.CLERK_SECRET_KEY;
+  const publishableKey = getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
+  const secretKey = getEnvVar('CLERK_SECRET_KEY');
+  const skipAuth = getEnvVar('NEXT_PUBLIC_SKIP_CLERK_AUTH');
 
   // Check if auth is disabled
-  if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
+  if (skipAuth === 'true') {
     // When auth is disabled, we still need placeholder values for TypeScript
     return {
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'auth-disabled',
@@ -40,6 +60,14 @@ export function validateClerkEnvVars(): ClerkEnvVars {
 
   // Validate publishable key (required on both client and server)
   if (!publishableKey) {
+    // Add debugging info for client-side
+    if (isClientSide()) {
+      console.error('[ENV-VALIDATION] Client-side environment check failed');
+      console.error('[ENV-VALIDATION] process.env keys:', Object.keys(process.env || {}));
+      console.error('[ENV-VALIDATION] window.__NEXT_ENV__:', (window as any).__NEXT_ENV__);
+      console.error('[ENV-VALIDATION] window.process?.env:', (window as any).process?.env);
+    }
+    
     throw new Error(
       'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY environment variable is required. ' +
       'Please set this variable in your .env.local file or set NEXT_PUBLIC_SKIP_CLERK_AUTH=true to disable authentication.'
@@ -67,11 +95,11 @@ export function validateClerkEnvVars(): ClerkEnvVars {
     return {
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
       CLERK_SECRET_KEY: 'client-side-placeholder', // Not available on client
-      NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'false',
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in',
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || '/sign-up',
-      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL || '/dashboard',
-      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/dashboard',
+      NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth || 'false',
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL') || '/sign-in',
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_UP_URL') || '/sign-up',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL') || '/dashboard',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL') || '/dashboard',
     };
   }
 
@@ -102,11 +130,11 @@ export function validateClerkEnvVars(): ClerkEnvVars {
   return {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
     CLERK_SECRET_KEY: secretKey,
-    NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'false',
-    NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in',
-    NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || '/sign-up',
-    NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL || '/dashboard',
-    NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/dashboard',
+    NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth || 'false',
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL') || '/sign-in',
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_UP_URL') || '/sign-up',
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL') || '/dashboard',
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL') || '/dashboard',
   };
 }
 
@@ -128,5 +156,6 @@ export function getValidatedClerkSecretKey(): string {
 
 // Check if authentication is enabled
 export function isAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH !== 'true';
+  const skipAuth = getEnvVar('NEXT_PUBLIC_SKIP_CLERK_AUTH');
+  return skipAuth !== 'true';
 } 

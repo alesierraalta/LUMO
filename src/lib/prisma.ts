@@ -59,4 +59,7 @@ export async function disconnectSafely() {
   }
 }
 
-export default prisma; 
+export default prisma;
+
+// Also export as named export to fix import issues
+export { prisma }; 

@@ -22,7 +22,7 @@ export async function GET() {
 
   try {
     // Intentar importar y usar Prisma
-    const { PrismaClient } = await import('../../generated/prisma');
+    const { PrismaClient } = await import('../../../generated/prisma');
     const prisma = new PrismaClient({
       log: ['error'],
       errorFormat: 'minimal'

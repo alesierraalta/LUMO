@@ -1,131 +1,258 @@
+/**
+ * Production Server for LUMO Inventory System
+ * 
+ * Clean, reliable Next.js server with proper CSS handling
+ * and manifest validation integration.
+ */
+
 const { createServer } = require('http');
 const next = require('next');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
-// Detect if we're running in standalone mode
-const isStandalone = fs.existsSync(path.join(process.cwd(), '.next/standalone'));
-console.log('[SERVER] Running in standalone mode:', isStandalone);
+// Environment configuration
+const dev = process.env.NODE_ENV !== 'production';
+const hostname = process.env.HOSTNAME || 'localhost';
+const port = process.env.PORT || 3000;
 
-// Fix CSS issues by ensuring directories and files exist
-const fixCssIssues = () => {
-  console.log('[SERVER] Fixing CSS manifest files...');
-  
-  // Set up CSS fallback
-  const nextDir = path.join(process.cwd(), '.next');
-  const cssDir = path.join(nextDir, 'static', 'css');
-  
-  // Create the CSS directory if it doesn't exist
-  if (!fs.existsSync(cssDir)) {
-    fs.mkdirSync(cssDir, { recursive: true });
-    console.log('[SERVER] Created CSS directory');
-  }
-  
-  // Create a fallback CSS file
-  const fallbackCssPath = path.join(cssDir, 'fallback.css');
-  if (!fs.existsSync(fallbackCssPath)) {
-    const cssContent = `
-      /* Fallback CSS file */
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+console.log('[SERVER] Starting LUMO Inventory System...');
+console.log('[SERVER] Environment:', process.env.NODE_ENV);
+console.log('[SERVER] Development mode:', dev);
+console.log('[SERVER] Hostname:', hostname);
+console.log('[SERVER] Port:', port);
+
+// Initialize Next.js application
+const app = next({ 
+  dev, 
+  hostname, 
+  port,
+  // Use custom directory if needed
+  dir: process.cwd(),
+  // Ensure proper configuration loading
+  conf: undefined,
+  // Quiet mode for production
+  quiet: !dev
+});
+
+const handle = app.getRequestHandler();
+
+// Enhanced error handling for CSS-related issues
+const handleCSSErrors = (error, req, res) => {
+  console.error('[SERVER] CSS handling error:', {
+    url: req.url,
+    method: req.method,
+    error: error.message,
+    stack: error.stack
+  });
+
+  // If it's a CSS file request that failed, serve fallback
+  if (req.url && req.url.includes('.css')) {
+    const fallbackCSS = `
+      /* Fallback CSS served due to error */
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      .error-message {
+        color: #d73a49;
+        background: #ffeef0;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #fdaeb7;
+        margin: 20px 0;
+      }
     `;
-    fs.writeFileSync(fallbackCssPath, cssContent);
-    console.log('[SERVER] Created fallback CSS file');
+    
+    res.writeHead(200, {
+      'Content-Type': 'text/css',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(fallbackCSS);
+    return;
   }
-  
-  // Fix manifest files to include the fallback CSS
-  const fixManifest = (manifestPath, isApp = false) => {
-    if (!fs.existsSync(manifestPath)) return;
-    
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      let changed = false;
-      
-      if (!manifest.entryCSSFiles) {
-        manifest.entryCSSFiles = isApp ? {} : { '/_app': [], '/': [] };
-        changed = true;
-      }
-      
-      if (changed) {
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-        console.log(`[SERVER] Fixed manifest: ${manifestPath}`);
-      }
-    } catch (e) {
-      console.error(`[SERVER] Error fixing ${manifestPath}:`, e.message);
+
+  // For other errors, let Next.js handle them
+  throw error;
+};
+
+// Custom request handler with enhanced error handling
+const customRequestHandler = async (req, res) => {
+  try {
+    // Add security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+
+    // Handle health check
+    if (req.url === '/health' || req.url === '/api/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || '0.1.0'
+      }));
+      return;
     }
-  };
-  
-  // Fix both types of manifests
-  fixManifest(path.join(nextDir, 'build-manifest.json'));
-  fixManifest(path.join(nextDir, 'app-build-manifest.json'), true);
-  
-  if (isStandalone) {
-    const standaloneNextDir = path.join(nextDir, 'standalone', '.next');
-    fixManifest(path.join(standaloneNextDir, 'build-manifest.json'));
-    fixManifest(path.join(standaloneNextDir, 'app-build-manifest.json'), true);
-    
-    // Also copy the fallback CSS to the standalone directory
-    const standaloneCssDir = path.join(standaloneNextDir, 'static', 'css');
-    if (!fs.existsSync(standaloneCssDir)) {
-      fs.mkdirSync(standaloneCssDir, { recursive: true });
+
+    // Handle manifest validation endpoint
+    if (req.url === '/api/manifest-status') {
+      try {
+        const ManifestValidator = require('./scripts/manifest-validator');
+        const validator = new ManifestValidator();
+        const isValid = await validator.validate();
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          manifestsValid: isValid,
+          errors: validator.errors,
+          warnings: validator.warnings,
+          fixes: validator.fixes
+        }));
+        return;
+      } catch (validationError) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          error: 'Manifest validation failed',
+          details: validationError.message
+        }));
+        return;
+      }
     }
+
+    // Enhanced static file serving for CSS files
+    if (req.url && req.url.startsWith('/static/css/')) {
+      const filePath = path.join(process.cwd(), '.next', req.url);
+      
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        res.writeHead(200, {
+          'Content-Type': 'text/css',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        });
+        res.end(content);
+        return;
+      } else {
+        // Serve fallback CSS if file doesn't exist
+        console.warn(`[SERVER] CSS file not found: ${filePath}, serving fallback`);
+        handleCSSErrors(new Error('CSS file not found'), req, res);
+        return;
+      }
+    }
+
+    // Let Next.js handle all other requests
+    await handle(req, res);
     
-    const standaloneFallbackCssPath = path.join(standaloneCssDir, 'fallback.css');
-    if (!fs.existsSync(standaloneFallbackCssPath) && fs.existsSync(fallbackCssPath)) {
-      fs.copyFileSync(fallbackCssPath, standaloneFallbackCssPath);
-      console.log('[SERVER] Copied fallback CSS to standalone directory');
+  } catch (error) {
+    console.error('[SERVER] Request handling error:', {
+      url: req.url,
+      method: req.method,
+      error: error.message
+    });
+
+    // Try to handle CSS-related errors gracefully
+    if (error.message && error.message.includes('entryCSSFiles')) {
+      handleCSSErrors(error, req, res);
+      return;
+    }
+
+    // For other errors, send a generic error response
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/html' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Server Error</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; }
+              .error { color: #d73a49; background: #ffeef0; padding: 20px; border-radius: 6px; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h1>Server Error</h1>
+              <p>An error occurred while processing your request.</p>
+              <p><strong>Error:</strong> ${error.message}</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
   }
 };
 
-// Handle entryCSSFiles errors at the process level
-process.on('uncaughtException', (error) => {
-  if (error.message && 
-      (error.message.includes('entryCSSFiles') || 
-       error.message.includes('Cannot read properties of undefined'))) {
-    console.log('[SERVER] Caught entryCSSFiles error - continuing execution');
-    return; // Don't crash
-  }
+// Graceful shutdown handling
+const gracefulShutdown = (signal) => {
+  console.log(`[SERVER] Received ${signal}, starting graceful shutdown...`);
   
-  // Let other errors through
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
+  server.close(() => {
+    console.log('[SERVER] HTTP server closed');
+    process.exit(0);
+  });
 
-// Fix CSS issues before starting
-fixCssIssues();
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error('[SERVER] Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
 
-// Check if standalone server.js exists and we should use that instead
-const standaloneServerPath = path.join(process.cwd(), '.next/standalone/server.js');
-if (isStandalone && fs.existsSync(standaloneServerPath)) {
-  console.log('[SERVER] Using standalone server.js instead');
-  try {
-    require(standaloneServerPath);
-    // This will take over and our code below won't execute
-  } catch (error) {
-    console.error('[SERVER] Error loading standalone server:', error.message);
-    console.log('[SERVER] Falling back to custom server implementation');
-    // Continue with our implementation below if standalone fails
-  }
-} else {
-  // Standard server implementation
-  const dev = process.env.NODE_ENV !== 'production';
-  const app = next({ dev });
-  const handle = app.getRequestHandler();
-  const port = process.env.PORT || 8080;
-
-  console.log('[SERVER] Starting Next.js application...');
-  console.log('[SERVER] Environment:', process.env.NODE_ENV);
-  console.log('[SERVER] Port:', port);
-
-  app.prepare().then(() => {
-    createServer((req, res) => {
-      handle(req, res);
-    }).listen(port, '0.0.0.0', (err) => {
-      if (err) throw err;
-      console.log('[SERVER] Next.js server ready on port', port);
+// Main server startup
+app.prepare()
+  .then(() => {
+    console.log('[SERVER] Next.js application prepared successfully');
+    
+    // Create HTTP server
+    const server = createServer(customRequestHandler);
+    
+    // Handle server errors
+    server.on('error', (error) => {
+      console.error('[SERVER] HTTP server error:', error);
+      
+      if (error.code === 'EADDRINUSE') {
+        console.error(`[SERVER] Port ${port} is already in use`);
+        process.exit(1);
+      }
     });
-  }).catch((ex) => {
-    console.error('[SERVER] Error starting server:', ex.message);
+
+    // Start listening
+    server.listen(port, hostname, () => {
+      console.log(`[SERVER] Ready on http://${hostname}:${port}`);
+      console.log('[SERVER] Health check available at /health');
+      console.log('[SERVER] Manifest status available at /api/manifest-status');
+    });
+
+    // Setup graceful shutdown
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      console.error('[SERVER] Uncaught exception:', error);
+      
+      // If it's a CSS-related error, log it but don't crash
+      if (error.message && error.message.includes('entryCSSFiles')) {
+        console.error('[SERVER] CSS manifest error caught, but server will continue running');
+        return;
+      }
+      
+      // For other critical errors, exit gracefully
+      gracefulShutdown('uncaughtException');
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('[SERVER] Unhandled rejection at:', promise, 'reason:', reason);
+      
+      // If it's a CSS-related error, log it but don't crash
+      if (reason && reason.message && reason.message.includes('entryCSSFiles')) {
+        console.error('[SERVER] CSS manifest rejection caught, but server will continue running');
+        return;
+      }
+    });
+
+  })
+  .catch((error) => {
+    console.error('[SERVER] Failed to start server:', error);
     process.exit(1);
   });
-}

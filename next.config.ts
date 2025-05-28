@@ -1,7 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
   output: 'standalone',
-  reactStrictMode: false, // Disable strict mode to avoid double-rendering issues
+  reactStrictMode: false,
   serverExternalPackages: ['@prisma/client', 'prisma'],
   eslint: {
     ignoreDuringBuilds: true,
@@ -10,30 +11,73 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    // Completely disable CSS optimization to avoid manifest issues
-    optimizeCss: false,
-    // Disable other experimental features that might interfere
-    forceSwcTransforms: false,
-    // Disable CSS chunking completely
-    optimizePackageImports: [],
-    // Use correct option name (removed bundlePagesExternals)
-    serverMinification: false,
+    // Enable proper CSS chunking to generate entryCSSFiles
+    cssChunking: 'strict',
+    // Ensure CSS is properly handled in production
+    optimizeCss: {
+      // Enable CSS optimization with proper manifest generation
+      preload: true,
+    },
+    // Enable proper server components
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
-  // Disable image optimization and use conservative settings
+  // Enable image optimization with proper configuration
   images: {
     domains: [],
-    unoptimized: true,
+    unoptimized: false,
+    formats: ['image/webp', 'image/avif'],
   },
-  // Conservative compiler settings to avoid CSS manifest issues
+  // Optimize compiler settings for CSS handling
   compiler: {
-    removeConsole: false, // Keep console logs for debugging
+    removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Simplify CSS handling completely
-  transpilePackages: ['@tailwindcss/postcss'],
-  // Enable memory cache to prevent rebuilding CSS manifest files
-  staticPageGenerationTimeout: 120,
-  // Add trailing slash to prevent CSS path issues
-  trailingSlash: true,
+  // Ensure proper CSS compilation
+  transpilePackages: [],
+  // Reasonable timeout for build processes
+  staticPageGenerationTimeout: 60,
+  // Remove trailing slash to prevent path issues
+  trailingSlash: false,
+  
+  // Custom webpack configuration for CSS handling
+  webpack: (config, { dev, isServer }) => {
+    // Ensure CSS is properly handled
+    if (!dev && !isServer) {
+      // Configure CSS extraction
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          chunks: 'all',
+          cacheGroups: {
+            ...config.optimization.splitChunks.cacheGroups,
+            styles: {
+              name: 'styles',
+              test: /\.css$/,
+              chunks: 'all',
+              enforce: true,
+            },
+          },
+        },
+      };
+    }
+    
+    return config;
+  },
+  
+  // Headers to ensure proper CSS loading
+  async headers() {
+    return [
+      {
+        source: '/static/css/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

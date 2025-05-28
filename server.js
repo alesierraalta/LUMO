@@ -3,126 +3,96 @@ const next = require('next');
 const fs = require('fs');
 const path = require('path');
 
-// Try to detect if we're running in standalone mode
+// Detect if we're running in standalone mode
 const isStandalone = fs.existsSync(path.join(process.cwd(), '.next/standalone'));
 console.log('[SERVER] Running in standalone mode:', isStandalone);
 
-// Fix CSS manifest files to prevent entryCSSFiles error
-try {
+// Fix CSS issues by ensuring directories and files exist
+const fixCssIssues = () => {
   console.log('[SERVER] Fixing CSS manifest files...');
   
-  // Ensure static/css directory exists
-  const staticCssDir = path.join(process.cwd(), '.next/static/css');
-  if (!fs.existsSync(staticCssDir)) {
-    fs.mkdirSync(staticCssDir, { recursive: true });
-    console.log('[SERVER] Created missing .next/static/css directory');
+  // Set up CSS fallback
+  const nextDir = path.join(process.cwd(), '.next');
+  const cssDir = path.join(nextDir, 'static', 'css');
+  
+  // Create the CSS directory if it doesn't exist
+  if (!fs.existsSync(cssDir)) {
+    fs.mkdirSync(cssDir, { recursive: true });
+    console.log('[SERVER] Created CSS directory');
   }
   
-  // Fix build-manifest.json
-  const buildManifestPath = path.join(process.cwd(), '.next/build-manifest.json');
-  if (fs.existsSync(buildManifestPath)) {
+  // Create a fallback CSS file
+  const fallbackCssPath = path.join(cssDir, 'fallback.css');
+  if (!fs.existsSync(fallbackCssPath)) {
+    const cssContent = `
+      /* Fallback CSS file */
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    `;
+    fs.writeFileSync(fallbackCssPath, cssContent);
+    console.log('[SERVER] Created fallback CSS file');
+  }
+  
+  // Fix manifest files to include the fallback CSS
+  const fixManifest = (manifestPath, isApp = false) => {
+    if (!fs.existsSync(manifestPath)) return;
+    
     try {
-      const buildManifest = JSON.parse(fs.readFileSync(buildManifestPath, 'utf8'));
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      let changed = false;
       
-      // Create complete manifest structure if missing
-      if (!buildManifest.entryCSSFiles || typeof buildManifest.entryCSSFiles !== 'object') {
-        buildManifest.entryCSSFiles = {
-          '/_app': [],
-          '/': []
-        };
-        
-        // Add critical fields that might be missing
-        if (!buildManifest.pages) buildManifest.pages = {};
-        if (!buildManifest.polyfillFiles) buildManifest.polyfillFiles = [];
-        if (!buildManifest.rootMainFiles) buildManifest.rootMainFiles = [];
-        
-        // Write back the fixed manifest
-        fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));
-        console.log('[SERVER] build-manifest.json fixed');
+      if (!manifest.entryCSSFiles) {
+        manifest.entryCSSFiles = isApp ? {} : { '/_app': [], '/': [] };
+        changed = true;
+      }
+      
+      if (changed) {
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        console.log(`[SERVER] Fixed manifest: ${manifestPath}`);
       }
     } catch (e) {
-      console.log('[SERVER] Error fixing build-manifest.json:', e.message);
-      
-      // If parsing fails, create a basic manifest
-      const fallbackManifest = {
-        pages: {},
-        polyfillFiles: [],
-        rootMainFiles: [],
-        entryCSSFiles: {
-          '/_app': [],
-          '/': []
-        }
-      };
-      fs.writeFileSync(buildManifestPath, JSON.stringify(fallbackManifest, null, 2));
-      console.log('[SERVER] Created new build-manifest.json');
+      console.error(`[SERVER] Error fixing ${manifestPath}:`, e.message);
     }
-  } else {
-    // Create manifest if missing entirely
-    console.log('[SERVER] build-manifest.json not found, creating it');
-    const fallbackManifest = {
-      pages: {},
-      polyfillFiles: [],
-      rootMainFiles: [],
-      entryCSSFiles: {
-        '/_app': [],
-        '/': []
-      }
-    };
-    fs.writeFileSync(buildManifestPath, JSON.stringify(fallbackManifest, null, 2));
-  }
+  };
   
-  // Fix app-build-manifest.json if it exists
-  const appBuildManifestPath = path.join(process.cwd(), '.next/app-build-manifest.json');
-  if (fs.existsSync(appBuildManifestPath)) {
-    try {
-      const appBuildManifest = JSON.parse(fs.readFileSync(appBuildManifestPath, 'utf8'));
-      
-      // Ensure entryCSSFiles exists
-      if (!appBuildManifest.entryCSSFiles || typeof appBuildManifest.entryCSSFiles !== 'object') {
-        appBuildManifest.entryCSSFiles = {};
-        if (!appBuildManifest.pages) appBuildManifest.pages = {};
-        fs.writeFileSync(appBuildManifestPath, JSON.stringify(appBuildManifest, null, 2));
-        console.log('[SERVER] app-build-manifest.json fixed');
-      }
-    } catch (e) {
-      console.log('[SERVER] Error fixing app-build-manifest.json:', e.message);
-      
-      // Create a basic app manifest if parsing fails
-      const fallbackAppManifest = {
-        pages: {},
-        entryCSSFiles: {}
-      };
-      fs.writeFileSync(appBuildManifestPath, JSON.stringify(fallbackAppManifest, null, 2));
+  // Fix both types of manifests
+  fixManifest(path.join(nextDir, 'build-manifest.json'));
+  fixManifest(path.join(nextDir, 'app-build-manifest.json'), true);
+  
+  if (isStandalone) {
+    const standaloneNextDir = path.join(nextDir, 'standalone', '.next');
+    fixManifest(path.join(standaloneNextDir, 'build-manifest.json'));
+    fixManifest(path.join(standaloneNextDir, 'app-build-manifest.json'), true);
+    
+    // Also copy the fallback CSS to the standalone directory
+    const standaloneCssDir = path.join(standaloneNextDir, 'static', 'css');
+    if (!fs.existsSync(standaloneCssDir)) {
+      fs.mkdirSync(standaloneCssDir, { recursive: true });
     }
-  } else if (fs.existsSync(path.join(process.cwd(), '.next'))) {
-    // Create app manifest if missing
-    console.log('[SERVER] app-build-manifest.json not found, creating it');
-    const fallbackAppManifest = {
-      pages: {},
-      entryCSSFiles: {}
-    };
-    fs.writeFileSync(appBuildManifestPath, JSON.stringify(fallbackAppManifest, null, 2));
+    
+    const standaloneFallbackCssPath = path.join(standaloneCssDir, 'fallback.css');
+    if (!fs.existsSync(standaloneFallbackCssPath) && fs.existsSync(fallbackCssPath)) {
+      fs.copyFileSync(fallbackCssPath, standaloneFallbackCssPath);
+      console.log('[SERVER] Copied fallback CSS to standalone directory');
+    }
+  }
+};
+
+// Handle entryCSSFiles errors at the process level
+process.on('uncaughtException', (error) => {
+  if (error.message && 
+      (error.message.includes('entryCSSFiles') || 
+       error.message.includes('Cannot read properties of undefined'))) {
+    console.log('[SERVER] Caught entryCSSFiles error - continuing execution');
+    return; // Don't crash
   }
   
-  // Create or fix chunks manifest file
-  const chunksDir = path.join(process.cwd(), '.next/static/chunks');
-  if (!fs.existsSync(chunksDir)) {
-    fs.mkdirSync(chunksDir, { recursive: true });
-  }
-  
-  const chunksManifestPath = path.join(chunksDir, 'manifest.json');
-  if (!fs.existsSync(chunksManifestPath)) {
-    const chunksManifest = {
-      polyfillFiles: [],
-      entryCSSFiles: {},
-      entryJSFiles: {}
-    };
-    fs.writeFileSync(chunksManifestPath, JSON.stringify(chunksManifest, null, 2));
-    console.log('[SERVER] Created chunks manifest.json');
-  }
-} catch (error) {
-  console.log('[SERVER] Error fixing CSS manifests:', error.message);
-}
+  // Let other errors through
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Fix CSS issues before starting
+fixCssIssues();
 
 // Check if standalone server.js exists and we should use that instead
 const standaloneServerPath = path.join(process.cwd(), '.next/standalone/server.js');

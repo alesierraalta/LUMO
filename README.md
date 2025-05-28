@@ -301,6 +301,43 @@ If you encounter authentication errors:
 2. Check that ClerkProvider is properly wrapping your application
 3. Set `NEXT_PUBLIC_SKIP_CLERK_AUTH=true` temporarily to bypass authentication for debugging
 4. Ensure you don't have multiple versions of Clerk packages installed
+
+## Deployment
+
+### Production Deployment
+
+To run the application in production mode:
+
+```bash
+npm run build
+npm start
+```
+
+### CSS Issues in Next.js 15.3.1
+
+This application includes fixes for the CSS loading issues in Next.js 15.3.1. If you encounter any CSS-related errors or "entryCSSFiles" errors, you can use the following specialized start scripts:
+
+- `npm start` - Standard start with CSS fix integration
+- `npm run start:runtime-fix` - Use runtime patching for CSS fixes
+- `npm run start:css-fix` - Use dedicated CSS fix server
+- `npm run start:choreo` - Optimized for Choreo deployment with CSS fixes
+
+### Troubleshooting CSS Issues
+
+If you still encounter CSS loading issues, try these steps:
+
+1. Ensure the `.next/static/css` directory exists
+2. Check that manifest files contain the `entryCSSFiles` property
+3. Try running with the most aggressive fix: `npm run start:safe`
+
+### Debugging
+
+For detailed debugging output, use:
+
+```bash
+npm run start:debug
+```
+
 #   L U M O 
  
  

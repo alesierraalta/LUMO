@@ -33,9 +33,37 @@ function getEnvVar(key: string): string | undefined {
     if (!value && (window as any).process?.env) {
       value = (window as any).process.env[key];
     }
+    
+    // If still no value, wait a bit and try again (script might still be loading)
+    if (!value && key === 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY') {
+      console.log('[ENV-VALIDATION] Clerk key not found, checking all sources...');
+      console.log('[ENV-VALIDATION] process.env keys:', Object.keys(process.env || {}));
+      console.log('[ENV-VALIDATION] window.__NEXT_ENV__:', (window as any).__NEXT_ENV__);
+      console.log('[ENV-VALIDATION] window.process?.env:', (window as any).process?.env);
+    }
   }
   
   return value;
+}
+
+// Async version for client-side validation with retry logic
+async function getEnvVarWithRetry(key: string, maxRetries: number = 3, delayMs: number = 100): Promise<string | undefined> {
+  for (let i = 0; i < maxRetries; i++) {
+    const value = getEnvVar(key);
+    if (value) {
+      return value;
+    }
+    
+    // Only retry on client side for Clerk key
+    if (isClientSide() && key === 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY' && i < maxRetries - 1) {
+      console.log(`[ENV-VALIDATION] Retry ${i + 1}/${maxRetries} for ${key}...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    } else {
+      break;
+    }
+  }
+  
+  return getEnvVar(key);
 }
 
 // Validate Clerk environment variables (server-side only for secret key)

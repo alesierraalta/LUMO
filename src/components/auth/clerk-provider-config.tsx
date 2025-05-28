@@ -19,6 +19,7 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string>('');
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Always call useEffect hooks in the same order
   useEffect(() => {
@@ -29,29 +30,55 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
   useEffect(() => {
     if (!isClient || configLoaded) return;
 
-    // Check if auth should be skipped first
-    if (shouldSkipAuth()) {
-      console.log('[CLERK] Authentication skipped - NEXT_PUBLIC_SKIP_CLERK_AUTH=true');
-      setConfigLoaded(true);
-      return;
-    }
+    const loadClerkConfig = async () => {
+      // Check if auth should be skipped first
+      if (shouldSkipAuth()) {
+        console.log('[CLERK] Authentication skipped - NEXT_PUBLIC_SKIP_CLERK_AUTH=true');
+        setConfigLoaded(true);
+        return;
+      }
 
-    // Try to get publishable key
-    try {
-      const key = getClerkPublishableKey();
-      console.log('[CLERK] Successfully obtained publishable key:', key.substring(0, 15) + '...');
-      console.log('[CLERK] Environment detected:', isDevEnvironment() ? 'DEVELOPMENT' : 'PRODUCTION');
-      console.log('[CLERK] Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
-      setPublishableKey(key);
-      setError(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting Clerk key';
-      console.error('[CLERK] Error getting publishable key:', errorMessage);
-      setError(errorMessage);
-    }
-    
-    setConfigLoaded(true);
-  }, [isClient, configLoaded]);
+      // Try to get publishable key with retry mechanism
+      try {
+        // Wait a bit for environment script to load
+        if (retryCount === 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        const key = getClerkPublishableKey();
+        
+        if (key && key !== '') {
+          console.log('[CLERK] Successfully obtained publishable key:', key.substring(0, 15) + '...');
+          console.log('[CLERK] Environment detected:', isDevEnvironment() ? 'DEVELOPMENT' : 'PRODUCTION');
+          console.log('[CLERK] Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
+          setPublishableKey(key);
+          setError(null);
+          setConfigLoaded(true);
+        } else {
+          throw new Error('Empty publishable key returned');
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error getting Clerk key';
+        console.error('[CLERK] Error getting publishable key (attempt ' + (retryCount + 1) + '):', errorMessage);
+        
+        // Retry up to 3 times with increasing delays
+        if (retryCount < 2) {
+          setRetryCount(prev => prev + 1);
+          const delay = (retryCount + 1) * 500; // 500ms, 1000ms, 1500ms
+          console.log(`[CLERK] Retrying in ${delay}ms...`);
+          setTimeout(() => {
+            // Trigger re-execution by not setting configLoaded
+          }, delay);
+          return;
+        }
+        
+        setError(errorMessage);
+        setConfigLoaded(true);
+      }
+    };
+
+    loadClerkConfig();
+  }, [isClient, configLoaded, retryCount]);
 
   // Log configuration when ready
   useEffect(() => {
@@ -65,7 +92,18 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
 
   // Don't render until client is ready and config is loaded
   if (!isClient || !configLoaded) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">
+            {!isClient ? 'Initializing...' : 
+             retryCount > 0 ? `Loading configuration... (attempt ${retryCount + 1})` : 
+             'Loading configuration...'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Handle skip auth case
@@ -84,8 +122,15 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
         <div className="max-w-md text-center">
           <h2 className="text-lg font-semibold mb-2">Configuration Error</h2>
           <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <p className="text-xs text-gray-500 mb-4">
+            Attempts made: {retryCount + 1}/3
+          </p>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={() => {
+              setError(null);
+              setConfigLoaded(false);
+              setRetryCount(0);
+            }} 
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry

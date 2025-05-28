@@ -37,8 +37,8 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Load environment configuration before any other scripts */}
-        <script src="/env-config.js" async></script>
+        {/* Load environment configuration synchronously before any React components */}
+        <script src="/env-config.js"></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

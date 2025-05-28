@@ -1,3 +1,565 @@
+# 🚀 LUMO Inventory Management System
+
+A modern, scalable inventory management system built with **Next.js 15**, **TypeScript**, **Tailwind CSS 4**, and **Prisma ORM**. Features robust authentication, real-time updates, and production-ready deployment capabilities.
+
+## ✨ Features
+
+### Core Functionality
+- 📦 **Product Management** - Add, edit, delete, and track products with variants
+- 🏷️ **Category Management** - Organize products with hierarchical categories
+- 📊 **Inventory Tracking** - Real-time stock levels and automated alerts
+- 📈 **Analytics & Reports** - Comprehensive business insights and analytics
+- 👥 **User Management** - Role-based access control with Clerk authentication
+- 🔄 **Real-time Updates** - Live inventory updates across all connected clients
+
+### Technical Features
+- 🎨 **Modern UI** - Clean, responsive design with Tailwind CSS 4
+- 🔒 **Secure Authentication** - Powered by Clerk with multi-factor support
+- 🛡️ **Error Boundaries** - Comprehensive error handling and recovery
+- 🌐 **API Routes** - RESTful API with proper validation and error handling
+- 🐳 **Docker Ready** - Complete containerization with Docker Compose
+- 📱 **Mobile Responsive** - Optimized for all device sizes
+- ♿ **Accessibility** - WCAG 2.1 compliant with proper ARIA labels
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Frontend** | Next.js 15, React 18, TypeScript |
+| **Styling** | Tailwind CSS 4, HeadlessUI |
+| **Authentication** | Clerk |
+| **Database** | PostgreSQL, Prisma ORM |
+| **Deployment** | Docker, Choreo Platform |
+| **Icons** | Lucide React |
+| **State Management** | React Context + Hooks |
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js** 20+ and npm
+- **PostgreSQL** 15+
+- **Docker** (optional, recommended)
+- **Git**
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-org/lumo-inventory.git
+   cd lumo-inventory
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm ci
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp env.template .env.local
+   ```
+   
+   Edit `.env.local` with your actual values:
+   ```env
+   # Authentication (required)
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-key-here
+   CLERK_SECRET_KEY=sk_test_your-secret-here
+   
+   # Database (required)
+   DATABASE_URL=postgresql://user:password@localhost:5432/lumo_inventory
+   
+   # Optional: Skip auth for development
+   NEXT_PUBLIC_SKIP_CLERK_AUTH=true
+   ```
+
+4. **Set up the database**
+   ```bash
+   npx prisma migrate deploy
+   npm run db:init
+   ```
+
+5. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🐳 Docker Deployment
+
+### Quick Start with Docker Compose
+
+1. **Using the production stack**
+   ```bash
+   # Copy environment template
+   cp env.template .env
+   
+   # Edit .env with your production values
+   nano .env
+   
+   # Start the application
+   docker-compose up -d
+   ```
+
+2. **Development with hot reload**
+   ```bash
+   # Start development stack
+   docker-compose --profile dev up -d
+   ```
+
+3. **Full stack with monitoring**
+   ```bash
+   # Start with monitoring and admin tools
+   docker-compose --profile full --profile admin --profile monitoring up -d
+   ```
+
+### Available Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| **lumo-app** | 8080 | Main application |
+| **database** | 5432 | PostgreSQL database |
+| **lumo-dev** | 3000 | Development server (dev profile) |
+| **adminer** | 8081 | Database admin (admin profile) |
+| **grafana** | 3001 | Monitoring dashboard (monitoring profile) |
+| **prometheus** | 9090 | Metrics collection (monitoring profile) |
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+The system uses a comprehensive configuration system. See [`env.template`](./env.template) for all available options.
+
+#### Required Variables
+
+```env
+# Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
+```
+
+#### Development Variables
+
+```env
+NODE_ENV=development
+NEXT_PUBLIC_SKIP_CLERK_AUTH=true
+DEV_PORT=3000
+```
+
+#### Production Variables
+
+```env
+NODE_ENV=production
+PORT=8080
+HOSTNAME=0.0.0.0
+```
+
+### CSS Manifest Resolution
+
+The system includes an advanced CSS manifest validation system that automatically resolves Next.js build issues:
+
+```bash
+# Validate and fix CSS manifests
+npm run fix-manifests
+
+# Validate build before deployment
+npm run validate-build
+```
+
+## 📊 Health Monitoring
+
+### Health Check Endpoints
+
+- **`/api/health`** - Comprehensive system health check
+- **`/health`** - Simple health check
+- **`/api/manifest-status`** - CSS manifest validation status
+
+### Health Check Response
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-05-28T13:46:42.610Z",
+  "version": "0.1.0",
+  "checks": {
+    "server": true,
+    "database": true,
+    "manifests": true,
+    "css": true,
+    "authentication": true
+  },
+  "details": {
+    "uptime": 123.45,
+    "memory": {...},
+    "manifests": {...},
+    "css": {...},
+    "environment": "production"
+  }
+}
+```
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+### Testing Database
+
+```bash
+# Reset test database
+npm run db:reset
+
+# Seed test data
+npm run db:seed
+```
+
+## 🚀 Deployment
+
+### Choreo Platform (Recommended)
+
+1. **Build the Docker image**
+   ```bash
+   docker build -t lumo-inventory .
+   ```
+
+2. **Deploy to Choreo**
+   - Push your code to GitHub
+   - Connect repository to Choreo
+   - Set environment variables in Choreo dashboard
+   - Deploy using the provided Dockerfile
+
+### Manual Docker Deployment
+
+1. **Build production image**
+   ```bash
+   docker build -t lumo-inventory:latest .
+   ```
+
+2. **Run with environment variables**
+   ```bash
+   docker run -d \
+     --name lumo-inventory \
+     -p 8080:8080 \
+     -e DATABASE_URL="postgresql://..." \
+     -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_live_..." \
+     -e CLERK_SECRET_KEY="sk_live_..." \
+     lumo-inventory:latest
+   ```
+
+### Production Checklist
+
+- [ ] Set production environment variables
+- [ ] Configure production database
+- [ ] Set up SSL certificates
+- [ ] Configure backup strategy
+- [ ] Set up monitoring and logging
+- [ ] Test health check endpoints
+- [ ] Verify CSS manifest validation
+- [ ] Configure rate limiting
+- [ ] Set up error tracking (Sentry)
+
+## 🛡️ Security
+
+### Authentication
+
+- **Clerk Integration** - Production-ready authentication
+- **Multi-factor Authentication** - SMS and authenticator app support
+- **Session Management** - Secure JWT-based sessions
+- **Role-based Access** - Granular permission system
+
+### Security Headers
+
+The application automatically sets secure headers:
+
+```javascript
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+```
+
+### Environment Security
+
+- All sensitive data in environment variables
+- Secrets never committed to repository
+- Production vs development configurations
+- Secure cookie settings in production
+
+## 🔧 Development
+
+### Project Structure
+
+```
+lumo-inventory/
+├── src/
+│   ├── app/                    # Next.js 15 App Router
+│   │   ├── (auth)/            # Authentication pages
+│   │   ├── api/               # API routes
+│   │   ├── dashboard/         # Dashboard pages
+│   │   └── layout.tsx         # Root layout
+│   ├── components/            # Reusable components
+│   │   ├── ui/               # UI components
+│   │   ├── forms/            # Form components
+│   │   └── charts/           # Chart components
+│   ├── lib/                  # Utilities and configurations
+│   ├── hooks/                # Custom React hooks
+│   └── types/                # TypeScript definitions
+├── scripts/                  # Build and deployment scripts
+│   └── manifest-validator.js # CSS manifest validation
+├── prisma/                   # Database schema and migrations
+├── public/                   # Static assets
+├── docker-compose.yml        # Container orchestration
+├── Dockerfile               # Production container
+└── next.config.ts           # Next.js configuration
+```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:init` | Initialize database |
+| `npm run db:migrate` | Run database migrations |
+| `npm run fix-manifests` | Fix CSS manifest issues |
+| `npm run validate-build` | Validate build artifacts |
+
+### CSS Manifest System
+
+The application includes an advanced CSS manifest validation system that prevents common Next.js deployment issues:
+
+#### Manifest Validator Features
+
+- **Automatic Detection** - Finds and repairs missing `entryCSSFiles`
+- **Fallback CSS Generation** - Creates fallback stylesheets
+- **Build Integration** - Runs automatically during build process
+- **Health Monitoring** - Monitors manifest integrity in production
+
+#### Manual Validation
+
+```bash
+# Run manifest validation
+node scripts/manifest-validator.js
+
+# Check specific manifests
+node scripts/manifest-validator.js --check-only
+
+# Repair corrupted manifests
+node scripts/manifest-validator.js --repair
+```
+
+### Error Handling
+
+The application includes comprehensive error boundaries:
+
+```typescript
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+
+// Page-level error boundary
+<PageErrorBoundary>
+  <YourPage />
+</PageErrorBoundary>
+
+// Component-level error boundary
+<ComponentErrorBoundary>
+  <YourComponent />
+</ComponentErrorBoundary>
+
+// Critical error boundary (full application)
+<CriticalErrorBoundary>
+  <App />
+</CriticalErrorBoundary>
+```
+
+### Loading States
+
+Comprehensive loading components for better UX:
+
+```typescript
+import { 
+  LoadingSpinner, 
+  PageLoading, 
+  TableSkeleton,
+  ProductsLoading 
+} from '@/components/ui/loading-states';
+
+// Simple spinner
+<LoadingSpinner size="md" />
+
+// Page loading with icon
+<ProductsLoading />
+
+// Table skeleton
+<TableSkeleton rows={5} columns={4} />
+```
+
+## 📈 Performance
+
+### Optimization Features
+
+- **Image Optimization** - Next.js built-in image optimization
+- **Code Splitting** - Automatic code splitting with dynamic imports
+- **CSS Optimization** - PostCSS optimization with Tailwind CSS
+- **Caching Strategy** - Redis-based caching for API responses
+- **Database Optimization** - Prisma query optimization
+
+### Performance Monitoring
+
+- **Health Checks** - Built-in health monitoring
+- **Response Time Tracking** - Automatic response time monitoring
+- **Memory Usage** - Real-time memory usage reporting
+- **Error Rate Monitoring** - Comprehensive error tracking
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### CSS Manifest Errors
+
+**Problem**: `TypeError: Cannot read properties of undefined (reading 'entryCSSFiles')`
+
+**Solution**:
+```bash
+# Fix CSS manifests
+npm run fix-manifests
+
+# Or run manually
+node scripts/manifest-validator.js
+```
+
+#### Database Connection Issues
+
+**Problem**: `Error: Can't reach database server`
+
+**Solution**:
+```bash
+# Check database status
+docker-compose ps database
+
+# Restart database
+docker-compose restart database
+
+# Check database logs
+docker-compose logs database
+```
+
+#### Authentication Issues
+
+**Problem**: `Clerk authentication failed`
+
+**Solution**:
+1. Verify environment variables:
+   ```bash
+   echo $NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+   echo $CLERK_SECRET_KEY
+   ```
+2. Check Clerk dashboard for key validity
+3. For development, set `NEXT_PUBLIC_SKIP_CLERK_AUTH=true`
+
+#### Build Failures
+
+**Problem**: Next.js build fails with CSS errors
+
+**Solution**:
+```bash
+# Clean build cache
+rm -rf .next
+
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm ci
+
+# Run manifest validation
+npm run prebuild
+
+# Rebuild
+npm run build
+```
+
+### Debug Mode
+
+Enable debug logging:
+
+```env
+LOG_LEVEL=debug
+ENABLE_REQUEST_LOGGING=true
+NODE_ENV=development
+```
+
+### Health Check Issues
+
+If health checks fail:
+
+1. **Check the health endpoint**:
+   ```bash
+   curl http://localhost:8080/api/health
+   ```
+
+2. **Verify all services**:
+   ```bash
+   docker-compose ps
+   ```
+
+3. **Check application logs**:
+   ```bash
+   docker-compose logs lumo-app
+   ```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow TypeScript best practices
+- Write comprehensive tests
+- Use semantic commit messages
+- Update documentation for new features
+- Ensure all health checks pass
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) - The React Framework
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Clerk](https://clerk.dev/) - Authentication platform
+- [Prisma](https://prisma.io/) - Next-generation ORM
+- [Lucide](https://lucide.dev/) - Beautiful icon library
+
+## 📞 Support
+
+- **Documentation**: [Wiki](../../wiki)
+- **Issues**: [GitHub Issues](../../issues)
+- **Discussions**: [GitHub Discussions](../../discussions)
+- **Email**: support@lumo-inventory.com
+
+---
+
+**Made with ❤️ by the LUMO Team**
+
 # LUMO - Next.js Inventory App
 
 ![CI Pipeline](https://github.com/alesierraalta/LUMO/workflows/CI%20Pipeline/badge.svg)

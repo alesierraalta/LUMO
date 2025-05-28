@@ -14,6 +14,7 @@ import { redirect } from "next/navigation";
 import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 import { ActionLink } from "@/components/ui/action-link";
 import { prisma } from "@/lib/prisma";
+import { AccessDenied } from "@/components/auth/AccessDenied";
 
 interface Product {
   id: string;
@@ -80,6 +81,31 @@ export default async function DashboardPage() {
   // Verificar permisos antes de mostrar datos reales
   const authCheck = await checkPermissionsWithDebug("admin");
   
+  // Si no está autorizado, mostrar mensaje amigable en lugar de error
+  if (!authCheck.authorized) {
+    const getAccessType = () => {
+      if (authCheck.userMessage?.includes("problema temporal con el sistema")) {
+        return 'database';
+      }
+      if (authCheck.userMessage?.includes("cuenta no está configurada")) {
+        return 'notfound';
+      }
+      if (authCheck.userMessage?.includes("iniciado sesión")) {
+        return 'auth';
+      }
+      return 'permission';
+    };
+
+    return (
+      <AccessDenied 
+        message={authCheck.userMessage || "No tienes permisos para acceder al panel de administración."}
+        type={getAccessType()}
+        showRetry={true}
+        showContact={true}
+      />
+    );
+  }
+
   // Valores por defecto para usuarios no autorizados
   let products: Product[] = [];
   let lowStockItems: any[] = [];
@@ -87,22 +113,31 @@ export default async function DashboardPage() {
 
   // Solo cargar datos si el usuario está autorizado
   if (authCheck.authorized) {
-    // Obtener datos reales de la base de datos
-    [products, lowStockItems] = await Promise.all([
-      getAllProducts(),
-      getLowStockItems()
-    ]) as [Product[], any[]];
-
-    // Get categories directly from database instead of API call
     try {
+      // Obtener datos reales de la base de datos con manejo de errores
+      [products, lowStockItems] = await Promise.all([
+        getAllProducts(),
+        getLowStockItems()
+      ]) as [Product[], any[]];
+
+      // Get categories directly from database instead of API call
       categories = await prisma.category.findMany({
         orderBy: {
           name: "asc",
         },
       });
     } catch (error) {
-      console.error('Error fetching categories:', error);
-      categories = [];
+      console.error('Error loading dashboard data:', error);
+      
+      // Si hay error de base de datos, mostrar mensaje específico
+      return (
+        <AccessDenied 
+          message="Ha ocurrido un problema al cargar los datos del panel de control. Por favor, intenta nuevamente."
+          type="database"
+          showRetry={true}
+          showContact={true}
+        />
+      );
     }
   }
 

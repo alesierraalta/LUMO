@@ -29,6 +29,7 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     if (!userId) {
       return {
         authorized: false,
+        userMessage: "No se ha iniciado sesión. Por favor, inicia sesión para continuar.",
         debugInfo: {
           error: "No hay sesión de usuario",
           clerkUserId: null,
@@ -39,15 +40,35 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
       };
     }
     
-    // Buscar el usuario en la base de datos
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: { role: true },
-    });
+    // Buscar el usuario en la base de datos con manejo de errores mejorado
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { clerkId: userId },
+        include: { role: true },
+      });
+    } catch (dbError: any) {
+      console.error("Error de base de datos:", dbError);
+      
+      // Manejo especial para errores de base de datos
+      return {
+        authorized: false,
+        userMessage: "Hay un problema temporal con el sistema. Si eres administrador, contacta al soporte técnico.",
+        debugInfo: {
+          error: "Error de conexión a la base de datos",
+          dbError: dbError.message,
+          clerkUserId: userId,
+          userFound: false,
+          role: null,
+          requiredRole
+        }
+      };
+    }
     
     if (!user) {
       return {
         authorized: false,
+        userMessage: "Tu cuenta no está configurada en el sistema. Contacta al administrador para obtener acceso.",
         debugInfo: {
           error: "Usuario no encontrado en la base de datos",
           clerkUserId: userId,
@@ -62,6 +83,7 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     if (!requiredRole) {
       return {
         authorized: true,
+        userMessage: "Acceso autorizado",
         debugInfo: {
           clerkUserId: userId,
           userFound: true,
@@ -75,8 +97,25 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     // Verificar si el usuario tiene el rol requerido
     const hasRequiredRole = user.role.name === requiredRole;
     
+    if (!hasRequiredRole) {
+      return {
+        authorized: false,
+        userMessage: `No tienes permisos suficientes para acceder a esta sección. Se requiere rol: ${requiredRole}`,
+        debugInfo: {
+          clerkUserId: userId,
+          userFound: true,
+          userEmail: user.email,
+          role: user.role.name,
+          requiredRole,
+          roleMatches: hasRequiredRole,
+          isAdminEmail: user.email === "alesierraalta@gmail.com"
+        }
+      };
+    }
+    
     return {
       authorized: hasRequiredRole,
+      userMessage: "Acceso autorizado",
       debugInfo: {
         clerkUserId: userId,
         userFound: true,
@@ -94,6 +133,7 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
       return {
         authorized: true,
+        userMessage: "Modo de desarrollo activo",
         debugInfo: {
           message: "Modo de desarrollo sin autenticación (error manejado)",
           error: error.message,
@@ -104,6 +144,7 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     
     return {
       authorized: false,
+      userMessage: "Ha ocurrido un error al verificar los permisos. Intenta nuevamente en unos momentos.",
       debugInfo: {
         error: error.message || "Error desconocido en la verificación",
         requiredRole

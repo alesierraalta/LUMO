@@ -31,8 +31,8 @@ if (!dev && fs.existsSync('.next/standalone/server.js')) {
   process.env.HOSTNAME = hostname;
   process.env.PORT = port;
   
-  // Load and start the standalone server
-  require('./server.js');
+  // Load and start the standalone server (FIXED: use correct path)
+  require('./.next/standalone/server.js');
   
 } else {
   // For development or when standalone is not available, use Next.js directly

@@ -13,13 +13,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable proper CSS chunking to generate entryCSSFiles
     cssChunking: 'strict',
-    // Ensure CSS is properly handled in production
-    optimizeCss: {
-      // Enable CSS optimization with proper manifest generation
-      preload: true,
-    },
-    // Enable proper server components
-    serverComponentsExternalPackages: ['@prisma/client'],
   },
   // Enable image optimization with proper configuration
   images: {

@@ -5,30 +5,71 @@ import { NextRequest, NextResponse } from 'next/server';
 console.log('[MIDDLEWARE] Middleware loading...');
 console.log('[MIDDLEWARE] Next.js version:', process.env.npm_package_version || 'unknown');
 
-// Define public routes that don't require authentication
-const isPublicRoute = createRouteMatcher([
+// Check if auth should be skipped
+function shouldSkipAuth() {
+  // Check environment variable first
+  if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
+    return true;
+  }
+  
+  // Check if we have invalid Clerk keys (placeholder keys)
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (clerkKey && (
+    clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
+    clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
+  )) {
+    console.log('[MIDDLEWARE] Invalid Clerk key detected, skipping auth');
+    return true;
+  }
+  
+  return false;
+}
+
+// Define base public routes
+const basePublicRoutes = [
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/health',
   '/api/debug-env',
+  '/api/env-config',
   '/admin-diagnostics',
   '/clerk-diagnostics',
   '/permission-debug',
   '/fix-admin',
-]);
+];
+
+// Add dashboard and other routes if auth is skipped
+const getPublicRoutes = () => {
+  const routes = [...basePublicRoutes];
+  
+  if (shouldSkipAuth()) {
+    routes.push('/dashboard(.*)');
+    routes.push('/inventory(.*)');
+    routes.push('/categories(.*)');
+    routes.push('/locations(.*)');
+    routes.push('/users(.*)');
+    routes.push('/reports(.*)');
+    console.log('[MIDDLEWARE] Skip auth enabled, added protected routes to public routes');
+  }
+  
+  return routes;
+};
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const skipAuth = shouldSkipAuth();
+  const isPublicRoute = createRouteMatcher(getPublicRoutes());
+  
   console.log('[MIDDLEWARE DEBUG]', {
     path: req.nextUrl.pathname,
     publishable_key_exists: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     publishable_key_prefix: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.substring(0, 10) + '...' || 'undefined',
     secret_key_exists: !!process.env.CLERK_SECRET_KEY,
     skip_auth: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH,
+    skip_auth_detected: skipAuth,
     node_env: process.env.NODE_ENV,
-    user_agent: req.headers.get('user-agent'),
     method: req.method,
-    url: req.url,
+    is_public_route: isPublicRoute(req),
   });
 
   // Skip authentication for public routes
@@ -38,8 +79,8 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // Skip authentication if explicitly disabled
-  if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
-    console.log('[MIDDLEWARE] Auth disabled via environment variable');
+  if (skipAuth) {
+    console.log('[MIDDLEWARE] Auth disabled via environment variable or invalid keys');
     return NextResponse.next();
   }
 

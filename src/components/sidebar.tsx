@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, Home, Settings, Menu, X, Users, AlertCircle, Loader2, MapPin } from "lucide-react";
+import { BarChart3, Boxes, Home, Settings, Menu, X, Users, AlertCircle, Loader2, MapPin, Tag, ShoppingBag, FileText, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppAuth } from "@/components/auth/auth-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -46,6 +46,10 @@ function SidebarLinks({ collapsed }: SidebarLinksProps) {
     <>
       <SidebarLink href="/dashboard" icon={BarChart3} title="Panel" collapsed={collapsed} />
       <SidebarLink href="/inventory" icon={Boxes} title="Inventario" collapsed={collapsed} />
+      <SidebarLink href="/categories" icon={Tag} title="Categorías" collapsed={collapsed} />
+      <SidebarLink href="/locations" icon={MapPin} title="Ubicaciones" collapsed={collapsed} />
+      <SidebarLink href="/reports" icon={FileText} title="Reportes" collapsed={collapsed} />
+      <SidebarLink href="/tienda" icon={Store} title="Tienda" collapsed={collapsed} />
       <SidebarLink href="/settings" icon={Settings} title="Configuración" collapsed={collapsed} />
       
       {/* Admin-only links */}
@@ -190,6 +194,38 @@ export function MobileNav() {
                   >
                     <Boxes className="h-5 w-5" />
                     <span>Inventario</span>
+                  </Link>
+                  <Link 
+                    href="/categories" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Tag className="h-5 w-5" />
+                    <span>Categorías</span>
+                  </Link>
+                  <Link 
+                    href="/locations" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <MapPin className="h-5 w-5" />
+                    <span>Ubicaciones</span>
+                  </Link>
+                  <Link 
+                    href="/reports" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <FileText className="h-5 w-5" />
+                    <span>Reportes</span>
+                  </Link>
+                  <Link 
+                    href="/tienda" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Store className="h-5 w-5" />
+                    <span>Tienda</span>
                   </Link>
                   <Link 
                     href="/settings" 

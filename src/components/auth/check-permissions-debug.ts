@@ -9,6 +9,10 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     // Check if we should skip Clerk authentication
     let skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
     
+    // COMENTADO: Detección automática de claves inválidas
+    // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+    // y claves reales de Clerk
+    /*
     // También verificar si tenemos claves inválidas (placeholder)
     const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
     if (clerkKey && (
@@ -18,6 +22,7 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
       console.log('[PERMISSIONS] Invalid Clerk key detected, enabling skip auth mode');
       skipClerkAuth = true;
     }
+    */
     
     // Si estamos en modo de desarrollo sin autenticación, permitir todo
     if (skipClerkAuth) {

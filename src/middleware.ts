@@ -12,6 +12,10 @@ function shouldSkipAuth() {
     return true;
   }
   
+  // COMENTADO: Detección automática de claves inválidas
+  // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+  // y claves reales de Clerk
+  /*
   // Check if we have invalid Clerk keys (placeholder keys)
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (clerkKey && (
@@ -21,6 +25,7 @@ function shouldSkipAuth() {
     console.log('[MIDDLEWARE] Invalid Clerk key detected, skipping auth');
     return true;
   }
+  */
   
   return false;
 }

@@ -58,6 +58,10 @@ function createClientEnvFile() {
   // Add NODE_ENV for completeness
   publicEnvVars.NODE_ENV = process.env.NODE_ENV || 'production';
   
+  // COMENTADO: Detección automática de claves inválidas
+  // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+  // y claves reales de Clerk
+  /*
   // Check if Clerk key is invalid (base64 placeholder)
   const clerkKey = publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const isInvalidKey = clerkKey && (
@@ -69,6 +73,7 @@ function createClientEnvFile() {
     console.log('[EMBED-ENV] ⚠️ Detected invalid/placeholder Clerk key, enabling skip auth mode');
     publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH = 'true';
   }
+  */
   
   console.log('[EMBED-ENV] Environment variables to embed:', {
     ...Object.keys(publicEnvVars).reduce((acc, key) => {
@@ -79,7 +84,7 @@ function createClientEnvFile() {
       }
       return acc;
     }, {}),
-    invalidKeyDetected: isInvalidKey
+    invalidKeyDetected: false
   });
   
   // Create the JavaScript content

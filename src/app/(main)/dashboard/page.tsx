@@ -40,6 +40,10 @@ async function getAuthInfo() {
   // Verificar si estamos en modo de desarrollo sin autenticación
   let skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
   
+  // COMENTADO: Detección automática de claves inválidas
+  // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
+  // y claves reales de Clerk
+  /*
   // También verificar si tenemos claves inválidas (placeholder)
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (clerkKey && (
@@ -49,6 +53,7 @@ async function getAuthInfo() {
     console.log('[DASHBOARD] Invalid Clerk key detected, enabling skip auth mode');
     skipClerkAuth = true;
   }
+  */
   
   if (skipClerkAuth) {
     console.log('[DASHBOARD] Skip auth mode enabled');

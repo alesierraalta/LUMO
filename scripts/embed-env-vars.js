@@ -47,18 +47,39 @@ function loadEnvFiles() {
 function createClientEnvFile() {
   console.log('[EMBED-ENV] Creating client environment configuration...');
   
-  // Get the public environment variables
-  const publicEnvVars = {
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_SKIP_CLERK_AUTH: process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH || 'false',
-    NODE_ENV: process.env.NODE_ENV || 'production'
-  };
+  // Get public environment variables only
+  const publicEnvVars = {};
+  Object.keys(process.env).forEach(key => {
+    if (key.startsWith('NEXT_PUBLIC_')) {
+      publicEnvVars[key] = process.env[key];
+    }
+  });
+  
+  // Add NODE_ENV for completeness
+  publicEnvVars.NODE_ENV = process.env.NODE_ENV || 'production';
+  
+  // Check if Clerk key is invalid (base64 placeholder)
+  const clerkKey = publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const isInvalidKey = clerkKey && (
+    clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
+    clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
+  );
+  
+  if (isInvalidKey) {
+    console.log('[EMBED-ENV] ⚠️ Detected invalid/placeholder Clerk key, enabling skip auth mode');
+    publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH = 'true';
+  }
   
   console.log('[EMBED-ENV] Environment variables to embed:', {
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 
-      publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.substring(0, 15) + '...' : 'missing',
-    NEXT_PUBLIC_SKIP_CLERK_AUTH: publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH,
-    NODE_ENV: publicEnvVars.NODE_ENV
+    ...Object.keys(publicEnvVars).reduce((acc, key) => {
+      if (key.includes('CLERK_PUBLISHABLE_KEY')) {
+        acc[key] = publicEnvVars[key] ? publicEnvVars[key].substring(0, 15) + '...' : 'undefined';
+      } else {
+        acc[key] = publicEnvVars[key];
+      }
+      return acc;
+    }, {}),
+    invalidKeyDetected: isInvalidKey
   });
   
   // Create the JavaScript content

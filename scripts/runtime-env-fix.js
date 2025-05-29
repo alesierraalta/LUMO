@@ -84,11 +84,24 @@ function regenerateEnvConfig() {
     NODE_ENV: process.env.NODE_ENV || 'production'
   };
   
+  // Check if Clerk key is invalid (base64 placeholder)
+  const clerkKey = publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const isInvalidKey = clerkKey && (
+    clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
+    clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
+  );
+  
+  if (isInvalidKey) {
+    console.log('[RUNTIME-ENV-FIX] ⚠️ Detected invalid/placeholder Clerk key, enabling skip auth mode');
+    publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH = 'true';
+  }
+  
   console.log('[RUNTIME-ENV-FIX] Runtime environment variables:', {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 
       publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.substring(0, 15) + '...' : 'missing',
     NEXT_PUBLIC_SKIP_CLERK_AUTH: publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH,
-    NODE_ENV: publicEnvVars.NODE_ENV
+    NODE_ENV: publicEnvVars.NODE_ENV,
+    invalidKeyDetected: isInvalidKey
   });
   
   // Create the JavaScript content

@@ -28,7 +28,7 @@ export function isChoreoEnvironment(): boolean {
 // Obtener la clave pública de Clerk usando validación
 export function getClerkPublishableKey(): string {
   try {
-    return getValidatedClerkPublishableKey();
+  return getValidatedClerkPublishableKey();
   } catch (error) {
     // During build time, env vars might not be available
     // Return a placeholder or the raw env var if available
@@ -151,7 +151,7 @@ export const clerkAppearance = {
     colorText: "#0f172a", // Slate-900
     fontFamily: "system-ui, -apple-system, sans-serif",
   }
-};
+}; 
 
 // Clerk configuration utilities
 

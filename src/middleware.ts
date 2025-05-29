@@ -74,9 +74,9 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   });
 
   try {
-    // Skip authentication for public routes
-    if (isPublicRoute(req)) {
-      console.log('[MIDDLEWARE] Public route, skipping auth');
+  // Skip authentication for public routes
+  if (isPublicRoute(req)) {
+    console.log('[MIDDLEWARE] Public route, skipping auth');
       logger.debug('Public route accessed', {
         correlationId: requestContext.correlationId
       });

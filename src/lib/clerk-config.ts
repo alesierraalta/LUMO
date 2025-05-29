@@ -27,7 +27,18 @@ export function isChoreoEnvironment(): boolean {
 
 // Obtener la clave pública de Clerk usando validación
 export function getClerkPublishableKey(): string {
-  return getValidatedClerkPublishableKey();
+  try {
+    return getValidatedClerkPublishableKey();
+  } catch (error) {
+    // During build time, env vars might not be available
+    // Return a placeholder or the raw env var if available
+    const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    if (key) {
+      return key;
+    }
+    // Return a build-time placeholder
+    return 'build-time-placeholder';
+  }
 }
 
 // Verificar si estamos usando claves de producción
@@ -101,21 +112,30 @@ export function getClerkDomain(): string {
 
 // Get Clerk frontend API domain
 export function getClerkFrontendApi(): string {
-  const publishableKey = getClerkPublishableKey();
-  
-  if (publishableKey.startsWith('pk_live_')) {
-    // Extract the frontend API from the live key
-    const base64Part = publishableKey.replace('pk_live_', '');
-    try {
-      const decoded = atob(base64Part);
-      return decoded;
-    } catch {
-      // Fallback to default
-      return 'clerk.choreoapps.dev';
+  try {
+    const publishableKey = getClerkPublishableKey();
+    
+    if (publishableKey === 'build-time-placeholder') {
+      return 'build-time-placeholder';
     }
+    
+    if (publishableKey.startsWith('pk_live_')) {
+      // Extract the frontend API from the live key
+      const base64Part = publishableKey.replace('pk_live_', '');
+      try {
+        const decoded = atob(base64Part);
+        return decoded;
+      } catch {
+        // Fallback to default
+        return 'clerk.choreoapps.dev';
+      }
+    }
+    
+    return 'clerk.choreoapps.dev';
+  } catch (error) {
+    // Handle cases where publishable key is not available
+    return 'build-time-placeholder';
   }
-  
-  return 'clerk.choreoapps.dev';
 }
 
 // Configuración para el proveedor de Clerk
@@ -141,14 +161,18 @@ export function shouldSkipAuth(): boolean {
 }
 
 export function getClerkConfig() {
+  // Handle build-time scenarios more gracefully
+  const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  
   return {
-    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || (isBuildTime ? 'build-time-placeholder' : undefined),
     secretKey: process.env.CLERK_SECRET_KEY,
     skipAuth: shouldSkipAuth(),
     webhookSecret: process.env.CLERK_WEBHOOK_SECRET,
     domain: getClerkDomain(),
-    frontendApi: getClerkFrontendApi(),
-    isChoreo: isChoreoEnvironment()
+    frontendApi: isBuildTime ? 'build-time-placeholder' : getClerkFrontendApi(),
+    isChoreo: isChoreoEnvironment(),
+    isBuildTime
   };
 }
 

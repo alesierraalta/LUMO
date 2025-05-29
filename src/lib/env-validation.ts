@@ -18,6 +18,24 @@ function isClientSide(): boolean {
   return typeof window !== 'undefined';
 }
 
+// Check if we're in build time (Next.js build process)
+function isBuildTime(): boolean {
+  // During build, these conditions are typically true
+  return (
+    typeof window === 'undefined' && 
+    (
+      process.env.NODE_ENV === 'production' && 
+      !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+      !process.env.CLERK_SECRET_KEY
+    ) ||
+    // Additional build-time indicators
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.npm_lifecycle_event === 'build' ||
+    // Check if we're in webpack compilation context
+    (typeof (globalThis as any).__webpack_require__ !== 'undefined' && process.env.NODE_ENV === 'production')
+  );
+}
+
 // Get environment variable with fallback to embedded config
 function getEnvVar(key: string): string | undefined {
   // First try process.env
@@ -47,6 +65,19 @@ function getEnvVar(key: string): string | undefined {
 
 // Validate Clerk environment variables (server-side only for secret key)
 export function validateClerkEnvVars(): ClerkEnvVars {
+  // Handle build-time scenario gracefully
+  if (isBuildTime()) {
+    console.log('[ENV-VALIDATION] Build-time detected, using placeholder values');
+    return {
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_build_time_placeholder',
+      CLERK_SECRET_KEY: 'sk_build_time_placeholder',
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: '/dashboard',
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: '/dashboard',
+    };
+  }
+
   const publishableKey = getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
   const secretKey = getEnvVar('CLERK_SECRET_KEY');
 
@@ -130,8 +161,16 @@ export function validateClerkEnvVars(): ClerkEnvVars {
 
 // Get validated Clerk publishable key (safe for client and server)
 export function getValidatedClerkPublishableKey(): string {
-  const envVars = validateClerkEnvVars();
-  return envVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  try {
+    const envVars = validateClerkEnvVars();
+    return envVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  } catch (error) {
+    // During build time or when env vars are not available, return placeholder
+    if (isBuildTime()) {
+      return 'pk_build_time_placeholder';
+    }
+    throw error;
+  }
 }
 
 // Get validated Clerk secret key (server-side only)
@@ -140,6 +179,14 @@ export function getValidatedClerkSecretKey(): string {
     throw new Error('CLERK_SECRET_KEY is not available on the client side for security reasons.');
   }
   
-  const envVars = validateClerkEnvVars();
-  return envVars.CLERK_SECRET_KEY;
+  try {
+    const envVars = validateClerkEnvVars();
+    return envVars.CLERK_SECRET_KEY;
+  } catch (error) {
+    // During build time, return placeholder
+    if (isBuildTime()) {
+      return 'sk_build_time_placeholder';
+    }
+    throw error;
+  }
 } 

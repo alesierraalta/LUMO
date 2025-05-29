@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/logger';
 import { authLogger } from '@/lib/auth/logger';
 
+// Force Node.js runtime for logger functionality
+export const runtime = 'nodejs';
+
 // Conditional Prisma import for Node.js environment only
 let prisma: any = null;
 try {

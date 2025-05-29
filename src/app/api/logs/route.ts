@@ -4,6 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { auth } from '@clerk/nextjs/server';
 
+// Force Node.js runtime for logger functionality
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   const correlationId = request.headers.get('x-correlation-id') || 'logs-api';
   const { userId } = await auth();

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/logger';
 
+// Force Node.js runtime for logger functionality
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const level = searchParams.get('level') || 'all';

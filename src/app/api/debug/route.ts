@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getClerkConfig } from '@/lib/clerk-config';
 import logger from '@/lib/logger';
 
+// Force Node.js runtime for logger functionality
+export const runtime = 'nodejs';
+
 // Conditional Prisma import
 let prisma: any = null;
 try {
@@ -76,30 +79,44 @@ export async function GET(request: NextRequest) {
   // 2. CLERK DEBUG
   try {
     const clerkConfig = getClerkConfig();
-    const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
     
-    debugInfo.clerk = {
-      config: clerkConfig,
-      publishableKey: {
-        exists: !!publishableKey,
-        prefix: publishableKey?.substring(0, 15) + '...',
-        isProduction: publishableKey?.startsWith('pk_live_'),
-        isDevelopment: publishableKey?.startsWith('pk_test_')
-      },
-      urls: {
-        problematic: `https://clerk.${hostname}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`,
-        fixed: 'https://js.clerk.com/v1/clerk.js',
-        domain: clerkConfig.domain,
-        frontendApi: clerkConfig.frontendApi
-      },
-      sslFix: {
-        active: clerkConfig.isChoreo,
-        detectedChoreo: hostname.includes('.choreoapps.dev'),
-        strategy: 'fetch-override + preload + rewrites'
-      }
-    };
+    // Handle build-time scenario
+    if (clerkConfig.isBuildTime) {
+      debugInfo.clerk = {
+        status: 'build-time',
+        message: 'Clerk configuration not available during build time',
+        buildTime: true
+      };
+    } else {
+      const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+      
+      debugInfo.clerk = {
+        config: clerkConfig,
+        publishableKey: {
+          exists: !!publishableKey,
+          prefix: publishableKey?.substring(0, 15) + '...',
+          isProduction: publishableKey?.startsWith('pk_live_'),
+          isDevelopment: publishableKey?.startsWith('pk_test_')
+        },
+        urls: {
+          problematic: `https://clerk.${hostname}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`,
+          fixed: 'https://js.clerk.com/v1/clerk.js',
+          domain: clerkConfig.domain,
+          frontendApi: clerkConfig.frontendApi
+        },
+        sslFix: {
+          active: clerkConfig.isChoreo,
+          detectedChoreo: hostname.includes('.choreoapps.dev'),
+          strategy: 'fetch-override + preload + rewrites'
+        }
+      };
+    }
   } catch (error) {
-    debugInfo.clerk = { error: (error as Error).message };
+    debugInfo.clerk = { 
+      error: (error as Error).message,
+      buildTimeIssue: true,
+      message: 'Clerk configuration failed - this is expected during build time'
+    };
   }
 
   // 3. DATABASE DEBUG

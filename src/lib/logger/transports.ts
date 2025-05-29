@@ -1,5 +1,17 @@
-import fs from 'fs';
-import path from 'path';
+// Conditional imports for Node.js environment only
+let fs: any;
+let path: any;
+
+// Only import Node.js modules if we're in Node.js environment
+if (typeof window === 'undefined' && typeof process !== 'undefined' && typeof (process as any)?.on === 'function') {
+  try {
+    fs = require('fs');
+    path = require('path');
+  } catch (error) {
+    console.warn('Failed to import Node.js modules in transports:', error);
+  }
+}
+
 import { LogEntry, LoggerConfig } from './types';
 import { LogFormatter } from './formatters';
 
@@ -97,6 +109,8 @@ export class FileTransport implements Transport {
   }
 
   private ensureLogDirectory(): void {
+    if (!fs || !path) return;
+    
     const logDir = path.dirname(this.config.filePath);
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -110,8 +124,12 @@ export class FileTransport implements Transport {
   }
 
   private async writeToFile(content: string): Promise<void> {
+    if (!fs) {
+      throw new Error('File system not available in this runtime');
+    }
+    
     return new Promise((resolve, reject) => {
-      fs.appendFile(this.config.filePath, content, 'utf8', (err) => {
+      fs.appendFile(this.config.filePath, content, 'utf8', (err: any) => {
         if (err) reject(err);
         else resolve();
       });
@@ -119,6 +137,8 @@ export class FileTransport implements Transport {
   }
 
   private async rotateIfNeeded(): Promise<void> {
+    if (!fs) return;
+    
     try {
       const stats = await fs.promises.stat(this.config.filePath);
       
@@ -131,6 +151,8 @@ export class FileTransport implements Transport {
   }
 
   private async rotateLog(): Promise<void> {
+    if (!fs || !path) return;
+    
     const logDir = path.dirname(this.config.filePath);
     const logName = path.basename(this.config.filePath, path.extname(this.config.filePath));
     const logExt = path.extname(this.config.filePath);
@@ -197,7 +219,13 @@ export class ChoreoTransport implements Transport {
         LogFormatter.formatChoreo(entry)
       ).join('\n') + '\n';
 
-      process.stdout.write(formatted);
+      // Check if process.stdout is available (Node.js environment)
+      if (typeof process !== 'undefined' && process.stdout) {
+        process.stdout.write(formatted);
+      } else {
+        // Fallback to console in Edge Runtime
+        console.log(formatted);
+      }
     });
 
     await this.writePromise;

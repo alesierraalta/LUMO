@@ -34,9 +34,10 @@ class LumoLogger implements Logger {
   private isEdgeRuntime = false;
 
   constructor() {
-    // Detect Edge Runtime
+    // Detect Edge Runtime - avoid accessing process.on directly
     this.isEdgeRuntime = typeof window === 'undefined' && 
-                        (typeof process === 'undefined' || !process.on);
+                        (typeof process === 'undefined' || 
+                         typeof (process as any)?.on !== 'function');
     
     if (!this.isEdgeRuntime) {
       this.initialize();

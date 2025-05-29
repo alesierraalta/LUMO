@@ -1,6 +1,8 @@
-import { prisma } from "../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { serializeDecimal } from "../lib/utils";
-import type { Sale } from "../generated/prisma/index";
+import type { Prisma } from "@prisma/client";
+
+type Sale = Prisma.SaleGetPayload<{}>;
 
 export type CreateSaleTransactionInput = {
   inventoryItemId: string;

@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/generated/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 // Schema for validating sale creation

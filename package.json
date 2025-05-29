@@ -9,7 +9,7 @@
     "dev:no-auth": "node create-env-local.js --skip-auth && next dev",
     "dev:prod-keys": "cross-env NODE_ENV=production node create-env-local.js && next dev",
     "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
-    "prebuild": "prisma generate && node scripts/manifest-validator.js",
+    "prebuild": "node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js",
     "build": "next build",
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
     "postinstall": "prisma generate",
@@ -31,7 +31,8 @@
     "verify-deployment": "node scripts/deployment-check.js",
     "embed-env-vars": "node scripts/embed-env-vars.js",
     "runtime-env-fix": "node scripts/runtime-env-fix.js",
-    "copy-static-files": "node scripts/copy-static-files.js"
+    "copy-static-files": "node scripts/copy-static-files.js",
+    "fix-prisma": "node scripts/fix-prisma-binaries.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.19.2",

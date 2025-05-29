@@ -2,9 +2,18 @@
 
 import { useEffect } from 'react';
 
+// Extend the Window interface to include Clerk
+declare global {
+  interface Window {
+    Clerk?: any;
+    __CLERK_INTERCEPTED__?: boolean;
+    __ORIGINAL_FETCH__?: typeof fetch;
+  }
+}
+
 /**
- * Component to fix SSL certificate issues with Clerk on Choreo deployments
- * This intercepts requests to the problematic subdomain and redirects to working CDNs
+ * AGGRESSIVE Clerk SSL Fix for Choreo
+ * This completely intercepts and blocks problematic requests
  */
 export function ClerkSSLFix() {
   useEffect(() => {
@@ -13,167 +22,144 @@ export function ClerkSSLFix() {
     
     // Check if we're on Choreo
     const isChoreo = window.location.hostname.includes('.choreoapps.dev');
-    if (!isChoreo) return;
+    if (!isChoreo) {
+      console.log('[CLERK-SSL-FIX] Not on Choreo, skipping SSL fix');
+      return;
+    }
     
-    console.log('[CLERK-SSL-FIX] Applying SSL certificate fix for Choreo');
+    console.log('[CLERK-SSL-FIX] 🚨🚨🚨 EMERGENCY CLERK INTERCEPTOR ACTIVATED 🚨🚨🚨');
+    console.log('[CLERK-SSL-FIX] Current URL:', window.location.href);
+    console.log('[CLERK-SSL-FIX] User Agent:', navigator.userAgent);
+    console.log('[CLERK-SSL-FIX] Timestamp:', new Date().toISOString());
     
-    // Multiple CDN fallbacks
-    const clerkCDNs = [
-      'https://js.clerk.com/v1/clerk.js',
-      'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js',
-      'https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/clerk/5.0.0/clerk.browser.js'
+    // Prevent multiple interceptors
+    if (window.__CLERK_INTERCEPTED__) {
+      console.log('[CLERK-SSL-FIX] ⚠️ Interceptor already active, skipping');
+      return;
+    }
+    
+    window.__CLERK_INTERCEPTED__ = true;
+    
+    // Store original fetch if not already stored
+    if (!window.__ORIGINAL_FETCH__) {
+      window.__ORIGINAL_FETCH__ = window.fetch;
+      console.log('[CLERK-SSL-FIX] 💾 Original fetch stored');
+    }
+    
+    // Working CDN URLs in priority order
+    const workingCDNs = [
+      'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js',
+      'https://unpkg.com/@clerk/clerk-js@latest/dist/clerk.browser.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/clerk/4.70.0/clerk.browser.min.js'
     ];
     
-    let clerkLoaded = false;
-    let loadAttempt = 0;
-    
-    // Function to test CDN connectivity
-    async function testCDNConnectivity(url: string): Promise<boolean> {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-        
-        const response = await fetch(url, {
-          method: 'HEAD',
-          signal: controller.signal,
-          mode: 'no-cors' // Allow cross-origin requests
-        });
-        
-        clearTimeout(timeoutId);
-        return true; // If we get here, the CDN is accessible
-      } catch (error) {
-        console.log(`[CLERK-SSL-FIX] CDN test failed for ${url}:`, error);
-        return false;
-      }
-    }
-    
-    // Function to load Clerk from a specific CDN
-    function loadClerkFromCDN(url: string): Promise<boolean> {
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = url;
-        script.async = true;
-        script.crossOrigin = 'anonymous';
-        
-        const timeout = setTimeout(() => {
-          console.error(`[CLERK-SSL-FIX] Timeout loading from ${url}`);
-          document.head.removeChild(script);
-          resolve(false);
-        }, 10000); // 10 second timeout
-        
-        script.onload = () => {
-          clearTimeout(timeout);
-          console.log(`[CLERK-SSL-FIX] ✅ Clerk loaded successfully from ${url}`);
-          clerkLoaded = true;
-          resolve(true);
-        };
-        
-        script.onerror = (error) => {
-          clearTimeout(timeout);
-          console.error(`[CLERK-SSL-FIX] ❌ Failed to load from ${url}:`, error);
-          document.head.removeChild(script);
-          resolve(false);
-        };
-        
-        document.head.appendChild(script);
-      });
-    }
-    
-    // Function to try loading from multiple CDNs
-    async function tryLoadingClerk() {
-      console.log('[CLERK-SSL-FIX] Starting Clerk loading with fallback strategy...');
+    // AGGRESSIVE FETCH INTERCEPTOR
+    window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+      const url = typeof input === 'string' ? input : 
+                  input instanceof URL ? input.href : 
+                  input instanceof Request ? input.url : String(input);
       
-      for (const cdn of clerkCDNs) {
-        if (clerkLoaded) break;
+      console.log('[CLERK-SSL-FIX] 🌐 INTERCEPTING REQUEST:', url);
+      
+      // Block and redirect ALL js.clerk.com requests
+      if (url.includes('js.clerk.com')) {
+        console.log('[CLERK-SSL-FIX] 🚫 BLOCKING js.clerk.com request:', url);
+        console.log('[CLERK-SSL-FIX] 🔄 REDIRECTING to working CDN...');
         
-        loadAttempt++;
-        console.log(`[CLERK-SSL-FIX] Attempt ${loadAttempt}: Testing ${cdn}`);
-        
-        // First test connectivity (for CORS-enabled CDNs)
-        if (cdn.includes('js.clerk.com')) {
-          const isAccessible = await testCDNConnectivity(cdn);
-          if (!isAccessible) {
-            console.log(`[CLERK-SSL-FIX] CDN not accessible, skipping: ${cdn}`);
-            continue;
+        // Try each CDN until one works
+        for (let i = 0; i < workingCDNs.length; i++) {
+          const cdnUrl = workingCDNs[i];
+          console.log(`[CLERK-SSL-FIX] 🎯 Attempt ${i + 1}: Testing ${cdnUrl}`);
+          
+          try {
+            const response = await window.__ORIGINAL_FETCH__!(cdnUrl, {
+              ...init,
+              method: 'GET',
+              headers: {
+                'Accept': 'application/javascript, text/javascript, */*',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (response.ok) {
+              console.log(`[CLERK-SSL-FIX] ✅ SUCCESS with CDN ${i + 1}: ${cdnUrl}`);
+              console.log('[CLERK-SSL-FIX] 📊 Response status:', response.status);
+              console.log('[CLERK-SSL-FIX] 📋 Response headers:', Object.fromEntries(response.headers.entries()));
+              return response;
+            } else {
+              console.log(`[CLERK-SSL-FIX] ❌ CDN ${i + 1} failed with status:`, response.status);
+            }
+          } catch (error: any) {
+            console.log(`[CLERK-SSL-FIX] 💥 CDN ${i + 1} error:`, error.message);
           }
         }
         
-        // Try to load from this CDN
-        const success = await loadClerkFromCDN(cdn);
-        if (success) {
-          break;
-        }
-        
-        // Wait a bit before trying the next CDN
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // If all CDNs fail, throw error
+        console.error('[CLERK-SSL-FIX] 🆘 ALL CDNs FAILED - CRITICAL ERROR');
+        throw new Error('All Clerk CDNs failed to load');
       }
       
-      if (!clerkLoaded) {
-        console.error('[CLERK-SSL-FIX] ❌ All CDN attempts failed. Clerk authentication may not work properly.');
-        
-        // Last resort: Try to create a minimal Clerk replacement or show error
-        createClerkFallback();
-      }
-    }
-    
-    // Create a minimal fallback for when all CDNs fail
-    function createClerkFallback() {
-      console.log('[CLERK-SSL-FIX] Creating Clerk fallback...');
-      
-      // Create a minimal Clerk object to prevent errors
-      (window as any).Clerk = {
-        load: () => Promise.reject(new Error('Clerk failed to load from all CDNs')),
-        isReady: () => false,
-        user: null,
-        session: null,
-        organization: null,
-        client: null
-      };
-      
-      // Dispatch a custom event to notify the app about the failure
-      window.dispatchEvent(new CustomEvent('clerk-load-failed', {
-        detail: { 
-          reason: 'All CDNs failed',
-          attempts: loadAttempt,
-          cdnsTried: clerkCDNs
-        }
-      }));
-    }
-    
-    // Override fetch to intercept problematic Clerk requests
-    const originalFetch = window.fetch;
-    
-    window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      
-      // Check if this is a Clerk JS request to a problematic subdomain
-      if (url.includes('.choreoapps.dev/npm/@clerk/clerk-js') || 
-          (url.includes('.choreoapps.dev') && url.includes('clerk'))) {
-        
-        console.log('[CLERK-SSL-FIX] Intercepting problematic Clerk request:', url);
-        
-        // Return the first available CDN
-        return originalFetch(clerkCDNs[0], init).catch(() => {
-          // If first CDN fails, try the second
-          return originalFetch(clerkCDNs[1], init);
-        });
-      }
-      
-      // For all other requests, use original fetch
-      return originalFetch(input, init);
+      // For non-Clerk requests, use original fetch
+      return window.__ORIGINAL_FETCH__!(input, init);
     };
     
-    // Start the loading process
-    tryLoadingClerk();
+    console.log('[CLERK-SSL-FIX] ✅ Aggressive fetch interceptor installed');
+    
+    // Also intercept XMLHttpRequest for older code
+    const originalXHR = window.XMLHttpRequest;
+    window.XMLHttpRequest = function() {
+      const xhr = new originalXHR();
+      const originalOpen = xhr.open;
+      
+      xhr.open = function(method: string, url: string | URL, async?: boolean, user?: string | null, password?: string | null) {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        
+        if (urlString.includes('js.clerk.com')) {
+          console.log('[CLERK-SSL-FIX] 🚫 BLOCKING XHR to js.clerk.com:', urlString);
+          console.log('[CLERK-SSL-FIX] 🔄 XHR will be redirected to working CDN');
+          
+          // Redirect to first working CDN
+          return originalOpen.call(this, method, workingCDNs[0], async ?? true, user, password);
+        }
+        
+        return originalOpen.call(this, method, urlString, async ?? true, user, password);
+      };
+      
+      return xhr;
+    } as any;
+    
+    console.log('[CLERK-SSL-FIX] ✅ XMLHttpRequest interceptor installed');
+    
+    // Monitor for Clerk loading
+    const checkClerkLoading = () => {
+      console.log('[CLERK-SSL-FIX] 🔍 Checking Clerk loading status...');
+      console.log('[CLERK-SSL-FIX] 📊 window.Clerk exists:', !!window.Clerk);
+      
+      if (window.Clerk) {
+        console.log('[CLERK-SSL-FIX] 🎉 CLERK LOADED SUCCESSFULLY!');
+        console.log('[CLERK-SSL-FIX] 📋 Clerk object keys:', Object.keys(window.Clerk));
+        console.log('[CLERK-SSL-FIX] 🔧 Clerk version:', (window.Clerk as any).version || 'Unknown');
+      } else {
+        console.log('[CLERK-SSL-FIX] ⏳ Clerk still loading...');
+        setTimeout(checkClerkLoading, 1000);
+      }
+    };
+    
+    // Start monitoring
+    setTimeout(checkClerkLoading, 500);
     
     // Cleanup function
     return () => {
-      window.fetch = originalFetch;
+      console.log('[CLERK-SSL-FIX] 🧹 Cleaning up interceptors');
+      if (window.__ORIGINAL_FETCH__) {
+        window.fetch = window.__ORIGINAL_FETCH__;
+      }
+      window.__CLERK_INTERCEPTED__ = false;
     };
   }, []);
-  
-  return null; // This component doesn't render anything
+
+  return null;
 }
 
 export default ClerkSSLFix; 

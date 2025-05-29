@@ -2,6 +2,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+
 export async function GET() {
   const startTime = Date.now();
   
@@ -21,8 +24,7 @@ export async function GET() {
   }
 
   try {
-    // Intentar importar y usar Prisma
-    const { PrismaClient } = await import('../../../generated/prisma');
+    // Crear instancia de Prisma
     const prisma = new PrismaClient({
       log: ['error'],
       errorFormat: 'minimal'

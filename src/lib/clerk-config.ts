@@ -17,6 +17,14 @@ export function isDevEnvironment(): boolean {
   return process.env.NODE_ENV !== 'production';
 }
 
+// Check if we're running on Choreo
+export function isChoreoEnvironment(): boolean {
+  if (typeof window !== 'undefined') {
+    return window.location.hostname.includes('.choreoapps.dev');
+  }
+  return process.env.CHOREO_DEPLOYMENT === 'true';
+}
+
 // Obtener la clave pública de Clerk usando validación
 export function getClerkPublishableKey(): string {
   return getValidatedClerkPublishableKey();
@@ -46,6 +54,7 @@ export function checkClerkConfiguration(): {
     const isProduction = isUsingProductionKeys();
     const isLocalhost = typeof window !== 'undefined' && 
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isChoreo = isChoreoEnvironment();
 
     const isForced = typeof window !== 'undefined' && process.env.FORCE_PRODUCTION_ON_LOCALHOST === 'true';
     
@@ -59,9 +68,12 @@ export function checkClerkConfiguration(): {
     } else if (isProduction && isLocalhost && isForced) {
       // Production test mode - show info but no warnings
       warnings.push('🧪 Production test mode: Using production keys on localhost (forced)');
+    } else if (isProduction && isChoreo) {
+      // Choreo environment with production keys
+      warnings.push('✅ Production deployment on Choreo detected');
     }
 
-    if (!isProduction && !isLocalhost) {
+    if (!isProduction && !isLocalhost && !isChoreo) {
       warnings.push('Using development keys on a production-like domain');
       recommendations.push('Consider using production keys for non-localhost environments');
     }
@@ -77,9 +89,33 @@ export function checkClerkConfiguration(): {
 
 // Obtener el dominio de Clerk
 export function getClerkDomain(): string {
+  if (isChoreoEnvironment()) {
+    // Use the main Clerk CDN for Choreo deployments to avoid SSL issues
+    return 'https://js.clerk.com';
+  }
+  
   return isDevEnvironment() 
     ? 'https://clerk.choreoapps.dev'
-    : 'https://clerk.choreoapps.dev';
+    : 'https://js.clerk.com';
+}
+
+// Get Clerk frontend API domain
+export function getClerkFrontendApi(): string {
+  const publishableKey = getClerkPublishableKey();
+  
+  if (publishableKey.startsWith('pk_live_')) {
+    // Extract the frontend API from the live key
+    const base64Part = publishableKey.replace('pk_live_', '');
+    try {
+      const decoded = atob(base64Part);
+      return decoded;
+    } catch {
+      // Fallback to default
+      return 'clerk.choreoapps.dev';
+    }
+  }
+  
+  return 'clerk.choreoapps.dev';
 }
 
 // Configuración para el proveedor de Clerk
@@ -109,7 +145,10 @@ export function getClerkConfig() {
     publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     secretKey: process.env.CLERK_SECRET_KEY,
     skipAuth: shouldSkipAuth(),
-    webhookSecret: process.env.CLERK_WEBHOOK_SECRET
+    webhookSecret: process.env.CLERK_WEBHOOK_SECRET,
+    domain: getClerkDomain(),
+    frontendApi: getClerkFrontendApi(),
+    isChoreo: isChoreoEnvironment()
   };
 }
 

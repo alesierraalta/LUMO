@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
 import { ThemeProvider } from "@/components/theme-provider";
@@ -17,16 +17,16 @@ import ClerkSSLFix from '@/components/clerk-ssl-fix';
 // Disable static generation for all pages
 export const dynamic = 'force-dynamic';
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff2",
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-geist-sans",
-  weight: "100 900",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff2",
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
   variable: "--font-geist-mono",
-  weight: "100 900",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -55,7 +55,7 @@ export default function RootLayout({
         <script src="/env-config.js" async></script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background font-sans`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background font-sans`}
       >
         <ClerkSSLFix />
         <EnvProvider>

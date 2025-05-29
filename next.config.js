@@ -12,8 +12,6 @@ const nextConfig = {
     
     return config;
   },
-  // Configure serverComponentsExternalPackages for Prisma and logger
-  serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   
   // Environment variables to be embedded in the client
   env: {

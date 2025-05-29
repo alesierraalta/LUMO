@@ -8,18 +8,18 @@ declare global {
     Clerk?: any;
     __CLERK_INTERCEPTED__?: boolean;
     __ORIGINAL_FETCH__?: typeof fetch;
-    __CLERK_FALLBACK_ACTIVE__?: boolean;
+    __CLERK_PROXY_ACTIVE__?: boolean;
     __CLERK_SCRIPT_LOADED__?: boolean;
   }
 }
 
 /**
- * ULTIMATE Clerk SSL Fix for Choreo
- * This completely bypasses external CDN loading and creates a local Clerk instance
+ * Clerk SSL Fix for Choreo - REAL CLERK 100% FUNCTIONAL
+ * This redirects Clerk requests to working proxy URLs instead of blocking them
  */
 export function ClerkSSLFix() {
   const retryCount = useRef(0);
-  const maxRetries = 5;
+  const maxRetries = 3;
 
   useEffect(() => {
     // Only run on client side
@@ -32,7 +32,7 @@ export function ClerkSSLFix() {
       return;
     }
     
-    console.log('[CLERK-SSL-FIX] 🚨🚨🚨 ULTIMATE CLERK INTERCEPTOR ACTIVATED 🚨🚨🚨');
+    console.log('[CLERK-SSL-FIX] 🚀 REAL CLERK PROXY SYSTEM ACTIVATED 🚀');
     console.log('[CLERK-SSL-FIX] Current URL:', window.location.href);
     console.log('[CLERK-SSL-FIX] User Agent:', navigator.userAgent);
     console.log('[CLERK-SSL-FIX] Timestamp:', new Date().toISOString());
@@ -51,72 +51,37 @@ export function ClerkSSLFix() {
       console.log('[CLERK-SSL-FIX] 💾 Original fetch stored');
     }
     
-    // NUCLEAR OPTION: Block ALL external Clerk requests and create mock Clerk
-    const createMockClerk = () => {
-      console.log('[CLERK-SSL-FIX] 🎭 Creating Mock Clerk for Choreo compatibility...');
-      
-      // Create a minimal Clerk mock that won't crash the app
-      window.Clerk = {
-        version: 'mock-choreo-1.0.0',
-        load: async () => {
-          console.log('[CLERK-SSL-FIX] 🎭 Mock Clerk load called');
-          return Promise.resolve();
-        },
-        isReady: () => true,
-        user: null,
-        session: null,
-        client: null,
-        __unstable__environment: null,
-        // Add common methods to prevent crashes
-        addListener: () => {},
-        removeListener: () => {},
-        buildSignInUrl: () => '/sign-in',
-        buildSignUpUrl: () => '/sign-up',
-        buildUserProfileUrl: () => '/user',
-        redirectToSignIn: () => {
-          console.log('[CLERK-SSL-FIX] 🔄 Redirecting to sign-in');
-          window.location.href = '/sign-in';
-        },
-        redirectToSignUp: () => {
-          console.log('[CLERK-SSL-FIX] 🔄 Redirecting to sign-up');
-          window.location.href = '/sign-up';
-        },
-        redirectToUserProfile: () => {
-          console.log('[CLERK-SSL-FIX] 🔄 Redirecting to user profile');
-          window.location.href = '/user';
-        },
-        signOut: async () => {
-          console.log('[CLERK-SSL-FIX] 🚪 Mock sign out');
-          window.location.href = '/';
-        },
-        openSignIn: () => {
-          console.log('[CLERK-SSL-FIX] 🔓 Opening sign in');
-          window.location.href = '/sign-in';
-        },
-        openSignUp: () => {
-          console.log('[CLERK-SSL-FIX] 📝 Opening sign up');
-          window.location.href = '/sign-up';
-        },
-        openUserProfile: () => {
-          console.log('[CLERK-SSL-FIX] 👤 Opening user profile');
-          window.location.href = '/user';
-        },
-        // Mock authentication state
-        loaded: true,
-        ready: true
-      };
-      
-      console.log('[CLERK-SSL-FIX] ✅ Mock Clerk created successfully');
-      window.__CLERK_FALLBACK_ACTIVE__ = true;
-      
-      // Trigger any waiting Clerk listeners
-      setTimeout(() => {
-        const event = new CustomEvent('clerk:loaded', { detail: window.Clerk });
-        window.dispatchEvent(event);
-      }, 100);
+    // Map of problematic URLs to proxy URLs
+    const urlMappings = {
+      'https://js.clerk.com/v1/': '/clerk-proxy/v1/',
+      'https://js.clerk.com/npm/': '/clerk-proxy/npm/',
+      'https://js.clerk.com/': '/clerk-proxy/v1/',
+      'https://api.clerk.com/': '/clerk-api/',
+      'https://accounts.clerk.com/': '/clerk-accounts/',
     };
     
-    // AGGRESSIVE FETCH INTERCEPTOR - Block ALL Clerk requests
+    // Function to map problematic URLs to working proxy URLs
+    const getProxyUrl = (url: string): string => {
+      // Handle subdomain SSL issues
+      const choreoPattern = /https:\/\/clerk\.[^\/]+\.choreoapps\.dev\//;
+      if (choreoPattern.test(url)) {
+        // Replace subdomain with our proxy
+        return url.replace(choreoPattern, '/clerk-proxy/v1/');
+      }
+      
+      // Handle standard Clerk URLs
+      for (const [original, proxy] of Object.entries(urlMappings)) {
+        if (url.startsWith(original)) {
+          const newUrl = url.replace(original, proxy);
+          console.log('[CLERK-SSL-FIX] 🔄 URL MAPPING:', original, '->', newUrl);
+          return newUrl;
+        }
+      }
+      
+      return url;
+    };
+    
+    // SMART FETCH INTERCEPTOR - Redirect instead of block
     window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
       const url = typeof input === 'string' ? input : 
                   input instanceof URL ? input.href : 
@@ -124,62 +89,30 @@ export function ClerkSSLFix() {
       
       console.log('[CLERK-SSL-FIX] 🌐 INTERCEPTING REQUEST:', url);
       
-      // Block ALL clerk-related requests (js.clerk.com, clerk domains, clerk scripts)
-      if (url.includes('clerk.com') || url.includes('clerk') || url.includes('@clerk')) {
-        console.log('[CLERK-SSL-FIX] 🚫 BLOCKING CLERK REQUEST:', url);
-        console.log('[CLERK-SSL-FIX] 🎭 Activating Mock Clerk fallback...');
+      // Check if this is a Clerk-related request
+      const isClerkRequest = url.includes('clerk.com') || 
+                           url.includes('clerk') || 
+                           url.includes('@clerk') ||
+                           /clerk\.[^\/]+\.choreoapps\.dev/.test(url);
+      
+      if (isClerkRequest) {
+        const proxyUrl = getProxyUrl(url);
         
-        // Create mock Clerk if not already created
-        if (!window.Clerk && !window.__CLERK_FALLBACK_ACTIVE__) {
-          createMockClerk();
-        }
-        
-        // Return a fake successful response for JS files
-        if (url.includes('.js')) {
-          const mockScript = `
-            console.log('[CLERK-MOCK] Mock Clerk script loaded for Choreo');
-            if (!window.Clerk) {
-              window.Clerk = {
-                version: 'mock-choreo-1.0.0',
-                load: () => Promise.resolve(),
-                isReady: () => true,
-                loaded: true,
-                ready: true,
-                user: null,
-                session: null,
-                redirectToSignIn: () => window.location.href = '/sign-in',
-                redirectToSignUp: () => window.location.href = '/sign-up',
-                signOut: () => window.location.href = '/'
-              };
-            }
-          `;
+        if (proxyUrl !== url) {
+          console.log('[CLERK-SSL-FIX] 🔄 REDIRECTING CLERK REQUEST');
+          console.log('[CLERK-SSL-FIX] FROM:', url);
+          console.log('[CLERK-SSL-FIX] TO:', proxyUrl);
           
-          return new Response(mockScript, {
-            status: 200,
-            statusText: 'OK',
-            headers: {
-              'Content-Type': 'application/javascript',
-              'Cache-Control': 'no-cache'
-            }
-          });
+          // Use the proxy URL instead of the original
+          return window.__ORIGINAL_FETCH__!(proxyUrl, init);
         }
-        
-        // For other requests, return empty successful response
-        return new Response('{}', {
-          status: 200,
-          statusText: 'OK',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
-        });
       }
       
-      // For non-Clerk requests, use original fetch
+      // For non-Clerk requests or already proxied requests, use original fetch
       return window.__ORIGINAL_FETCH__!(input, init);
     };
     
-    console.log('[CLERK-SSL-FIX] ✅ Nuclear fetch interceptor installed');
+    console.log('[CLERK-SSL-FIX] ✅ Smart redirect interceptor installed');
     
     // Also intercept XMLHttpRequest for older code
     const originalXHR = window.XMLHttpRequest;
@@ -190,26 +123,17 @@ export function ClerkSSLFix() {
       xhr.open = function(method: string, url: string | URL, async?: boolean, user?: string | null, password?: string | null) {
         const urlString = typeof url === 'string' ? url : url.toString();
         
-        if (urlString.includes('clerk')) {
-          console.log('[CLERK-SSL-FIX] 🚫 BLOCKING XHR to Clerk:', urlString);
+        const isClerkRequest = urlString.includes('clerk.com') || 
+                              urlString.includes('clerk') || 
+                              /clerk\.[^\/]+\.choreoapps\.dev/.test(urlString);
+        
+        if (isClerkRequest) {
+          const proxyUrl = getProxyUrl(urlString);
           
-          // Create mock Clerk if not already created
-          if (!window.Clerk && !window.__CLERK_FALLBACK_ACTIVE__) {
-            createMockClerk();
+          if (proxyUrl !== urlString) {
+            console.log('[CLERK-SSL-FIX] 🔄 REDIRECTING XHR to:', proxyUrl);
+            return originalOpen.call(this, method, proxyUrl, async ?? true, user, password);
           }
-          
-          // Return fake successful response
-          setTimeout(() => {
-            if (xhr.onload) xhr.onload({} as any);
-            if (xhr.onreadystatechange) {
-              Object.defineProperty(xhr, 'readyState', { value: 4, writable: false });
-              Object.defineProperty(xhr, 'status', { value: 200, writable: false });
-              Object.defineProperty(xhr, 'responseText', { value: '{}', writable: false });
-              xhr.onreadystatechange({} as any);
-            }
-          }, 10);
-          
-          return;
         }
         
         return originalOpen.call(this, method, urlString, async ?? true, user, password);
@@ -218,43 +142,38 @@ export function ClerkSSLFix() {
       return xhr;
     } as any;
     
-    console.log('[CLERK-SSL-FIX] ✅ Nuclear XMLHttpRequest interceptor installed');
+    console.log('[CLERK-SSL-FIX] ✅ Smart XMLHttpRequest interceptor installed');
     
-    // Immediately create Mock Clerk to prevent any loading attempts
-    setTimeout(() => {
-      if (!window.Clerk) {
-        console.log('[CLERK-SSL-FIX] 🎭 Proactively creating Mock Clerk...');
-        createMockClerk();
-      }
-    }, 100);
-    
-    // Monitor for any script injection and block it
+    // Monitor for script injection and redirect problematic URLs
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
             
-            // Block any script tags that try to load Clerk
+            // Handle script tags with Clerk URLs
             if (element.tagName === 'SCRIPT') {
               const src = element.getAttribute('src');
-              if (src && src.includes('clerk')) {
-                console.log('[CLERK-SSL-FIX] 🚫 BLOCKING SCRIPT INJECTION:', src);
-                element.remove();
+              if (src && (src.includes('clerk.com') || /clerk\.[^\/]+\.choreoapps\.dev/.test(src))) {
+                const proxyUrl = getProxyUrl(src);
                 
-                // Ensure Mock Clerk exists
-                if (!window.Clerk && !window.__CLERK_FALLBACK_ACTIVE__) {
-                  createMockClerk();
+                if (proxyUrl !== src) {
+                  console.log('[CLERK-SSL-FIX] 🔄 REDIRECTING SCRIPT SRC:', src, '->', proxyUrl);
+                  element.setAttribute('src', proxyUrl);
                 }
               }
             }
             
-            // Block any link preloads for Clerk
+            // Handle link preloads for Clerk
             if (element.tagName === 'LINK') {
               const href = element.getAttribute('href');
-              if (href && href.includes('clerk')) {
-                console.log('[CLERK-SSL-FIX] 🚫 BLOCKING LINK PRELOAD:', href);
-                element.remove();
+              if (href && (href.includes('clerk.com') || /clerk\.[^\/]+\.choreoapps\.dev/.test(href))) {
+                const proxyUrl = getProxyUrl(href);
+                
+                if (proxyUrl !== href) {
+                  console.log('[CLERK-SSL-FIX] 🔄 REDIRECTING LINK HREF:', href, '->', proxyUrl);
+                  element.setAttribute('href', proxyUrl);
+                }
               }
             }
           }
@@ -267,28 +186,32 @@ export function ClerkSSLFix() {
     
     console.log('[CLERK-SSL-FIX] ✅ DOM mutation observer installed');
     
-    // Monitor for Clerk loading with emergency fallback
+    // Mark proxy as active
+    window.__CLERK_PROXY_ACTIVE__ = true;
+    
+    // Monitor for Clerk loading
     const checkClerkLoading = () => {
       retryCount.current++;
       console.log(`[CLERK-SSL-FIX] 🔍 Checking Clerk loading status... (attempt ${retryCount.current})`);
       console.log('[CLERK-SSL-FIX] 📊 window.Clerk exists:', !!window.Clerk);
-      console.log('[CLERK-SSL-FIX] 📊 Fallback active:', !!window.__CLERK_FALLBACK_ACTIVE__);
+      console.log('[CLERK-SSL-FIX] 📊 Proxy active:', !!window.__CLERK_PROXY_ACTIVE__);
       
       if (window.Clerk) {
-        console.log('[CLERK-SSL-FIX] 🎉 CLERK AVAILABLE!');
-        console.log('[CLERK-SSL-FIX] 📋 Clerk type:', window.__CLERK_FALLBACK_ACTIVE__ ? 'MOCK' : 'REAL');
-        console.log('[CLERK-SSL-FIX] 🔧 Clerk version:', window.Clerk.version || 'Unknown');
+        console.log('[CLERK-SSL-FIX] 🎉 REAL CLERK LOADED SUCCESSFULLY!');
+        console.log('[CLERK-SSL-FIX] 🔧 Clerk version:', window.Clerk.version || 'Real Clerk');
+        console.log('[CLERK-SSL-FIX] 📋 Clerk loaded:', window.Clerk.loaded);
+        console.log('[CLERK-SSL-FIX] 📋 Clerk ready:', window.Clerk.isReady?.());
       } else if (retryCount.current >= maxRetries) {
-        console.log('[CLERK-SSL-FIX] ⚡ MAX RETRIES REACHED - EMERGENCY FALLBACK!');
-        createMockClerk();
+        console.log('[CLERK-SSL-FIX] ⚠️ MAX RETRIES REACHED - Clerk may still be loading');
+        console.log('[CLERK-SSL-FIX] 💡 Check network tab for any remaining SSL issues');
       } else {
         console.log('[CLERK-SSL-FIX] ⏳ Clerk still loading...');
-        setTimeout(checkClerkLoading, 1000);
+        setTimeout(checkClerkLoading, 2000);
       }
     };
     
-    // Start monitoring immediately
-    setTimeout(checkClerkLoading, 100);
+    // Start monitoring after a brief delay
+    setTimeout(checkClerkLoading, 1000);
     
     // Cleanup function
     return () => {
@@ -297,6 +220,7 @@ export function ClerkSSLFix() {
         window.fetch = window.__ORIGINAL_FETCH__;
       }
       window.__CLERK_INTERCEPTED__ = false;
+      window.__CLERK_PROXY_ACTIVE__ = false;
       observer.disconnect();
     };
   }, []);

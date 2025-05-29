@@ -9,7 +9,7 @@
     "dev:no-auth": "node create-env-local.js --skip-auth && next dev",
     "dev:prod-keys": "cross-env NODE_ENV=production node create-env-local.js && next dev",
     "dev:prod-test": "node create-env-local.js dev:prod-test && next dev",
-    "prebuild": "node scripts/manifest-validator.js",
+    "prebuild": "prisma generate && node scripts/manifest-validator.js",
     "build": "next build",
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
     "postinstall": "prisma generate",

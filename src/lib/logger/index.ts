@@ -11,33 +11,64 @@ import {
 } from './types';
 import { getLoggerConfig, DEFAULT_CONTEXT } from './config';
 import { LogFormatter } from './formatters';
-import { ConsoleTransport, FileTransport, ChoreoTransport, BufferedTransport } from './transports';
+
+// Conditional imports for Node.js environment
+let ConsoleTransport: any;
+let FileTransport: any;
+let ChoreoTransport: any;
+let BufferedTransport: any;
+
+// Only import transports in Node.js environment
+if (typeof window === 'undefined' && typeof process !== 'undefined') {
+  const transports = require('./transports');
+  ConsoleTransport = transports.ConsoleTransport;
+  FileTransport = transports.FileTransport;
+  ChoreoTransport = transports.ChoreoTransport;
+  BufferedTransport = transports.BufferedTransport;
+}
 
 class LumoLogger implements Logger {
-  private transport!: BufferedTransport;
-  private config = getLoggerConfig();
+  private transport: any;
+  private config: any;
   private isInitialized = false;
+  private isEdgeRuntime = false;
 
   constructor() {
-    this.initialize();
+    // Detect Edge Runtime
+    this.isEdgeRuntime = typeof window === 'undefined' && 
+                        (typeof process === 'undefined' || !process.on);
+    
+    if (!this.isEdgeRuntime) {
+      this.initialize();
+    } else {
+      // Minimal initialization for Edge Runtime
+      this.isInitialized = true;
+      this.config = { level: LogLevel.INFO };
+    }
   }
 
   private initialize(): void {
+    if (this.isEdgeRuntime) return;
+
+    this.config = getLoggerConfig();
     const transports = [];
 
-    if (this.config.enableConsole) {
+    if (this.config.enableConsole && ConsoleTransport) {
       transports.push(new ConsoleTransport(this.config));
     }
 
-    if (this.config.enableFile) {
+    if (this.config.enableFile && FileTransport) {
       transports.push(new FileTransport(this.config));
     }
 
-    if (this.config.enableChoreo) {
+    if (this.config.enableChoreo && ChoreoTransport) {
       transports.push(new ChoreoTransport(this.config));
     }
 
-    this.transport = new BufferedTransport(transports);
+    if (BufferedTransport) {
+      this.transport = new BufferedTransport(transports);
+    }
+    
     this.isInitialized = true;
 
     // Log initialization
@@ -50,14 +81,16 @@ class LumoLogger implements Logger {
       }
     });
 
-    // Setup graceful shutdown
-    process.on('SIGINT', () => this.shutdown());
-    process.on('SIGTERM', () => this.shutdown());
-    process.on('exit', () => this.shutdown());
+    // Setup graceful shutdown only in Node.js environment
+    if (typeof process !== 'undefined' && process.on) {
+      process.on('SIGINT', () => this.shutdown());
+      process.on('SIGTERM', () => this.shutdown());
+      process.on('exit', () => this.shutdown());
+    }
   }
 
   private async shutdown(): Promise<void> {
-    if (this.transport) {
+    if (this.transport && !this.isEdgeRuntime) {
       await this.transport.flush();
       await this.transport.close();
     }
@@ -100,7 +133,16 @@ class LumoLogger implements Logger {
     }
 
     try {
-      await this.transport.write(entry);
+      if (this.isEdgeRuntime) {
+        // Fallback to console in Edge Runtime
+        const formatted = LogFormatter.formatText(entry, true);
+        console.log(formatted);
+        return;
+      }
+
+      if (this.transport) {
+        await this.transport.write(entry);
+      }
     } catch (error) {
       console.error('Failed to write log entry:', error);
     }
@@ -211,12 +253,13 @@ class LumoLogger implements Logger {
     return {
       status: this.isInitialized ? 'healthy' : 'unhealthy',
       config: {
-        level: LogLevel[this.config.level],
+        level: this.config ? LogLevel[this.config.level] : 'INFO',
         transports: {
-          console: this.config.enableConsole,
-          file: this.config.enableFile,
-          choreo: this.config.enableChoreo
-        }
+          console: this.config?.enableConsole || false,
+          file: this.config?.enableFile || false,
+          choreo: this.config?.enableChoreo || false
+        },
+        runtime: this.isEdgeRuntime ? 'edge' : 'node'
       },
       timestamp: new Date().toISOString()
     };
@@ -224,7 +267,7 @@ class LumoLogger implements Logger {
 
   // Manual flush method
   async flush(): Promise<void> {
-    if (this.transport) {
+    if (this.transport && !this.isEdgeRuntime) {
       await this.transport.flush();
     }
   }

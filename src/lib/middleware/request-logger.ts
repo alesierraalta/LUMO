@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import logger from '../logger';
-import { LogFormatter } from '../logger/formatters';
 import { APILogInfo } from '../logger/types';
+
+// Conditional logger import for Edge Runtime compatibility
+let logger: any = {
+  info: console.log,
+  warn: console.warn,
+  error: console.error,
+  logAPI: () => {}
+};
+
+let LogFormatter: any = {
+  generateCorrelationId: () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+};
+
+try {
+  if (typeof window === 'undefined' && typeof process !== 'undefined') {
+    const loggerModule = require('../logger');
+    const formatterModule = require('../logger/formatters');
+    logger = loggerModule.default;
+    LogFormatter = formatterModule.LogFormatter;
+  }
+} catch (error) {
+  console.warn('Logger not available in this runtime environment');
+}
 
 export interface RequestContext {
   correlationId: string;

@@ -1,7 +1,23 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRequestLogger } from './lib/middleware/request-logger';
-import logger from './lib/logger';
+
+// Conditional logger import for Edge Runtime compatibility
+let logger: any = {
+  debug: console.log,
+  info: console.log,
+  warn: console.warn,
+  error: console.error
+};
+
+try {
+  // Only import logger if running in Node.js environment
+  if (typeof window === 'undefined' && typeof process !== 'undefined') {
+    logger = require('./lib/logger').default;
+  }
+} catch (error) {
+  console.warn('Logger not available in this runtime environment');
+}
 
 // Add Edge Runtime compatible debugging
 console.log('[MIDDLEWARE] Middleware loading...');

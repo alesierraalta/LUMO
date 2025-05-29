@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/logger';
-import prisma from '@/lib/db/enhanced-prisma';
 import { authLogger } from '@/lib/auth/logger';
+
+// Conditional Prisma import for Node.js environment only
+let prisma: any = null;
+try {
+  if (typeof window === 'undefined' && typeof process !== 'undefined') {
+    prisma = require('@/lib/db/enhanced-prisma').default;
+  }
+} catch (error) {
+  console.warn('Prisma not available in this environment:', error);
+}
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -14,9 +23,9 @@ export async function GET(request: NextRequest) {
     correlationId,
     service: {
       name: 'lumo-inventory',
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      uptime: process.uptime()
+      version: typeof process !== 'undefined' ? (process.env.npm_package_version || '1.0.0') : '1.0.0',
+      environment: typeof process !== 'undefined' ? (process.env.NODE_ENV || 'development') : 'edge',
+      uptime: typeof process !== 'undefined' ? process.uptime() : 0
     },
     status: 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
     checks: {} as Record<string, any>,
@@ -40,24 +49,31 @@ export async function GET(request: NextRequest) {
     healthData.status = 'degraded';
   }
 
-  // 2. Database Health Check
-  try {
-    const dbHealth = await prisma.getHealth();
-    healthData.checks.database = {
-      status: dbHealth.status,
-      latency: dbHealth.latency,
-      details: dbHealth
-    };
-    
-    if (dbHealth.status === 'unhealthy') {
-      healthData.status = 'degraded';
+  // 2. Database Health Check (only if Prisma is available)
+  if (prisma) {
+    try {
+      const dbHealth = await prisma.getHealth();
+      healthData.checks.database = {
+        status: dbHealth.status,
+        latency: dbHealth.latency,
+        details: dbHealth
+      };
+      
+      if (dbHealth.status === 'unhealthy') {
+        healthData.status = 'degraded';
+      }
+    } catch (error) {
+      healthData.checks.database = {
+        status: 'unhealthy',
+        error: (error as Error).message
+      };
+      healthData.status = 'unhealthy';
     }
-  } catch (error) {
+  } else {
     healthData.checks.database = {
-      status: 'unhealthy',
-      error: (error as Error).message
+      status: 'skipped',
+      reason: 'Prisma not available in this runtime environment'
     };
-    healthData.status = 'unhealthy';
   }
 
   // 3. Authentication Health Check
@@ -90,26 +106,31 @@ export async function GET(request: NextRequest) {
 
   // 4. System Metrics
   try {
-    const memoryUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
+    let memoryUsage: any = {};
+    let cpuUsage: any = {};
+    
+    if (typeof process !== 'undefined') {
+      memoryUsage = process.memoryUsage();
+      cpuUsage = process.cpuUsage();
+    }
     
     healthData.metrics = {
       memory: {
-        used: memoryUsage.heapUsed,
-        total: memoryUsage.heapTotal,
-        external: memoryUsage.external,
-        rss: memoryUsage.rss,
-        utilization: (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100
+        used: memoryUsage.heapUsed || 0,
+        total: memoryUsage.heapTotal || 0,
+        external: memoryUsage.external || 0,
+        rss: memoryUsage.rss || 0,
+        utilization: memoryUsage.heapTotal ? (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100 : 0
       },
       cpu: {
-        user: cpuUsage.user,
-        system: cpuUsage.system
+        user: cpuUsage.user || 0,
+        system: cpuUsage.system || 0
       },
       process: {
-        pid: process.pid,
-        uptime: process.uptime(),
-        version: process.version,
-        platform: process.platform
+        pid: typeof process !== 'undefined' ? process.pid : 0,
+        uptime: typeof process !== 'undefined' ? process.uptime() : 0,
+        version: typeof process !== 'undefined' ? process.version : 'edge',
+        platform: typeof process !== 'undefined' ? process.platform : 'edge'
       }
     };
 
@@ -135,18 +156,18 @@ export async function GET(request: NextRequest) {
   try {
     healthData.dependencies = {
       clerk: {
-        publishableKey: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-        secretKey: !!process.env.CLERK_SECRET_KEY,
-        configured: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY
+        publishableKey: typeof process !== 'undefined' ? !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY : false,
+        secretKey: typeof process !== 'undefined' ? !!process.env.CLERK_SECRET_KEY : false,
+        configured: typeof process !== 'undefined' ? (!!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY) : false
       },
       database: {
-        url: !!process.env.DATABASE_URL,
-        configured: !!process.env.DATABASE_URL
+        url: typeof process !== 'undefined' ? !!process.env.DATABASE_URL : false,
+        configured: typeof process !== 'undefined' ? !!process.env.DATABASE_URL : false
       },
       logging: {
-        level: process.env.LOG_LEVEL || 'INFO',
-        fileEnabled: process.env.ENABLE_FILE_LOGS !== 'false',
-        choreoEnabled: process.env.CHOREO_DEPLOYMENT === 'true'
+        level: typeof process !== 'undefined' ? (process.env.LOG_LEVEL || 'INFO') : 'INFO',
+        fileEnabled: typeof process !== 'undefined' ? (process.env.ENABLE_FILE_LOGS !== 'false') : false,
+        choreoEnabled: typeof process !== 'undefined' ? (process.env.CHOREO_DEPLOYMENT === 'true') : false
       }
     };
 
@@ -170,12 +191,12 @@ export async function GET(request: NextRequest) {
   // 6. Choreo-specific Health
   try {
     healthData.checks.choreo = {
-      deployment: process.env.CHOREO_DEPLOYMENT === 'true',
-      serviceName: process.env.CHOREO_SERVICE_NAME || 'lumo-inventory',
-      version: process.env.CHOREO_VERSION || 'unknown',
-      environment: process.env.CHOREO_ENVIRONMENT || process.env.NODE_ENV,
-      region: process.env.CHOREO_REGION || 'default',
-      instanceId: process.env.CHOREO_INSTANCE_ID || process.env.HOSTNAME || 'local'
+      deployment: typeof process !== 'undefined' ? (process.env.CHOREO_DEPLOYMENT === 'true') : false,
+      serviceName: typeof process !== 'undefined' ? (process.env.CHOREO_SERVICE_NAME || 'lumo-inventory') : 'lumo-inventory',
+      version: typeof process !== 'undefined' ? (process.env.CHOREO_VERSION || 'unknown') : 'unknown',
+      environment: typeof process !== 'undefined' ? (process.env.CHOREO_ENVIRONMENT || process.env.NODE_ENV) : 'edge',
+      region: typeof process !== 'undefined' ? (process.env.CHOREO_REGION || 'default') : 'default',
+      instanceId: typeof process !== 'undefined' ? (process.env.CHOREO_INSTANCE_ID || process.env.HOSTNAME || 'local') : 'edge'
     };
   } catch (error) {
     healthData.checks.choreo = {
@@ -217,8 +238,10 @@ export async function GET(request: NextRequest) {
 async function checkClerkHealth(): Promise<{ status: 'healthy' | 'unhealthy'; details?: any }> {
   try {
     // Basic configuration check
-    const hasPublishableKey = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-    const hasSecretKey = !!process.env.CLERK_SECRET_KEY;
+    const hasPublishableKey = typeof process !== 'undefined' ? 
+      !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY : false;
+    const hasSecretKey = typeof process !== 'undefined' ? 
+      !!process.env.CLERK_SECRET_KEY : false;
     
     if (!hasPublishableKey || !hasSecretKey) {
       return {

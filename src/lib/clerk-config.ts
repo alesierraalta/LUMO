@@ -95,4 +95,22 @@ export const clerkAppearance = {
     colorText: "#0f172a", // Slate-900
     fontFamily: "system-ui, -apple-system, sans-serif",
   }
-}; 
+};
+
+// Clerk configuration utilities
+
+export function shouldSkipAuth(): boolean {
+  // Check if we should skip authentication in development
+  return process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
+}
+
+export function getClerkConfig() {
+  return {
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+    skipAuth: shouldSkipAuth(),
+    webhookSecret: process.env.CLERK_WEBHOOK_SECRET
+  };
+}
+
+export const clerkConfig = getClerkConfig(); 

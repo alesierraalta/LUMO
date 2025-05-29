@@ -17,6 +17,24 @@ const LoggerConfigSchema = z.object({
 });
 
 export function getLoggerConfig(): LoggerConfig {
+  // Default config for Edge Runtime
+  if (typeof process === 'undefined') {
+    return {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableFile: false,
+      enableChoreo: false,
+      maxFileSize: 10485760,
+      maxFiles: 5,
+      filePath: './logs/application.log',
+      format: 'json',
+      includeStackTrace: false,
+      sanitizePII: true,
+      bufferSize: 100,
+      flushInterval: 1000
+    };
+  }
+
   const environment = process.env.NODE_ENV || 'development';
   const isProduction = environment === 'production';
   const isChoreo = process.env.CHOREO_DEPLOYMENT === 'true';
@@ -48,6 +66,10 @@ export function getLoggerConfig(): LoggerConfig {
 }
 
 function getLogLevel(): LogLevel {
+  if (typeof process === 'undefined') {
+    return LogLevel.INFO;
+  }
+
   const levelString = process.env.LOG_LEVEL?.toUpperCase();
   
   switch (levelString) {
@@ -79,6 +101,16 @@ export function validateConfig(config: Partial<LoggerConfig>): boolean {
 }
 
 export function getChoreoConfig() {
+  if (typeof process === 'undefined') {
+    return {
+      serviceName: 'lumo-inventory',
+      version: '1.0.0',
+      environment: 'edge',
+      region: 'default',
+      instanceId: 'edge-runtime'
+    };
+  }
+
   return {
     serviceName: process.env.CHOREO_SERVICE_NAME || 'lumo-inventory',
     version: process.env.CHOREO_VERSION || process.env.npm_package_version || '1.0.0',
@@ -90,6 +122,6 @@ export function getChoreoConfig() {
 
 export const DEFAULT_CONTEXT = {
   service: 'lumo-inventory',
-  version: process.env.npm_package_version || '1.0.0',
-  environment: process.env.NODE_ENV || 'development'
+  version: typeof process !== 'undefined' ? (process.env.npm_package_version || '1.0.0') : '1.0.0',
+  environment: typeof process !== 'undefined' ? (process.env.NODE_ENV || 'development') : 'edge'
 }; 

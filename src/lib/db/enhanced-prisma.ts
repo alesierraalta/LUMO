@@ -16,8 +16,11 @@ class EnhancedPrismaClient extends PrismaClient {
       ],
     });
 
-    this.setupEventListeners();
-    this.setupQueryMiddleware();
+    // Only setup in Node.js environment (not Edge Runtime)
+    if (typeof window === 'undefined' && typeof process !== 'undefined') {
+      this.setupEventListeners();
+      this.setupQueryMiddleware();
+    }
   }
 
   private setupEventListeners(): void {

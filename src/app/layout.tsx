@@ -19,19 +19,19 @@ export const dynamic = 'force-dynamic';
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-jetbrains-mono",
   weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "LUMO - Sistema de Inventario",
-  description: "Sistema completo de gestión de inventario con análisis financiero",
+  title: "LUMO Inventory Management System",
+  description: "Advanced inventory management system with real-time tracking and analytics",
 };
 
 export default function RootLayout({
@@ -40,16 +40,50 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const clerkConfig = getClerkConfig();
-  
+
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preload Clerk JS from official CDN */}
-        <link 
-          rel="preload" 
-          href="https://js.clerk.com/v1/clerk.js" 
-          as="script" 
+        {/* Preload Clerk script via our proxy to prevent subdomain issues */}
+        <link
+          rel="preload"
+          href="/api/clerk-proxy/v1/clerk.js"
+          as="script"
           crossOrigin="anonymous"
+        />
+        
+        {/* Custom Clerk configuration script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Override Clerk's automatic domain detection
+              window.__clerk_frontend_api = 'lumo-clerk-proxy';
+              window.__clerk_domain_override = true;
+              
+              // Prevent Clerk from generating problematic subdomain URLs
+              if (typeof window !== 'undefined') {
+                const originalCreateElement = document.createElement.bind(document);
+                document.createElement = function(tagName) {
+                  const element = originalCreateElement(tagName);
+                  
+                  if (tagName.toLowerCase() === 'script') {
+                    const originalSetAttribute = element.setAttribute.bind(element);
+                    element.setAttribute = function(name, value) {
+                      if (name === 'src' && value && value.includes('clerk') && value.includes('.choreoapps.dev')) {
+                        console.log('[CLERK-CONFIG] Blocking problematic script URL:', value);
+                        return originalSetAttribute('src', '/api/clerk-proxy/v1/clerk.js');
+                      }
+                      return originalSetAttribute(name, value);
+                    };
+                  }
+                  
+                  return element;
+                };
+                
+                console.log('[CLERK-CONFIG] Custom Clerk configuration loaded');
+              }
+            `,
+          }}
         />
         {/* Environment configuration */}
         <script src="/env-config.js" async></script>
@@ -59,7 +93,7 @@ export default function RootLayout({
       >
         <ClerkSSLFix />
         <EnvProvider>
-          <ClerkProvider
+          <ClerkProvider 
             publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
             appearance={clerkAppearance}
           >
@@ -67,7 +101,6 @@ export default function RootLayout({
               <div className="relative flex min-h-screen flex-col">
                 {children}
               </div>
-              <Toaster />
             </ThemeProvider>
           </ClerkProvider>
         </EnvProvider>

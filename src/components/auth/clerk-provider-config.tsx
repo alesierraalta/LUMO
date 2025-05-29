@@ -5,7 +5,6 @@ import { ReactNode, useEffect, useState } from 'react';
 import { 
   getClerkPublishableKey, 
   clerkAppearance,
-  shouldSkipAuth,
   isDevEnvironment 
 } from '@/lib/clerk-config';
 import { AuthProvider } from './auth-provider';
@@ -31,13 +30,6 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
     if (!isClient || configLoaded) return;
 
     const loadClerkConfig = async () => {
-      // Check if auth should be skipped first
-      if (shouldSkipAuth()) {
-        console.log('[CLERK] Authentication skipped - NEXT_PUBLIC_SKIP_CLERK_AUTH=true');
-        setConfigLoaded(true);
-        return;
-      }
-
       // Try to get publishable key with retry mechanism
       try {
         // Wait a bit for environment script to load
@@ -106,15 +98,6 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
     );
   }
 
-  // Handle skip auth case
-  if (shouldSkipAuth()) {
-    return (
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    );
-  }
-
   // Handle error case
   if (error) {
     return (
@@ -170,12 +153,12 @@ export function AppClerkProvider({ children }: AppClerkProviderProps) {
           >
             Retry Anyway
           </button>
-                     <button 
-             onClick={() => window.location.href = '/clerk-diagnostics'} 
-             className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-           >
-             Run Diagnostics
-           </button>
+          <button 
+            onClick={() => window.location.href = '/clerk-diagnostics'} 
+            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+          >
+            Run Diagnostics
+          </button>
         </div>
       </div>
     );

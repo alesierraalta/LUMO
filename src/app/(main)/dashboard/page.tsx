@@ -35,62 +35,12 @@ const MARGIN_CATEGORIES = {
   HIGH: { label: "Margen Alto", min: 30, max: Infinity, color: "var(--chart-3)" }
 };
 
-// Función auxiliar para manejar el modo de desarrollo
-async function getAuthInfo() {
-  // Verificar si estamos en modo de desarrollo sin autenticación
-  let skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-  
-  // COMENTADO: Detección automática de claves inválidas
-  // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
-  // y claves reales de Clerk
-  /*
-  // También verificar si tenemos claves inválidas (placeholder)
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (clerkKey && (
-    clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
-    clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
-  )) {
-    console.log('[DASHBOARD] Invalid Clerk key detected, enabling skip auth mode');
-    skipClerkAuth = true;
-  }
-  */
-  
-  if (skipClerkAuth) {
-    console.log('[DASHBOARD] Skip auth mode enabled');
-    return { 
-      userId: 'dev-user-id', 
-      skipClerkAuth: true 
-    };
-  }
-  
-  try {
-    // Solo llamar a auth() si no estamos en modo de desarrollo
-    const session = await auth();
-    return { 
-      userId: session.userId, 
-      skipClerkAuth: false 
-    };
-  } catch (error) {
-    console.error("Error obteniendo sesión:", error);
-    // Si hay un error y estamos en modo de desarrollo, simular un userId
-    if (skipClerkAuth) {
-      return { 
-        userId: 'dev-user-id', 
-        skipClerkAuth: true 
-      };
-    }
-    return { 
-      userId: null, 
-      skipClerkAuth: false 
-    };
-  }
-}
-
 export default async function DashboardPage() {
-  // Usar la función auxiliar en lugar de llamar a auth() directamente
-  const { userId, skipClerkAuth } = await getAuthInfo();
+  // Usar auth de Clerk directamente
+  const session = await auth();
+  const userId = session.userId;
   
-  if (!userId && !skipClerkAuth) {
+  if (!userId) {
     redirect("/sign-in");
   }
   
@@ -137,11 +87,13 @@ export default async function DashboardPage() {
       ]) as [Product[], any[]];
 
       // Get categories directly from database instead of API call
-      categories = await prisma.category.findMany({
-        orderBy: {
-          name: "asc",
-        },
-      });
+      if (prisma) {
+        categories = await prisma.category.findMany({
+          orderBy: {
+            name: "asc",
+          },
+        });
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       

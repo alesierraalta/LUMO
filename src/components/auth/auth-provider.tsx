@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { useEnv } from "@/components/providers/env-provider";
 
 interface AuthContextType {
   isLoaded: boolean;
@@ -42,27 +41,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Component for when Clerk auth is skipped
-function SkippedAuthProvider({ children }: AuthProviderProps) {
-  console.log('[AUTH] Using skipped auth provider - all users have admin access');
-  return (
-    <AuthContext.Provider value={{ 
-      isLoaded: true, 
-      isSignedIn: true, 
-      userId: "dev-user-id", 
-      isAdmin: true, 
-      userRole: "admin", 
-      syncingUser: false, 
-      syncError: null, 
-      retrySyncUser: async () => {} 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-// Component for when Clerk auth is enabled
-function ClerkAuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: AuthProviderProps) {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -182,24 +161,4 @@ function ClerkAuthProvider({ children }: AuthProviderProps) {
       </Dialog>
     </AuthContext.Provider>
   );
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
-  // Check if we should skip Clerk authentication using the proper env hook
-  const skipAuthEnv = useEnv('NEXT_PUBLIC_SKIP_CLERK_AUTH', 'false');
-  const skipClerkAuth = skipAuthEnv === 'true';
-  
-  console.log('[AUTH] Environment check:', {
-    skipAuthEnv,
-    skipClerkAuth,
-    hasClerkKey: !!useEnv('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY')
-  });
-  
-  if (skipClerkAuth) {
-    console.log('[AUTH] Using skipped auth provider');
-    return <SkippedAuthProvider>{children}</SkippedAuthProvider>;
-  }
-  
-  console.log('[AUTH] Using Clerk auth provider');
-  return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
 } 

@@ -7,7 +7,6 @@
 interface ClerkEnvVars {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: string;
   CLERK_SECRET_KEY: string;
-  NEXT_PUBLIC_SKIP_CLERK_AUTH?: string;
   NEXT_PUBLIC_CLERK_SIGN_IN_URL?: string;
   NEXT_PUBLIC_CLERK_SIGN_UP_URL?: string;
   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL?: string;
@@ -46,45 +45,10 @@ function getEnvVar(key: string): string | undefined {
   return value;
 }
 
-// Async version for client-side validation with retry logic
-async function getEnvVarWithRetry(key: string, maxRetries: number = 3, delayMs: number = 100): Promise<string | undefined> {
-  for (let i = 0; i < maxRetries; i++) {
-    const value = getEnvVar(key);
-    if (value) {
-      return value;
-    }
-    
-    // Only retry on client side for Clerk key
-    if (isClientSide() && key === 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY' && i < maxRetries - 1) {
-      console.log(`[ENV-VALIDATION] Retry ${i + 1}/${maxRetries} for ${key}...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    } else {
-      break;
-    }
-  }
-  
-  return getEnvVar(key);
-}
-
 // Validate Clerk environment variables (server-side only for secret key)
 export function validateClerkEnvVars(): ClerkEnvVars {
   const publishableKey = getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
   const secretKey = getEnvVar('CLERK_SECRET_KEY');
-  const skipAuth = getEnvVar('NEXT_PUBLIC_SKIP_CLERK_AUTH');
-
-  // Check if auth is disabled
-  if (skipAuth === 'true') {
-    // When auth is disabled, we still need placeholder values for TypeScript
-    return {
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'auth-disabled',
-      CLERK_SECRET_KEY: 'auth-disabled',
-      NEXT_PUBLIC_SKIP_CLERK_AUTH: 'true',
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
-      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: '/dashboard',
-      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: '/dashboard',
-    };
-  }
 
   // Validate publishable key (required on both client and server)
   if (!publishableKey) {
@@ -98,7 +62,7 @@ export function validateClerkEnvVars(): ClerkEnvVars {
     
     throw new Error(
       'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY environment variable is required. ' +
-      'Please set this variable in your .env.local file or set NEXT_PUBLIC_SKIP_CLERK_AUTH=true to disable authentication.'
+      'Please set this variable in your .env.local file.'
     );
   }
 
@@ -123,7 +87,6 @@ export function validateClerkEnvVars(): ClerkEnvVars {
     return {
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
       CLERK_SECRET_KEY: 'client-side-placeholder', // Not available on client
-      NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth || 'false',
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL') || '/sign-in',
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_UP_URL') || '/sign-up',
       NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL') || '/dashboard',
@@ -135,7 +98,7 @@ export function validateClerkEnvVars(): ClerkEnvVars {
   if (!secretKey) {
     throw new Error(
       'CLERK_SECRET_KEY environment variable is required. ' +
-      'Please set this variable in your .env.local file or set NEXT_PUBLIC_SKIP_CLERK_AUTH=true to disable authentication.'
+      'Please set this variable in your .env.local file.'
     );
   }
 
@@ -158,7 +121,6 @@ export function validateClerkEnvVars(): ClerkEnvVars {
   return {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
     CLERK_SECRET_KEY: secretKey,
-    NEXT_PUBLIC_SKIP_CLERK_AUTH: skipAuth || 'false',
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL') || '/sign-in',
     NEXT_PUBLIC_CLERK_SIGN_UP_URL: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_UP_URL') || '/sign-up',
     NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: getEnvVar('NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL') || '/dashboard',
@@ -180,10 +142,4 @@ export function getValidatedClerkSecretKey(): string {
   
   const envVars = validateClerkEnvVars();
   return envVars.CLERK_SECRET_KEY;
-}
-
-// Check if authentication is enabled
-export function isAuthEnabled(): boolean {
-  const skipAuth = getEnvVar('NEXT_PUBLIC_SKIP_CLERK_AUTH');
-  return skipAuth !== 'true';
 } 

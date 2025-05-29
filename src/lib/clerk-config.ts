@@ -2,7 +2,7 @@
  * Configuración para Clerk según el entorno (desarrollo o producción)
  */
 
-import { validateClerkEnvVars, getValidatedClerkPublishableKey, isAuthEnabled } from './env-validation';
+import { validateClerkEnvVars, getValidatedClerkPublishableKey } from './env-validation';
 
 // Determinar si estamos en entorno de desarrollo
 export function isDevEnvironment(): boolean {
@@ -15,11 +15,6 @@ export function isDevEnvironment(): boolean {
   
   // En el servidor, usamos la variable de entorno NODE_ENV
   return process.env.NODE_ENV !== 'production';
-}
-
-// Determinar si debemos omitir la autenticación
-export function shouldSkipAuth(): boolean {
-  return !isAuthEnabled();
 }
 
 // Obtener la clave pública de Clerk usando validación

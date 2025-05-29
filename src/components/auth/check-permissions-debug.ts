@@ -6,37 +6,6 @@ import { UserRole } from "@/lib/auth";
 
 export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
   try {
-    // Check if we should skip Clerk authentication
-    let skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-    
-    // COMENTADO: Detección automática de claves inválidas
-    // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
-    // y claves reales de Clerk
-    /*
-    // También verificar si tenemos claves inválidas (placeholder)
-    const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-    if (clerkKey && (
-      clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
-      clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
-    )) {
-      console.log('[PERMISSIONS] Invalid Clerk key detected, enabling skip auth mode');
-      skipClerkAuth = true;
-    }
-    */
-    
-    // Si estamos en modo de desarrollo sin autenticación, permitir todo
-    if (skipClerkAuth) {
-      return {
-        authorized: true,
-        debugInfo: {
-          message: "Modo de desarrollo sin autenticación",
-          skipClerkAuth: true,
-          role: "admin",
-          requiredRole
-        }
-      };
-    }
-    
     // Obtener el ID del usuario de Clerk
     const session = await auth();
     const userId = session.userId;
@@ -58,6 +27,10 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     // Buscar el usuario en la base de datos con manejo de errores mejorado
     let user;
     try {
+      if (!prisma) {
+        throw new Error("Database connection not available");
+      }
+      
       user = await prisma.user.findUnique({
         where: { clerkId: userId },
         include: { role: true },
@@ -143,19 +116,6 @@ export async function checkPermissionsWithDebug(requiredRole?: UserRole) {
     };
   } catch (error: any) {
     console.error("Error en la verificación de permisos:", error);
-    
-    // Si hay un error y estamos en modo de desarrollo, permitir acceso
-    if (process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true') {
-      return {
-        authorized: true,
-        userMessage: "Modo de desarrollo activo",
-        debugInfo: {
-          message: "Modo de desarrollo sin autenticación (error manejado)",
-          error: error.message,
-          skipClerkAuth: true
-        }
-      };
-    }
     
     return {
       authorized: false,

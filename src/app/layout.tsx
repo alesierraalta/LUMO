@@ -20,8 +20,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LUMO Inventory Management System",
-  description: "Advanced inventory management system with real-time tracking and analytics",
+  title: "LUMO - Sistema de Gestión de Inventario",
+  description: "Sistema avanzado de gestión de inventario con seguimiento en tiempo real y analítica",
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background font-sans`}
       >

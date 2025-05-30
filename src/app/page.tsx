@@ -18,7 +18,7 @@ export default function Home() {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     </div>
   );

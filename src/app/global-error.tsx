@@ -178,7 +178,7 @@ export default function GlobalError({
               color: severity === 'CRITICAL' ? '#dc2626' : severity === 'HIGH' ? '#92400e' : '#374151', 
               margin: 0 
             }}>
-              Application Error - {severity} Severity
+              Error de Aplicación - Severidad {severity === 'CRITICAL' ? 'CRÍTICA' : severity === 'HIGH' ? 'ALTA' : severity === 'MEDIUM' ? 'MEDIA' : 'BAJA'}
             </h2>
           </div>
 
@@ -189,21 +189,24 @@ export default function GlobalError({
             borderRadius: '6px',
             fontSize: '14px'
           }}>
-            <strong>Error Type:</strong> {errorType}<br/>
-            <strong>Timestamp:</strong> {new Date().toISOString()}<br/>
-            <strong>Session:</strong> {typeof window !== 'undefined' ? 
-              (localStorage.getItem('lastErrorCorrelationId') || 'New session') : 'Server-side'}
+            <strong>Tipo de Error:</strong> {errorType}<br/>
+            <strong>Fecha y Hora:</strong> {new Date().toISOString()}<br/>
+            <strong>Sesión:</strong> {typeof window !== 'undefined' ? 
+              (localStorage.getItem('lastErrorCorrelationId') || 'Nueva sesión') : 'Lado del servidor'}
           </div>
           
           <p style={{ marginBottom: '16px' }}>
             {errorType === 'CSS_MANIFEST_ERROR' 
-              ? 'CSS loading error detected. This indicates a problem with CSS manifest files. The page will reload automatically in 2 seconds to retry.'
+              ? 'Error de carga de CSS detectado. Esto indica un problema con los archivos CSS. La página se recargará automáticamente en 2 segundos para reintentar.'
               : errorType === 'AUTHENTICATION_ERROR'
-              ? 'Authentication error detected. Please try logging in again.'
+              ? 'Error de autenticación detectado. Por favor, intenta iniciar sesión nuevamente.'
               : errorType === 'DATABASE_ERROR'
-              ? 'Database connection error. Please try again later or contact support.'
-              : 'Something went wrong in the application. Our team has been notified.'
-            }
+              ? 'Error de base de datos detectado. Estamos trabajando para resolver el problema. Por favor, inténtalo de nuevo más tarde.'
+              : errorType === 'API_ERROR'
+              ? 'Error de API detectado. No se pudo completar la solicitud. Por favor, inténtalo de nuevo más tarde.'
+              : errorType === 'RESOURCE_LOADING_ERROR'
+              ? 'Error al cargar recursos. No se pudieron cargar todos los componentes necesarios. Por favor, actualiza la página o inténtalo más tarde.'
+              : 'Ha ocurrido un error inesperado. Estamos trabajando para resolverlo. Por favor, inténtalo de nuevo más tarde.'}
           </p>
 
           <details style={{ marginBottom: '16px' }}>
@@ -356,6 +359,54 @@ export default function GlobalError({
                 </>
               )}
             </ul>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <button
+              onClick={reset}
+              style={{ 
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Intentar nuevamente
+            </button>
+            
+            <button
+              onClick={() => window.location.href = '/'}
+              style={{ 
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                marginLeft: '8px'
+              }}
+            >
+              Volver al inicio
+            </button>
+          </div>
+
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#6b7280',
+            padding: '12px', 
+            backgroundColor: '#f9fafb', 
+            borderRadius: '6px'
+          }}>
+            <p>Si el problema persiste:</p>
+            <ol style={{ paddingLeft: '16px', margin: '8px 0' }}>
+              <li>Limpia la caché del navegador</li>
+              <li>Intenta en una ventana de incógnito</li>
+              <li>Contacta al soporte técnico</li>
+            </ol>
+            <p>Referencia: {error.digest || 'No disponible'}</p>
           </div>
         </div>
       </body>

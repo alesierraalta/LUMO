@@ -12,18 +12,21 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[Login API] Processing login request');
     const body = await request.json();
     
     // Validate input
     const result = loginSchema.safeParse(body);
     if (!result.success) {
+      console.log('[Login API] Invalid input:', result.error.errors);
       return NextResponse.json(
-        { error: 'Invalid input', details: result.error.errors },
+        { error: 'Datos de entrada inválidos', details: result.error.errors },
         { status: 400 }
       );
     }
 
     const { email, password } = result.data;
+    console.log(`[Login API] Login attempt for: ${email}`);
     
     // Get user agent and IP for security tracking
     const userAgent = request.headers.get('user-agent') || undefined;
@@ -35,8 +38,20 @@ export async function POST(request: NextRequest) {
     const authResult = await authenticateUser(email, password, userAgent, ipAddress);
 
     if (!authResult.success) {
+      // Traducir los mensajes de error para consistencia
+      let errorMessage = authResult.error || 'Error de autenticación';
+      if (authResult.error === 'Invalid email or password') {
+        errorMessage = 'Correo electrónico o contraseña incorrectos';
+      } else if (authResult.error === 'Authentication failed') {
+        errorMessage = 'Autenticación fallida';
+      } else if (authResult.error === 'Account is disabled') {
+        errorMessage = 'La cuenta está desactivada';
+      } else if (authResult.error === 'Account is temporarily locked') {
+        errorMessage = 'La cuenta está temporalmente bloqueada';
+      }
+
       return NextResponse.json(
-        { error: authResult.error },
+        { error: errorMessage },
         { status: 401 }
       );
     }

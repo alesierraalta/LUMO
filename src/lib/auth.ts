@@ -164,15 +164,18 @@ export const authenticateUser = async (
     });
 
     if (!user) {
+      console.log(`[Auth] User not found for email: ${email}`);
       return { success: false, error: 'Invalid email or password' };
     }
 
     if (!user.isActive) {
+      console.log(`[Auth] Inactive account for email: ${email}`);
       return { success: false, error: 'Account is disabled' };
     }
 
     // Check for account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      console.log(`[Auth] Account locked for email: ${email}`);
       return { success: false, error: 'Account is temporarily locked' };
     }
 
@@ -180,6 +183,7 @@ export const authenticateUser = async (
     const isPasswordValid = await verifyPassword(password, user.passwordHash);
     
     if (!isPasswordValid) {
+      console.log(`[Auth] Invalid password for email: ${email}`);
       // Increment login attempts
       const attempts = user.loginAttempts + 1;
       const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null; // Lock for 15 minutes

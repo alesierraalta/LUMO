@@ -106,7 +106,7 @@ export function UserButton() {
       <Button asChild variant="default" size="sm">
         <Link href="/login">
           <LogIn className="h-4 w-4 mr-2" />
-          Login
+          Iniciar sesión
         </Link>
       </Button>
     );
@@ -142,13 +142,13 @@ export function UserButton() {
         <DropdownMenuItem asChild>
           <Link href="/settings">
             <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+            <span>Configuración</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>Cerrar sesión</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

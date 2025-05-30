@@ -52,13 +52,13 @@ function SidebarLinks({ collapsed, permissions }: SidebarLinksProps) {
         <SidebarLink href="/dashboard" icon={BarChart3} title="Dashboard" collapsed={collapsed} />
       )}
       {permissions.inventory && (
-        <SidebarLink href="/inventory" icon={Package} title="Inventory" collapsed={collapsed} />
+        <SidebarLink href="/inventory" icon={Package} title="Inventario" collapsed={collapsed} />
       )}
       {permissions.settings && (
-        <SidebarLink href="/settings" icon={Settings} title="Settings" collapsed={collapsed} />
+        <SidebarLink href="/settings" icon={Settings} title="Configuración" collapsed={collapsed} />
       )}
       {permissions.userManagement && (
-        <SidebarLink href="/settings/users" icon={Users} title="User Management" collapsed={collapsed} />
+        <SidebarLink href="/settings/users" icon={Users} title="Gestión de Usuarios" collapsed={collapsed} />
       )}
     </>
   );
@@ -200,7 +200,7 @@ export function MobileNav() {
                 onClick={() => setIsOpen(false)}
               >
                 <Home className="h-5 w-5" />
-                <span>Home</span>
+                <span>Inicio</span>
               </Link>
               
               {permissions.dashboard && (
@@ -221,7 +221,7 @@ export function MobileNav() {
                   onClick={() => setIsOpen(false)}
                 >
                   <Package className="h-5 w-5" />
-                  <span>Inventory</span>
+                  <span>Inventario</span>
                 </Link>
               )}
               
@@ -232,7 +232,7 @@ export function MobileNav() {
                   onClick={() => setIsOpen(false)}
                 >
                   <Settings className="h-5 w-5" />
-                  <span>Settings</span>
+                  <span>Configuración</span>
                 </Link>
               )}
               
@@ -243,7 +243,7 @@ export function MobileNav() {
                   onClick={() => setIsOpen(false)}
                 >
                   <Users className="h-5 w-5" />
-                  <span>User Management</span>
+                  <span>Gestión de Usuarios</span>
                 </Link>
               )}
             </nav>

@@ -127,97 +127,97 @@ export default async function DashboardPage() {
             href="/reports/margins" 
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            View Margin Reports
+            Ver Informes de Márgenes
           </ActionLink>
         </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Products"
+          title="Total Productos"
           value={totalProducts}
-          description="Total products in inventory"
+          description="Total productos en inventario"
           icon={<ClipboardList className="h-5 w-5" />}
           href="/inventory"
-          linkText="View all products"
+          linkText="Ver todos los productos"
         />
         
         <StatCard
-          title="Low Stock Items"
+          title="Productos Bajo Stock"
           value={lowStockCount}
-          description="Products below minimum level"
+          description="Productos bajo nivel mínimo"
           icon={<ClipboardList className="h-5 w-5" />}
           trend={lowStockCount > 0 ? "down" : "neutral"}
-          trendValue={lowStockCount > 0 ? `${lowStockCount} products need attention` : "Healthy stock levels"}
+          trendValue={lowStockCount > 0 ? `${lowStockCount} productos requieren atención` : "Niveles de stock saludables"}
           href="/inventory"
-          linkText="Manage inventory"
+          linkText="Administrar inventario"
         />
         
         <StatCard
-          title="Average Margin"
+          title="Margen Promedio"
           value={`${averageMargin}%`}
-          description="Across all products"
+          description="En todos los productos"
           icon={<DollarSign className="h-5 w-5" />}
           trend={Number(averageMargin) > 25 ? "up" : Number(averageMargin) < 15 ? "down" : "neutral"}
-          trendValue={Number(averageMargin) > 25 ? "Healthy margins" : Number(averageMargin) < 15 ? "Margins need attention" : "Average margins"}
+          trendValue={Number(averageMargin) > 25 ? "Márgenes saludables" : Number(averageMargin) < 15 ? "Márgenes requieren atención" : "Márgenes promedio"}
           href="/reports/margins"
-          linkText="View margin details"
+          linkText="Ver detalles de márgenes"
         />
         
         <StatCard
-          title="High Margin Products"
+          title="Productos Alto Margen"
           value={productsByCategory.HIGH}
-          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% of total`}
+          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% del total`}
           icon={<PieChart className="h-5 w-5" />}
           href="/reports/margins"
-          linkText="View margin data"
+          linkText="Ver datos de márgenes"
         />
       </div>
 
       {/* Inventory Value Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="Inventory Cost Value"
+          title="Valor de Costo Inventario"
           value={`$${Number(inventoryValues.totalCostValue).toLocaleString()}`}
-          description="Total value at cost price"
+          description="Valor total a precio de costo"
           icon={<Package className="h-5 w-5" />}
           href="/inventory"
-          linkText="View inventory details"
+          linkText="Ver detalles de inventario"
         />
         
         <StatCard
-          title="Inventory Sale Value"
+          title="Valor de Venta Inventario"
           value={`$${Number(inventoryValues.totalSaleValue).toLocaleString()}`}
-          description="Total value at sale price"
+          description="Valor total a precio de venta"
           icon={<DollarSign className="h-5 w-5" />}
           trend="up"
-          trendValue={`+$${Number(inventoryValues.potentialProfit).toLocaleString()} potential profit`}
+          trendValue={`+$${Number(inventoryValues.potentialProfit).toLocaleString()} ganancia potencial`}
           href="/inventory"
-          linkText="View inventory details"
+          linkText="Ver detalles de inventario"
         />
         
         <StatCard
-          title="Potential Profit"
+          title="Ganancia Potencial"
           value={`$${Number(inventoryValues.potentialProfit).toLocaleString()}`}
-          description="Sale value - Cost value"
+          description="Valor venta - Valor costo"
           icon={<TrendingUp className="h-5 w-5" />}
           trend={Number(inventoryValues.potentialProfit) > 0 ? "up" : "neutral"}
           trendValue={
             Number(inventoryValues.totalCostValue) > 0 
-              ? `${((Number(inventoryValues.potentialProfit) / Number(inventoryValues.totalCostValue)) * 100).toFixed(1)}% markup potential`
-              : "No cost basis for calculation"
+              ? `${((Number(inventoryValues.potentialProfit) / Number(inventoryValues.totalCostValue)) * 100).toFixed(1)}% margen potencial`
+              : "Sin base de costo para cálculo"
           }
           href="/reports/margins"
-          linkText="View margin analysis"
+          linkText="Ver análisis de márgenes"
         />
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Products</CardTitle>
+            <CardTitle>Productos Recientes</CardTitle>
             <CardDescription>
-              Latest products added to inventory
+              Últimos productos añadidos al inventario
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -227,13 +227,13 @@ export default async function DashboardPage() {
                   <div>
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {product.category?.name || 'No category'} • Stock: {product.quantity || 0}
+                      {product.category?.name || 'Sin categoría'} • Stock: {product.quantity || 0}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">${product.price}</p>
                     <Badge variant={Number(product.margin) > 25 ? "default" : Number(product.margin) < 15 ? "destructive" : "secondary"}>
-                      {product.margin}% margin
+                      {product.margin}% margen
                     </Badge>
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export default async function DashboardPage() {
           </CardContent>
           <CardFooter>
             <Link href="/inventory" className="text-sm text-primary hover:underline">
-              View all products →
+              Ver todos los productos →
             </Link>
           </CardFooter>
         </Card>

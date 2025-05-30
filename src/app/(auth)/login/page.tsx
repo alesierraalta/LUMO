@@ -40,7 +40,7 @@ export default function LoginPage() {
       if (response.ok) {
         console.log('[Login] Login successful, redirecting...');
         console.log('[Login] Response data:', data);
-        toast.success('Login successful!');
+        toast.success('¡Inicio de sesión exitoso!');
         
         // Use a longer delay and window.location.href for full page reload
         // This ensures the cookie is properly set before middleware checks
@@ -50,12 +50,23 @@ export default function LoginPage() {
         }, 1000); // Increased to 1 second
       } else {
         console.log('[Login] Login failed:', data.error);
-        setError(data.error || 'Login failed');
+        // Traducir mensajes de error comunes
+        let errorMessage = data.error || 'Error al iniciar sesión';
+        if (data.error === 'Invalid email or password') {
+          errorMessage = 'Correo electrónico o contraseña incorrectos';
+        } else if (data.error === 'Authentication failed') {
+          errorMessage = 'Autenticación fallida';
+        } else if (data.error === 'Account is disabled') {
+          errorMessage = 'La cuenta está desactivada';
+        } else if (data.error === 'Account is temporarily locked') {
+          errorMessage = 'La cuenta está temporalmente bloqueada';
+        }
+        setError(errorMessage);
         setIsLoading(false); // Reset loading state on error
       }
     } catch (error) {
       console.error('[Login] Network error:', error);
-      setError('Network error. Please try again.');
+      setError('Error de red. Por favor, inténtalo de nuevo.');
       setIsLoading(false); // Reset loading state on error
     }
     // Note: Don't reset isLoading on success to prevent form resubmission
@@ -68,9 +79,9 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
           <div className="max-w-md">
-            <h1 className="text-4xl font-bold mb-6">Welcome to LUMO</h1>
+            <h1 className="text-4xl font-bold mb-6">Bienvenido a LUMO</h1>
             <p className="text-xl mb-8 text-blue-100">
-              Powerful inventory management and business intelligence platform
+              Plataforma potente de gestión de inventario e inteligencia empresarial
             </p>
             
             <div className="space-y-6">
@@ -79,8 +90,8 @@ export default function LoginPage() {
                   <Building2 className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Inventory Management</h3>
-                  <p className="text-blue-100 text-sm">Track and manage your inventory in real-time</p>
+                  <h3 className="font-semibold">Gestión de Inventario</h3>
+                  <p className="text-blue-100 text-sm">Seguimiento y gestión de tu inventario en tiempo real</p>
                 </div>
               </div>
               
@@ -89,8 +100,8 @@ export default function LoginPage() {
                   <BarChart3 className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Analytics & Reports</h3>
-                  <p className="text-blue-100 text-sm">Get insights with powerful analytics</p>
+                  <h3 className="font-semibold">Analítica y Reportes</h3>
+                  <p className="text-blue-100 text-sm">Obtén información con analítica potente</p>
                 </div>
               </div>
               
@@ -99,8 +110,8 @@ export default function LoginPage() {
                   <Shield className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Secure & Reliable</h3>
-                  <p className="text-blue-100 text-sm">Enterprise-grade security and reliability</p>
+                  <h3 className="font-semibold">Seguro y Confiable</h3>
+                  <p className="text-blue-100 text-sm">Seguridad y confiabilidad de nivel empresarial</p>
                 </div>
               </div>
             </div>
@@ -122,9 +133,9 @@ export default function LoginPage() {
                   <Building2 className="h-8 w-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-3xl font-bold text-center">Sign in</CardTitle>
+              <CardTitle className="text-3xl font-bold text-center">Iniciar Sesión</CardTitle>
               <CardDescription className="text-center text-lg">
-                Welcome back! Please sign in to your account
+                ¡Bienvenido de nuevo! Por favor, inicia sesión en tu cuenta
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
@@ -136,11 +147,11 @@ export default function LoginPage() {
                 )}
                 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                  <Label htmlFor="email" className="text-sm font-medium">Correo electrónico</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="Ingresa tu correo electrónico"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -150,12 +161,12 @@ export default function LoginPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
+                      placeholder="Ingresa tu contraseña"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -185,22 +196,18 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
+                      Iniciando sesión...
                     </>
                   ) : (
-                    'Sign in'
+                    'Iniciar sesión'
                   )}
                 </Button>
                 
                 <div className="text-center text-sm text-muted-foreground">
-                  Don't have an account?{' '}
+                  ¿No tienes una cuenta?{' '}
                   <Link href="/register" className="text-primary hover:underline font-medium">
-                    Create account
+                    Crear cuenta
                   </Link>
-                </div>
-                
-                <div className="text-center text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-                  <strong>Demo Admin:</strong> alesierraalta@gmail.com / admin123
                 </div>
               </CardFooter>
             </form>

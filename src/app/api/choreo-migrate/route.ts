@@ -78,12 +78,81 @@ export async function POST(request: Request) {
       try {
         console.log('🌱 Starting database seeding...');
         
-        // Aquí iría el código de seeding
-        // Por ahora retornamos un placeholder
+        // Importar los módulos necesarios
+        const { PrismaClient } = require('@prisma/client');
+        const bcrypt = require('bcryptjs');
+        const prisma = new PrismaClient();
+        
+        // Crear roles básicos
+        const adminRole = await prisma.role.upsert({
+          where: { name: 'admin' },
+          update: {},
+          create: {
+            name: 'admin',
+            description: 'Acceso completo a todas las funcionalidades',
+          },
+        });
+        
+        // Permisos básicos para el rol admin
+        const adminPermission = await prisma.permission.upsert({
+          where: { name: 'admin:all' },
+          update: {},
+          create: {
+            name: 'admin:all',
+            description: 'Acceso completo de administrador',
+            resource: 'admin',
+            action: 'all',
+          },
+        });
+        
+        // Asignar permiso al rol admin
+        await prisma.rolePermission.upsert({
+          where: { 
+            roleId_permissionId: {
+              roleId: adminRole.id,
+              permissionId: adminPermission.id,
+            },
+          },
+          update: {},
+          create: {
+            roleId: adminRole.id,
+            permissionId: adminPermission.id,
+          },
+        });
+        
+        // Crear usuario admin root (SIEMPRE PRESENTE)
+        const rootAdminPasswordHash = await bcrypt.hash('admin123', 12);
+        const rootAdminUser = await prisma.user.upsert({
+          where: { email: 'alesierraalta@gmail.com' },
+          update: {
+            // Asegurar que siempre tenga rol de admin
+            roleId: adminRole.id,
+            isActive: true,
+            isEmailVerified: true,
+            passwordHash: rootAdminPasswordHash
+          },
+          create: {
+            email: 'alesierraalta@gmail.com',
+            passwordHash: rootAdminPasswordHash,
+            firstName: 'Alejandro',
+            lastName: 'Sierra',
+            roleId: adminRole.id,
+            isActive: true,
+            isEmailVerified: true,
+          },
+        });
+        
+        await prisma.$disconnect();
         
         return new Response(JSON.stringify({
-          status: 'info',
-          message: 'Database seeding not implemented yet',
+          status: 'success',
+          message: 'Seeding completed successfully',
+          adminUser: {
+            email: rootAdminUser.email,
+            firstName: rootAdminUser.firstName,
+            lastName: rootAdminUser.lastName,
+            role: 'admin'
+          },
           timestamp: new Date().toISOString()
         }), {
           status: 200,
@@ -91,6 +160,8 @@ export async function POST(request: Request) {
         });
         
       } catch (seedError: any) {
+        console.error('❌ Seed error:', seedError);
+        
         return new Response(JSON.stringify({
           status: 'error',
           message: 'Database seeding failed',

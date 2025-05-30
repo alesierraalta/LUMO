@@ -22,6 +22,95 @@ console.log(`[CHOREO-SERVER] 📡 Port: ${port}`);
 console.log(`[CHOREO-SERVER] 🌍 Hostname: ${hostname}`);
 console.log(`[CHOREO-SERVER] 🏭 Environment: ${process.env.NODE_ENV}`);
 
+// Verificar y asegurar que el usuario administrador existe
+async function ensureAdminUser() {
+  try {
+    console.log('[CHOREO-SERVER] 👤 Verificando usuario administrador...');
+    
+    const { PrismaClient } = require('@prisma/client');
+    const bcrypt = require('bcryptjs');
+    const prisma = new PrismaClient();
+    
+    // Buscar usuario administrador
+    const adminUser = await prisma.user.findUnique({
+      where: { email: 'alesierraalta@gmail.com' }
+    });
+    
+    if (!adminUser) {
+      console.log('[CHOREO-SERVER] ⚠️ Usuario administrador no encontrado, creándolo...');
+      
+      // Buscar rol de administrador
+      let adminRole = await prisma.role.findUnique({
+        where: { name: 'admin' }
+      });
+      
+      // Si no existe el rol, crearlo
+      if (!adminRole) {
+        adminRole = await prisma.role.create({
+          data: {
+            name: 'admin',
+            description: 'Acceso completo a todas las funcionalidades'
+          }
+        });
+        
+        // Crear permiso básico
+        const adminPermission = await prisma.permission.create({
+          data: {
+            name: 'admin:all',
+            description: 'Acceso completo de administrador',
+            resource: 'admin',
+            action: 'all'
+          }
+        });
+        
+        // Asignar permiso al rol
+        await prisma.rolePermission.create({
+          data: {
+            roleId: adminRole.id,
+            permissionId: adminPermission.id
+          }
+        });
+      }
+      
+      // Crear usuario administrador
+      const passwordHash = await bcrypt.hash('admin123', 12);
+      await prisma.user.create({
+        data: {
+          email: 'alesierraalta@gmail.com',
+          passwordHash: passwordHash,
+          firstName: 'Alejandro',
+          lastName: 'Sierra',
+          roleId: adminRole.id,
+          isActive: true,
+          isEmailVerified: true
+        }
+      });
+      
+      console.log('[CHOREO-SERVER] ✅ Usuario administrador creado exitosamente');
+    } else {
+      console.log('[CHOREO-SERVER] ✅ Usuario administrador encontrado');
+      
+      // Asegurar que el usuario tenga rol de administrador
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'admin' }
+      });
+      
+      if (adminRole && adminUser.roleId !== adminRole.id) {
+        await prisma.user.update({
+          where: { id: adminUser.id },
+          data: { roleId: adminRole.id }
+        });
+        console.log('[CHOREO-SERVER] ✅ Rol de administrador actualizado');
+      }
+    }
+    
+    await prisma.$disconnect();
+    console.log('[CHOREO-SERVER] 🔒 Verificación de usuario administrador completada');
+  } catch (error) {
+    console.error('[CHOREO-SERVER] ❌ Error al verificar usuario administrador:', error);
+  }
+}
+
 // Enhanced manifest validation and repair
 const validateAndRepairManifests = () => {
   console.log('[CHOREO-SERVER] 🔧 Validating and repairing manifest files...');
@@ -300,78 +389,38 @@ process.on('unhandledRejection', (reason, promise) => {
   }
 });
 
-// Main server initialization
+// Start the server with additional initialization
 async function startServer() {
   try {
-    console.log('[CHOREO-SERVER] 🔧 Preparing server...');
+    console.log('[CHOREO-SERVER] 🔄 Initializing server...');
     
-    // Run all fixes
+    // Verificar usuario administrador antes de iniciar
+    await ensureAdminUser();
+    
+    // Validate and repair manifests
     validateAndRepairManifests();
+    
+    // Create fallback CSS files
     createFallbackCSS();
     
-    // Check if standalone mode is available
-    const standaloneServer = path.join(nextDir, 'standalone', 'server.js');
-    const useStandalone = fs.existsSync(standaloneServer);
+    // Initialize Next.js
+    const app = next({ dev, dir: process.cwd() });
+    const handle = app.getRequestHandler();
     
-    console.log(`[CHOREO-SERVER] 📦 Standalone mode: ${useStandalone}`);
+    await app.prepare();
+    console.log('[CHOREO-SERVER] ✅ Next.js prepared successfully');
     
-    if (useStandalone) {
-      console.log('[CHOREO-SERVER] 🚀 Using standalone server...');
-      
-      // Require and start the standalone server with our custom handler
-      const http = require('http');
-      const originalCreateServer = http.createServer;
-      
-      // Intercept server creation to add our custom handler
-      http.createServer = function(requestListener) {
-        const customListener = createRequestHandler(requestListener);
-        return originalCreateServer.call(this, customListener);
-      };
-      
-      // Start the standalone server
-      require(standaloneServer);
-      
-    } else {
-      console.log('[CHOREO-SERVER] 🚀 Using Next.js custom server...');
-      
-      // Create Next.js app
-      const app = next({ 
-        dev, 
-        dir: process.cwd(),
-        conf: {
-          output: 'standalone',
-          reactStrictMode: false,
-          experimental: { cssChunking: 'strict' }
-        }
-      });
-      
-      const handle = app.getRequestHandler();
-      
-      // Prepare and start server
-      await app.prepare();
-      console.log('[CHOREO-SERVER] ✅ Next.js app prepared');
-      
-      const server = createServer(createRequestHandler(handle));
-      
-      server.listen(port, hostname, () => {
-        console.log(`[CHOREO-SERVER] 🎉 Ready on http://${hostname}:${port}`);
-        console.log(`[CHOREO-SERVER] 🏥 Health check: http://${hostname}:${port}/health`);
-      });
-      
-      // Graceful shutdown
-      process.on('SIGTERM', () => {
-        console.log('[CHOREO-SERVER] 👋 SIGTERM received, shutting down gracefully...');
-        server.close(() => {
-          console.log('[CHOREO-SERVER] 💤 Server closed');
-          process.exit(0);
-        });
-      });
-    }
+    // Create HTTP server with custom request handler
+    const server = createServer(createRequestHandler(handle));
     
-    console.log('[CHOREO-SERVER] 🎯 Server initialization complete');
+    server.listen(port, hostname, (err) => {
+      if (err) throw err;
+      console.log(`[CHOREO-SERVER] 🚀 Server running at http://${hostname}:${port}`);
+      console.log('[CHOREO-SERVER] 🌟 LUMO Inventory System ready for connections');
+    });
     
   } catch (error) {
-    console.error('[CHOREO-SERVER] 💀 Failed to start server:', error);
+    console.error('[CHOREO-SERVER] ❌ Failed to start server:', error);
     process.exit(1);
   }
 }

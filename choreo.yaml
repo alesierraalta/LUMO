@@ -40,6 +40,8 @@ spec:
       echo "[DEPLOY] Environment variables:"
       echo "NODE_ENV: $NODE_ENV"
       echo "PORT: $PORT"
+      echo "[DEPLOY] Verificando usuario administrador..."
+      node scripts/ensure-admin.js
       echo "[DEPLOY] Starting Choreo-optimized server..."
       node choreo-server.js
   env:

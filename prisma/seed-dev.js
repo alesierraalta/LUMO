@@ -120,6 +120,25 @@ async function main() {
   }
 
   // 4. Crear usuarios de desarrollo
+  const rootAdminUser = await prisma.user.upsert({
+    where: { email: 'alesierraalta@gmail.com' },
+    update: {
+      passwordHash: await hashPassword('admin123'),
+      roleId: adminRole.id,
+      isActive: true,
+      isEmailVerified: true
+    },
+    create: {
+      email: 'alesierraalta@gmail.com',
+      passwordHash: await hashPassword('admin123'),
+      firstName: 'Alejandro',
+      lastName: 'Sierra',
+      roleId: adminRole.id,
+      isActive: true,
+      isEmailVerified: true
+    }
+  });
+
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@lumo.dev' },
     update: {},
@@ -293,6 +312,7 @@ async function main() {
 
   console.log('✅ Development database seeded successfully!');
   console.log('\n📋 Test Users Created:');
+  console.log('  - alesierraalta@gmail.com / admin123 (Root Admin)');
   console.log('  - admin@lumo.dev / admin123 (Admin)');
   console.log('  - manager@lumo.dev / manager123 (Manager)');
   console.log('  - user@lumo.dev / user123 (User)');

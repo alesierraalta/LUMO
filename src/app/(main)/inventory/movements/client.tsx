@@ -81,8 +81,8 @@ export default function MovementsClient() {
   
   // States
   const [isLoading, setIsLoading] = useState(true);
-  const [movements, setMovements] = useState<any[]>([]);
-  const [priceHistory, setPriceHistory] = useState<any[]>([]);
+  const [movements, setMovements] = useState([]);
+  const [priceHistory, setPriceHistory] = useState([]);
   const [isPriceHistoryLoading, setIsPriceHistoryLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 50, totalPages: 0 });
   const [categories, setCategories] = useState<Array<{id: string; name: string}>>([]);
@@ -109,14 +109,10 @@ export default function MovementsClient() {
         const response = await fetch('/api/categories');
         if (response.ok) {
           const data = await response.json();
-          setCategories(Array.isArray(data) ? data : []);
-        } else {
-          console.warn("Failed to load categories:", response.status);
-          setCategories([]);
+          setCategories(data);
         }
       } catch (error) {
         console.error("Error loading categories:", error);
-        setCategories([]);
       }
     }
     
@@ -142,32 +138,21 @@ export default function MovementsClient() {
         
         // Fetch data
         const response = await fetch(`/api/inventory/movements?${params.toString()}`);
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error("No autorizado para ver movimientos");
-          }
-          throw new Error("Failed to load movements");
-        }
+        if (!response.ok) throw new Error("Failed to load movements");
         
         const data = await response.json();
         
-        // Check if response has error
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
         // Process movements to ensure valid dates
-        const processedMovements = (data.data || []).map((movement: any) => ({
+        const processedMovements = data.data.map((movement: any) => ({
           ...movement,
           date: ensureValidDate(movement.date)
         }));
         
         setMovements(processedMovements);
-        setPagination(data.pagination || { total: 0, page: 1, limit: 50, totalPages: 0 });
+        setPagination(data.pagination);
       } catch (error) {
         console.error("Error loading movements:", error);
-        setMovements([]);
-        setPagination({ total: 0, page: 1, limit: 50, totalPages: 0 });
+        // Could add error state and display here
       } finally {
         setIsLoading(false);
       }
@@ -194,24 +179,12 @@ export default function MovementsClient() {
         
         // Fetch price history data
         const response = await fetch(`/api/inventory/price-history?${params.toString()}`);
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error("No autorizado para ver historial de precios");
-          }
-          throw new Error("Failed to load price history");
-        }
+        if (!response.ok) throw new Error("Failed to load price history");
         
         const data = await response.json();
-        
-        // Check if response has error
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        setPriceHistory(data.priceHistory || []);
+        setPriceHistory(data);
       } catch (error) {
         console.error("Error loading price history:", error);
-        setPriceHistory([]);
       } finally {
         setIsPriceHistoryLoading(false);
       }
@@ -442,7 +415,7 @@ export default function MovementsClient() {
                           <SelectValue placeholder="Seleccionar tipo" />
                         </SelectTrigger>
                         <SelectContent>
-                          {MOVEMENT_TYPES?.map((option) => (
+                          {MOVEMENT_TYPES.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -563,7 +536,7 @@ export default function MovementsClient() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas las categorías</SelectItem>
-                        {categories?.map((category) => (
+                        {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
                           </SelectItem>
@@ -579,7 +552,7 @@ export default function MovementsClient() {
                         <SelectValue placeholder="Ordenar por" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SORT_OPTIONS?.map((option) => (
+                        {SORT_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -654,7 +627,7 @@ export default function MovementsClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {movements?.map((movement: any) => {
+                  {movements.map((movement: any) => {
                     const typeInfo = getMovementTypeInfo(movement.type);
                     return (
                       <TableRow key={movement.id} className="group">
@@ -747,7 +720,7 @@ export default function MovementsClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {priceHistory?.map((record: any) => (
+                  {priceHistory.map((record: any) => (
                     <TableRow key={record.id} className="group">
                       <TableCell className="font-medium">
                         {formatDateTime(record.createdAt)}

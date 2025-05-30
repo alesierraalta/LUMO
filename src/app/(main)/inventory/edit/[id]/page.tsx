@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -53,16 +53,20 @@ interface Category {
   name: string
 }
 
+interface Location {
+  id: string
+  name: string
+}
+
 // Main component content
-async function EditProductContent({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
-  const productId = resolvedParams.id;
+function EditProductContent() {
+  const params = useParams()
+  const productId = params.id as string
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [locations, setLocations] = useState<any[]>([])
-  const productIdRef = useRef<string | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [cost, setCost] = useState("")
   const [price, setPrice] = useState("")
   const [margin, setMargin] = useState("")
@@ -72,23 +76,14 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
   const [changeReason, setChangeReason] = useState("")
   const [financialsChanged, setFinancialsChanged] = useState(false)
   
-  // First useEffect to safely extract the ID using useParams hook
+  // Load data once we have the ID
   useEffect(() => {
-    // Get ID from URL params using the useParams hook
-    const id = params.id as string
-    productIdRef.current = id
-  }, [params])
-  
-  // Second useEffect to fetch data once we have the ID
-  useEffect(() => {
-    // Don't proceed if we don't have a valid ID
-    if (!productIdRef.current) return
+    if (!productId) return
     
-    // Load product and categories data
     const loadData = async () => {
       try {
         // Fetch product data
-        const fetchProduct = fetch(`/api/products/${productIdRef.current}`, {
+        const fetchProduct = fetch(`/api/products/${productId}`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -212,7 +207,7 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
     }
     
     loadData()
-  }, [productIdRef.current])
+  }, [productId])
 
   // Check if financial values have changed
   useEffect(() => {
@@ -228,7 +223,7 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
-    if (!productIdRef.current || !product) {
+    if (!productId || !product) {
       console.error("Missing product ID or product data")
       return
     }
@@ -251,7 +246,7 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
 
     try {
       // Update basic product data
-      const response = await fetch(`/api/products/${productIdRef.current}`, {
+      const response = await fetch(`/api/products/${productId}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
@@ -274,7 +269,7 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
           changeReason: changeReason || "Updated price/cost"
         };
         
-        const financialsResponse = await fetch(`/api/inventory/${productIdRef.current}/financials`, {
+        const financialsResponse = await fetch(`/api/inventory/${productId}/financials`, {
           method: 'PATCH',
           credentials: 'include',
           headers: {
@@ -670,6 +665,6 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
 }
 
 // Export the main page component
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  return <EditProductContent params={params} />;
+export default function EditProductPage() {
+  return <EditProductContent />;
 } 

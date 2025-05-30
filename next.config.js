@@ -21,7 +21,6 @@ const nextConfig = {
   
   // Optimize for production
   productionBrowserSourceMaps: false,
-  optimizeFonts: true,
   
   // Image optimization
   images: {
@@ -99,7 +98,6 @@ const nextConfig = {
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    serverComponentsExternalPackages: ['@prisma/client'],
   },
 };
 

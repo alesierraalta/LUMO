@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { getAllCategories } from "@/services/productService";
-import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 // Validation schema for category creation
 const CategorySchema = z.object({
@@ -13,8 +12,17 @@ const CategorySchema = z.object({
 // GET /api/categories - List all categories
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
     // Allow all authenticated users to view categories for product assignment
-    // Only restrict creation/modification to admins
     const categories = await prisma.category.findMany({
       orderBy: {
         name: "asc",
@@ -33,14 +41,21 @@ export async function GET() {
 // POST /api/categories - Create a new category
 export async function POST(req: Request) {
   try {
-    // Verificar permisos antes de crear datos
-    const authCheck = await checkPermissionsWithDebug("admin");
+    const user = await getCurrentUser();
     
-    if (!authCheck.authorized) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!isAdmin(user)) {
       return NextResponse.json(
         { error: "No tienes permisos para crear categorías" },
         { status: 403 }
       );
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
     
     const body = await req.json();

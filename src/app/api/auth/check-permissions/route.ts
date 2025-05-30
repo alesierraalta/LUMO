@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasPermission, hasRole } from "@/lib/auth";
-import { UserRole } from "@/lib/auth";
+import { hasPermission, hasRole, UserRole } from "@/lib/auth/index";
 
 export async function POST(request: NextRequest) {
   try {

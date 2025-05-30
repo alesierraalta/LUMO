@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@/generated/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
-import { auth } from '@clerk/nextjs/server';
+import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // Product update validation schema
@@ -30,6 +30,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
     const resolvedParams = await params;
     const product = await prisma.inventoryItem.findUnique({
       where: { id: resolvedParams.id },
@@ -61,11 +71,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
     const resolvedParams = await params;
     const body = await req.json();
-    
-    // Get current user from auth
-    const { userId } = await auth();
     
     // Validate input data
     const validatedData = ProductUpdateSchema.parse(body);
@@ -156,7 +173,7 @@ export async function PATCH(
             oldMargin: Number(existingProduct.margin),
             newMargin: Number(updatedProduct.margin),
             changeReason: changeReason || "Actualización de precio",
-            userId: userId || undefined
+            userId: user.id
           }
         });
       }
@@ -194,12 +211,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
     const resolvedParams = await params;
     await prisma.inventoryItem.delete({
       where: { id: resolvedParams.id },
     });
-
-    return new NextResponse(null, { status: 204 });
+    
+    return NextResponse.json({ message: 'Product deleted successfully' });
   } catch (error) {
     if ((error as any).code === 'P2025') {
       return NextResponse.json(

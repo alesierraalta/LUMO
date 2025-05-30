@@ -1,60 +1,47 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
 
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const user = await getCurrentUser();
     
-    // Check permission (optional, implement as needed)
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: "Inventory item ID is required" },
-        { status: 400 }
-      );
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    // Fetch price history records for the inventory item
     const priceHistory = await prisma.priceHistory.findMany({
-      where: {
-        inventoryItemId: id,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { inventoryItemId: params.id },
+      orderBy: { createdAt: 'desc' },
       include: {
         user: {
           select: {
+            email: true,
             firstName: true,
             lastName: true,
-            email: true,
-          },
+          }
         },
-      },
+        inventoryItem: {
+          select: {
+            name: true,
+            sku: true,
+          }
+        }
+      }
     });
 
     return NextResponse.json(priceHistory);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching price history:", error);
-    
     return NextResponse.json(
-      { 
-        error: "Failed to fetch price history",
-        details: error.message 
-      },
+      { error: "Failed to fetch price history" },
       { status: 500 }
     );
   }

@@ -1,27 +1,20 @@
 "use client";
 
-import { BarChart3, ClipboardList, Settings } from "lucide-react";
+import { BarChart3, Settings } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const navigationCards = [
     {
-      title: "Panel",
-      description: "Ver resumen y estadísticas de inventario",
+      title: "Dashboard",
+      description: "Ver resumen y estadísticas del sistema",
       href: "/dashboard",
       icon: <BarChart3 className="h-6 w-6" />,
       color: "from-primary/20 to-primary/10 hover:from-primary/30 hover:to-primary/20 border-primary/20"
     },
     {
-      title: "Inventario",
-      description: "Gestionar productos y seguir niveles de stock",
-      href: "/inventory",
-      icon: <ClipboardList className="h-6 w-6" />,
-      color: "from-secondary/30 to-muted/30 hover:from-secondary/40 hover:to-muted/40 border-secondary/20"
-    },
-    {
-      title: "Configuración",
+      title: "Settings",
       description: "Personaliza la configuración del sistema",
       href: "/settings",
       icon: <Settings className="h-6 w-6" />,

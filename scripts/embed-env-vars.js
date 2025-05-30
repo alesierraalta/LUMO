@@ -1,186 +1,179 @@
+#!/usr/bin/env node
+
 /**
- * Embed Environment Variables for Client-Side Access
- * 
- * Ensures NEXT_PUBLIC environment variables are properly embedded
- * in the client-side bundle for Choreo deployment.
+ * Embed Environment Variables for LUMO Inventory
+ * Embeds public environment variables into client bundles during build
+ * Updated for custom JWT authentication (no Clerk)
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from .env files
-function loadEnvFiles() {
-  console.log('[EMBED-ENV] Loading environment files...');
+console.log('[EMBED-ENV] 🔧 Embedding environment variables for LUMO...');
+
+// Public environment variables that are safe for client-side
+function getPublicEnvVars() {
+  return {
+    NODE_ENV: process.env.NODE_ENV || 'production',
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    // Add any other public environment variables here
+  };
+}
+
+// Generate client-side environment script
+function generateClientEnvScript() {
+  const publicEnvVars = getPublicEnvVars();
   
-  // Try to load common .env files
-  const envFiles = ['.env', '.env.local', '.env.production'];
+  console.log('[EMBED-ENV] 📝 Public environment variables to embed:', {
+    NODE_ENV: publicEnvVars.NODE_ENV,
+    NEXT_PUBLIC_APP_VERSION: publicEnvVars.NEXT_PUBLIC_APP_VERSION,
+  });
+
+  return `
+// LUMO Inventory - Client Environment Variables
+// Auto-generated during build process
+(function() {
+  'use strict';
   
-  envFiles.forEach(envFile => {
-    const envPath = path.join(process.cwd(), envFile);
-    if (fs.existsSync(envPath)) {
-      console.log(`[EMBED-ENV] Loading ${envFile}...`);
-      try {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const lines = envContent.split('\n');
-        
-        lines.forEach(line => {
-          const trimmedLine = line.trim();
-          if (trimmedLine && !trimmedLine.startsWith('#') && trimmedLine.includes('=')) {
-            const [key, ...valueParts] = trimmedLine.split('=');
-            const value = valueParts.join('=');
-            if (key && value && !process.env[key.trim()]) {
-              process.env[key.trim()] = value.trim();
-            }
-          }
-        });
-        
-        console.log(`[EMBED-ENV] ✅ Loaded ${envFile}`);
-      } catch (error) {
-        console.log(`[EMBED-ENV] ⚠️ Error loading ${envFile}:`, error.message);
+  console.log('[LUMO-CLIENT-ENV] Loading client environment variables...');
+  
+  // Public environment variables safe for client-side
+  var env = ${JSON.stringify(publicEnvVars, null, 2)};
+  
+  // Set up window.__NEXT_ENV__ for Next.js compatibility
+  if (typeof window !== 'undefined') {
+    window.__NEXT_ENV__ = env;
+    
+    // Polyfill process.env for libraries that expect it
+    if (!window.process) {
+      window.process = {};
+    }
+    if (!window.process.env) {
+      window.process.env = {};
+    }
+    
+    // Copy environment variables to process.env polyfill
+    Object.assign(window.process.env, env);
+    
+    console.log('[LUMO-CLIENT-ENV] ✅ Environment variables loaded');
+    console.log('[LUMO-CLIENT-ENV] Available:', Object.keys(env));
+  }
+})();
+`.trim();
+}
+
+// Embed environment variables into static files
+function embedIntoStaticFiles() {
+  const envScript = generateClientEnvScript();
+  
+  // Locations where we need to embed environment variables
+  const locations = [
+    'public/env-config.js',
+    '.next/static/chunks/env-config.js',
+    '.next/server/env-config.js'
+  ];
+  
+  let embedded = 0;
+  
+  locations.forEach(location => {
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(location);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
       }
-    } else {
-      console.log(`[EMBED-ENV] ${envFile} not found`);
-    }
-  });
-}
-
-function createClientEnvFile() {
-  console.log('[EMBED-ENV] Creating client environment configuration...');
-  
-  // Get public environment variables only
-  const publicEnvVars = {};
-  Object.keys(process.env).forEach(key => {
-    if (key.startsWith('NEXT_PUBLIC_')) {
-      publicEnvVars[key] = process.env[key];
+      
+      // Write environment script
+      fs.writeFileSync(location, envScript, 'utf8');
+      console.log(`[EMBED-ENV] ✅ Embedded environment variables in: ${location}`);
+      embedded++;
+    } catch (error) {
+      console.log(`[EMBED-ENV] ⚠️ Could not embed in ${location}: ${error.message}`);
     }
   });
   
-  // Add NODE_ENV for completeness
-  publicEnvVars.NODE_ENV = process.env.NODE_ENV || 'production';
-  
-  // COMENTADO: Detección automática de claves inválidas
-  // Si quieres usar Clerk real, asegúrate de tener NEXT_PUBLIC_SKIP_CLERK_AUTH=false
-  // y claves reales de Clerk
-  /*
-  // Check if Clerk key is invalid (base64 placeholder)
-  const clerkKey = publicEnvVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const isInvalidKey = clerkKey && (
-    clerkKey.includes('Y2xlcmsuY2hvcmVvYXBwcy5kZXYk') || // "clerk.choreoapps.dev$"
-    clerkKey.includes('d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA') // placeholder
-  );
-  
-  if (isInvalidKey) {
-    console.log('[EMBED-ENV] ⚠️ Detected invalid/placeholder Clerk key, enabling skip auth mode');
-    publicEnvVars.NEXT_PUBLIC_SKIP_CLERK_AUTH = 'true';
-  }
-  */
-  
-  console.log('[EMBED-ENV] Environment variables to embed:', {
-    ...Object.keys(publicEnvVars).reduce((acc, key) => {
-      if (key.includes('CLERK_PUBLISHABLE_KEY')) {
-        acc[key] = publicEnvVars[key] ? publicEnvVars[key].substring(0, 15) + '...' : 'undefined';
-      } else {
-        acc[key] = publicEnvVars[key];
-      }
-      return acc;
-    }, {}),
-    invalidKeyDetected: false
-  });
-  
-  // Create the JavaScript content
-  const jsContent = `// Auto-generated client environment configuration
-// This file ensures NEXT_PUBLIC environment variables are available client-side
-window.__NEXT_ENV__ = ${JSON.stringify(publicEnvVars, null, 2)};
-
-// Polyfill process.env for client-side access
-if (typeof window !== 'undefined' && !window.process) {
-  window.process = { env: ${JSON.stringify(publicEnvVars, null, 2)} };
-}
-`;
-
-  // Write to public directory
-  const publicEnvPath = path.join(process.cwd(), 'public', 'env-config.js');
-  fs.writeFileSync(publicEnvPath, jsContent, 'utf8');
-  console.log('[EMBED-ENV] ✅ Created client environment file:', publicEnvPath);
-  
-  // ALSO copy to standalone public directory if it exists
-  const standalonePublicDir = path.join(process.cwd(), '.next', 'standalone', 'public');
-  if (fs.existsSync(standalonePublicDir)) {
-    const standaloneEnvPath = path.join(standalonePublicDir, 'env-config.js');
-    fs.writeFileSync(standaloneEnvPath, jsContent, 'utf8');
-    console.log('[EMBED-ENV] ✅ Also copied to standalone public:', standaloneEnvPath);
-  } else {
-    console.log('[EMBED-ENV] ⚠️ Standalone public directory not found, creating it...');
-    fs.mkdirSync(standalonePublicDir, { recursive: true });
-    const standaloneEnvPath = path.join(standalonePublicDir, 'env-config.js');
-    fs.writeFileSync(standaloneEnvPath, jsContent, 'utf8');
-    console.log('[EMBED-ENV] ✅ Created standalone public directory and copied env file');
-  }
-  
-  // ALSO copy to standalone root if it exists (some deployments serve from here)
-  const standaloneRootDir = path.join(process.cwd(), '.next', 'standalone');
-  if (fs.existsSync(standaloneRootDir)) {
-    const standaloneRootEnvPath = path.join(standaloneRootDir, 'env-config.js');
-    fs.writeFileSync(standaloneRootEnvPath, jsContent, 'utf8');
-    console.log('[EMBED-ENV] ✅ Also copied to standalone root:', standaloneRootEnvPath);
-  }
-  
-  return publicEnvVars;
+  return embedded;
 }
 
-function injectEnvScriptIntoHtml() {
-  console.log('[EMBED-ENV] Checking for HTML files to inject environment script...');
-  
-  // Check if build manifest exists to ensure we're in a built environment
-  const buildManifestPath = path.join(process.cwd(), '.next', 'build-manifest.json');
-  if (fs.existsSync(buildManifestPath)) {
-    console.log('[EMBED-ENV] ✅ Build manifest found');
-  } else {
-    console.log('[EMBED-ENV] ⚠️ Build manifest not found, skipping HTML injection');
-    return;
-  }
-}
-
-function main() {
-  console.log('[EMBED-ENV] Starting environment variable embedding process...');
-  console.log('[EMBED-ENV] Current working directory:', process.cwd());
-  console.log('[EMBED-ENV] All environment variables starting with NEXT_PUBLIC_:');
-  
-  Object.keys(process.env).forEach(key => {
-    if (key.startsWith('NEXT_PUBLIC_')) {
-      console.log(`[EMBED-ENV]   ${key}: ${process.env[key] ? process.env[key].substring(0, 15) + '...' : 'undefined'}`);
-    }
-  });
+// Update Next.js runtime config
+function updateRuntimeConfig() {
+  const configPath = '.next/runtime-config.json';
   
   try {
-    // Load environment files first
-    loadEnvFiles();
+    const publicEnvVars = getPublicEnvVars();
     
-    const envVars = createClientEnvFile();
-    injectEnvScriptIntoHtml();
+    const runtimeConfig = {
+      serverRuntimeConfig: {},
+      publicRuntimeConfig: publicEnvVars
+    };
     
-    // Warn about missing critical environment variables
-    if (!envVars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      console.log('[EMBED-ENV] ⚠️ WARNING: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set!');
-      console.log('[EMBED-ENV] This will cause client-side authentication to fail.');
-      console.log('[EMBED-ENV] Available NEXT_PUBLIC_ environment variables:');
-      Object.keys(process.env).forEach(key => {
-        if (key.startsWith('NEXT_PUBLIC_')) {
-          console.log(`[EMBED-ENV]   ${key}: ${process.env[key] ? 'SET' : 'NOT SET'}`);
-        }
-      });
-    } else {
-      console.log('[EMBED-ENV] ✅ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is properly set');
+    // Ensure directory exists
+    const dir = path.dirname(configPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     
-    console.log('[EMBED-ENV] ✅ Environment embedding completed successfully');
+    fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2), 'utf8');
+    console.log('[EMBED-ENV] ✅ Updated Next.js runtime config');
+    return true;
   } catch (error) {
-    console.error('[EMBED-ENV] ❌ Error during environment embedding:', error);
-    process.exit(1);
+    console.log(`[EMBED-ENV] ⚠️ Could not update runtime config: ${error.message}`);
+    return false;
   }
 }
 
-// Run the script
-main();
+// Validate environment before embedding
+function validateEnvironment() {
+  console.log('[EMBED-ENV] 🔍 Validating environment...');
+  
+  const publicEnvVars = getPublicEnvVars();
+  
+  // Check that we have at least NODE_ENV
+  if (!publicEnvVars.NODE_ENV) {
+    console.error('[EMBED-ENV] ❌ NODE_ENV is not set');
+    return false;
+  }
+  
+  console.log('[EMBED-ENV] ✅ Environment validation passed');
+  return true;
+}
 
-module.exports = { main, createClientEnvFile }; 
+// Main function
+function main() {
+  console.log('[EMBED-ENV] 🚀 LUMO Environment Variable Embedding');
+  console.log('[EMBED-ENV] ================================');
+  
+  // Validate environment first
+  if (!validateEnvironment()) {
+    console.error('[EMBED-ENV] ❌ Environment validation failed, aborting...');
+    process.exit(1);
+  }
+  
+  // Embed into static files
+  console.log('\n[EMBED-ENV] 📁 Embedding into static files...');
+  const embedded = embedIntoStaticFiles();
+  console.log(`[EMBED-ENV] ✅ Successfully embedded in ${embedded} locations`);
+  
+  // Update runtime config
+  console.log('\n[EMBED-ENV] ⚙️ Updating runtime configuration...');
+  const runtimeUpdated = updateRuntimeConfig();
+  
+  if (runtimeUpdated) {
+    console.log('\n[EMBED-ENV] 🎉 Environment variable embedding completed successfully!');
+  } else {
+    console.log('\n[EMBED-ENV] ⚠️ Environment variable embedding completed with warnings');
+  }
+}
+
+// Export for use in other scripts
+module.exports = {
+  embedIntoStaticFiles,
+  updateRuntimeConfig,
+  generateClientEnvScript,
+  getPublicEnvVars
+};
+
+// Run if called directly
+if (require.main === module) {
+  main();
+} 

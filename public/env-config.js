@@ -1,26 +1,32 @@
-// Auto-generated client environment configuration
-// This file ensures NEXT_PUBLIC environment variables are available client-side
-window.__NEXT_ENV__ = {
-  "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/dashboard",
-  "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/dashboard",
-  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA",
-  "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/sign-in",
-  "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/sign-up",
-  "NEXT_PUBLIC_STACK_PROJECT_ID": "****************************",
-  "NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY": "****************************************",
-  "NODE_ENV": "production"
+// LUMO Inventory - Client Environment Variables
+// Auto-generated during build process
+(function() {
+  'use strict';
+  
+  console.log('[LUMO-CLIENT-ENV] Loading client environment variables...');
+  
+  // Public environment variables safe for client-side
+  var env = {
+  "NODE_ENV": "production",
+  "NEXT_PUBLIC_APP_VERSION": "1.0.0"
 };
-
-// Polyfill process.env for client-side access
-if (typeof window !== 'undefined' && !window.process) {
-  window.process = { env: {
-  "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/dashboard",
-  "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/dashboard",
-  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_d2lubmluZy13YWxsYWJ5LTUuY2xlcmsuYWNjb3VudHMuZGV2JA",
-  "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/sign-in",
-  "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/sign-up",
-  "NEXT_PUBLIC_STACK_PROJECT_ID": "****************************",
-  "NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY": "****************************************",
-  "NODE_ENV": "production"
-} };
-}
+  
+  // Set up window.__NEXT_ENV__ for Next.js compatibility
+  if (typeof window !== 'undefined') {
+    window.__NEXT_ENV__ = env;
+    
+    // Polyfill process.env for libraries that expect it
+    if (!window.process) {
+      window.process = {};
+    }
+    if (!window.process.env) {
+      window.process.env = {};
+    }
+    
+    // Copy environment variables to process.env polyfill
+    Object.assign(window.process.env, env);
+    
+    console.log('[LUMO-CLIENT-ENV] ✅ Environment variables loaded');
+    console.log('[LUMO-CLIENT-ENV] Available:', Object.keys(env));
+  }
+})();

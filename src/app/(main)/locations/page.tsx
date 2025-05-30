@@ -1,15 +1,19 @@
 import { Suspense } from "react";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import LocationsClient from "./client";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default async function LocationsPage() {
-  const { userId } = await auth();
+  const user = await getCurrentUser();
 
-  if (!userId) {
-    redirect("/sign-in");
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (!prisma) {
+    throw new Error("Database not available");
   }
 
   // Obtener todas las ubicaciones

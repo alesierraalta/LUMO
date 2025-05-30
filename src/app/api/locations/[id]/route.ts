@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
 
 // GET /api/locations/[id] - Obtener ubicación específica
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
-    const { id } = await params;
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "No autorizado" }, 
-        { status: 401 }
-      );
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
     const location = await prisma.location.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: {
         _count: {
           select: {
@@ -30,17 +30,14 @@ export async function GET(
     });
 
     if (!location) {
-      return NextResponse.json(
-        { error: "Ubicación no encontrada" }, 
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Location not found" }, { status: 404 });
     }
 
     return NextResponse.json(location);
   } catch (error) {
     console.error("Error fetching location:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" }, 
+      { error: "Failed to fetch location" },
       { status: 500 }
     );
   }
@@ -49,45 +46,55 @@ export async function GET(
 // PUT /api/locations/[id] - Actualizar ubicación
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
-    const { id } = await params;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "No autorizado" }, 
-        { status: 401 }
-      );
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, isActive } = await request.json();
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
 
-    if (!name || name.trim() === "") {
+    const body = await request.json();
+    const { name, description, isActive } = body;
+
+    if (!name) {
       return NextResponse.json(
-        { error: "El nombre de la ubicación es requerido" }, 
+        { error: "Name is required" },
         { status: 400 }
       );
     }
 
-    // Verificar si existe otra ubicación con el mismo nombre
-    const existingLocation = await prisma.location.findFirst({
-      where: {
+    // Check if location exists
+    const existingLocation = await prisma.location.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!existingLocation) {
+      return NextResponse.json({ error: "Location not found" }, { status: 404 });
+    }
+
+    // Check if name is already taken by another location
+    const nameConflict = await prisma.location.findFirst({
+      where: { 
         name: name.trim(),
-        id: { not: id }
+        id: { not: params.id }
       }
     });
 
-    if (existingLocation) {
+    if (nameConflict) {
       return NextResponse.json(
-        { error: "Ya existe otra ubicación con ese nombre" }, 
+        { error: "Another location with this name already exists" },
         { status: 400 }
       );
     }
 
     const location = await prisma.location.update({
-      where: { id },
+      where: { id: params.id },
       data: {
         name: name.trim(),
         description: description?.trim() || null,
@@ -106,7 +113,7 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating location:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" }, 
+      { error: "Failed to update location" },
       { status: 500 }
     );
   }
@@ -115,22 +122,22 @@ export async function PUT(
 // DELETE /api/locations/[id] - Eliminar ubicación
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
-    const { id } = await params;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "No autorizado" }, 
-        { status: 401 }
-      );
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verificar si la ubicación existe
-    const location = await prisma.location.findUnique({
-      where: { id },
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
+    // Check if location exists
+    const existingLocation = await prisma.location.findUnique({
+      where: { id: params.id },
       include: {
         _count: {
           select: {
@@ -140,32 +147,27 @@ export async function DELETE(
       }
     });
 
-    if (!location) {
-      return NextResponse.json(
-        { error: "Ubicación no encontrada" }, 
-        { status: 404 }
-      );
+    if (!existingLocation) {
+      return NextResponse.json({ error: "Location not found" }, { status: 404 });
     }
 
-    // Verificar si hay productos usando esta ubicación
-    if (location._count.inventory > 0) {
+    // Check if location has inventory items
+    if (existingLocation._count.inventory > 0) {
       return NextResponse.json(
-        { 
-          error: `No se puede eliminar la ubicación porque tiene ${location._count.inventory} producto(s) asignado(s)` 
-        }, 
+        { error: "Cannot delete location with inventory items. Please reassign or remove items first." },
         { status: 400 }
       );
     }
 
     await prisma.location.delete({
-      where: { id }
+      where: { id: params.id }
     });
 
-    return NextResponse.json({ message: "Ubicación eliminada exitosamente" });
+    return NextResponse.json({ message: "Location deleted successfully" });
   } catch (error) {
     console.error("Error deleting location:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" }, 
+      { error: "Failed to delete location" },
       { status: 500 }
     );
   }

@@ -1,12 +1,13 @@
-import { auth as serverAuth } from '@clerk/nextjs/server';
-import { useAuth as useClientAuth } from '@clerk/nextjs';
-import { prisma } from '@/lib/prisma';
+// Re-export all auth functions from our custom auth system
+export * from '@/lib/auth';
 
-export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer';
+import { prisma } from '@/lib/prisma';
+import { getCurrentUser as getUser } from '@/lib/auth';
+
+export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer' | 'user';
 
 export interface UserData {
   id: string;
-  clerkId: string;
   email: string;
   firstName?: string | null;
   lastName?: string | null;
@@ -18,71 +19,11 @@ export interface UserData {
 }
 
 /**
- * Get the current Clerk user ID depending on client or server context
- */
-export function getAuth() {
-  // Server-side
-  if (typeof window === 'undefined') {
-    return serverAuth();
-  }
-  
-  // Client-side (must be used in a component)
-  throw new Error('getAuth() can only be used on the server. Use the useAuth() hook on the client.');
-}
-
-/**
- * Ensure user is synced with database
- */
-async function ensureUserIsSynced(): Promise<void> {
-  if (typeof window === 'undefined') return; // Only run on client-side
-  
-  try {
-    // Call the sync-user API endpoint
-    const response = await fetch('/api/auth/sync-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to sync user');
-    }
-  } catch (error) {
-    console.error('Error syncing user:', error);
-  }
-}
-
-/**
  * Get the current authenticated user with role and permissions
  */
 export async function getCurrentUser(): Promise<UserData | null> {
-  const auth = await getAuth();
-  const userId = auth.userId;
+  const user = await getUser();
   
-  if (!userId) {
-    return null;
-  }
-
-  // Ensure user is synced with database
-  await ensureUserIsSynced();
-
-  // Find user in our database
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: {
-      role: {
-        include: {
-          permissions: {
-            include: {
-              permission: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
   if (!user) {
     return null;
   }
@@ -94,7 +35,6 @@ export async function getCurrentUser(): Promise<UserData | null> {
 
   return {
     id: user.id,
-    clerkId: user.clerkId,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -149,6 +89,10 @@ export async function isAdmin(): Promise<boolean> {
  * Get user roles for select options
  */
 export async function getUserRoles() {
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  
   return prisma.role.findMany({
     select: {
       id: true,
@@ -159,4 +103,8 @@ export async function getUserRoles() {
       name: 'asc',
     },
   });
-} 
+}
+
+// Compatibility aliases for easier migration
+export { getCurrentUser as auth } from '@/lib/auth';
+export { getCurrentUser as useAuth } from '@/lib/auth'; 

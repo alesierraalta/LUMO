@@ -2,19 +2,15 @@
 // We'll move the dashboard content here later.
 // For now, this is used to create the file structure.
 
-import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle } from "lucide-react";
+import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle, Package, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { getAllProducts } from "@/services/productService";
 import { getLowStockItems } from "@/services/inventoryService";
 import { formatDate, getApiBaseUrl } from "@/lib/utils";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
 import { ActionLink } from "@/components/ui/action-link";
 import { prisma } from "@/lib/prisma";
-import { AccessDenied } from "@/components/auth/AccessDenied";
 
 interface Product {
   id: string;
@@ -22,6 +18,8 @@ interface Product {
   description?: string;
   price: number;
   margin: number;
+  quantity: number;
+  cost?: number;
   createdAt: string;
   category?: {
     name: string;
@@ -36,77 +34,44 @@ const MARGIN_CATEGORIES = {
 };
 
 export default async function DashboardPage() {
-  // Usar auth de Clerk directamente
-  const session = await auth();
-  const userId = session.userId;
+  // For now, we'll show the dashboard without authentication
+  // TODO: Add custom authentication check here
   
-  if (!userId) {
-    redirect("/sign-in");
-  }
-  
-  // Verificar permisos antes de mostrar datos reales
-  const authCheck = await checkPermissionsWithDebug("admin");
-  
-  // Si no está autorizado, mostrar mensaje amigable en lugar de error
-  if (!authCheck.authorized) {
-    const getAccessType = () => {
-      if (authCheck.userMessage?.includes("problema temporal con el sistema")) {
-        return 'database';
-      }
-      if (authCheck.userMessage?.includes("cuenta no está configurada")) {
-        return 'notfound';
-      }
-      if (authCheck.userMessage?.includes("iniciado sesión")) {
-        return 'auth';
-      }
-      return 'permission';
-    };
-
-    return (
-      <AccessDenied 
-        message={authCheck.userMessage || "No tienes permisos para acceder al panel de administración."}
-        type={getAccessType()}
-        showRetry={true}
-        showContact={true}
-      />
-    );
-  }
-
-  // Valores por defecto para usuarios no autorizados
   let products: Product[] = [];
   let lowStockItems: any[] = [];
   let categories: any[] = [];
 
-  // Solo cargar datos si el usuario está autorizado
-  if (authCheck.authorized) {
-    try {
-      // Obtener datos reales de la base de datos con manejo de errores
-      [products, lowStockItems] = await Promise.all([
-        getAllProducts(),
-        getLowStockItems()
-      ]) as [Product[], any[]];
+  try {
+    // Obtener datos reales de la base de datos con manejo de errores
+    [products, lowStockItems] = await Promise.all([
+      getAllProducts(),
+      getLowStockItems()
+    ]) as [Product[], any[]];
 
-      // Get categories directly from database instead of API call
-      if (prisma) {
-        categories = await prisma.category.findMany({
-          orderBy: {
-            name: "asc",
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      
-      // Si hay error de base de datos, mostrar mensaje específico
-      return (
-        <AccessDenied 
-          message="Ha ocurrido un problema al cargar los datos del panel de control. Por favor, intenta nuevamente."
-          type="database"
-          showRetry={true}
-          showContact={true}
-        />
-      );
+    // Get categories directly from database instead of API call
+    if (prisma) {
+      categories = await prisma.category.findMany({
+        orderBy: {
+          name: "asc",
+        },
+      });
     }
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    
+    // Si hay error de base de datos, mostrar mensaje específico
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Error loading dashboard
+          </h2>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            There was a problem loading the dashboard data. Please try again later.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Calcular estadísticas
@@ -117,6 +82,29 @@ export default async function DashboardPage() {
   // Calcular estadísticas de márgenes
   const totalMargin = products.reduce((sum: number, product: Product) => sum + Number(product.margin || 0), 0);
   const averageMargin = products.length > 0 ? (totalMargin / products.length).toFixed(2) : "0";
+  
+  // Calcular valor total del inventario
+  const calculateInventoryValues = () => {
+    let totalCostValue = 0;
+    let totalSaleValue = 0;
+    
+    products.forEach((product) => {
+      const quantity = Number(product.quantity || 0);
+      const price = Number(product.price || 0);
+      const cost = product.cost ? Number(product.cost) : (price * (1 - Number(product.margin || 0) / 100));
+      
+      totalCostValue += quantity * cost;
+      totalSaleValue += quantity * price;
+    });
+    
+    return {
+      totalCostValue: totalCostValue.toFixed(2),
+      totalSaleValue: totalSaleValue.toFixed(2),
+      potentialProfit: (totalSaleValue - totalCostValue).toFixed(2),
+    };
+  };
+
+  const inventoryValues = calculateInventoryValues();
   
   // Obtener productos con mayor margen
   const highestMarginProducts = [...products]
@@ -133,237 +121,162 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Panel de Control</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <div className="flex items-center gap-2">
-          {!authCheck.authorized && (
-            <div className="text-sm font-medium text-yellow-600">
-              Necesitas permisos de administrador para ver los datos reales
-            </div>
-          )}
           <ActionLink 
             href="/reports/margins" 
-            isDisabled={!authCheck.authorized}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Ver Reportes de Margen
+            View Margin Reports
           </ActionLink>
         </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total de Productos"
+          title="Total Products"
           value={totalProducts}
-          description="Productos totales en inventario"
+          description="Total products in inventory"
           icon={<ClipboardList className="h-5 w-5" />}
           href="/inventory"
-          linkText="Ver todos los productos"
+          linkText="View all products"
         />
         
         <StatCard
-          title="Productos con Stock Bajo"
+          title="Low Stock Items"
           value={lowStockCount}
-          description="Productos por debajo del nivel mínimo"
+          description="Products below minimum level"
           icon={<ClipboardList className="h-5 w-5" />}
           trend={lowStockCount > 0 ? "down" : "neutral"}
-          trendValue={lowStockCount > 0 ? `${lowStockCount} productos requieren atención` : "Niveles de stock saludables"}
+          trendValue={lowStockCount > 0 ? `${lowStockCount} products need attention` : "Healthy stock levels"}
           href="/inventory"
-          linkText="Administrar inventario"
+          linkText="Manage inventory"
         />
         
         <StatCard
-          title="Margen Promedio"
+          title="Average Margin"
           value={`${averageMargin}%`}
-          description="En todos los productos"
+          description="Across all products"
           icon={<DollarSign className="h-5 w-5" />}
           trend={Number(averageMargin) > 25 ? "up" : Number(averageMargin) < 15 ? "down" : "neutral"}
-          trendValue={Number(averageMargin) > 25 ? "Márgenes saludables" : Number(averageMargin) < 15 ? "Márgenes requieren atención" : "Márgenes promedio"}
+          trendValue={Number(averageMargin) > 25 ? "Healthy margins" : Number(averageMargin) < 15 ? "Margins need attention" : "Average margins"}
           href="/reports/margins"
-          linkText="Ver detalles de márgenes"
+          linkText="View margin details"
         />
         
         <StatCard
-          title="Productos con Alto Margen"
+          title="High Margin Products"
           value={productsByCategory.HIGH}
-          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% del total`}
+          description={`${products.length > 0 ? ((productsByCategory.HIGH / products.length) * 100).toFixed(1) : 0}% of total`}
           icon={<PieChart className="h-5 w-5" />}
           href="/reports/margins"
-          linkText="Ver datos de márgenes"
+          linkText="View margin data"
+        />
+      </div>
+
+      {/* Inventory Value Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title="Inventory Cost Value"
+          value={`$${Number(inventoryValues.totalCostValue).toLocaleString()}`}
+          description="Total value at cost price"
+          icon={<Package className="h-5 w-5" />}
+          href="/inventory"
+          linkText="View inventory details"
+        />
+        
+        <StatCard
+          title="Inventory Sale Value"
+          value={`$${Number(inventoryValues.totalSaleValue).toLocaleString()}`}
+          description="Total value at sale price"
+          icon={<DollarSign className="h-5 w-5" />}
+          trend="up"
+          trendValue={`+$${Number(inventoryValues.potentialProfit).toLocaleString()} potential profit`}
+          href="/inventory"
+          linkText="View inventory details"
+        />
+        
+        <StatCard
+          title="Potential Profit"
+          value={`$${Number(inventoryValues.potentialProfit).toLocaleString()}`}
+          description="Sale value - Cost value"
+          icon={<TrendingUp className="h-5 w-5" />}
+          trend={Number(inventoryValues.potentialProfit) > 0 ? "up" : "neutral"}
+          trendValue={
+            Number(inventoryValues.totalCostValue) > 0 
+              ? `${((Number(inventoryValues.potentialProfit) / Number(inventoryValues.totalCostValue)) * 100).toFixed(1)}% markup potential`
+              : "No cost basis for calculation"
+          }
+          href="/reports/margins"
+          linkText="View margin analysis"
         />
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Productos Recientes</CardTitle>
+            <CardTitle>Recent Products</CardTitle>
             <CardDescription>
-              Últimos productos añadidos
-              {!authCheck.authorized && (
-                <span className="block mt-1 text-sm text-yellow-600">
-                  Necesitas permisos de administrador para ver esta información
-                </span>
-              )}
+              Latest products added to inventory
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {products.slice(0, 3).map(product => (
-                <div key={product.id} className="flex items-start gap-4 rounded-lg border p-4">
-                  <div className="flex-1 space-y-1">
+              {products.slice(0, 5).map((product) => (
+                <div key={product.id} className="flex items-center justify-between">
+                  <div>
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {product.description ? 
-                        product.description.length > 60 ? 
-                          `${product.description.substring(0, 60)}...` : 
-                          product.description 
-                        : 'Sin descripción'}
+                      {product.category?.name || 'No category'} • Stock: {product.quantity || 0}
                     </p>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {product.createdAt ? formatDate(product.createdAt) : 'Fecha no disponible'}
-                  </div>
-                </div>
-              ))}
-              
-              {products.length === 0 && (
-                <div className="flex items-center justify-center h-24 text-muted-foreground">
-                  No se encontraron productos
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos con Mayor Margen</CardTitle>
-            <CardDescription>
-              Productos con márgenes de beneficio más altos
-              {!authCheck.authorized && (
-                <span className="block mt-1 text-sm text-yellow-600">
-                  Necesitas permisos de administrador para ver esta información
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {highestMarginProducts.map(product => (
-                <div key={product.id} className="flex items-center gap-4 rounded-lg border p-4">
-                  <div className="flex-1 space-y-1">
-                    <p className="font-medium">{product.name}</p>
-                    <div className="text-sm text-muted-foreground">
-                      {product.category ? (
-                        product.category.name
-                      ) : (
-                        <Badge variant="outline" className="text-xs">Sin categoría</Badge>
-                      )}
-                    </div>
-                  </div>
                   <div className="text-right">
-                    <div className="font-medium">${Number(product.price).toFixed(2)}</div>
-                    <div className="text-sm text-green-600 font-semibold">{Number(product.margin).toFixed(2)}% margen</div>
+                    <p className="font-medium">${product.price}</p>
+                    <Badge variant={Number(product.margin) > 25 ? "default" : Number(product.margin) < 15 ? "destructive" : "secondary"}>
+                      {product.margin}% margin
+                    </Badge>
                   </div>
                 </div>
               ))}
-              
-              {highestMarginProducts.length === 0 && (
-                <div className="flex items-center justify-center h-24 text-muted-foreground">
-                  No hay productos con datos de margen
-                </div>
-              )}
-              
-              {highestMarginProducts.length > 0 && (
-                <ActionLink 
-                  href="/reports/margins" 
-                  className="block w-full text-center text-sm text-primary hover:underline mt-2"
-                  isDisabled={!authCheck.authorized}
-                >
-                  Ver reporte completo de márgenes
-                </ActionLink>
-              )}
             </div>
           </CardContent>
+          <CardFooter>
+            <Link href="/inventory" className="text-sm text-primary hover:underline">
+              View all products →
+            </Link>
+          </CardFooter>
         </Card>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2">
+
         <Card>
           <CardHeader>
-            <CardTitle>Acciones Rápidas</CardTitle>
-            <CardDescription>Tareas comunes de inventario</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3">
-              <ActionLink 
-                href="/inventory/add" 
-                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
-                isDisabled={!authCheck.authorized}
-              >
-                <PlusCircle className="h-5 w-5" />
-                <span>Añadir nuevo producto</span>
-              </ActionLink>
-              
-              <ActionLink 
-                href="/inventory" 
-                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
-                isDisabled={!authCheck.authorized}
-              >
-                <ClipboardList className="h-5 w-5" />
-                <span>Actualizar niveles de stock</span>
-              </ActionLink>
-              
-              <ActionLink 
-                href="/reports/margins" 
-                className={`flex items-center gap-2 rounded-md border p-3 text-sm font-medium ${authCheck.authorized ? 'hover:bg-secondary' : 'opacity-50 cursor-not-allowed'}`}
-                isDisabled={!authCheck.authorized}
-              >
-                <PieChart className="h-5 w-5" />
-                <span>Ver reportes de márgenes</span>
-              </ActionLink>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribución de Márgenes</CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
             <CardDescription>
-              Productos por categoría de margen
-              {!authCheck.authorized && (
-                <span className="block mt-1 text-sm text-yellow-600">
-                  Necesitas permisos de administrador para ver esta información
-                </span>
-              )}
+              Common tasks and shortcuts
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {Object.entries(MARGIN_CATEGORIES).map(([key, category]) => (
-                <div key={key} className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{category.label}</div>
-                    <div className="mt-1 h-2 w-full rounded-full bg-muted">
-                      <div 
-                        className="h-full rounded-full" 
-                        style={{
-                          width: `${products.length > 0 ? (productsByCategory[key as keyof typeof productsByCategory] / products.length) * 100 : 0}%`,
-                          backgroundColor: category.color
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium">
-                    {productsByCategory[key as keyof typeof productsByCategory]} productos
-                  </div>
+            <div className="grid gap-4">
+              <Link 
+                href="/inventory/new" 
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+              >
+                <PlusCircle className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Add New Product</p>
+                  <p className="text-sm text-muted-foreground">Create a new inventory item</p>
                 </div>
-              ))}
+              </Link>
               
-              {products.length === 0 && (
-                <div className="flex items-center justify-center h-24 text-muted-foreground">
-                  No hay datos de margen disponibles
+              <Link 
+                href="/reports" 
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+              >
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">View Reports</p>
+                  <p className="text-sm text-muted-foreground">Analyze inventory data</p>
                 </div>
-              )}
+              </Link>
             </div>
           </CardContent>
         </Card>

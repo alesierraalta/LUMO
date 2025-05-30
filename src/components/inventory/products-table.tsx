@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Edit, MoreHorizontal, Trash, Tags, Calculator } from "lucide-react"
+import { Edit, MoreHorizontal, Trash, Tags, Calculator, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -36,6 +36,8 @@ interface Product {
     id: string
     name: string
   }
+  location_name?: string
+  locationId?: string
 }
 
 interface ProductsTableProps {
@@ -96,6 +98,7 @@ export default function ProductsTable({ products }: ProductsTableProps) {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Category</TableHead>
+            <TableHead>Location</TableHead>
             <TableHead>Cost</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Margin</TableHead>
@@ -117,6 +120,16 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                   </Link>
                 ) : (
                   <Badge variant="outline" className="text-xs">Sin categoría</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {product.location_name ? (
+                  <div className="flex items-center text-sm">
+                    <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
+                    {product.location_name}
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-xs">Sin ubicación</Badge>
                 )}
               </TableCell>
               <TableCell>{formatCurrency(product.cost)}</TableCell>
@@ -171,7 +184,7 @@ export default function ProductsTable({ products }: ProductsTableProps) {
           ))}
           {products.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={7} className="h-24 text-center">
                 No products found.
               </TableCell>
             </TableRow>

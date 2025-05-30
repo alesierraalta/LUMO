@@ -11,7 +11,7 @@ datasource db {
 
 model Category {
   id          String          @id @default(cuid())
-  name        String
+  name        String          @unique
   description String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -113,21 +113,48 @@ model SaleTransaction {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  clerkId        String          @unique
-  email          String          @unique
-  firstName      String?
-  lastName       String?
-  roleId         String
-  role           Role            @relation(fields: [roleId], references: [id])
-  metadata       Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  stockMovements StockMovement[]
-  sales          Sale[]
-  priceHistory   PriceHistory[]
+  id              String          @id @default(cuid())
+  email           String          @unique
+  passwordHash    String
+  firstName       String?
+  lastName        String?
+  roleId          String
+  role            Role            @relation(fields: [roleId], references: [id])
+  metadata        Json?
+  isActive        Boolean         @default(true)
+  isEmailVerified Boolean         @default(false)
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  lastLoginAt     DateTime?
+  loginAttempts   Int             @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  stockMovements  StockMovement[]
+  sales           Sale[]
+  priceHistory    PriceHistory[]
+  sessions        UserSession[]
+  customPermissions UserPermission[]
 
   @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userAgent String?
+  ipAddress String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("user_sessions")
 }
 
 model Role {
@@ -151,6 +178,7 @@ model Permission {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   roles       RolePermission[]
+  users       UserPermission[]
 
   @@map("permissions")
 }
@@ -185,6 +213,20 @@ model PriceHistory {
   @@index([inventoryItemId])
   @@index([userId])
   @@map("price_history")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  granted      Boolean    @default(true) // true = granted, false = explicitly denied
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
 }
 
 enum MovementType {

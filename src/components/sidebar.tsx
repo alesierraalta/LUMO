@@ -3,16 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, Home, Settings, Menu, X, Users, AlertCircle, Loader2, MapPin, Tag, ShoppingBag, FileText, Store } from "lucide-react";
+import { BarChart3, Home, Settings, Menu, X, Users, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAppAuth } from "@/components/auth/auth-provider";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SidebarLinkProps {
   href: string;
   icon: React.ElementType;
   title: string;
   collapsed?: boolean;
+}
+
+interface UserPermissions {
+  dashboard: boolean;
+  inventory: boolean;
+  settings: boolean;
+  userManagement: boolean;
 }
 
 const SidebarLink = ({ href, icon: Icon, title, collapsed = false }: SidebarLinkProps) => {
@@ -37,48 +42,23 @@ const SidebarLink = ({ href, icon: Icon, title, collapsed = false }: SidebarLink
 
 interface SidebarLinksProps {
   collapsed: boolean;
+  permissions: UserPermissions;
 }
 
-function SidebarLinks({ collapsed }: SidebarLinksProps) {
-  const { isAdmin, syncingUser, syncError } = useAppAuth();
-  
+function SidebarLinks({ collapsed, permissions }: SidebarLinksProps) {
   return (
     <>
-      <SidebarLink href="/dashboard" icon={BarChart3} title="Panel" collapsed={collapsed} />
-      <SidebarLink href="/inventory" icon={Boxes} title="Inventario" collapsed={collapsed} />
-      <SidebarLink href="/categories" icon={Tag} title="Categorías" collapsed={collapsed} />
-      <SidebarLink href="/locations" icon={MapPin} title="Ubicaciones" collapsed={collapsed} />
-      <SidebarLink href="/reports" icon={FileText} title="Reportes" collapsed={collapsed} />
-      <SidebarLink href="/tienda" icon={Store} title="Tienda" collapsed={collapsed} />
-      <SidebarLink href="/settings" icon={Settings} title="Configuración" collapsed={collapsed} />
-      
-      {/* Admin-only links */}
-      {isAdmin && (
-        <SidebarLink href="/settings/users" icon={Users} title="Usuarios" collapsed={collapsed} />
+      {permissions.dashboard && (
+        <SidebarLink href="/dashboard" icon={BarChart3} title="Dashboard" collapsed={collapsed} />
       )}
-      
-      {/* Sync status */}
-      {syncingUser && !collapsed && (
-        <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Sincronizando usuario...</span>
-        </div>
+      {permissions.inventory && (
+        <SidebarLink href="/inventory" icon={Package} title="Inventory" collapsed={collapsed} />
       )}
-      
-      {syncError && !collapsed && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-2 px-4 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <span>Error de sincronización</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{syncError}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      {permissions.settings && (
+        <SidebarLink href="/settings" icon={Settings} title="Settings" collapsed={collapsed} />
+      )}
+      {permissions.userManagement && (
+        <SidebarLink href="/settings/users" icon={Users} title="User Management" collapsed={collapsed} />
       )}
     </>
   );
@@ -87,10 +67,35 @@ function SidebarLinks({ collapsed }: SidebarLinksProps) {
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { isLoaded } = useAppAuth();
+  const [permissions, setPermissions] = useState<UserPermissions>({
+    dashboard: false,
+    inventory: false,
+    settings: false,
+    userManagement: false,
+  });
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Get user permissions
+    const loadUserPermissions = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          setPermissions(data.pageAccess || {
+            dashboard: false,
+            inventory: false,
+            settings: false,
+            userManagement: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user permissions:', error);
+      }
+    };
+
+    loadUserPermissions();
   }, []);
 
   if (!isMounted) {
@@ -116,14 +121,8 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 p-4 space-y-2">
-        <SidebarLink href="/" icon={Home} title="Inicio" collapsed={collapsed} />
-        {isLoaded ? (
-          <SidebarLinks collapsed={collapsed} />
-        ) : (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          </div>
-        )}
+        <SidebarLink href="/" icon={Home} title="Home" collapsed={collapsed} />
+        <SidebarLinks collapsed={collapsed} permissions={permissions} />
       </nav>
       
       <div className={cn("p-4 border-t border-border", collapsed && "text-center")}>
@@ -138,7 +137,34 @@ export function Sidebar() {
 
 export function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAdmin, isLoaded, syncingUser, syncError } = useAppAuth();
+  const [permissions, setPermissions] = useState<UserPermissions>({
+    dashboard: false,
+    inventory: false,
+    settings: false,
+    userManagement: false,
+  });
+  
+  useEffect(() => {
+    // Get user permissions
+    const loadUserPermissions = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          setPermissions(data.pageAccess || {
+            dashboard: false,
+            inventory: false,
+            settings: false,
+            userManagement: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user permissions:', error);
+      }
+    };
+
+    loadUserPermissions();
+  }, []);
   
   return (
     <>
@@ -174,104 +200,56 @@ export function MobileNav() {
                 onClick={() => setIsOpen(false)}
               >
                 <Home className="h-5 w-5" />
-                <span>Inicio</span>
+                <span>Home</span>
               </Link>
               
-              {isLoaded ? (
-                <>
-                  <Link 
-                    href="/dashboard" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <BarChart3 className="h-5 w-5" />
-                    <span>Panel</span>
-                  </Link>
-                  <Link 
-                    href="/inventory" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Boxes className="h-5 w-5" />
-                    <span>Inventario</span>
-                  </Link>
-                  <Link 
-                    href="/categories" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Tag className="h-5 w-5" />
-                    <span>Categorías</span>
-                  </Link>
-                  <Link 
-                    href="/locations" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <MapPin className="h-5 w-5" />
-                    <span>Ubicaciones</span>
-                  </Link>
-                  <Link 
-                    href="/reports" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <FileText className="h-5 w-5" />
-                    <span>Reportes</span>
-                  </Link>
-                  <Link 
-                    href="/tienda" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Store className="h-5 w-5" />
-                    <span>Tienda</span>
-                  </Link>
-                  <Link 
-                    href="/settings" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span>Configuración</span>
-                  </Link>
-                  
-                  {/* Admin-only links */}
-                  {isAdmin && (
-                    <Link 
-                      href="/settings/users" 
-                      className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <Users className="h-5 w-5" />
-                      <span>Usuarios</span>
-                    </Link>
-                  )}
-                  
-                  {/* Sync status */}
-                  {syncingUser && (
-                    <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Sincronizando usuario...</span>
-                    </div>
-                  )}
-                  
-                  {syncError && (
-                    <div className="flex items-center gap-2 px-4 py-2 text-sm text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>Error: {syncError}</span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
+              {permissions.dashboard && (
+                <Link 
+                  href="/dashboard" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <BarChart3 className="h-5 w-5" />
+                  <span>Dashboard</span>
+                </Link>
+              )}
+              
+              {permissions.inventory && (
+                <Link 
+                  href="/inventory" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Package className="h-5 w-5" />
+                  <span>Inventory</span>
+                </Link>
+              )}
+              
+              {permissions.settings && (
+                <Link 
+                  href="/settings" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Settings</span>
+                </Link>
+              )}
+              
+              {permissions.userManagement && (
+                <Link 
+                  href="/settings/users" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Users className="h-5 w-5" />
+                  <span>User Management</span>
+                </Link>
               )}
             </nav>
             
-            <div className="absolute bottom-4 left-4 right-4 text-xs text-muted-foreground text-center pt-2 border-t border-border">
-              LUMO v1.0
+            <div className="absolute bottom-4 left-4 right-4 border-t border-border pt-4">
+              <div className="text-xs text-muted-foreground">LUMO v1.0</div>
             </div>
           </div>
         </div>

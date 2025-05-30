@@ -29,7 +29,7 @@ const ProductSchema = z.object({
   // Inventory fields
   quantity: z.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
   minStockLevel: z.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
-  location: z.string().optional()
+  locationId: z.string().optional()
 });
 
 export async function GET(request: Request) {
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
         imageUrl: validatedData.imageUrl,
         quantity: validatedData.quantity || 0,
         minStockLevel: validatedData.minStockLevel || 5,
-        location: validatedData.location,
+        locationId: validatedData.locationId,
         // Create initial stock movement if quantity > 0
         stockMovements: validatedData.quantity > 0 ? {
           create: {

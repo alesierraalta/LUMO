@@ -47,7 +47,7 @@ export interface ProductData {
   // Inventory fields
   quantity?: number;
   minStockLevel?: number;
-  location?: string;
+  locationId?: string;
   // Price change reason
   changeReason?: string;
 }
@@ -58,6 +58,7 @@ export interface ProductData {
 export async function createProductApi(productData: ProductData) {
   const response = await fetch('/api/products', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -75,6 +76,7 @@ export async function createProductApi(productData: ProductData) {
 export async function updateProductApi(id: string, productData: ProductData) {
   const response = await fetch(`/api/products/${id}`, {
     method: 'PATCH',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

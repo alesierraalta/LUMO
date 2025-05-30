@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
 
 // GET /api/locations - Obtener todas las ubicaciones
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "No autorizado" }, 
-        { status: 401 }
-      );
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
     const locations = await prisma.location.findMany({
@@ -34,7 +35,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching locations:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" }, 
+      { error: "Failed to fetch locations" },
       { status: 500 }
     );
   }
@@ -43,20 +44,22 @@ export async function GET() {
 // POST /api/locations - Crear nueva ubicación
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "No autorizado" }, 
-        { status: 401 }
-      );
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description } = await request.json();
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
 
-    if (!name || name.trim() === "") {
+    const body = await request.json();
+    const { name, description } = body;
+
+    if (!name) {
       return NextResponse.json(
-        { error: "El nombre de la ubicación es requerido" }, 
+        { error: "Name is required" },
         { status: 400 }
       );
     }
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating location:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" }, 
+      { error: "Failed to create location" },
       { status: 500 }
     );
   }

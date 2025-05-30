@@ -1,187 +1,158 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
-import { createRequestLogger } from './lib/middleware/request-logger';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Conditional logger import for Edge Runtime compatibility
-let logger: any = {
-  debug: console.log,
-  info: console.log,
-  warn: console.warn,
-  error: console.error
-};
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
 
-try {
-  // Only import logger if running in Node.js environment
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    logger = require('./lib/logger').default;
-  }
-} catch (error) {
-  console.warn('Logger not available in this runtime environment');
-}
-
-// Add Edge Runtime compatible debugging
-console.log('[MIDDLEWARE] Middleware loading...');
-console.log('[MIDDLEWARE] Next.js version:', process.env.npm_package_version || 'unknown');
-
-// Define public routes that don't require authentication
+// Public routes that don't require authentication
 const publicRoutes = [
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/health',
-  '/api/health-simple',
-  '/api/health-advanced',
-  '/api/debug-env',
-  '/api/env-config',
-  '/api/status',
-  '/api/choreo-health',
-  '/api/logs'
+  '/login',
+  '/register',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/logout',
 ];
 
-const isPublicRoute = createRouteMatcher(publicRoutes);
+// Admin routes that require admin role
+const adminRoutes = [
+  '/admin',
+  '/settings/users',
+  '/api/auth/debug-permissions',
+  '/api/auth/sync-user',
+  '/api/auth/sync-all-users',
+];
 
-// Create request logger instance
-const requestLogger = createRequestLogger();
+// Base64url decode function
+function base64urlDecode(str: string): string {
+  // Add padding if needed
+  str += '='.repeat((4 - str.length % 4) % 4);
+  // Replace URL-safe characters
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  // Decode base64
+  return atob(str);
+}
 
-export default clerkMiddleware(async (auth, req: NextRequest) => {
-  // Start request logging
-  const requestContext = requestLogger.logRequest(req);
-  
-  console.log('[MIDDLEWARE DEBUG]', {
-    path: req.nextUrl.pathname,
-    correlationId: requestContext.correlationId,
-    publishable_key_exists: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    publishable_key_prefix: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.substring(0, 10) + '...' || 'undefined',
-    secret_key_exists: !!process.env.CLERK_SECRET_KEY,
-    node_env: process.env.NODE_ENV,
-    method: req.method,
-    is_public_route: isPublicRoute(req),
-  });
-
-  // Log middleware processing start
-  logger.debug('Middleware processing request', {
-    correlationId: requestContext.correlationId,
-    userId: requestContext.userId,
-    sessionId: requestContext.sessionId
-  }, {
-    middleware: {
-      path: req.nextUrl.pathname,
-      method: req.method,
-      isPublicRoute: isPublicRoute(req),
-      userAgent: req.headers.get('user-agent'),
-      referer: req.headers.get('referer')
-    }
-  });
-
+// Function to verify JWT using Web Crypto API (Edge Runtime compatible)
+const verifyTokenSimple = async (token: string) => {
   try {
-  // Skip authentication for public routes
-  if (isPublicRoute(req)) {
-    console.log('[MIDDLEWARE] Public route, skipping auth');
-      logger.debug('Public route accessed', {
-        correlationId: requestContext.correlationId
-      });
-      
-      const response = NextResponse.next();
-      // Add correlation ID to response headers
-      response.headers.set('x-correlation-id', requestContext.correlationId);
-      
-      // Log successful response for public route
-      requestLogger.logResponse(requestContext.correlationId, response, req);
-      
-      return response;
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
     }
 
-    // Get the auth object
-    const { userId, redirectToSignIn } = await auth();
-    console.log('[MIDDLEWARE] Auth check result:', { userId: !!userId });
-
-    // Update request context with user information
-    if (userId) {
-      requestContext.userId = userId;
+    const [headerEncoded, payloadEncoded, signatureEncoded] = parts;
+    
+    // Decode payload to check expiration
+    const payload = JSON.parse(base64urlDecode(payloadEncoded));
+    
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      return null;
     }
 
-    // If user is not signed in and route is not public, redirect to sign-in
-    if (!userId) {
-      console.log('[MIDDLEWARE] No user ID, redirecting to sign-in');
-      
-      logger.warn('Unauthorized access attempt', {
-        correlationId: requestContext.correlationId,
-        ipAddress: requestContext.ipAddress
-      }, {
-        security: {
-          event: 'unauthorized_access',
-          path: req.nextUrl.pathname,
-          userAgent: req.headers.get('user-agent')
-        }
-      });
+    // For Edge Runtime, we'll do a basic signature verification
+    // Import secret as crypto key
+    const secretKey = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(JWT_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
 
-      const redirectResponse = redirectToSignIn({ returnBackUrl: req.url });
-      
-      // Log the redirect response
-      const mockResponse = new NextResponse(null, { status: 302 });
-      requestLogger.logResponse(requestContext.correlationId, mockResponse, req);
-      
-      return redirectResponse;
+    // Create signature data
+    const data = `${headerEncoded}.${payloadEncoded}`;
+    const signature = Uint8Array.from(atob(signatureEncoded.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+    // Verify signature
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      secretKey,
+      signature,
+      new TextEncoder().encode(data)
+    );
+
+    if (!isValid) {
+      return null;
     }
 
-    console.log('[MIDDLEWARE] User authenticated, proceeding');
-    
-    // Log successful authentication
-    logger.info('User authenticated successfully', {
-      correlationId: requestContext.correlationId,
-      userId: userId
-    }, {
-      auth: {
-        event: 'authentication_success',
-        userId: userId,
-        path: req.nextUrl.pathname
-      }
-    });
-
-    const response = NextResponse.next();
-    
-    // Add correlation ID and user context to response headers
-    response.headers.set('x-correlation-id', requestContext.correlationId);
-    response.headers.set('x-user-id', userId);
-    
-    // Log successful response
-    requestLogger.logResponse(requestContext.correlationId, response, req);
-    
-    return response;
-
+    return payload;
   } catch (error) {
-    console.error('[MIDDLEWARE] Error during authentication:', error);
-    
-    // Log authentication error
-    logger.error('Middleware authentication error', error as Error, {
-      correlationId: requestContext.correlationId,
-      ipAddress: requestContext.ipAddress
-    }, {
-      middleware: {
-        path: req.nextUrl.pathname,
-        method: req.method,
-        error: (error as Error).message
-      }
-    });
-
-    // In case of auth error, redirect to sign-in
-    console.log('[MIDDLEWARE] Auth error, redirecting to sign-in');
-    
-    const errorResponse = NextResponse.redirect(new URL('/sign-in', req.url));
-    
-    // Log the error response
-    const mockResponse = new NextResponse(null, { status: 500 });
-    requestLogger.logResponse(requestContext.correlationId, mockResponse, req, error as Error);
-    
-    return errorResponse;
+    return null;
   }
-});
+};
+
+// Function to get token from request
+const getTokenFromRequest = (request: NextRequest): string | null => {
+  // Try cookie first
+  const cookieToken = request.cookies.get('auth-token')?.value;
+  if (cookieToken) return cookieToken;
+
+  // Try Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+
+  return null;
+};
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Allow API routes without authentication check (they handle auth internally)
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  // Allow public routes
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // Allow static files and Next.js internals
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/api/_next/') ||
+    pathname.includes('.') // Static files
+  ) {
+    return NextResponse.next();
+  }
+
+  // Get token from request
+  const token = getTokenFromRequest(request);
+
+  if (!token) {
+    // Redirect to login for protected routes
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Verify token (Edge Runtime compatible verification)
+  const payload = await verifyTokenSimple(token);
+  if (!payload) {
+    // Invalid token, redirect to login
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // For admin routes, role checking will be done in the actual route handlers
+  // since we can't access the database in edge runtime middleware
+  
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

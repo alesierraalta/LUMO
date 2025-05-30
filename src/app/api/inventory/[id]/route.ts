@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteInventoryItem, getInventoryItemById } from "@/services/inventoryService";
-import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   _request: NextRequest,
@@ -8,9 +9,13 @@ export async function DELETE(
 ) {
   try {
     // Verificar permisos antes de eliminar datos
-    const authCheck = await checkPermissionsWithDebug("admin");
+    const user = await getCurrentUser();
     
-    if (!authCheck.authorized) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!isAdmin(user)) {
       return NextResponse.json(
         { 
           success: false,
@@ -65,9 +70,13 @@ export async function GET(
 ) {
   try {
     // Verificar permisos antes de devolver datos
-    const authCheck = await checkPermissionsWithDebug("admin");
+    const user = await getCurrentUser();
 
-    if (!authCheck.authorized) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!isAdmin(user)) {
       return NextResponse.json(
         { 
           success: false,

@@ -1,5 +1,6 @@
-import { BarChart3, PieChart, DollarSign } from "lucide-react";
+import { BarChart3, PieChart, DollarSign, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { 
   Table, 
   TableBody, 
@@ -16,6 +17,7 @@ import PrintHeader from "@/components/reports/print-header";
 import ReportActionsClientWrapper from "@/components/reports/ReportActionsClientWrapper";
 import MarginChartsClient from "@/components/reports/MarginChartsClient";
 import { getApiBaseUrl } from "@/lib/utils";
+import Link from "next/link";
 
 // Define margin categories
 const MARGIN_CATEGORIES = {
@@ -116,7 +118,15 @@ export default async function MarginReportsPage() {
       <PrintHeader title="Reportes de Márgenes" />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Reportes de Márgenes</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold tracking-tight">Reportes de Márgenes</h1>
+        </div>
         <ReportActionsClientWrapper 
           reportType="margins" 
           data={products} 

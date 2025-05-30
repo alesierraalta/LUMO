@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 import InventoryClientWrapper from "./client-wrapper";
 
 export const metadata: Metadata = {
@@ -343,7 +343,8 @@ export default async function InventoryPage({
                    : 'all';
 
   // Verificar permisos para mostrar datos reales
-  const authCheck = await checkPermissionsWithDebug("admin");
+  const user = await getCurrentUser();
+  const authorized = user ? isAdmin(user) : false;
 
   try {
     let inventoryItems: any[] = [];
@@ -351,7 +352,7 @@ export default async function InventoryPage({
     let locations: any[] = [];
 
     // Solo cargar datos si el usuario está autorizado
-    if (authCheck.authorized) {
+    if (authorized && prisma) {
       // Consulta optimizada con todas las relaciones necesarias
       inventoryItems = await prisma.$queryRaw`
         SELECT 
@@ -401,7 +402,7 @@ export default async function InventoryPage({
     }
 
     // Unión manual para evitar problemas de serialización (solo si hay datos)
-    const itemsWithCategories = authCheck.authorized 
+    const itemsWithCategories = authorized 
       ? inventoryItems.map(item => {
           const category = item.category_name 
             ? { id: item.categoryId, name: item.category_name }
@@ -426,21 +427,21 @@ export default async function InventoryPage({
       : [];
     
     // Filtrar los datos para los conteos (o usar 0 si no hay datos)
-    const lowStockCount = authCheck.authorized 
+    const lowStockCount = authorized 
       ? inventoryItems.filter(item => item.quantity <= item.minStockLevel && item.quantity > 0).length
       : 0;
 
-    const outOfStockCount = authCheck.authorized 
+    const outOfStockCount = authorized 
       ? inventoryItems.filter(item => item.quantity <= 0).length
       : 0;
 
-    const activeItemsCount = authCheck.authorized 
+    const activeItemsCount = authorized 
       ? inventoryItems.filter(item => item.active === true).length
       : 0;
 
     // Serialización segura
     const safeItems = safeSerializeInventory(itemsWithCategories);
-
+    
     return (
       <div className="space-y-8">
         {/* Encabezado con título y botones de acción */}
@@ -449,7 +450,7 @@ export default async function InventoryPage({
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">Inventario y Existencias</h1>
             <p className="text-muted-foreground mt-1">
               Gestiona tus niveles de inventario, ubicaciones y productos
-              {!authCheck.authorized && (
+              {!authorized && (
                 <span className="block mt-2 font-medium text-yellow-600">
                   Necesitas permisos para ver los datos del inventario
                 </span>
@@ -457,10 +458,16 @@ export default async function InventoryPage({
             </p>
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button asChild className="transition-all hover:shadow-md" disabled={!authCheck.authorized}>
+            <Button asChild className="transition-all hover:shadow-md" disabled={!authorized}>
               <Link href="/inventory/add" className="flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" />
                 <span>Nuevo Item</span>
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="transition-all hover:shadow-md" disabled={!authorized}>
+              <Link href="/inventory/bulk-location" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span>Gestionar Ubicaciones</span>
               </Link>
             </Button>
           </div>
@@ -568,7 +575,7 @@ export default async function InventoryPage({
             <CardTitle>Inventario</CardTitle>
             <CardDescription>
               Gestiona tus productos y existencias
-              {!authCheck.authorized && (
+              {!authorized && (
                 <span className="block mt-2 font-medium text-yellow-600">
                   Necesitas permisos de administrador para ver datos del inventario
                 </span>

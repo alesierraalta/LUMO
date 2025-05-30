@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllStockMovements } from "@/services/inventoryService";
 import { ensureValidDate } from "@/lib/utils";
-import { checkPermissionsWithDebug } from "@/components/auth/check-permissions-debug";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar permisos antes de devolver datos
-    const authCheck = await checkPermissionsWithDebug("admin");
-    
-    // Si el usuario no está autorizado, devolver datos vacíos
-    if (!authCheck.authorized) {
+    // Check authentication and admin permissions
+    const user = await getCurrentUser();
+    if (!user || !isAdmin(user)) {
       return NextResponse.json({
         items: [],
         total: 0,

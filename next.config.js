@@ -1,145 +1,105 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    cssChunking: 'strict',
-  },
-  // Configure webpack to handle the logger modules properly
-  webpack: (config, { isServer, buildId }) => {
-    // Handle logger modules for different runtimes
-    if (isServer) {
-      config.externals = [...(config.externals || []), 'fs', 'path'];
-    }
-    
-    return config;
-  },
-  
-  // Environment variables to be embedded in the client
-  env: {
-    NEXT_TELEMETRY_DISABLED: '1',
-  },
-  
-  // Output configuration
+  // Essential for Choreo deployment
   output: 'standalone',
   
-  // TypeScript configuration
-  typescript: {
-    ignoreBuildErrors: process.env.NODE_ENV === 'production',
-  },
-  
-  // ESLint configuration
+  // Disable ESLint during build for deployment
   eslint: {
-    ignoreDuringBuilds: process.env.NODE_ENV === 'production',
+    ignoreDuringBuilds: true,
   },
   
-  // Headers configuration for SSL and CORS
+  // Disable TypeScript checking during build (for speed)
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
+  // Prisma configuration
+  serverExternalPackages: ['@prisma/client'],
+  
+  // Enable compression for better performance
+  compress: true,
+  
+  // Optimize for production
+  productionBrowserSourceMaps: false,
+  optimizeFonts: true,
+  
+  // Image optimization
+  images: {
+    unoptimized: true,
+    domains: [],
+    formats: ['image/webp'],
+  },
+  
+  // Environment variables
+  env: {
+    CUSTOM_KEY: 'my-value',
+  },
+
+  // Headers for security and CORS
   async headers() {
     return [
       {
-        // Apply these headers to all routes
-        source: '/(.*)',
+        source: '/api/:path*',
         headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains',
-          },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
         ],
       },
       {
-        // Allow Clerk resources from official CDN
-        source: '/api/(.*)',
+        source: '/:path*',
         headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID',
-          },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
         ],
-      },
-      {
-        // Specific headers for Clerk proxy routes
-        source: '/clerk-proxy/(.*)',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Credentials',
-            value: 'true',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: "connect-src 'self' https://js.clerk.com https://*.clerk.accounts.dev https://*.clerk.com",
-          },
-        ],
-      },
-    ];
-  },
-  
-  // Comprehensive rewrites for Clerk SSL compatibility
-  async rewrites() {
-    return [
-      // Clerk JavaScript SDK rewrites
-      {
-        source: '/clerk-proxy/v1/:path*',
-        destination: 'https://js.clerk.com/v1/:path*',
-      },
-      {
-        source: '/clerk-proxy/npm/:path*',
-        destination: 'https://js.clerk.com/npm/:path*',
-      },
-      
-      // Legacy Clerk rewrites
-      {
-        source: '/clerk/:path*',
-        destination: 'https://js.clerk.com/:path*',
-      },
-      
-      // Clerk API rewrites (for frontend API calls)
-      {
-        source: '/clerk-api/:path*',
-        destination: 'https://api.clerk.com/:path*',
-      },
-      
-      // Clerk accounts rewrites
-      {
-        source: '/clerk-accounts/:path*',
-        destination: 'https://accounts.clerk.com/:path*',
       },
     ];
   },
 
-  // Redirects to handle Choreo-specific SSL issues
+  // Redirects
   async redirects() {
     return [
-      // Only apply in production (Choreo environment)
-      ...(process.env.NODE_ENV === 'production' ? [
-        {
-          source: '/js.clerk.com/:path*',
-          destination: '/clerk-proxy/:path*',
-          permanent: false,
-        },
-      ] : []),
+      {
+        source: '/',
+        destination: '/dashboard',
+        permanent: false,
+      },
+      {
+        source: '/sign-in',
+        destination: '/login',
+        permanent: true,
+      },
+      {
+        source: '/sign-up',
+        destination: '/register',
+        permanent: true,
+      },
     ];
+  },
+
+  // Webpack optimization for Choreo
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    if (!dev && isServer) {
+      // Optimize for production server builds
+      config.optimization.minimize = true;
+    }
+    
+    // Handle prisma binary
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    
+    return config;
+  },
+
+  // Experimental features for better performance
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
 };
 

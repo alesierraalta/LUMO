@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -17,7 +18,19 @@ import {
 import { createProductApi, ProductData, calculateMargin, calculatePrice } from "@/lib/client-utils"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { 
+  AlertCircle, 
+  Package, 
+  DollarSign, 
+  TrendingUp, 
+  Tag, 
+  FileText, 
+  MapPin, 
+  Warehouse,
+  Calculator,
+  Save,
+  X
+} from "lucide-react"
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -27,26 +40,82 @@ function AddProductContent() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState([])
+  const [locations, setLocations] = useState([])
   const [error, setError] = useState("")
   const [cost, setCost] = useState("")
   const [price, setPrice] = useState("")
   const [margin, setMargin] = useState("")
 
-  // Load categories on mount
+  // Load categories and locations on mount
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const response = await fetch('/api/categories');
+        const response = await fetch('/api/categories', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Categories fetch response status:', response.status);
+        console.log('Categories fetch response headers:', response.headers.get('content-type'));
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch categories');
+          const errorText = await response.text();
+          console.error('Categories fetch error response:', errorText);
+          throw new Error(`Failed to fetch categories: ${response.status} - ${errorText}`);
         }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await response.text();
+          console.error('Categories fetch returned non-JSON:', responseText.substring(0, 200));
+          throw new Error('Categories endpoint returned HTML instead of JSON');
+        }
+        
         const data = await response.json();
+        console.log('Categories data loaded:', data);
         setCategories(data);
       } catch (error) {
         console.error('Error fetching categories:', error);
+        setError(`Error loading categories: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
+
+    async function fetchLocations() {
+      try {
+        const response = await fetch('/api/locations', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Locations fetch response status:', response.status);
+        console.log('Locations fetch response headers:', response.headers.get('content-type'));
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Locations fetch error response:', errorText);
+          throw new Error(`Failed to fetch locations: ${response.status} - ${errorText}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await response.text();
+          console.error('Locations fetch returned non-JSON:', responseText.substring(0, 200));
+          throw new Error('Locations endpoint returned HTML instead of JSON');
+        }
+        
+        const data = await response.json();
+        console.log('Locations data loaded:', data);
+        setLocations(data);
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+        setError(`Error loading locations: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
     fetchCategories();
+    fetchLocations();
   }, [])
 
   const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +127,7 @@ function AddProductContent() {
       const priceVal = parseFloat(price);
       const newMargin = calculateMargin(costVal, priceVal);
       console.log('Calculated margin:', newMargin, 'from cost:', costVal, 'price:', priceVal);
-      setMargin(newMargin.toFixed(2));
+      setMargin(newMargin.toString());
     }
   };
 
@@ -71,7 +140,7 @@ function AddProductContent() {
       const priceVal = parseFloat(newPrice);
       const newMargin = calculateMargin(costVal, priceVal);
       console.log('Calculated margin:', newMargin, 'from cost:', costVal, 'price:', priceVal);
-      setMargin(newMargin.toFixed(2));
+      setMargin(newMargin.toString());
     }
   };
 
@@ -95,6 +164,7 @@ function AddProductContent() {
 
     const formData = new FormData(e.currentTarget)
     const categoryValue = formData.get("category") as string
+    const locationValue = formData.get("location") as string
     
     const productData: ProductData = {
       name: formData.get("name") as string,
@@ -106,7 +176,7 @@ function AddProductContent() {
       sku: formData.get("sku") as string,
       quantity: parseInt(formData.get("quantity") as string) || 0,
       minStockLevel: parseInt(formData.get("minStockLevel") as string) || 5,
-      location: (formData.get("location") as string) || undefined
+      locationId: locationValue && locationValue !== "uncategorized" ? locationValue : undefined
     }
 
     try {
@@ -124,7 +194,7 @@ function AddProductContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 p-6">
       <Breadcrumb
         items={[
           { title: "Inventario", href: "/inventory" },
@@ -132,201 +202,334 @@ function AddProductContent() {
         ]}
       />
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Añadir Nuevo Producto</CardTitle>
-          <CardDescription>
-            Crear un nuevo producto en su inventario
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre del Producto</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Ingrese nombre del producto"
-                required
-              />
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+          <Package className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Añadir Nuevo Producto</h1>
+          <p className="text-muted-foreground">Complete la información para crear un nuevo producto en su inventario</p>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Información Básica */}
+        <Card className="border-2 border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <span>Información Básica</span>
+            </CardTitle>
+            <CardDescription>
+              Datos generales del producto
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium flex items-center space-x-1">
+                  <Package className="w-4 h-4" />
+                  <span>Nombre del Producto *</span>
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Ingrese nombre del producto"
+                  className="h-11"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="sku" className="text-sm font-medium flex items-center space-x-1">
+                  <Tag className="w-4 h-4" />
+                  <span>SKU *</span>
+                </Label>
+                <Input
+                  id="sku"
+                  name="sku"
+                  placeholder="Código único del producto"
+                  className="h-11"
+                  required
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="sku">SKU</Label>
-              <Input
-                id="sku"
-                name="sku"
-                placeholder="Ingrese SKU del producto"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description" className="text-sm font-medium flex items-center space-x-1">
+                <FileText className="w-4 h-4" />
+                <span>Descripción</span>
+              </Label>
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Ingrese descripción del producto"
-                className="min-h-[100px]"
+                placeholder="Descripción detallada del producto (opcional)"
+                className="min-h-[120px] resize-none"
               />
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          </CardContent>
+        </Card>
+
+        {/* Configuración Financiera */}
+        <Card className="border-2 border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <span>Configuración Financiera</span>
+            </CardTitle>
+            <CardDescription>
+              Precios, costos y márgenes de ganancia
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="cost">Costo</Label>
-                <Input
-                  id="cost"
-                  name="cost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={cost}
-                  onChange={handleCostChange}
-                  required
-                />
+                <Label htmlFor="cost" className="text-sm font-medium flex items-center space-x-1">
+                  <Calculator className="w-4 h-4" />
+                  <span>Costo *</span>
+                </Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="cost"
+                    name="cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="h-11 pl-10"
+                    value={cost}
+                    onChange={handleCostChange}
+                    required
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="price">Precio</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={price}
-                  onChange={handlePriceChange}
-                  required
-                />
+                <Label htmlFor="price" className="text-sm font-medium flex items-center space-x-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Precio de Venta *</span>
+                </Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="h-11 pl-10"
+                    value={price}
+                    onChange={handlePriceChange}
+                    required
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="margin">Margen (%)</Label>
-                <Input
-                  id="margin"
-                  name="margin"
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="0"
-                  value={margin}
-                  onChange={handleMarginChange}
-                  required
-                />
+                <Label htmlFor="margin" className="text-sm font-medium flex items-center space-x-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Margen</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="margin"
+                    name="margin"
+                    type="number"
+                    min="0"
+                    max="1000"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="h-11 pr-8"
+                    value={margin}
+                    onChange={handleMarginChange}
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                </div>
               </div>
             </div>
             
-            <div className="mt-1 text-xs text-muted-foreground">
-              El margen se calcula como porcentaje sobre el costo: (Precio-Costo)/Costo × 100.
-              <br />
-              Ejemplo: Precio=100, Costo=50 → Margen=100%
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start space-x-2">
+                <Calculator className="w-4 h-4 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-800 dark:text-blue-200">
+                  <p className="font-medium">Cálculo de Margen</p>
+                  <p className="mt-1">Fórmula: (Precio - Costo) / Costo × 100</p>
+                  <p className="text-xs mt-1 text-blue-700 dark:text-blue-300">
+                    Ejemplo: Precio $100, Costo $50 = 100% de margen
+                  </p>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoría</Label>
-              <Select name="category">
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Seleccione una categoría (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uncategorized">Sin categoría</SelectItem>
-                  {categories.map((category: any) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
+          </CardContent>
+        </Card>
+
+        {/* Clasificación y Ubicación */}
+        <Card className="border-2 border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-purple-600" />
+              <span>Clasificación y Ubicación</span>
+            </CardTitle>
+            <CardDescription>
+              Organización del producto en el sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium flex items-center space-x-1">
+                  <Tag className="w-4 h-4" />
+                  <span>Categoría</span>
+                </Label>
+                <Select name="category">
+                  <SelectTrigger id="category" className="h-11">
+                    <SelectValue placeholder="Seleccione una categoría (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uncategorized">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <span>Sin categoría</span>
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    {categories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          <span>{category.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium flex items-center space-x-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>Ubicación</span>
+                </Label>
+                <Select name="location">
+                  <SelectTrigger id="location" className="h-11">
+                    <SelectValue placeholder="Seleccione una ubicación (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uncategorized">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <span>Sin ubicación</span>
+                      </div>
+                    </SelectItem>
+                    {locations.map((location: any) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span>{location.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            
-            <div className="border-t pt-4 mt-4">
-              <h3 className="text-lg font-medium mb-4">Información de Inventario</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad Inicial</Label>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    defaultValue="0"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="minStockLevel">Nivel Mínimo de Stock</Label>
-                  <Input
-                    id="minStockLevel"
-                    name="minStockLevel"
-                    type="number"
-                    min="0"
-                    placeholder="5"
-                    defaultValue="5"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    placeholder="Ubicación (opcional)"
-                  />
-                </div>
+          </CardContent>
+        </Card>
+
+        {/* Información de Inventario */}
+        <Card className="border-2 border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2">
+              <Warehouse className="w-5 h-5 text-orange-600" />
+              <span>Control de Inventario</span>
+            </CardTitle>
+            <CardDescription>
+              Cantidades y niveles de stock
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="quantity" className="text-sm font-medium flex items-center space-x-1">
+                  <Package className="w-4 h-4" />
+                  <span>Cantidad Inicial</span>
+                </Label>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="h-11"
+                  defaultValue="0"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="minStockLevel" className="text-sm font-medium flex items-center space-x-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Nivel Mínimo de Stock</span>
+                </Label>
+                <Input
+                  id="minStockLevel"
+                  name="minStockLevel"
+                  type="number"
+                  min="0"
+                  placeholder="5"
+                  className="h-11"
+                  defaultValue="5"
+                />
               </div>
             </div>
             
-            <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => router.back()}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button 
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? "Guardando..." : "Guardar Producto"}
-              </Button>
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                <div className="text-sm text-amber-800 dark:text-amber-200">
+                  <p className="font-medium">Gestión de Stock</p>
+                  <p className="mt-1">El sistema le notificará cuando el inventario esté por debajo del nivel mínimo</p>
+                </div>
+              </div>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Botones de Acción */}
+        <div className="flex justify-end space-x-3 pt-6">
+          <Button 
+            variant="outline" 
+            type="button" 
+            onClick={() => router.back()}
+            disabled={loading}
+            className="h-11 px-6"
+          >
+            <X className="w-4 h-4 mr-2" />
+            Cancelar
+          </Button>
+          <Button 
+            type="submit"
+            disabled={loading}
+            className="h-11 px-6 bg-primary hover:bg-primary/90"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {loading ? "Guardando..." : "Guardar Producto"}
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }
 
-// Export the page with proper Clerk context (already provided by layout)
+// Export the main page component
 export default function AddProductPage() {
-  // Check if we should skip Clerk authentication (used during build)
-  const skipClerkAuth = process.env.NEXT_PUBLIC_SKIP_CLERK_AUTH === 'true';
-
-  if (skipClerkAuth) {
-    return (
-      <div className="p-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Add Product</h1>
-          <p className="text-muted-foreground">Authentication bypassed for development</p>
-          <div className="mt-4">
-            <AddProductContent />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // No need for ClerkProvider wrapper - already provided by layout
   return <AddProductContent />;
 } 

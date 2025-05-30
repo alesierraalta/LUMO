@@ -105,13 +105,13 @@ export default function GlobalError({
     }
 
     // Handle authentication errors
-    if (error.message?.includes('Clerk') || error.message?.includes('auth')) {
+    if (error.message?.includes('auth') || error.message?.includes('Authentication')) {
       console.error(`[${correlationId}] Authentication error detected`);
       
       if (typeof window !== 'undefined') {
-        // Clear any stored auth state
-        localStorage.removeItem('clerk-db-jwt');
-        sessionStorage.clear();
+        localStorage.removeItem('auth-token');
+        // Force redirect to login
+        window.location.href = '/login';
       }
     }
 
@@ -132,7 +132,7 @@ export default function GlobalError({
     if (error.message?.includes('entryCSSFiles') || error.message?.includes('CSS')) {
       return 'CSS_MANIFEST_ERROR';
     }
-    if (error.message?.includes('Clerk') || error.message?.includes('auth')) {
+    if (error.message?.includes('auth') || error.message?.includes('Authentication')) {
       return 'AUTHENTICATION_ERROR';
     }
     if (error.message?.includes('database') || error.message?.includes('Prisma')) {
@@ -150,7 +150,7 @@ export default function GlobalError({
   // Calculate error severity
   function calculateErrorSeverity(error: Error): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     if (error.message?.includes('entryCSSFiles')) return 'HIGH';
-    if (error.message?.includes('auth') || error.message?.includes('Clerk')) return 'HIGH';
+    if (error.message?.includes('auth') || error.message?.includes('Authentication')) return 'HIGH';
     if (error.message?.includes('database')) return 'CRITICAL';
     if (error.name === 'ChunkLoadError') return 'MEDIUM';
     return 'MEDIUM';

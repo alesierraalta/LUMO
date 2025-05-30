@@ -1,129 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const user = await getCurrentUser();
     
-    // Check permission (optional, implement as needed)
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const search = searchParams.get("search");
-    const categoryId = searchParams.get("categoryId");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const sort = searchParams.get("sort") || "date-desc";
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
 
-    // Build where clause
-    const where: any = {};
-    
-    // Handle date range filtering
-    if (startDate || endDate) {
-      where.createdAt = {};
-      
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate);
-      }
-      
-      if (endDate) {
-        where.createdAt.lte = new Date(endDate);
-      }
-    }
-    
-    // Handle category filtering
-    if (categoryId && categoryId !== "all") {
-      where.inventoryItem = {
-        categoryId
-      };
-    }
-    
-    // Handle search query (search by product name or SKU)
-    if (search) {
-      where.OR = [
-        {
-          inventoryItem: {
-            name: {
-              contains: search,
-              mode: 'insensitive' as const
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+
+    const [priceHistory, total] = await Promise.all([
+      prisma.priceHistory.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
             }
-          }
-        },
-        {
+          },
           inventoryItem: {
-            sku: {
-              contains: search,
-              mode: 'insensitive' as const
+            select: {
+              name: true,
+              sku: true,
             }
           }
         }
-      ];
-    }
+      }),
+      prisma.priceHistory.count()
+    ]);
 
-    // Determine sort order
-    let orderBy: any = {};
-    
-    switch (sort) {
-      case "date-asc":
-        orderBy = { createdAt: "asc" };
-        break;
-      case "date-desc":
-        orderBy = { createdAt: "desc" };
-        break;
-      case "product-asc":
-        orderBy = { inventoryItem: { name: "asc" } };
-        break;
-      case "product-desc":
-        orderBy = { inventoryItem: { name: "desc" } };
-        break;
-      default:
-        orderBy = { createdAt: "desc" };
-    }
-
-    // Fetch price history with filtering and sorting
-    const priceHistory = await prisma.priceHistory.findMany({
-      where,
-      orderBy,
-      include: {
-        inventoryItem: {
-          select: {
-            name: true,
-            sku: true,
-            category: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        },
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      },
-      take: 100, // Limit to 100 records at a time
+    return NextResponse.json({
+      priceHistory,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
     });
-
-    return NextResponse.json(priceHistory);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching price history:", error);
-    
     return NextResponse.json(
-      { 
-        error: "Failed to fetch price history",
-        details: error.message 
-      },
+      { error: "Failed to fetch price history" },
       { status: 500 }
     );
   }

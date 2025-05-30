@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { serializeDecimal } from "@/lib/utils";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUser } from "@/lib/auth";
 
 // Validation schema for the request body
 const financialsUpdateSchema = z.object({
@@ -20,56 +20,17 @@ export async function PATCH(
     const resolvedParams = await params;
     const { id } = resolvedParams;
     
-    // Make auth optional for testing
-    let userId = null;
-    let authUser = null;
-    try {
-      const authResult = await auth();
-      userId = authResult.userId;
-      
-      if (userId) {
-        authUser = await prisma.user.findUnique({
-          where: { clerkId: userId }
-        });
-      }
-    } catch (authError) {
-      console.log("Auth skipped for testing:", authError);
-    }
+    const user = await getCurrentUser();
     
-    // If no authenticated user, try to find or create a system user
-    if (!authUser) {
-      try {
-        // First try to find an existing system user
-        authUser = await prisma.user.findFirst({
-          where: { email: 'sistema@lumo.local' }
-        });
-        
-        // If no system user exists, create one
-        if (!authUser) {
-          // First find the viewer role
-          const viewerRole = await prisma.role.findUnique({
-            where: { name: 'viewer' }
-          });
-          
-          if (viewerRole) {
-            authUser = await prisma.user.create({
-              data: {
-                clerkId: 'system-user',
-                email: 'sistema@lumo.local',
-                firstName: 'Sistema',
-                lastName: 'LUMO',
-                roleId: viewerRole.id
-              }
-            });
-            console.log("Created system user for operations");
-          }
-        }
-      } catch (userError) {
-        console.error("Error finding/creating system user:", userError);
-      }
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    console.log("Route params:", { id, userId, authUserId: authUser?.id });
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
+    console.log("Route params:", { id, userId: user.id });
 
     if (!id) {
       return NextResponse.json(
@@ -158,7 +119,7 @@ export async function PATCH(
             oldMargin: currentItem.margin,
             newMargin: margin !== undefined ? margin : currentItem.margin,
             changeReason: changeReason || "Manual update",
-            ...(authUser ? { userId: authUser.id } : {})
+            ...(user ? { userId: user.id } : {})
           };
           console.log("Price history data:", historyData);
           
@@ -204,6 +165,103 @@ export async function PATCH(
         details: error.message // Include original error message for debugging
       },
       { status: statusCode }
+    );
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
+    const inventoryItem = await prisma.inventoryItem.findUnique({
+      where: { id: params.id },
+      include: {
+        priceHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true,
+              }
+            }
+          }
+        },
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            sale: {
+              select: {
+                id: true,
+                date: true,
+                total: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!inventoryItem) {
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+
+    // Calculate financial metrics
+    const totalRevenue = inventoryItem.transactions.reduce(
+      (sum, transaction) => sum + transaction.subtotal, 0
+    );
+
+    const totalUnitsSold = inventoryItem.transactions.reduce(
+      (sum, transaction) => sum + transaction.quantity, 0
+    );
+
+    const averageSellingPrice = totalUnitsSold > 0 ? totalRevenue / totalUnitsSold : 0;
+    const currentMargin = inventoryItem.margin;
+    const profitPerUnit = inventoryItem.price - inventoryItem.cost;
+    const totalProfit = totalUnitsSold * profitPerUnit;
+
+    const financials = {
+      item: {
+        id: inventoryItem.id,
+        name: inventoryItem.name,
+        sku: inventoryItem.sku,
+        currentPrice: inventoryItem.price,
+        currentCost: inventoryItem.cost,
+        currentMargin: currentMargin,
+        quantity: inventoryItem.quantity,
+      },
+      metrics: {
+        totalRevenue,
+        totalUnitsSold,
+        averageSellingPrice,
+        profitPerUnit,
+        totalProfit,
+        marginPercentage: currentMargin,
+      },
+      recentPriceHistory: inventoryItem.priceHistory,
+      recentTransactions: inventoryItem.transactions,
+    };
+
+    return NextResponse.json(financials);
+  } catch (error) {
+    console.error("Error fetching financial data:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch financial data" },
+      { status: 500 }
     );
   }
 } 

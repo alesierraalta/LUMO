@@ -16,6 +16,8 @@ spec:
       npm ci --prefer-offline --no-audit
       echo "[BUILD] Running pre-build scripts..."
       npm run prebuild
+      echo "[BUILD] Fixing Next.js configuration..."
+      node scripts/fix-next-config.js
       echo "[BUILD] Building application..."
       npm run build
       echo "[BUILD] Running post-build scripts..."
@@ -40,9 +42,11 @@ spec:
       echo "[DEPLOY] Environment variables:"
       echo "NODE_ENV: $NODE_ENV"
       echo "PORT: $PORT"
+      echo "[DEPLOY] Ejecutando migración de la base de datos..."
+      npx prisma db push --accept-data-loss
       echo "[DEPLOY] Verificando usuario administrador..."
       node scripts/ensure-admin.js
-      echo "[DEPLOY] Starting Choreo-optimized server..."
+      echo "[DEPLOY] Starting custom Choreo server..."
       node choreo-server.js
   env:
     - name: NODE_ENV

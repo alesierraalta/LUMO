@@ -22,7 +22,7 @@
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
     "postinstall": "prisma generate",
     "ensure-admin": "node scripts/ensure-admin.js",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "start:production": "NODE_ENV=production node scripts/manifest-validator.js && node server.js",
     "start:choreo": "npm run ensure-admin && node choreo-server.js",
     "start:safe": "node scripts/manifest-validator.js && node safe-server.js",
@@ -47,7 +47,7 @@
     "fix-prisma": "node scripts/fix-prisma-binaries.js",
     "fix-manifests": "node scripts/manifest-validator.js",
     "choreo:build": "npm run build:prod",
-    "choreo:start": "npm run start:choreo"
+    "choreo:start": "npm run ensure-admin && node choreo-server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

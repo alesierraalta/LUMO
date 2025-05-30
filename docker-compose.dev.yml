@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database para desarrollo
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: lumo-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lumo_dev
+      POSTGRES_USER: lumo_dev
+      POSTGRES_PASSWORD: lumo_dev_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - lumo-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumo_dev -d lumo_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Adminer para gestión de base de datos (opcional)
+  adminer-dev:
+    image: adminer:latest
+    container_name: lumo-adminer-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    networks:
+      - lumo-dev-network
+    depends_on:
+      - postgres-dev
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres-dev
+      ADMINER_DESIGN: pepa-linha
+
+  # Redis para caché (opcional)
+  redis-dev:
+    image: redis:7-alpine
+    container_name: lumo-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - lumo-dev-network
+    command: redis-server --appendonly yes --requirepass lumo_redis_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  lumo-dev-network:
+    driver: bridge
+    name: lumo-dev-network 

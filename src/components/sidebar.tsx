@@ -83,12 +83,17 @@ export function Sidebar() {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
+          console.log('User data from /api/auth/me:', data); // Debug log
+          console.log('Page access:', data.pageAccess); // Debug log
+          
           setPermissions(data.pageAccess || {
             dashboard: false,
             inventory: false,
             settings: false,
             userManagement: false,
           });
+        } else {
+          console.error('Failed to load user permissions:', response.status);
         }
       } catch (error) {
         console.error('Error loading user permissions:', error);
@@ -151,15 +156,19 @@ export function MobileNav() {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
+          console.log('Mobile nav - User data from /api/auth/me:', data); // Debug log
+          
           setPermissions(data.pageAccess || {
             dashboard: false,
             inventory: false,
             settings: false,
             userManagement: false,
           });
+        } else {
+          console.error('Mobile nav - Failed to load user permissions:', response.status);
         }
       } catch (error) {
-        console.error('Error loading user permissions:', error);
+        console.error('Mobile nav - Error loading user permissions:', error);
       }
     };
 

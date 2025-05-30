@@ -16,6 +16,8 @@
     "mode:dev": "node scripts/switch-mode.js dev",
     "mode:prod": "node scripts/switch-mode.js prod",
     "mode:status": "node scripts/switch-mode.js status",
+    "mode:dev-quick": "scripts/dev-mode.bat",
+    "mode:prod-quick": "scripts/prod-mode.bat",
     "prebuild": "node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js",
     "build": "next build",
     "build:prod": "npm run mode:prod && npm run build",

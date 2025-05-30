@@ -48,7 +48,12 @@ async function main() {
     { name: 'reports:read', description: 'Ver reportes', resource: 'reports', action: 'read' },
     { name: 'settings:read', description: 'Ver configuración', resource: 'settings', action: 'read' },
     { name: 'settings:write', description: 'Modificar configuración', resource: 'settings', action: 'write' },
-    { name: 'admin:all', description: 'Acceso completo de administrador', resource: 'admin', action: 'all' }
+    { name: 'admin:all', description: 'Acceso completo de administrador', resource: 'admin', action: 'all' },
+    // Permisos específicos para páginas (hasPageAccess)
+    { name: 'page:dashboard', description: 'Acceso a página dashboard', resource: 'page', action: 'dashboard' },
+    { name: 'page:inventory', description: 'Acceso a página inventory', resource: 'page', action: 'inventory' },
+    { name: 'page:settings', description: 'Acceso a página settings', resource: 'page', action: 'settings' },
+    { name: 'page:user-management', description: 'Acceso a página user-management', resource: 'page', action: 'user-management' }
   ];
 
   const createdPermissions = [];
@@ -81,7 +86,7 @@ async function main() {
 
   // Manager tiene permisos limitados
   const managerPermissions = createdPermissions.filter(p => 
-    ['dashboard:read', 'inventory:read', 'inventory:write', 'reports:read'].includes(p.name)
+    ['dashboard:read', 'inventory:read', 'inventory:write', 'reports:read', 'page:dashboard', 'page:inventory'].includes(p.name)
   );
   for (const permission of managerPermissions) {
     await prisma.rolePermission.upsert({
@@ -101,7 +106,7 @@ async function main() {
 
   // User solo lectura básica
   const userPermissions = createdPermissions.filter(p => 
-    ['dashboard:read', 'inventory:read'].includes(p.name)
+    ['dashboard:read', 'inventory:read', 'page:dashboard', 'page:inventory'].includes(p.name)
   );
   for (const permission of userPermissions) {
     await prisma.rolePermission.upsert({

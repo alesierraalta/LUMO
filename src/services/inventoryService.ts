@@ -430,6 +430,14 @@ export async function getAllStockMovements(params?: {
               }
             }
           }
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
         }
       },
       orderBy,

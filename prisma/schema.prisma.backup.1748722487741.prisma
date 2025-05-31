@@ -1,0 +1,257 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  inventory   InventoryItem[]
+
+  @@map("categories")
+}
+
+model Location {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  inventory   InventoryItem[]
+
+  @@map("locations")
+}
+
+model InventoryItem {
+  id             String            @id @default(cuid())
+  quantity       Int               @default(0)
+  minStockLevel  Int               @default(5)
+  location       String?           // Mantener para compatibilidad temporalmente
+  locationId     String?           // Nueva relación
+  lastUpdated    DateTime          @default(now())
+  active         Boolean           @default(true)
+  categoryId     String?
+  cost           Float             @default(0)
+  createdAt      DateTime          @default(now())
+  description    String?
+  imageUrl       String?
+  margin         Float             @default(0)
+  name           String
+  price          Float
+  sku            String            @unique
+  updatedAt      DateTime          @updatedAt
+  category       Category?         @relation(fields: [categoryId], references: [id])
+  locationRelation Location?       @relation(fields: [locationId], references: [id])
+  transactions   SaleTransaction[]
+  stockMovements StockMovement[]
+  priceHistory   PriceHistory[]
+
+  @@index([categoryId])
+  @@index([locationId])
+  @@index([active])
+  @@index([quantity])
+  @@index([createdAt])
+  @@map("inventory_items")
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  quantity        Int
+  type            MovementType
+  date            DateTime      @default(now())
+  notes           String?
+  createdBy       String?
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("stock_movements")
+}
+
+model Sale {
+  id           String            @id @default(cuid())
+  date         DateTime          @default(now())
+  total        Float
+  subtotal     Float
+  tax          Float
+  status       SaleStatus        @default(COMPLETED)
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  userId       String?
+  user         User?             @relation(fields: [userId], references: [id])
+  transactions SaleTransaction[]
+
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("sales")
+}
+
+model SaleTransaction {
+  id              String        @id @default(cuid())
+  saleId          String
+  quantity        Int
+  unitPrice       Float
+  subtotal        Float
+  createdAt       DateTime      @default(now())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([saleId])
+  @@map("sale_transactions")
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  passwordHash    String
+  firstName       String?
+  lastName        String?
+  roleId          String
+  role            Role            @relation(fields: [roleId], references: [id])
+  metadata        Json?
+  isActive        Boolean         @default(true)
+  isEmailVerified Boolean         @default(false)
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  lastLoginAt     DateTime?
+  loginAttempts   Int             @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  stockMovements  StockMovement[]
+  sales           Sale[]
+  priceHistory    PriceHistory[]
+  sessions        UserSession[]
+  customPermissions UserPermission[]
+
+  @@index([email])
+  @@index([isActive])
+  @@index([roleId])
+  @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userAgent String?
+  ipAddress String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
+  permissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  resource    String
+  action      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  roles       RolePermission[]
+  users       UserPermission[]
+
+  @@index([name])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model PriceHistory {
+  id             String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  oldPrice       Float?
+  newPrice       Float?
+  oldCost        Float?
+  newCost        Float?
+  oldMargin      Float?
+  newMargin      Float?
+  changeReason   String?
+  createdAt      DateTime      @default(now())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("price_history")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  granted      Boolean    @default(true) // true = granted, false = explicitly denied
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+enum MovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  INITIAL
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+} 

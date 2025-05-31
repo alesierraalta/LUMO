@@ -49,10 +49,15 @@ const detectEnvironment = () => {
     return 'sqlite';
   }
 
-  // Production environment detection
+  // CHOREO_DEPLOYMENT takes high priority for production detection
+  if (indicators.choreoDeployment === 'true') {
+    console.log('  🎯 CHOREO DEPLOYMENT DETECTED: Forcing PostgreSQL');
+    return 'postgresql';
+  }
+
+  // Production environment detection with stronger PostgreSQL bias
   const isProduction = 
     indicators.nodeEnv === 'production' ||
-    indicators.choreoDeployment === 'true' ||
     (indicators.databaseUrl && indicators.databaseUrl.includes('postgres'));
 
   console.log(`  🎯 ENVIRONMENT: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);

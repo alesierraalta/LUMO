@@ -14,29 +14,34 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
-      echo "[BUILD] === DYNAMIC SCHEMA SELECTION ==="
-      echo "[BUILD] Running schema selection for production environment..."
-      npm run schema:postgresql
-      echo "[BUILD] Validating database configuration..."
-      npm run schema:validate
-      echo "[BUILD] Current schema provider:"
-      grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
+      echo "[BUILD] === PRODUCTION SCHEMA CONFIGURATION ==="
       echo "[BUILD] Environment info:"
       echo "  DATABASE_URL: ${DATABASE_URL:-not-set}"
       echo "  NODE_ENV: ${NODE_ENV:-not-set}"
+      echo "  CHOREO_DEPLOYMENT: ${CHOREO_DEPLOYMENT:-not-set}"
+      echo "[BUILD] Forcing PostgreSQL schema for production..."
+      npm run schema:postgresql
+      echo "[BUILD] Validating PostgreSQL configuration..."
+      npm run schema:validate
+      echo "[BUILD] Running Choreo deployment verification..."
+      npm run choreo:check
+      echo "[BUILD] Verifying schema provider:"
+      grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
       echo "[BUILD] Regenerating Prisma client for PostgreSQL..."
       npx prisma generate --schema=./prisma/schema.prisma
-      echo "[BUILD] === END SCHEMA CONFIGURATION ==="
-      echo "[BUILD] Switching to production mode..."
-      npm run mode:prod
-      echo "[BUILD] Running pre-build scripts..."
-      npm run prebuild
+      echo "[BUILD] === PRODUCTION BUILD PROCESS ==="
+      echo "[BUILD] Switching to production mode (without schema override)..."
+      node scripts/switch-mode.js prod
+      echo "[BUILD] Running pre-build scripts (skipping schema auto-selection)..."
+      node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js
       echo "[BUILD] Fixing Next.js configuration..."
       node scripts/fix-next-config.js
       echo "[BUILD] Building application..."
       npm run build
       echo "[BUILD] Running post-build scripts..."
       npm run postbuild
+      echo "[BUILD] Final schema verification:"
+      grep -A 2 -B 2 "provider.*=" prisma/schema.prisma || echo "Schema check failed"
       echo "[BUILD] Build completed successfully!"
     env:
       - name: NODE_ENV

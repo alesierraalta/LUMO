@@ -1,11 +1,11 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
-  binaryTargets   = ["native", "debian-openssl-3.0.x", "linux-musl"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -58,9 +58,6 @@ model InventoryItem {
 
   @@index([categoryId])
   @@index([locationId])
-  @@index([active])
-  @@index([quantity])
-  @@index([createdAt])
   @@map("inventory_items")
 }
 
@@ -78,8 +75,6 @@ model StockMovement {
 
   @@index([inventoryItemId])
   @@index([userId])
-  @@index([date])
-  @@index([type])
   @@map("stock_movements")
 }
 
@@ -98,8 +93,6 @@ model Sale {
   transactions SaleTransaction[]
 
   @@index([userId])
-  @@index([date])
-  @@index([status])
   @@map("sales")
 }
 
@@ -144,9 +137,6 @@ model User {
   sessions        UserSession[]
   customPermissions UserPermission[]
 
-  @@index([email])
-  @@index([isActive])
-  @@index([roleId])
   @@map("users")
 }
 
@@ -176,7 +166,6 @@ model Role {
   users       User[]
   permissions RolePermission[]
 
-  @@index([name])
   @@map("roles")
 }
 
@@ -191,8 +180,6 @@ model Permission {
   roles       RolePermission[]
   users       UserPermission[]
 
-  @@index([name])
-  @@index([resource])
   @@map("permissions")
 }
 
@@ -225,7 +212,6 @@ model PriceHistory {
 
   @@index([inventoryItemId])
   @@index([userId])
-  @@index([createdAt])
   @@map("price_history")
 }
 

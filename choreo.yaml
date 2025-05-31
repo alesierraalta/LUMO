@@ -68,8 +68,8 @@ spec:
       npx prisma db push --accept-data-loss
       echo "[DEPLOY] Verificando usuario administrador..."
       node scripts/ensure-admin.js
-      echo "[DEPLOY] Starting custom Choreo server..."
-      node choreo-server.js
+      echo "[DEPLOY] Starting Next.js standalone server..."
+      node .next/standalone/server.js
   env:
     - name: NODE_ENV
       value: production

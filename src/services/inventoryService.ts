@@ -439,13 +439,17 @@ export async function getAllStockMovements(params?: {
     prisma.stockMovement.count({ where })
   ]);
   
+  // Ensure movements is always an array and data is serialized properly
+  const safeMovements = Array.isArray(movements) ? movements : [];
+  const serializedData = serializeDecimal(safeMovements) || [];
+  
   return {
-    data: serializeDecimal(movements),
+    data: Array.isArray(serializedData) ? serializedData : [],
     pagination: {
-      total,
+      total: total || 0,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil((total || 0) / limit)
     }
   };
 }

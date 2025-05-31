@@ -81,8 +81,8 @@ export default function MovementsClient() {
   
   // States
   const [isLoading, setIsLoading] = useState(true);
-  const [movements, setMovements] = useState([]);
-  const [priceHistory, setPriceHistory] = useState([]);
+  const [movements, setMovements] = useState<any[]>([]);
+  const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [isPriceHistoryLoading, setIsPriceHistoryLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 50, totalPages: 0 });
   const [categories, setCategories] = useState<Array<{id: string; name: string}>>([]);
@@ -142,17 +142,27 @@ export default function MovementsClient() {
         
         const data = await response.json();
         
+        // Ensure data.data is always an array
+        const rawMovements = data?.data || [];
+        if (!Array.isArray(rawMovements)) {
+          console.error("Invalid movements data received:", rawMovements);
+          setMovements([]);
+          setPagination({ total: 0, page: 1, limit: 50, totalPages: 0 });
+          return;
+        }
+        
         // Process movements to ensure valid dates
-        const processedMovements = data.data.map((movement: any) => ({
+        const processedMovements = rawMovements.map((movement: any) => ({
           ...movement,
           date: ensureValidDate(movement.date)
         }));
         
         setMovements(processedMovements);
-        setPagination(data.pagination);
+        setPagination(data.pagination || { total: 0, page: 1, limit: 50, totalPages: 0 });
       } catch (error) {
         console.error("Error loading movements:", error);
-        // Could add error state and display here
+        setMovements([]);
+        setPagination({ total: 0, page: 1, limit: 50, totalPages: 0 });
       } finally {
         setIsLoading(false);
       }

@@ -14,6 +14,8 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
+      echo "[BUILD] Fixing Prisma schema for production..."
+      node scripts/fix-prisma-schema.js
       echo "[BUILD] Switching to production mode..."
       npm run mode:prod
       echo "[BUILD] Running pre-build scripts..."

@@ -25,47 +25,56 @@ function detectEnvironment() {
   console.log(`  Working Directory: ${workingDir}`);
   
   // 🎯 CHOREO DETECTION STRATEGY:
-  // 1. Check for Choreo-specific paths
-  // 2. Check for buildpack environment
-  // 3. Check for CNB_* environment variables
-  // 4. Check for workspace directory structure
+  // Priority 1: Physical Choreo environment indicators (buildpack/container)
+  // Priority 2: Local development machine override (always development)
+  // Priority 3: PostgreSQL URL patterns (hosted databases)
+  // Priority 4: Explicit production flags (fallback)
   
   const isChoreoPath = workingDir.includes('/workspace') || workingDir.includes('/cnb/');
   const hasCNBVars = Object.keys(process.env).some(key => key.startsWith('CNB_'));
   const hasBuildpackVars = process.env.STACK_ID || process.env.BPL_JVM_HEAD_ROOM;
   const hasGoogleVars = process.env.GOOGLE_NODEJS_VERSION;
+  const isWindowsLocal = workingDir.includes('\\') || workingDir.includes('C:');
   
-  console.log(`  🔍 Choreo Indicators:`);
+  console.log(`  🔍 Environment Indicators:`);
   console.log(`    - Choreo Path: ${isChoreoPath}`);
   console.log(`    - CNB Variables: ${hasCNBVars}`);
   console.log(`    - Buildpack Variables: ${hasBuildpackVars ? 'yes' : 'no'}`);
   console.log(`    - Google Variables: ${hasGoogleVars ? 'yes' : 'no'}`);
+  console.log(`    - Windows Local: ${isWindowsLocal}`);
   
-  // CHOREO DETECTION LOGIC
-  const isChoreo = isChoreoPath || hasCNBVars || hasBuildpackVars || hasGoogleVars;
+  // PRIORITY 1: GENUINE CHOREO ENVIRONMENT
+  const isRealChoreo = isChoreoPath || hasCNBVars || hasBuildpackVars || hasGoogleVars;
   
-  if (isChoreo) {
-    console.log('  🎯 ENVIRONMENT: CHOREO/PRODUCTION');
+  if (isRealChoreo) {
+    console.log('  🎯 ENVIRONMENT: CHOREO/PRODUCTION (Buildpack Environment)');
     return 'PRODUCTION';
   }
   
-  // PostgreSQL URL patterns indicate production
+  // PRIORITY 2: LOCAL DEVELOPMENT MACHINE (Always wins over database URLs)
+  if (isWindowsLocal || workingDir.includes('/Users/') || workingDir.includes('/home/')) {
+    console.log('  🏠 ENVIRONMENT: DEVELOPMENT (Local development machine detected)');
+    console.log('  ℹ️  Note: Ignoring production variables for local development');
+    return 'DEVELOPMENT';
+  }
+  
+  // PRIORITY 3: HOSTED DATABASE URL (Non-local database)
   if (databaseUrl && (
     databaseUrl.includes('postgresql://') || 
     databaseUrl.includes('postgres://') ||
-    databaseUrl.includes('@') // Any hosted database
+    (databaseUrl.includes('@') && !databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1'))
   )) {
-    console.log('  🎯 ENVIRONMENT: PRODUCTION (PostgreSQL URL detected)');
+    console.log('  🎯 ENVIRONMENT: PRODUCTION (Hosted PostgreSQL URL detected)');
     return 'PRODUCTION';
   }
   
-  // Explicit production indicators
+  // PRIORITY 4: EXPLICIT PRODUCTION (Only if not caught by local override)
   if (nodeEnv === 'production' || choreoDeployment) {
-    console.log('  🎯 ENVIRONMENT: PRODUCTION');
+    console.log('  🎯 ENVIRONMENT: PRODUCTION (Explicit production flags)');
     return 'PRODUCTION';
   }
   
-  console.log('  🎯 ENVIRONMENT: DEVELOPMENT');
+  console.log('  🏠 ENVIRONMENT: DEVELOPMENT (Default)');
   return 'DEVELOPMENT';
 }
 

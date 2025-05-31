@@ -12,6 +12,13 @@ spec:
     version: "20"
   build:
     command: |
+      echo "[BUILD] === FORCED CACHE CLEARING ==="
+      echo "[BUILD] Clearing ALL caches to force fresh build..."
+      rm -rf .next node_modules/.prisma || true
+      echo "[BUILD] Cache clearing completed"
+      echo "[BUILD] === DEPLOYMENT MARKER VERIFICATION ==="
+      node verify-deployment.js
+      echo "[BUILD] === END MARKER VERIFICATION ==="
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
       echo "[BUILD] === PRODUCTION SCHEMA CONFIGURATION ==="
@@ -56,6 +63,9 @@ spec:
     command: |
       echo "[DEPLOY] 🚀 Starting LUMO Inventory deployment..."
       echo "[DEPLOY] Current directory: $(pwd)"
+      echo "[DEPLOY] === RUNTIME SCHEMA VERIFICATION ==="
+      node runtime-schema-check.js
+      echo "[DEPLOY] === END VERIFICATION ==="
       echo "[DEPLOY] Checking build artifacts:"
       ls -la .next/
       echo "[DEPLOY] Checking server files:"

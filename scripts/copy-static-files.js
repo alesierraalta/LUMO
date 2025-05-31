@@ -118,6 +118,17 @@ function copyStaticFiles() {
       console.log(`[COPY-STATIC] ⚠️ Directory missing: ${dir}`);
     }
   });
+
+  // Copy runtime schema check script
+  console.log('[COPY-STATIC] Copying runtime schema check script...');
+  const runtimeCheckSource = path.join(process.cwd(), 'runtime-schema-check.js');
+  if (fs.existsSync(runtimeCheckSource)) {
+    const runtimeCheckTarget = path.join(process.cwd(), '.next', 'standalone', 'runtime-schema-check.js');
+    fs.copyFileSync(runtimeCheckSource, runtimeCheckTarget);
+    console.log(`[COPY-STATIC] ✅ runtime-schema-check.js copied to: ${runtimeCheckTarget}`);
+  } else {
+    console.log('[COPY-STATIC] ⚠️ runtime-schema-check.js not found, skipping...');
+  }
 }
 
 function findBuildId() {

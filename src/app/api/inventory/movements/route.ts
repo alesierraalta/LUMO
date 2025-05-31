@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user || !isAdmin(user)) {
       return NextResponse.json({
-        items: [],
-        total: 0,
-        page: 1,
-        pageSize: 10,
-        pages: 0
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
       });
     }
     

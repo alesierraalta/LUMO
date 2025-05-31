@@ -14,24 +14,15 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
-      echo "[BUILD] === CRITICAL: SCHEMA FIXING PHASE ==="
-      echo "[BUILD] BEFORE - Current schema provider:"
+      echo "[BUILD] === SCHEMA VERIFICATION ==="
+      echo "[BUILD] Current schema provider:"
       grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
       echo "[BUILD] Environment info:"
       echo "  DATABASE_URL: ${DATABASE_URL:-not-set}"
       echo "  NODE_ENV: ${NODE_ENV:-not-set}"
-      echo "  CHOREO_DEPLOYMENT: ${CHOREO_DEPLOYMENT:-not-set}"
-      echo "[BUILD] Step 1: Smart schema detection..."
-      node scripts/fix-prisma-schema.js
-      echo "[BUILD] Step 2: Force PostgreSQL as backup..."
-      node scripts/force-postgresql.js
-      echo "[BUILD] AFTER - Final schema provider:"
-      grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
-      echo "[BUILD] Step 3: CRITICAL - Regenerating Prisma client..."
+      echo "[BUILD] Regenerating Prisma client for PostgreSQL..."
       npx prisma generate --schema=./prisma/schema.prisma
-      echo "[BUILD] Step 4: Validating Prisma client..."
-      node -e "console.log('Prisma client validation:', require('@prisma/client'))"
-      echo "[BUILD] === END CRITICAL SCHEMA FIXING ==="
+      echo "[BUILD] === END SCHEMA VERIFICATION ==="
       echo "[BUILD] Switching to production mode..."
       npm run mode:prod
       echo "[BUILD] Running pre-build scripts..."

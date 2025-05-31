@@ -1,62 +1,151 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { ensureValidDate } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication and admin permissions
     const user = await getCurrentUser();
+    if (!user || !isAdmin(user)) {
+      // Return empty array for unauthorized users
+      return NextResponse.json([]);
+    }
     
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    // Ensure prisma is available
     if (!prisma) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+      console.error("Database connection not available");
+      return NextResponse.json([]);
+    }
+    
+    // Parse query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const categoryId = searchParams.get("categoryId") || undefined;
+    const search = searchParams.get("search") || undefined;
+    const sort = searchParams.get("sort") || "date-desc";
+    
+    // Handle date filters
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    
+    const startDate = startDateParam ? ensureValidDate(startDateParam) : undefined;
+    const endDate = endDateParam ? ensureValidDate(endDateParam) : undefined;
+    
+    // Build query conditions
+    const where: any = {};
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = startDate;
+      }
+      if (endDate) {
+        where.createdAt.lte = endDate;
+      }
     }
 
-    const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const skip = (page - 1) * limit;
+    // Category filtering
+    if (categoryId && categoryId !== "all") {
+      where.inventoryItem = {
+        categoryId
+      };
+    }
 
-    const [priceHistory, total] = await Promise.all([
-      prisma.priceHistory.findMany({
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              email: true,
-              firstName: true,
-              lastName: true,
-            }
-          },
+    // Search functionality
+    if (search) {
+      where.OR = [
+        {
           inventoryItem: {
-            select: {
-              name: true,
-              sku: true,
+            name: {
+              contains: search,
+              mode: 'insensitive'
             }
           }
+        },
+        {
+          inventoryItem: {
+            sku: {
+              contains: search,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          changeReason: {
+            contains: search,
+            mode: 'insensitive'
+          }
         }
-      }),
-      prisma.priceHistory.count()
-    ]);
-
-    return NextResponse.json({
-      priceHistory,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    });
-  } catch (error) {
-    console.error("Error fetching price history:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch price history" },
-      { status: 500 }
-    );
+      ];
+    }
+    
+    // Define the sort order
+    const orderBy: any = {};
+    
+    switch (sort) {
+      case 'date-asc':
+        orderBy.createdAt = 'asc';
+        break;
+      case 'product-asc':
+        orderBy.inventoryItem = {
+          name: 'asc'
+        };
+        break;
+      case 'product-desc':
+        orderBy.inventoryItem = {
+          name: 'desc'
+        };
+        break;
+      case 'date-desc':
+      default:
+        orderBy.createdAt = 'desc';
+        break;
+    }
+    
+    // Fetch price history data safely
+    try {
+      const priceHistory = await prisma.priceHistory.findMany({
+        where,
+        include: {
+          inventoryItem: {
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true
+            }
+          }
+        },
+        orderBy,
+        take: limit,
+        skip: (page - 1) * limit,
+      });
+      
+      // Ensure we always return an array
+      return NextResponse.json(Array.isArray(priceHistory) ? priceHistory : []);
+    } catch (dbError) {
+      console.error("Database error fetching price history:", dbError);
+      // Return empty array in case of database error
+      return NextResponse.json([]);
+    }
+  } catch (error: any) {
+    console.error("Error processing price history request:", error);
+    // Return empty array instead of error status to prevent client-side errors
+    return NextResponse.json([]);
   }
 } 

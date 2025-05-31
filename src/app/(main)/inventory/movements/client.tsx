@@ -27,7 +27,8 @@ import {
   Download,
   History,
   DollarSign,
-  CreditCard 
+  CreditCard,
+  TrendingDown
 } from "lucide-react";
 import { formatDate, formatDateTime, ensureValidDate, startOfDay, endOfDay, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -192,9 +193,19 @@ export default function MovementsClient() {
         if (!response.ok) throw new Error("Failed to load price history");
         
         const data = await response.json();
-        setPriceHistory(data);
+        
+        // Ensure data is always an array
+        const rawPriceHistory = Array.isArray(data) ? data : [];
+        if (!Array.isArray(rawPriceHistory)) {
+          console.error("Invalid price history data received:", data);
+          setPriceHistory([]);
+          return;
+        }
+        
+        setPriceHistory(rawPriceHistory);
       } catch (error) {
         console.error("Error loading price history:", error);
+        setPriceHistory([]);
       } finally {
         setIsPriceHistoryLoading(false);
       }
@@ -359,6 +370,85 @@ export default function MovementsClient() {
     }
     
     return null;
+  };
+
+  // Price History Tab
+  const PriceHistoryTab = () => {
+    if (isPriceHistoryLoading) {
+      return (
+        <div className="py-8 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm text-muted-foreground">Cargando historial de precios...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Ensure priceHistory is an array before rendering
+    const safeHistory = Array.isArray(priceHistory) ? priceHistory : [];
+
+    if (safeHistory.length === 0) {
+      return (
+        <div className="py-12 flex flex-col items-center justify-center text-center">
+          <TrendingDown className="h-12 w-12 text-muted-foreground mb-3" />
+          <h3 className="text-lg font-medium">No hay datos de historial de precios</h3>
+          <p className="text-sm text-muted-foreground max-w-md mt-1 mb-6">
+            No se encontraron registros de cambios de precios para los filtros seleccionados.
+          </p>
+          <Button variant="outline" onClick={() => resetFilters()}>
+            Limpiar filtros
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Producto</TableHead>
+              <TableHead>Precio Anterior</TableHead>
+              <TableHead>Nuevo Precio</TableHead>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Usuario</TableHead>
+              <TableHead>Motivo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {safeHistory.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">
+                  {item.inventoryItem?.name || "Producto desconocido"}
+                  <div className="text-xs text-muted-foreground">
+                    {item.inventoryItem?.sku || "Sin SKU"}
+                  </div>
+                </TableCell>
+                <TableCell>{formatCurrency(item.previousPrice || 0)}</TableCell>
+                <TableCell>{formatCurrency(item.newPrice || 0)}</TableCell>
+                <TableCell>
+                  {formatDateTime(item.createdAt)}
+                </TableCell>
+                <TableCell>
+                  {item.user ? (
+                    <>
+                      {item.user.firstName} {item.user.lastName}
+                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">
+                        {item.user.email}
+                      </div>
+                    </>
+                  ) : (
+                    "Sistema"
+                  )}
+                </TableCell>
+                <TableCell>{item.changeReason || "No especificado"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
   };
 
   return (
@@ -692,109 +782,7 @@ export default function MovementsClient() {
         </TabsContent>
         
         <TabsContent value="price" className="space-y-4">
-          {isPriceHistoryLoading ? (
-            <div className="h-[300px] w-full flex flex-col items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm text-muted-foreground">Cargando historial de precios...</p>
-            </div>
-          ) : priceHistory.length === 0 ? (
-            <div className="border rounded-md p-8 text-center">
-              <div className="flex flex-col items-center justify-center">
-                <div className="bg-muted rounded-full p-3 mb-4">
-                  <History className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No hay historial de precios</h3>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                  No se encontraron cambios de precio o costo con los filtros actuales.
-                </p>
-                <Button variant="outline" onClick={resetFilters}>
-                  Limpiar Filtros
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Precio Anterior</TableHead>
-                    <TableHead>Precio Nuevo</TableHead>
-                    <TableHead>Costo Anterior</TableHead>
-                    <TableHead>Costo Nuevo</TableHead>
-                    <TableHead>Margen Anterior</TableHead>
-                    <TableHead>Margen Nuevo</TableHead>
-                    <TableHead>Razón del Cambio</TableHead>
-                    <TableHead>Usuario</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {priceHistory.map((record: any) => (
-                    <TableRow key={record.id} className="group">
-                      <TableCell className="font-medium">
-                        {formatDateTime(record.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        {record.inventoryItem?.name || "Producto desconocido"}
-                        <div className="text-xs text-muted-foreground mt-1">
-                          SKU: {record.inventoryItem?.sku || "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {record.oldPrice !== null ? formatCurrency(record.oldPrice) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {record.newPrice !== null ? formatCurrency(record.newPrice) : "-"}
-                          {renderPriceChangeIndicator(record.oldPrice, record.newPrice)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {record.oldCost !== null ? formatCurrency(record.oldCost) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {record.newCost !== null ? formatCurrency(record.newCost) : "-"}
-                          {renderPriceChangeIndicator(record.oldCost, record.newCost)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {record.oldMargin !== null ? `${record.oldMargin}%` : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {record.newMargin !== null ? `${record.newMargin}%` : "-"}
-                          {renderPriceChangeIndicator(record.oldMargin, record.newMargin)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {record.changeReason || <span className="text-muted-foreground">-</span>}
-                      </TableCell>
-                      <TableCell>
-                        {record.user ? (
-                          <div>
-                            <div className="font-medium">
-                              {record.user.firstName && record.user.lastName 
-                                ? `${record.user.firstName} ${record.user.lastName}`
-                                : record.user.email || "Usuario del sistema"}
-                            </div>
-                            {record.user.email && (
-                              <div className="text-xs text-muted-foreground">
-                                {record.user.email}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Sistema</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <PriceHistoryTab />
         </TabsContent>
       </Tabs>
     </div>

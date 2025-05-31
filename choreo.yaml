@@ -14,8 +14,18 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
+      echo "[BUILD] === SCHEMA FIXING PHASE ==="
+      echo "[BUILD] Current schema provider:"
+      grep -n "provider" prisma/schema.prisma || echo "No provider found"
+      echo "[BUILD] DATABASE_URL type: ${DATABASE_URL:-not-set}"
+      echo "[BUILD] NODE_ENV: ${NODE_ENV:-not-set}"
       echo "[BUILD] Fixing Prisma schema for production..."
       node scripts/fix-prisma-schema.js
+      echo "[BUILD] Force PostgreSQL as backup..."
+      node scripts/force-postgresql.js
+      echo "[BUILD] Final schema provider:"
+      grep -n "provider" prisma/schema.prisma || echo "No provider found"
+      echo "[BUILD] === END SCHEMA FIXING ==="
       echo "[BUILD] Switching to production mode..."
       npm run mode:prod
       echo "[BUILD] Running pre-build scripts..."

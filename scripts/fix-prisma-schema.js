@@ -1,132 +1,186 @@
 #!/usr/bin/env node
 
 /**
- * Script para asegurar que el schema de Prisma esté configurado correctamente
- * Este script se ejecuta durante el build para forzar PostgreSQL en producción
+ * Dynamic Prisma Schema Selector
+ * Automatically selects and copies the appropriate schema based on environment
+ * Supports SQLite (development) and PostgreSQL (production)
  */
 
 const fs = require('fs');
 const path = require('path');
 
-console.log('[PRISMA SCHEMA FIX] 🚀 INICIANDO verificación del schema...');
+console.log('[SCHEMA SELECTOR] 🚀 Starting dynamic schema selection...');
 
-const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+const schemaDir = path.join(process.cwd(), 'prisma');
+const targetSchemaPath = path.join(schemaDir, 'schema.prisma');
+const sqliteSchemaPath = path.join(schemaDir, 'schema.sqlite.prisma');
+const postgresSchemaPath = path.join(schemaDir, 'schema.postgresql.prisma');
 
-// Detectar si estamos en producción usando múltiples métodos
-const isProduction = 
-  process.env.NODE_ENV === 'production' ||
-  process.env.CHOREO_DEPLOYMENT === 'true' ||
-  process.env.DATABASE_URL?.includes('postgres') ||
-  process.env.DATABASE_URL?.includes('postgresql') ||
-  process.argv.includes('--force-postgresql');
+// Enhanced environment detection
+const detectEnvironment = () => {
+  const indicators = {
+    nodeEnv: process.env.NODE_ENV,
+    choreoDeployment: process.env.CHOREO_DEPLOYMENT,
+    databaseUrl: process.env.DATABASE_URL,
+    forcePostgres: process.argv.includes('--force-postgresql'),
+    forceSqlite: process.argv.includes('--force-sqlite')
+  };
 
-console.log('[PRISMA SCHEMA FIX] 🔍 DETECCIÓN DE ENTORNO:');
-console.log(`  NODE_ENV: ${process.env.NODE_ENV || 'not-set'}`);
-console.log(`  CHOREO_DEPLOYMENT: ${process.env.CHOREO_DEPLOYMENT || 'not-set'}`);
-console.log(`  DATABASE_URL exists: ${process.env.DATABASE_URL ? 'YES' : 'NO'}`);
-if (process.env.DATABASE_URL) {
-  const urlType = process.env.DATABASE_URL.includes('postgres') ? 'PostgreSQL' : 
-                  process.env.DATABASE_URL.includes('file:') ? 'SQLite' : 'Unknown';
-  console.log(`  DATABASE_URL type: ${urlType}`);
-  console.log(`  DATABASE_URL preview: ${process.env.DATABASE_URL.substring(0, 20)}...`);
-}
-console.log(`  Command args: ${process.argv.join(' ')}`);
-console.log(`  🎯 PRODUCTION DETECTED: ${isProduction ? 'YES' : 'NO'}`);
-
-if (!fs.existsSync(schemaPath)) {
-  console.error('[PRISMA SCHEMA FIX] ❌ Schema Prisma no encontrado en:', schemaPath);
-  process.exit(1);
-}
-
-try {
-  let schemaContent = fs.readFileSync(schemaPath, 'utf8');
+  console.log('[SCHEMA SELECTOR] 🔍 Environment Detection:');
+  console.log(`  NODE_ENV: ${indicators.nodeEnv || 'not-set'}`);
+  console.log(`  CHOREO_DEPLOYMENT: ${indicators.choreoDeployment || 'not-set'}`);
+  console.log(`  DATABASE_URL: ${indicators.databaseUrl ? 'set' : 'not-set'}`);
   
-  // Mostrar contenido relevante del schema
-  const lines = schemaContent.split('\n');
-  console.log('[PRISMA SCHEMA FIX] 📋 SCHEMA ACTUAL:');
-  lines.forEach((line, index) => {
-    if (line.includes('provider') || line.includes('datasource')) {
-      console.log(`  ${index + 1}: ${line.trim()}`);
-    }
-  });
+  if (indicators.databaseUrl) {
+    const urlType = indicators.databaseUrl.includes('postgres') ? 'PostgreSQL' : 
+                    indicators.databaseUrl.includes('file:') ? 'SQLite' : 'Unknown';
+    console.log(`  DATABASE_URL type: ${urlType}`);
+    console.log(`  DATABASE_URL preview: ${indicators.databaseUrl.substring(0, 30)}...`);
+  }
+
+  // Force flags take precedence
+  if (indicators.forcePostgres) {
+    console.log('  🎯 FORCED: PostgreSQL via --force-postgresql flag');
+    return 'postgresql';
+  }
   
-  const currentProvider = schemaContent.match(/provider\s*=\s*"(sqlite|postgresql)"/);
+  if (indicators.forceSqlite) {
+    console.log('  🎯 FORCED: SQLite via --force-sqlite flag');
+    return 'sqlite';
+  }
+
+  // Production environment detection
+  const isProduction = 
+    indicators.nodeEnv === 'production' ||
+    indicators.choreoDeployment === 'true' ||
+    (indicators.databaseUrl && indicators.databaseUrl.includes('postgres'));
+
+  console.log(`  🎯 ENVIRONMENT: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
   
-  if (!currentProvider) {
-    console.error('[PRISMA SCHEMA FIX] ❌ No se pudo encontrar provider en schema.prisma');
-    console.log('[PRISMA SCHEMA FIX] 📄 Contenido del datasource:');
-    const datasourceMatch = schemaContent.match(/datasource\s+db\s*{[^}]+}/s);
-    if (datasourceMatch) {
-      console.log(datasourceMatch[0]);
-    }
+  return isProduction ? 'postgresql' : 'sqlite';
+};
+
+// Validate schema files exist
+const validateSchemaFiles = () => {
+  const missing = [];
+  
+  if (!fs.existsSync(sqliteSchemaPath)) {
+    missing.push('schema.sqlite.prisma');
+  }
+  
+  if (!fs.existsSync(postgresSchemaPath)) {
+    missing.push('schema.postgresql.prisma');
+  }
+
+  if (missing.length > 0) {
+    console.error(`[SCHEMA SELECTOR] ❌ Missing schema files: ${missing.join(', ')}`);
+    console.error('[SCHEMA SELECTOR] Please ensure both schema files exist in the prisma directory');
     process.exit(1);
   }
 
-  const currentProviderValue = currentProvider[1];
-  console.log(`[PRISMA SCHEMA FIX] 📊 Provider detectado: "${currentProviderValue}"`);
-  
-  if (isProduction) {
-    // En producción, DEBE ser PostgreSQL
-    if (currentProviderValue === 'sqlite') {
-      console.log('[PRISMA SCHEMA FIX] 🔥 FORZANDO cambio a PostgreSQL para PRODUCCIÓN...');
-      
-      // Hacer el cambio más robusto
-      const newSchemaContent = schemaContent.replace(
-        /provider\s*=\s*"sqlite"/g,
-        'provider = "postgresql"'
-      );
-      
-      // Verificar que el cambio se hará
-      if (newSchemaContent === schemaContent) {
-        console.error('[PRISMA SCHEMA FIX] ❌ ERROR: No se pudo cambiar el provider');
-        console.log('[PRISMA SCHEMA FIX] Original:', schemaContent.substring(0, 200));
-        process.exit(1);
-      }
-      
-      // Escribir el nuevo contenido
-      fs.writeFileSync(schemaPath, newSchemaContent);
-      console.log('[PRISMA SCHEMA FIX] ✅ Schema MODIFICADO a PostgreSQL');
-      
-      // VERIFICACIÓN CRÍTICA
-      const verifyContent = fs.readFileSync(schemaPath, 'utf8');
-      const newProvider = verifyContent.match(/provider\s*=\s*"(sqlite|postgresql)"/);
-      
-      if (!newProvider) {
-        console.error('[PRISMA SCHEMA FIX] ❌ VERIFICACIÓN FALLÓ: No se encontró provider después del cambio');
-        process.exit(1);
-      }
-      
-      if (newProvider[1] !== 'postgresql') {
-        console.error('[PRISMA SCHEMA FIX] ❌ VERIFICACIÓN FALLÓ: Provider sigue siendo', newProvider[1]);
-        process.exit(1);
-      }
-      
-      console.log(`[PRISMA SCHEMA FIX] ✅ VERIFICACIÓN EXITOSA: provider = "${newProvider[1]}"`);
-      
-      // Mostrar las líneas modificadas
-      const verifyLines = verifyContent.split('\n');
-      console.log('[PRISMA SCHEMA FIX] 📋 SCHEMA DESPUÉS DEL CAMBIO:');
-      verifyLines.forEach((line, index) => {
-        if (line.includes('provider') || line.includes('datasource')) {
-          console.log(`  ${index + 1}: ${line.trim()}`);
-        }
-      });
-      
-    } else {
-      console.log('[PRISMA SCHEMA FIX] ✅ Schema ya está configurado para PostgreSQL');
+  console.log('[SCHEMA SELECTOR] ✅ All schema files found');
+};
+
+// Copy and verify schema
+const copySchema = (sourceFile, environment) => {
+  try {
+    console.log(`[SCHEMA SELECTOR] 📋 Copying ${environment} schema...`);
+    console.log(`  Source: ${path.basename(sourceFile)}`);
+    console.log(`  Target: schema.prisma`);
+
+    // Read source schema
+    const sourceContent = fs.readFileSync(sourceFile, 'utf8');
+    
+    // Backup current schema if it exists
+    if (fs.existsSync(targetSchemaPath)) {
+      const backupPath = path.join(schemaDir, `schema.backup.${Date.now()}.prisma`);
+      fs.copyFileSync(targetSchemaPath, backupPath);
+      console.log(`  📦 Backup created: ${path.basename(backupPath)}`);
     }
-  } else {
-    // En desarrollo, informar del estado
-    console.log('[PRISMA SCHEMA FIX] 🛠️ Modo desarrollo detectado - manteniendo configuración actual');
-    console.log(`[PRISMA SCHEMA FIX] ℹ️ Schema configurado para: ${currentProviderValue}`);
+
+    // Write new schema
+    fs.writeFileSync(targetSchemaPath, sourceContent);
+    
+    // Verify the copy
+    const verifyContent = fs.readFileSync(targetSchemaPath, 'utf8');
+    const providerMatch = verifyContent.match(/provider\s*=\s*"(sqlite|postgresql)"/);
+    
+    if (!providerMatch) {
+      console.error('[SCHEMA SELECTOR] ❌ Verification failed: No provider found in copied schema');
+      process.exit(1);
+    }
+
+    const actualProvider = providerMatch[1];
+    if (actualProvider !== environment) {
+      console.error(`[SCHEMA SELECTOR] ❌ Verification failed: Expected ${environment}, got ${actualProvider}`);
+      process.exit(1);
+    }
+
+    console.log(`[SCHEMA SELECTOR] ✅ Schema successfully configured for ${environment.toUpperCase()}`);
+    console.log(`  Provider: ${actualProvider}`);
+    
+    // Show relevant configuration lines
+    const lines = verifyContent.split('\n');
+    console.log('[SCHEMA SELECTOR] 📋 Current Configuration:');
+    lines.forEach((line, index) => {
+      if (line.includes('provider') || line.includes('datasource') || line.includes('binaryTargets')) {
+        console.log(`  ${index + 1}: ${line.trim()}`);
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error('[SCHEMA SELECTOR] ❌ Copy failed:', error.message);
+    process.exit(1);
+  }
+};
+
+// Validate DATABASE_URL compatibility
+const validateDatabaseUrl = (environment) => {
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    console.log('[SCHEMA SELECTOR] ⚠️ No DATABASE_URL set - will use default from schema');
+    return;
   }
 
-  console.log(`[PRISMA SCHEMA FIX] 🌍 RESUMEN - Entorno: ${isProduction ? 'PRODUCCIÓN' : 'DESARROLLO'}`);
+  const urlIsPostgres = databaseUrl.includes('postgres');
+  const urlIsSqlite = databaseUrl.includes('file:');
+  
+  if (environment === 'postgresql' && !urlIsPostgres) {
+    console.error('[SCHEMA SELECTOR] ❌ MISMATCH: PostgreSQL schema but DATABASE_URL is not PostgreSQL');
+    console.error(`  URL: ${databaseUrl.substring(0, 30)}...`);
+    process.exit(1);
+  }
+  
+  if (environment === 'sqlite' && urlIsPostgres) {
+    console.log('[SCHEMA SELECTOR] ⚠️ WARNING: SQLite schema but DATABASE_URL looks like PostgreSQL');
+    console.log(`  URL: ${databaseUrl.substring(0, 30)}...`);
+    console.log('  This might be intentional for testing purposes');
+  }
+
+  console.log('[SCHEMA SELECTOR] ✅ DATABASE_URL compatibility verified');
+};
+
+// Main execution
+try {
+  const environment = detectEnvironment();
+  
+  validateSchemaFiles();
+  
+  const sourceFile = environment === 'postgresql' ? postgresSchemaPath : sqliteSchemaPath;
+  
+  copySchema(sourceFile, environment);
+  
+  validateDatabaseUrl(environment);
+  
+  console.log(`[SCHEMA SELECTOR] 🎉 SUCCESS: Schema configured for ${environment.toUpperCase()}`);
+  console.log(`[SCHEMA SELECTOR] 🌍 Environment: ${environment === 'postgresql' ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
 } catch (error) {
-  console.error('[PRISMA SCHEMA FIX] ❌ ERROR CRÍTICO:', error.message);
+  console.error('[SCHEMA SELECTOR] ❌ CRITICAL ERROR:', error.message);
   console.error(error.stack);
   process.exit(1);
 }
 
-console.log('[PRISMA SCHEMA FIX] ✅ Proceso completado exitosamente'); 
+console.log('[SCHEMA SELECTOR] ✅ Process completed successfully'); 

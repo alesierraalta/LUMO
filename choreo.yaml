@@ -14,7 +14,11 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
-      echo "[BUILD] === SCHEMA VERIFICATION ==="
+      echo "[BUILD] === DYNAMIC SCHEMA SELECTION ==="
+      echo "[BUILD] Running schema selection for production environment..."
+      npm run schema:postgresql
+      echo "[BUILD] Validating database configuration..."
+      npm run schema:validate
       echo "[BUILD] Current schema provider:"
       grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
       echo "[BUILD] Environment info:"
@@ -22,7 +26,7 @@ spec:
       echo "  NODE_ENV: ${NODE_ENV:-not-set}"
       echo "[BUILD] Regenerating Prisma client for PostgreSQL..."
       npx prisma generate --schema=./prisma/schema.prisma
-      echo "[BUILD] === END SCHEMA VERIFICATION ==="
+      echo "[BUILD] === END SCHEMA CONFIGURATION ==="
       echo "[BUILD] Switching to production mode..."
       npm run mode:prod
       echo "[BUILD] Running pre-build scripts..."

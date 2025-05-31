@@ -14,6 +14,8 @@ spec:
     command: |
       echo "[BUILD] Installing dependencies..."
       npm ci --prefer-offline --no-audit
+      echo "[BUILD] Switching to production mode..."
+      npm run mode:prod
       echo "[BUILD] Running pre-build scripts..."
       npm run prebuild
       echo "[BUILD] Fixing Next.js configuration..."

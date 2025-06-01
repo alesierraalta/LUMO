@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Environment Configuration Guide
+
+## Development vs Production Environments
+
+This project uses different configurations for development and production environments:
+
+### Database Configuration
+
+- **Development Mode**: Uses SQLite for local development
+  - Lightweight, file-based database
+  - No additional setup required
+  - Data stored in local file
+  - Automatically configured for local development
+
+- **Production Mode**: Uses PostgreSQL
+  - Robust, scalable database system
+  - Requires proper connection string in environment variables
+  - Supports concurrent connections and larger datasets
+  - Better performance for production workloads
+
+### Environment Variables
+
+- Development variables are typically loaded from `.env.local` or `.env.development`
+- Production variables should be set in the hosting environment
+- Database connection strings must be properly configured for production
+
+### Configuration Files
+
+Make sure database adapters are properly configured in Prisma schema files and environment configurations.
+
+### Testing
+
+When running tests, make sure to use the appropriate database configuration to avoid affecting production data.

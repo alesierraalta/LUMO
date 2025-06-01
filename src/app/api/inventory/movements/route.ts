@@ -37,22 +37,51 @@ export async function GET(request: NextRequest) {
     const endDate = endDateParam ? ensureValidDate(endDateParam) : undefined;
     
     // Get movements with filters
-    const result = await getAllStockMovements({
-      type: type !== "all" ? type as any : undefined,
-      limit,
-      page,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-      categoryId,
-      search,
-      sort
-    });
-    
-    return NextResponse.json(result);
+    try {
+      const result = await getAllStockMovements({
+        type: type !== "all" ? type as any : undefined,
+        limit,
+        page,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        categoryId,
+        search,
+        sort
+      });
+      
+      // Mapear el formato de respuesta para que sea consistente con lo que espera el cliente
+      return NextResponse.json({
+        data: result.data || [],
+        movements: result.data || [], // Mantener ambos formatos para compatibilidad
+        pagination: result.pagination || {
+          total: 0,
+          page: 1, 
+          limit: 50,
+          totalPages: 0
+        }
+      });
+    } catch (error) {
+      console.error("Error processing inventory movements data:", error);
+      // En caso de error, devolver un array vacío para evitar errores en el cliente
+      return NextResponse.json({
+        data: [],
+        movements: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 50,
+          totalPages: 0
+        }
+      });
+    }
   } catch (error: any) {
     console.error("Error processing inventory movements request:", error);
     return NextResponse.json(
-      { error: error.message || "Error retrieving inventory movements" },
+      { 
+        error: error.message || "Error retrieving inventory movements",
+        data: [],
+        movements: []
+      },
       { status: 500 }
     );
   }

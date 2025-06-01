@@ -28,7 +28,10 @@ import {
   History,
   DollarSign,
   CreditCard,
-  TrendingDown
+  TrendingDown,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  ShoppingCart
 } from "lucide-react";
 import { formatDate, formatDateTime, ensureValidDate, startOfDay, endOfDay, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +59,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
+import { TabState, Movement } from "./types";
 
 const MOVEMENT_TYPES = [
   { value: "all", label: "Todos los tipos" },
@@ -75,14 +79,283 @@ const SORT_OPTIONS = [
   { value: "quantity-asc", label: "Cantidad (menor)" }
 ];
 
-export default function MovementsClient() {
+// Función para obtener movimientos del servidor
+async function getMovements(tab: TabState) {
+  try {
+    // Mapear los tipos de pestaña a los tipos de movimiento que espera la API
+    let apiType = "all";
+    
+    switch(tab) {
+      case "in":
+        apiType = "STOCK_IN";
+        break;
+      case "out":
+        apiType = "STOCK_OUT";
+        break;
+      case "adjustment":
+        apiType = "ADJUSTMENT";
+        break;
+      case "all":
+      default:
+        apiType = "all";
+        break;
+    }
+    
+    const response = await fetch(`/api/inventory/movements?type=${apiType}`);
+    if (!response.ok) {
+      throw new Error("Error al cargar los movimientos");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching movements:", error);
+    return { movements: [] };
+  }
+}
+
+// Función para obtener ventas del servidor
+async function getSales() {
+  try {
+    const response = await fetch("/api/inventory/sales");
+    if (!response.ok) {
+      throw new Error("Error al cargar las ventas");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching sales:", error);
+    return { sales: [] };
+  }
+}
+
+// Componente para la pestaña de Movimientos
+function MovementsTable({ movements }: { movements: Movement[] }) {
+  if (!movements || movements.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <RotateCw className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">No hay movimientos registrados</h3>
+        <p className="text-muted-foreground mt-1 max-w-md">
+          No se encontraron movimientos de inventario en esta categoría.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Fecha</TableHead>
+          <TableHead>Producto</TableHead>
+          <TableHead>Cantidad</TableHead>
+          <TableHead>Tipo</TableHead>
+          <TableHead>Notas</TableHead>
+          <TableHead>Usuario</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {movements.map((movement) => (
+          <TableRow key={movement.id}>
+            <TableCell className="whitespace-nowrap">
+              {formatDateTime(movement.date)}
+            </TableCell>
+            <TableCell>
+              <div className="font-medium">
+                {movement.product?.name || "Producto no disponible"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                SKU: {movement.product?.sku || "N/A"}
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className={`font-medium flex items-center ${movement.quantity > 0 ? "text-green-600" : "text-red-600"}`}>
+                {movement.quantity > 0 ? (
+                  <ArrowUpCircle className="mr-1 h-4 w-4 text-green-500" />
+                ) : (
+                  <ArrowDownCircle className="mr-1 h-4 w-4 text-red-500" />
+                )}
+                {Math.abs(movement.quantity)}
+              </div>
+            </TableCell>
+            <TableCell>
+              {getMovementTypeBadge(movement.type)}
+            </TableCell>
+            <TableCell className="max-w-xs truncate">
+              {movement.notes || "Sin notas"}
+            </TableCell>
+            <TableCell>
+              {movement.user ? (
+                <div className="text-sm">
+                  <div className="font-medium">
+                    {movement.user.firstName} {movement.user.lastName}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {movement.user.email}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  Sistema
+                </span>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+// Componente para la pestaña de Ventas
+function SalesTable({ sales }: { sales: any[] }) {
+  if (!sales || sales.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">No hay ventas registradas</h3>
+        <p className="text-muted-foreground mt-1 max-w-md">
+          No se encontraron órdenes de venta en el sistema.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Fecha</TableHead>
+          <TableHead>ID de Venta</TableHead>
+          <TableHead>Total</TableHead>
+          <TableHead>Productos</TableHead>
+          <TableHead>Estado</TableHead>
+          <TableHead>Usuario</TableHead>
+          <TableHead>Acciones</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sales.map((sale) => (
+          <TableRow key={sale.id}>
+            <TableCell className="whitespace-nowrap">
+              {formatDateTime(sale.date)}
+            </TableCell>
+            <TableCell className="font-medium">
+              {sale.id.slice(-8)}
+            </TableCell>
+            <TableCell>
+              {formatCurrency(sale.total)}
+            </TableCell>
+            <TableCell>
+              {sale.transactions.length} productos
+              <div className="text-xs text-muted-foreground">
+                {sale.transactions.reduce((sum: number, t: any) => sum + t.quantity, 0)} unidades
+              </div>
+            </TableCell>
+            <TableCell>
+              {getSaleStatusBadge(sale.status)}
+            </TableCell>
+            <TableCell>
+              {sale.user ? (
+                <div className="text-sm">
+                  <div className="font-medium">
+                    {sale.user.firstName} {sale.user.lastName}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {sale.user.email}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  Sistema
+                </span>
+              )}
+            </TableCell>
+            <TableCell>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                asChild
+                className="h-8 px-2"
+              >
+                <a href={`/inventory/sales/${sale.id}`}>
+                  Ver Detalle
+                </a>
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+// Función para mostrar el tipo de movimiento
+function getMovementTypeBadge(type: string) {
+  switch (type) {
+    case "STOCK_IN":
+      return (
+        <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
+          Entrada
+        </Badge>
+      );
+    case "STOCK_OUT":
+      return (
+        <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">
+          Salida
+        </Badge>
+      );
+    case "ADJUSTMENT":
+      return (
+        <Badge variant="outline" className="border-blue-500 text-blue-700 bg-blue-50">
+          Ajuste
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline">
+          {type}
+        </Badge>
+      );
+  }
+}
+
+// Función para mostrar el estado de la venta
+function getSaleStatusBadge(status: string) {
+  switch (status) {
+    case "COMPLETED":
+      return (
+        <Badge className="bg-green-500 hover:bg-green-600">
+          Completada
+        </Badge>
+      );
+    case "CANCELLED":
+      return (
+        <Badge className="bg-red-500 hover:bg-red-600">
+          Cancelada
+        </Badge>
+      );
+    case "PENDING":
+      return (
+        <Badge className="bg-yellow-500 hover:bg-yellow-600">
+          Pendiente
+        </Badge>
+      );
+    default:
+      return (
+        <Badge>
+          {status}
+        </Badge>
+      );
+  }
+}
+
+export default function InventoryMovementsClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
   // States
   const [isLoading, setIsLoading] = useState(true);
-  const [movements, setMovements] = useState<any[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [isPriceHistoryLoading, setIsPriceHistoryLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 50, totalPages: 0 });
@@ -101,7 +374,10 @@ export default function MovementsClient() {
   const [sort, setSort] = useState(searchParams.get("sort") || "date-desc");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "stock");
+  const [activeTab, setActiveTab] = useState<TabState>("all");
+  const [sales, setSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load categories on component mount
   useEffect(() => {
@@ -244,6 +520,44 @@ export default function MovementsClient() {
     router.replace(newUrl, { scroll: false });
   }, [type, startDate, endDate, categoryId, searchQuery, sort, activeTab, pathname, router, searchParams]);
   
+  // Cargar datos cuando cambia la pestaña
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        if (activeTab === "sales") {
+          // Cargar ventas
+          const data = await getSales();
+          setSales(data.sales || []);
+        } else {
+          // Cargar movimientos
+          const data = await getMovements(activeTab);
+          // Verificar si la estructura es la correcta
+          if (data.data) {
+            setMovements(data.data || []);
+          } else {
+            // Si la respuesta tiene un formato diferente, adaptarla
+            setMovements(data.movements || []);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading data:", err);
+        setError("Error al cargar los datos. Por favor, intenta de nuevo.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, [activeTab]);
+
+  // Manejador para cambiar de pestaña
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as TabState);
+  };
+
   // Helper to get movement type info for UI display
   const getMovementTypeInfo = (type: string) => {
     switch (type) {
@@ -453,17 +767,18 @@ export default function MovementsClient() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs 
+        defaultValue={activeTab} 
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
           <TabsList className="mb-4 sm:mb-0">
-            <TabsTrigger value="stock" className="flex items-center gap-2">
-              <RotateCw className="h-4 w-4" />
-              <span>Movimientos de Stock</span>
-            </TabsTrigger>
-            <TabsTrigger value="price" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span>Historial de Precios</span>
-            </TabsTrigger>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="in">Entradas</TabsTrigger>
+            <TabsTrigger value="out">Salidas</TabsTrigger>
+            <TabsTrigger value="adjustment">Ajustes</TabsTrigger>
+            <TabsTrigger value="sales">Ventas</TabsTrigger>
           </TabsList>
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -692,98 +1007,66 @@ export default function MovementsClient() {
           </div>
         </div>
         
-        <TabsContent value="stock" className="space-y-4">
-          {isLoading ? (
-            <div className="h-[300px] w-full flex flex-col items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm text-muted-foreground">Cargando movimientos...</p>
-            </div>
-          ) : movements.length === 0 ? (
-            <div className="border rounded-md p-8 text-center">
-              <div className="flex flex-col items-center justify-center">
-                <div className="bg-muted rounded-full p-3 mb-4">
-                  <Clipboard className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No hay movimientos</h3>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                  No se encontraron movimientos de inventario con los filtros actuales.
-                </p>
-                <Button variant="outline" onClick={resetFilters}>
-                  Limpiar Filtros
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Notas</TableHead>
-                    <TableHead>Usuario</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movements.map((movement: any) => {
-                    const typeInfo = getMovementTypeInfo(movement.type);
-                    return (
-                      <TableRow key={movement.id} className="group">
-                        <TableCell className="font-medium">
-                          {formatDateTime(movement.date)}
-                        </TableCell>
-                        <TableCell>
-                          {movement.inventoryItem?.name || "Producto desconocido"}
-                          <div className="text-xs text-muted-foreground mt-1">
-                            SKU: {movement.inventoryItem?.sku || "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline" className={`flex items-center space-x-1 ${typeInfo.color} border-${typeInfo.color.split('-')[1]}`}>
-                              {typeInfo.icon}
-                              <span>{typeInfo.label}</span>
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {movement.quantity > 0 ? "+" : ""}{movement.quantity}
-                        </TableCell>
-                        <TableCell>
-                          {movement.notes || <span className="text-muted-foreground">-</span>}
-                        </TableCell>
-                        <TableCell>
-                          {movement.user ? (
-                            <div>
-                              <div className="font-medium">
-                                {movement.user.firstName && movement.user.lastName 
-                                  ? `${movement.user.firstName} ${movement.user.lastName}`
-                                  : movement.user.email || "Usuario del sistema"}
-                              </div>
-                              {movement.user.email && (
-                                <div className="text-xs text-muted-foreground">
-                                  {movement.user.email}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">Sistema</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="price" className="space-y-4">
-          <PriceHistoryTab />
-        </TabsContent>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <span className="ml-2">Cargando...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 text-red-500">
+            {error}
+            <Button 
+              variant="outline" 
+              onClick={() => handleTabChange(activeTab)}
+              className="mt-4"
+            >
+              <RotateCw className="mr-2 h-4 w-4" /> 
+              Reintentar
+            </Button>
+          </div>
+        ) : (
+          <>
+            <TabsContent value="all" className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <MovementsTable movements={movements} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="in" className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <MovementsTable movements={movements} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="out" className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <MovementsTable movements={movements} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="adjustment" className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <MovementsTable movements={movements} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="sales" className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <SalesTable sales={sales} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );

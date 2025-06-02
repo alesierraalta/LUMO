@@ -403,51 +403,52 @@ export default async function InventoryPage({
 
   return (
     <div className="container mx-auto py-6 space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-bold">Inventario</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             Gestiona tu inventario, categorías y ubicaciones de productos
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Button 
             asChild 
             variant="outline"
-            className="bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
           >
-            <Link href="/inventory/movements">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Ver Movimientos
+            <Link href="/inventory/movements" className="flex flex-col items-center gap-1 text-center">
+              <BarChart3 className="h-5 w-5" />
+              <span className="text-sm">Ver Movimientos</span>
             </Link>
           </Button>
           <Button 
             asChild 
             variant="outline"
-            className="bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
           >
-            <Link href="/inventory/adjust">
-              <Filter className="mr-2 h-4 w-4" />
-              Ajustar Stock
+            <Link href="/inventory/adjust" className="flex flex-col items-center gap-1 text-center">
+              <Filter className="h-5 w-5" />
+              <span className="text-sm">Ajustar Stock</span>
             </Link>
           </Button>
           <Button 
             asChild 
             variant="outline"
-            className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 hover:from-amber-500/20 hover:to-amber-600/10 transition-all duration-300 hover:shadow-md border-amber-500/30 hover:border-amber-500/40 text-amber-700"
+            className="h-auto py-3 bg-gradient-to-br from-amber-500/10 to-amber-600/5 hover:from-amber-500/20 hover:to-amber-600/10 transition-all duration-300 hover:shadow-md border-amber-500/30 hover:border-amber-500/40 text-amber-700"
           >
-            <Link href="/inventory/sales/new">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Nueva Orden de Venta
+            <Link href="/inventory/sales/new" className="flex flex-col items-center gap-1 text-center">
+              <ShoppingCart className="h-5 w-5" />
+              <span className="text-sm">Nueva Venta</span>
             </Link>
           </Button>
           <Button 
             asChild 
-            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all hover:shadow-md"
+            className="h-auto py-3 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all hover:shadow-md"
           >
-            <Link href="/inventory/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Nuevo Producto
+            <Link href="/inventory/new" className="flex flex-col items-center gap-1 text-center">
+              <PlusCircle className="h-5 w-5" />
+              <span className="text-sm">Nuevo Producto</span>
             </Link>
           </Button>
         </div>

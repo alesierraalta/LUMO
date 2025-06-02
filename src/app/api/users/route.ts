@@ -110,33 +110,42 @@ export async function POST(request: NextRequest) {
     });
 
     // Create custom permissions for this user if provided
-    if (customPermissions && customPermissions.length > 0) {
-      const permissionPromises = customPermissions.map((permissionName: string) =>
-        prisma.permission.upsert({
-          where: { name: permissionName },
-          update: {},
-          create: {
-            name: permissionName,
-            description: `Custom permission: ${permissionName}`,
-            resource: 'custom',
-            action: 'manage'
+    if (customPermissions && typeof customPermissions === 'object') {
+      const permissionMap: Record<string, string> = {
+        dashboard: 'page:dashboard',
+        inventory: 'page:inventory',
+        settings: 'page:settings',
+        userManagement: 'page:user-management',
+      };
+      
+      // Process each permission key in the customPermissions object
+      const userPermissionsToCreate = [];
+      
+      for (const [key, enabled] of Object.entries(customPermissions)) {
+        if (key in permissionMap) {
+          // Get or create the permission
+          const permissionName = permissionMap[key];
+          const permission = await prisma.permission.findUnique({
+            where: { name: permissionName }
+          });
+          
+          if (permission) {
+            // Add to user permissions
+            userPermissionsToCreate.push({
+              userId: user.id,
+              permissionId: permission.id,
+              granted: Boolean(enabled)
+            });
           }
-        })
-      );
-
-      const permissions = await Promise.all(permissionPromises);
-
-      // Create role_permissions entries
-      const rolePermissionPromises = permissions.map((permission) =>
-        prisma.rolePermission.create({
-          data: {
-            roleId: user.roleId!,
-            permissionId: permission.id
-          }
-        })
-      );
-
-      await Promise.all(rolePermissionPromises);
+        }
+      }
+      
+      // Create all user permissions in a single transaction
+      if (userPermissionsToCreate.length > 0) {
+        await prisma.userPermission.createMany({
+          data: userPermissionsToCreate
+        });
+      }
     }
 
     return NextResponse.json({

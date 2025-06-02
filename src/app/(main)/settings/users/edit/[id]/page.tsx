@@ -96,6 +96,16 @@ interface CustomPermissions {
   [key: string]: boolean;
 }
 
+interface CustomPermission {
+  permission: {
+    id: string;
+    name: string;
+    resource: string;
+    action: string;
+  };
+  granted: boolean;
+}
+
 interface PageProps {
   params: Promise<{
     id: string;
@@ -173,9 +183,38 @@ export default function EditUserPage({ params }: PageProps) {
           isActive: userData.user.isActive,
         });
 
-        // TODO: Load user's custom permissions if they exist
-        // For now, set default permissions based on role
-        setDefaultPermissions(userData.user.role.name);
+        // Load user's custom permissions if they exist
+        if (userData.user.customPermissions && userData.user.customPermissions.length > 0) {
+          setUseCustomPermissions(true);
+          
+          const permissionMap: Record<string, string> = {
+            dashboard: 'page:dashboard',
+            inventory: 'page:inventory',
+            settings: 'page:settings',
+            userManagement: 'page:user-management',
+          };
+          
+          // Create reverse mapping from permission name to key
+          const reverseMap: Record<string, string> = {};
+          Object.entries(permissionMap).forEach(([key, value]) => {
+            reverseMap[value] = key;
+          });
+          
+          // Set permissions based on user's custom permissions
+          const newPermissions = { ...customPermissions };
+          
+          userData.user.customPermissions.forEach((cp: CustomPermission) => {
+            const permKey = reverseMap[cp.permission.name];
+            if (permKey) {
+              newPermissions[permKey] = cp.granted;
+            }
+          });
+          
+          setCustomPermissions(newPermissions);
+        } else {
+          // Fall back to role-based permissions
+          setDefaultPermissions(userData.user.role.name);
+        }
         
       } catch (error) {
         console.error('Error loading data:', error);

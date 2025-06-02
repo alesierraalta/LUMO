@@ -46,6 +46,11 @@ export async function GET(
             },
           },
         },
+        customPermissions: {
+          include: {
+            permission: true,
+          },
+        },
       },
     });
 
@@ -69,6 +74,7 @@ export async function GET(
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      customPermissions: user.customPermissions,
     };
 
     return NextResponse.json({
@@ -176,14 +182,56 @@ export async function PUT(
             },
           },
         },
+        customPermissions: {
+          include: {
+            permission: true,
+          },
+        },
       },
     });
 
-    // TODO: Handle custom permissions if provided
-    // This would involve updating user_permissions table
-    if (customPermissions) {
-      // Implementation for custom permissions would go here
-      console.log('Custom permissions update not yet implemented:', customPermissions);
+    // Handle custom permissions if provided
+    if (customPermissions && typeof customPermissions === 'object') {
+      const permissionMap: Record<string, string> = {
+        dashboard: 'page:dashboard',
+        inventory: 'page:inventory',
+        settings: 'page:settings',
+        userManagement: 'page:user-management',
+      };
+      
+      // First, remove existing custom permissions
+      await prisma.userPermission.deleteMany({
+        where: { userId: userId }
+      });
+      
+      // Then add new custom permissions
+      const userPermissionsToCreate = [];
+      
+      for (const [key, enabled] of Object.entries(customPermissions)) {
+        if (key in permissionMap) {
+          // Get or create the permission
+          const permissionName = permissionMap[key];
+          const permission = await prisma.permission.findUnique({
+            where: { name: permissionName }
+          });
+          
+          if (permission) {
+            // Add to user permissions
+            userPermissionsToCreate.push({
+              userId: userId,
+              permissionId: permission.id,
+              granted: Boolean(enabled)
+            });
+          }
+        }
+      }
+      
+      // Create all user permissions in a single transaction
+      if (userPermissionsToCreate.length > 0) {
+        await prisma.userPermission.createMany({
+          data: userPermissionsToCreate
+        });
+      }
     }
 
     // Return updated user data
@@ -199,6 +247,7 @@ export async function PUT(
       lastLoginAt: updatedUser.lastLoginAt,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
+      customPermissions: updatedUser.customPermissions,
     };
 
     return NextResponse.json({

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
 import InventoryClientWrapper from "./client-wrapper";
 
 export const metadata: Metadata = {
@@ -337,11 +337,13 @@ export default async function InventoryPage({
   // Get current user and check permissions
   const user = await getCurrentUser();
   
-  // Check if the user is an admin
-  const isUserAdmin = user ? isAdmin(user) : false;
+  // Check if user has access to inventory
+  const hasInventoryAccess = user ? 
+    (isAdmin(user) || hasPermission(user, 'page', 'inventory')) : 
+    false;
 
-  // If not an admin, return unauthorized
-  if (!isUserAdmin) {
+  // If no inventory access, return unauthorized
+  if (!hasInventoryAccess) {
     return (
       <div className="container mx-auto py-6">
         <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>

@@ -249,7 +249,9 @@ export default function ImportForm({ userId }: ImportFormProps) {
   const handleProceedToPreview = () => {
     // Validate that all required fields are mapped
     const requiredFields = ['name', 'sku', 'quantity'];
-    const mappedFields = mappings.filter(m => m.inventoryField).map(m => m.inventoryField);
+    const mappedFields = mappings
+      .filter(m => m.inventoryField && m.inventoryField !== 'none')
+      .map(m => m.inventoryField);
     
     const missingFields = requiredFields.filter(field => !mappedFields.includes(field));
     
@@ -489,7 +491,7 @@ export default function ImportForm({ userId }: ImportFormProps) {
                             <SelectValue placeholder="Seleccionar campo" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No mapear</SelectItem>
+                            <SelectItem value="none">No mapear</SelectItem>
                             <SelectItem value="name">Nombre</SelectItem>
                             <SelectItem value="sku">SKU</SelectItem>
                             <SelectItem value="price">Precio</SelectItem>

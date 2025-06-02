@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { importService } from "@/lib/importService";
 import * as ExcelJS from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
@@ -309,9 +310,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get import session from the database
-    const importSession = await prisma?.importSession.findUnique({
-      where: { id: sessionId },
-    });
+    const importSession = await importService.findImportSession(sessionId);
     
     if (!importSession) {
       return NextResponse.json(
@@ -398,12 +397,9 @@ export async function POST(request: NextRequest) {
     );
     
     // Update import session status
-    await prisma?.importSession.update({
-      where: { id: sessionId },
-      data: {
-        totalItems: validItems.length,
-        status: "processing"
-      }
+    await importService.updateImportSession(sessionId, {
+      totalItems: validItems.length,
+      status: "processing"
     });
     
     return NextResponse.json({

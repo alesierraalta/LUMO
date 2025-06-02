@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { importService } from "@/lib/importService";
 
 export const runtime = "nodejs";
 
@@ -32,14 +32,7 @@ export async function GET(
     }
     
     // Get import session details
-    const details = await prisma?.importSessionDetail.findMany({
-      where: {
-        sessionId
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
+    const details = await importService.listImportSessionDetails(sessionId);
     
     if (!details) {
       return NextResponse.json(

@@ -80,6 +80,9 @@ export const verifyToken = (token: string): SessionData | null => {
   }
 };
 
+// Acceder al cliente Prisma original
+const originalPrisma = prisma.prisma;
+
 // Session management
 export const createSession = async (
   userId: string,
@@ -88,7 +91,7 @@ export const createSession = async (
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> => {
-  if (!prisma) {
+  if (!originalPrisma) {
     throw new Error('Prisma client not initialized');
   }
 
@@ -100,7 +103,7 @@ export const createSession = async (
   
   const expiresAt = new Date(Date.now() + SESSION_DURATION * 1000);
   
-  await prisma.userSession.create({
+  await originalPrisma.userSession.create({
     data: {
       userId,
       token,
@@ -114,9 +117,9 @@ export const createSession = async (
 };
 
 export const invalidateSession = async (token: string): Promise<void> => {
-  if (!prisma) return;
+  if (!originalPrisma) return;
   
-  await prisma.userSession.delete({
+  await originalPrisma.userSession.delete({
     where: { token },
   }).catch(() => {
     // Session might not exist, ignore error
@@ -124,9 +127,9 @@ export const invalidateSession = async (token: string): Promise<void> => {
 };
 
 export const cleanupExpiredSessions = async (): Promise<void> => {
-  if (!prisma) return;
+  if (!originalPrisma) return;
   
-  await prisma.userSession.deleteMany({
+  await originalPrisma.userSession.deleteMany({
     where: {
       expiresAt: {
         lt: new Date(),
@@ -143,12 +146,12 @@ export const authenticateUser = async (
   ipAddress?: string
 ): Promise<AuthResult> => {
   try {
-    if (!prisma) {
+    if (!originalPrisma) {
       return { success: false, error: 'Database not available' };
     }
 
     // Find user with role and permissions
-    const user = await prisma.user.findUnique({
+    const user = await originalPrisma.user.findUnique({
       where: { email },
       include: {
         role: {
@@ -188,7 +191,7 @@ export const authenticateUser = async (
       const attempts = user.loginAttempts + 1;
       const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null; // Lock for 15 minutes
       
-      await prisma.user.update({
+      await originalPrisma.user.update({
         where: { id: user.id },
         data: {
           loginAttempts: attempts,
@@ -200,7 +203,7 @@ export const authenticateUser = async (
     }
 
     // Reset login attempts and update last login
-    await prisma.user.update({
+    await originalPrisma.user.update({
       where: { id: user.id },
       data: {
         loginAttempts: 0,
@@ -244,12 +247,12 @@ export const registerUser = async (
   roleId?: string
 ): Promise<AuthResult> => {
   try {
-    if (!prisma) {
+    if (!originalPrisma) {
       return { success: false, error: 'Database not available' };
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await originalPrisma.user.findUnique({
       where: { email },
     });
 
@@ -260,13 +263,13 @@ export const registerUser = async (
     // Get default role (user) if not specified
     let userRoleId = roleId;
     if (!userRoleId) {
-      const defaultRole = await prisma.role.findFirst({
+      const defaultRole = await originalPrisma.role.findFirst({
         where: { name: 'user' },
       });
       
       if (!defaultRole) {
         // Create default role if it doesn't exist
-        const newRole = await prisma.role.create({
+        const newRole = await originalPrisma.role.create({
           data: {
             name: 'user',
             description: 'Default user role',
@@ -282,7 +285,7 @@ export const registerUser = async (
     const passwordHash = await hashPassword(password);
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await originalPrisma.user.create({
       data: {
         email,
         passwordHash,
@@ -328,7 +331,7 @@ export const registerUser = async (
 // Get current user from session
 export const getCurrentUser = async (token?: string): Promise<User | null> => {
   try {
-    if (!prisma) return null;
+    if (!originalPrisma) return null;
 
     if (!token) {
       const cookieStore = await cookies();
@@ -346,7 +349,7 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
     }
 
     // Check if session exists and is valid
-    const session = await prisma.userSession.findUnique({
+    const session = await originalPrisma.userSession.findUnique({
       where: { token },
       include: {
         user: {

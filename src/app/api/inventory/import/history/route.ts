@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { importService } from "@/lib/importService";
 
 export const runtime = "nodejs";
 
@@ -27,21 +27,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get import sessions
-    const sessions = await prisma?.importSession.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
+    const sessions = await importService.listImportSessionsWithCreators();
     
     return NextResponse.json({
       success: true,

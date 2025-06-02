@@ -32,21 +32,22 @@ function createPrismaClient(): PrismaClient | undefined {
   }
 }
 
-const prisma = globalThis.prisma ?? createPrismaClient();
+// Create PrismaClient instance
+const basePrisma = globalForPrisma.prisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
+  globalThis.prisma = basePrisma;
 }
 
 // Función helper para conexión segura
 export async function connectSafely() {
-  if (!prisma) {
+  if (!basePrisma) {
     throw new Error('Prisma client not available');
   }
   
   try {
-    await prisma.$connect();
-    return prisma;
+    await basePrisma.$connect();
+    return basePrisma;
   } catch (error) {
     console.error('❌ Database connection failed:', error);
     throw error;
@@ -55,9 +56,9 @@ export async function connectSafely() {
 
 // Función helper para desconexión segura
 export async function disconnectSafely() {
-  if (prisma) {
+  if (basePrisma) {
     try {
-      await prisma.$disconnect();
+      await basePrisma.$disconnect();
     } catch (error) {
       console.error('⚠️ Error disconnecting from database:', error);
     }
@@ -95,157 +96,203 @@ interface ImportSessionDetailModel {
   session?: ImportSessionModel;
 }
 
-// Create PrismaClient instance
-const basePrisma = globalForPrisma.prisma || new PrismaClient();
+// Create custom functions for import sessions
+class CustomPrismaClient {
+  // Base Prisma client
+  private readonly client: PrismaClient;
 
-// Extend PrismaClient with import session models
-const prismaClientExtension = {
-  $extends: {
-    model: {
-      // Import Session extension
-      importSession: {
-        async findUnique({where}: {where: {id: string}}) {
-          const result = await basePrisma.$queryRaw`
-            SELECT * FROM "ImportSession" WHERE id = ${where.id} LIMIT 1
-          `;
-          return Array.isArray(result) && result.length > 0 ? result[0] : null;
-        },
-        async findMany({orderBy, include}: {orderBy?: any, include?: any} = {}) {
-          const results = await basePrisma.$queryRaw`
-            SELECT * FROM "ImportSession" ORDER BY "createdAt" DESC
-          `;
-          
-          if (include?.createdBy && Array.isArray(results)) {
-            // Get user data for each session
-            for (const session of results as any[]) {
-              const userData = await basePrisma.user.findUnique({
-                where: { id: session.createdById },
-                select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true
-                }
-              });
-              session.createdBy = userData;
-            }
-          }
-          
-          return Array.isArray(results) ? results : [];
-        },
-        async create({data}: {data: any}) {
-          const id = data.id || uuidv4();
-          const fileName = data.fileName;
-          const filePath = data.filePath;
-          const status = data.status || 'processing';
-          const notes = data.notes;
-          const createdById = data.createdById;
-          
-          await basePrisma.$executeRaw`
-            INSERT INTO "ImportSession" (
-              "id", "fileName", "filePath", "status", "notes", "createdById", "createdAt"
-            ) VALUES (
-              ${id}, ${fileName}, ${filePath}, ${status}, ${notes}, ${createdById}, datetime('now')
-            )
-          `;
-          
-          return {
-            id,
-            fileName,
-            filePath,
-            status,
-            notes,
-            totalItems: 0,
-            successItems: 0,
-            warningItems: 0,
-            errorItems: 0,
-            createdById,
-            createdAt: new Date()
-          };
-        },
-        async update({where, data}: {where: {id: string}, data: any}) {
-          const updateFields: string[] = [];
-          const updateValues: any[] = [];
-          
-          for (const [key, value] of Object.entries(data)) {
-            if (value !== undefined) {
-              updateFields.push(`"${key}" = ?`);
-              updateValues.push(value);
-            }
-          }
-          
-          if (updateFields.length === 0) {
-            return this.findUnique({where});
-          }
-          
-          const updateQuery = `
-            UPDATE "ImportSession" 
-            SET ${updateFields.join(', ')}
-            WHERE "id" = ?
-          `;
-          
-          await basePrisma.$executeRaw(
-            basePrisma.$string(updateQuery),
-            ...updateValues,
-            where.id
-          );
-          
-          return this.findUnique({where});
+  constructor(client: PrismaClient) {
+    this.client = client;
+    
+    // Create proxies for common database operations
+    return new Proxy(this, {
+      get: (target, prop) => {
+        // Handle custom methods
+        if (prop in target) {
+          return (target as any)[prop];
         }
-      },
-      // Import Session Detail extension
-      importSessionDetail: {
-        async findMany({where}: {where: {sessionId: string}}) {
-          const results = await basePrisma.$queryRaw`
-            SELECT * FROM "ImportSessionDetail" 
-            WHERE "sessionId" = ${where.sessionId}
-            ORDER BY "createdAt" ASC
-          `;
-          
-          return Array.isArray(results) ? results : [];
-        },
-        async create({data}: {data: any}) {
-          const id = data.id || uuidv4();
-          const sessionId = data.sessionId;
-          const name = data.name;
-          const sku = data.sku;
-          const status = data.status;
-          const message = data.message || null;
-          const originalData = data.originalData;
-          const importedData = data.importedData || null;
-          
-          await basePrisma.$executeRaw`
-            INSERT INTO "ImportSessionDetail" (
-              "id", "sessionId", "name", "sku", "status", "message", "originalData", "importedData", "createdAt"
-            ) VALUES (
-              ${id}, ${sessionId}, ${name}, ${sku}, ${status}, ${message}, 
-              ${typeof originalData === 'string' ? originalData : JSON.stringify(originalData)}, 
-              ${importedData ? (typeof importedData === 'string' ? importedData : JSON.stringify(importedData)) : null},
-              datetime('now')
-            )
-          `;
-          
-          return {
-            id,
-            sessionId,
-            name,
-            sku,
-            status,
-            message,
-            originalData,
-            importedData,
-            createdAt: new Date()
-          };
+        
+        // Forward model access to the Prisma client
+        if (prop in this.client) {
+          return this.client[prop as keyof PrismaClient];
         }
+        
+        return undefined;
+      }
+    });
+  }
+
+  // Import Session methods
+  async findImportSession(id: string): Promise<ImportSessionModel | null> {
+    const result = await this.client.$queryRaw`
+      SELECT * FROM "ImportSession" WHERE id = ${id} LIMIT 1
+    `;
+    return Array.isArray(result) && result.length > 0 ? result[0] as ImportSessionModel : null;
+  }
+
+  async listImportSessions(options?: { include?: { createdBy?: boolean } }): Promise<ImportSessionModel[]> {
+    const results = await this.client.$queryRaw`
+      SELECT * FROM "ImportSession" ORDER BY "createdAt" DESC
+    `;
+    
+    if (options?.include?.createdBy && Array.isArray(results)) {
+      // Get user data for each session
+      for (const session of results as any[]) {
+        const userData = await this.client.user.findUnique({
+          where: { id: session.createdById },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        });
+        session.createdBy = userData;
       }
     }
+    
+    return Array.isArray(results) ? results as ImportSessionModel[] : [];
   }
-};
 
-// Create extended PrismaClient
-export const prisma = basePrisma.$extends(prismaClientExtension);
+  async createImportSession(data: {
+    id?: string;
+    fileName: string;
+    filePath: string;
+    status?: string;
+    notes?: string;
+    createdById: string;
+  }): Promise<ImportSessionModel> {
+    const id = data.id || uuidv4();
+    const fileName = data.fileName;
+    const filePath = data.filePath;
+    const status = data.status || 'processing';
+    const notes = data.notes;
+    const createdById = data.createdById;
+    
+    await this.client.$executeRaw`
+      INSERT INTO "ImportSession" (
+        "id", "fileName", "filePath", "status", "notes", "createdById", "createdAt"
+      ) VALUES (
+        ${id}, ${fileName}, ${filePath}, ${status}, ${notes}, ${createdById}, datetime('now')
+      )
+    `;
+    
+    return {
+      id,
+      fileName,
+      filePath,
+      status,
+      notes,
+      totalItems: 0,
+      successItems: 0,
+      warningItems: 0,
+      errorItems: 0,
+      createdById,
+      createdAt: new Date()
+    };
+  }
 
-export default prisma;
+  async updateImportSession(id: string, data: {
+    status?: string;
+    totalItems?: number;
+    successItems?: number;
+    warningItems?: number;
+    errorItems?: number;
+    completedAt?: Date;
+  }): Promise<ImportSessionModel | null> {
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        updateFields.push(`"${key}" = ?`);
+        updateValues.push(value);
+      }
+    }
+    
+    if (updateFields.length === 0) {
+      return this.findImportSession(id);
+    }
+    
+    const updateQuery = `
+      UPDATE "ImportSession" 
+      SET ${updateFields.join(', ')}
+      WHERE "id" = ?
+    `;
+    
+    await this.client.$executeRawUnsafe(
+      updateQuery,
+      ...updateValues,
+      id
+    );
+    
+    return this.findImportSession(id);
+  }
 
-// Also export as named export to fix import issues
-export { prisma }; 
+  // Import Session Detail methods
+  async findImportSessionDetails(sessionId: string): Promise<ImportSessionDetailModel[]> {
+    const results = await this.client.$queryRaw`
+      SELECT * FROM "ImportSessionDetail" 
+      WHERE "sessionId" = ${sessionId}
+      ORDER BY "createdAt" ASC
+    `;
+    
+    return Array.isArray(results) ? results as ImportSessionDetailModel[] : [];
+  }
+
+  async createImportSessionDetail(data: {
+    id?: string;
+    sessionId: string;
+    name: string;
+    sku: string;
+    status: string;
+    message?: string;
+    originalData: any;
+    importedData?: any;
+  }): Promise<ImportSessionDetailModel> {
+    const id = data.id || uuidv4();
+    const sessionId = data.sessionId;
+    const name = data.name;
+    const sku = data.sku;
+    const status = data.status;
+    const message = data.message || null;
+    const originalData = typeof data.originalData === 'string'
+      ? data.originalData
+      : JSON.stringify(data.originalData);
+    const importedData = data.importedData
+      ? (typeof data.importedData === 'string'
+        ? data.importedData
+        : JSON.stringify(data.importedData))
+      : null;
+    
+    await this.client.$executeRaw`
+      INSERT INTO "ImportSessionDetail" (
+        "id", "sessionId", "name", "sku", "status", "message", "originalData", "importedData", "createdAt"
+      ) VALUES (
+        ${id}, ${sessionId}, ${name}, ${sku}, ${status}, ${message}, ${originalData}, ${importedData}, datetime('now')
+      )
+    `;
+    
+    return {
+      id,
+      sessionId,
+      name,
+      sku,
+      status,
+      message,
+      originalData,
+      importedData,
+      createdAt: new Date()
+    };
+  }
+
+  // Access to the original Prisma client
+  get prisma(): PrismaClient {
+    return this.client;
+  }
+}
+
+// Create the extended Prisma client
+export const prisma = new CustomPrismaClient(basePrisma);
+
+export default prisma; 

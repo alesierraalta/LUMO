@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { importService } from "@/lib/importService";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -62,17 +63,20 @@ export async function POST(request: NextRequest) {
       items: [] as any[]
     };
     
+    // Acceder al cliente Prisma original
+    const originalPrisma = prisma.prisma;
+    
     for (const item of items) {
       try {
         // Check if product already exists by SKU
-        const existingProduct = await prisma?.inventoryItem.findFirst({
+        const existingProduct = await originalPrisma.inventoryItem.findFirst({
           where: { sku: item.sku },
         });
         
         // Get or create category if provided
         let categoryId = null;
         if (item.category) {
-          const category = await prisma?.category.findFirst({
+          const category = await originalPrisma.category.findFirst({
             where: { name: { equals: item.category, mode: 'insensitive' } },
           });
           
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
             categoryId = category.id;
           } else {
             // Create new category
-            const newCategory = await prisma?.category.create({
+            const newCategory = await originalPrisma.category.create({
               data: {
                 name: item.category,
                 createdBy: userId,
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
         // Get or create location if provided
         let locationId = null;
         if (item.location) {
-          const location = await prisma?.location.findFirst({
+          const location = await originalPrisma.location.findFirst({
             where: { name: { equals: item.location, mode: 'insensitive' } },
           });
           
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
             locationId = location.id;
           } else {
             // Create new location
-            const newLocation = await prisma?.location.create({
+            const newLocation = await originalPrisma.location.create({
               data: {
                 name: item.location,
                 createdBy: userId,
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest) {
         
         if (existingProduct) {
           // Update existing product
-          const updatedProduct = await prisma?.inventoryItem.update({
+          const updatedProduct = await originalPrisma.inventoryItem.update({
             where: { id: existingProduct.id },
             data: {
               name: item.name,
@@ -129,7 +133,7 @@ export async function POST(request: NextRequest) {
           
           // Log stock movement if quantity changed
           if (item.quantity !== null && item.quantity !== existingProduct.quantity) {
-            await prisma?.stockMovement.create({
+            await originalPrisma.stockMovement.create({
               data: {
                 inventoryItemId: existingProduct.id,
                 quantity: item.quantity - existingProduct.quantity,
@@ -154,7 +158,7 @@ export async function POST(request: NextRequest) {
           
         } else {
           // Create new product
-          const newProduct = await prisma?.inventoryItem.create({
+          const newProduct = await originalPrisma.inventoryItem.create({
             data: {
               name: item.name,
               sku: item.sku,
@@ -171,7 +175,7 @@ export async function POST(request: NextRequest) {
           
           // Log stock movement if quantity provided
           if (item.quantity && item.quantity > 0) {
-            await prisma?.stockMovement.create({
+            await originalPrisma.stockMovement.create({
               data: {
                 inventoryItemId: newProduct?.id || "",
                 quantity: item.quantity,
@@ -211,29 +215,24 @@ export async function POST(request: NextRequest) {
     
     // Update import session if provided
     if (sessionId) {
-      await prisma?.importSession.update({
-        where: { id: sessionId },
-        data: {
-          status: "completed",
-          successItems: results.success,
-          warningItems: results.warning,
-          errorItems: results.error,
-          completedAt: new Date(),
-        },
+      await importService.updateImportSession(sessionId, {
+        status: "completed",
+        successItems: results.success,
+        warningItems: results.warning,
+        errorItems: results.error,
+        completedAt: new Date(),
       });
       
       // Create detail records for the import session
       for (const resultItem of results.items) {
-        await prisma?.importSessionDetail.create({
-          data: {
-            sessionId,
-            name: resultItem.name,
-            sku: resultItem.sku,
-            status: resultItem.status,
-            message: resultItem.message,
-            originalData: JSON.stringify(resultItem.originalData),
-            importedData: resultItem.importedData ? JSON.stringify(resultItem.importedData) : null,
-          },
+        await importService.createImportSessionDetail({
+          sessionId,
+          name: resultItem.name,
+          sku: resultItem.sku,
+          status: resultItem.status,
+          message: resultItem.message,
+          originalData: resultItem.originalData,
+          importedData: resultItem.importedData || null,
         });
       }
     }

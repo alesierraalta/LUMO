@@ -67,7 +67,17 @@ function detectFieldType(value: any): string {
       return "location";
     }
     
-    // For longer text, likely product name
+    // Check for description patterns
+    if (/^(descripcion|descripción|description|detalle|detail|caracteristicas|características)/.test(lowerValue)) {
+      return "description";
+    }
+    
+    // Si es un texto largo, podría ser una descripción o un nombre
+    if (value.length > 50) {
+      return "description";
+    }
+    
+    // For medium text, likely product name
     if (value.length > 10) {
       return "name";
     }
@@ -116,13 +126,14 @@ function analyzeColumnNames(columns: string[]): Array<{ excelField: string; inve
   
   // Define field patterns for matching
   const fieldPatterns = {
-    name: ["nombre", "name", "producto", "product", "descripcion", "description", "item", "articulo"],
+    name: ["nombre", "name", "producto", "product", "item", "articulo"],
     sku: ["sku", "codigo", "code", "id", "referencia", "reference", "part number", "part", "modelo", "model"],
     price: ["precio", "price", "valor", "value", "venta", "sale", "sales price", "precio venta"],
     cost: ["costo", "cost", "valor compra", "purchase", "precio compra", "purchase price"],
     quantity: ["cantidad", "quantity", "stock", "inventario", "inventory", "existencia", "qty"],
     category: ["categoria", "categoría", "category", "tipo", "type", "clase", "class", "grupo", "group"],
-    location: ["ubicacion", "ubicación", "location", "lugar", "place", "estante", "shelf", "bodega", "warehouse"]
+    location: ["ubicacion", "ubicación", "location", "lugar", "place", "estante", "shelf", "bodega", "warehouse"],
+    description: ["descripcion", "descripción", "description", "detalle", "detail", "detalles", "details", "características", "caracteristicas", "features"]
   };
   
   // Analyze each column
@@ -187,6 +198,7 @@ function processRowWithNLP(row: any, columnMappings: Array<{ excelField: string;
     quantity: null,
     category: null,
     location: null,
+    description: null,
     confidence: {
       name: 0,
       sku: 0,
@@ -194,7 +206,8 @@ function processRowWithNLP(row: any, columnMappings: Array<{ excelField: string;
       cost: 0,
       quantity: 0,
       category: 0,
-      location: 0
+      location: 0,
+      description: 0
     },
     originalData: {}
   };

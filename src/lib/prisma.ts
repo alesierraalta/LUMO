@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import NodeCache from 'node-cache';
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -9,11 +10,28 @@ import { v4 as uuidv4 } from 'uuid';
 
 declare global {
   var prisma: PrismaClient | undefined;
+  var prismaConnected: boolean | undefined;
+  var queryCache: NodeCache | undefined;
 }
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
+  prismaConnected: boolean | undefined;
+  queryCache: NodeCache | undefined;
 };
+
+// Cache configuration
+const CACHE_TTL = 60; // Cache time-to-live in seconds
+const CACHE_CHECK_PERIOD = 120; // Check for expired entries every 2 minutes
+
+// Initialize cache if it doesn't exist
+if (!globalForPrisma.queryCache) {
+  globalForPrisma.queryCache = new NodeCache({
+    stdTTL: CACHE_TTL,
+    checkperiod: CACHE_CHECK_PERIOD,
+    useClones: false
+  });
+}
 
 // Crear cliente Prisma con manejo de errores robusto
 function createPrismaClient(): PrismaClient | undefined {
@@ -32,8 +50,11 @@ function createPrismaClient(): PrismaClient | undefined {
   }
 }
 
-// Create PrismaClient instance
-const basePrisma = globalForPrisma.prisma || new PrismaClient();
+// Create PrismaClient instance (lazy)
+const basePrisma = globalForPrisma.prisma || createPrismaClient();
+
+// Fix for type safety
+const safeBasePrisma = basePrisma as PrismaClient;
 
 if (process.env.NODE_ENV !== 'production') {
   globalThis.prisma = basePrisma;
@@ -45,20 +66,27 @@ export async function connectSafely() {
     throw new Error('Prisma client not available');
   }
   
-  try {
-    await basePrisma.$connect();
-    return basePrisma;
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
+  if (!globalForPrisma.prismaConnected) {
+    try {
+      await basePrisma.$connect();
+      globalForPrisma.prismaConnected = true;
+      console.log('📚 Database connected successfully');
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      throw error;
+    }
   }
+  
+  return basePrisma;
 }
 
 // Función helper para desconexión segura
 export async function disconnectSafely() {
-  if (basePrisma) {
+  if (basePrisma && globalForPrisma.prismaConnected) {
     try {
       await basePrisma.$disconnect();
+      globalForPrisma.prismaConnected = false;
+      console.log('📚 Database disconnected successfully');
     } catch (error) {
       console.error('⚠️ Error disconnecting from database:', error);
     }
@@ -100,9 +128,12 @@ interface ImportSessionDetailModel {
 class CustomPrismaClient {
   // Base Prisma client
   private readonly client: PrismaClient;
+  private readonly cache: NodeCache;
+  private queryTimings: Map<string, { count: number, totalTime: number, avgTime: number }> = new Map();
 
   constructor(client: PrismaClient) {
     this.client = client;
+    this.cache = globalForPrisma.queryCache!;
     
     // Create proxies for common database operations
     return new Proxy(this, {
@@ -112,22 +143,177 @@ class CustomPrismaClient {
           return (target as any)[prop];
         }
         
+        // Handle special methods for monitoring
+        if (prop === 'getQueryStats') {
+          return () => this.getQueryStatistics();
+        }
+        
+        // Lazy connect if needed
+        if (!globalForPrisma.prismaConnected && prop !== 'connect' && prop !== 'disconnect') {
+          connectSafely().catch(e => console.error('Failed to connect lazily:', e));
+        }
+        
         // Forward model access to the Prisma client
         if (prop in this.client) {
-          return this.client[prop as keyof PrismaClient];
+          const original = this.client[prop as keyof PrismaClient];
+          
+          // If the property is a model (object with findMany, findUnique, etc.)
+          if (typeof original === 'object' && original !== null) {
+            return new Proxy(original, {
+              get: (modelTarget, modelProp) => {
+                const modelMethod = modelTarget[modelProp as keyof typeof modelTarget];
+                
+                // If it's a query method, wrap it with caching and monitoring
+                if (typeof modelMethod === 'function' && 
+                   (modelProp === 'findMany' || 
+                    modelProp === 'findUnique' || 
+                    modelProp === 'findFirst' ||
+                    modelProp === 'count')) {
+                  
+                  return async (...args: any[]) => {
+                    // Create a cache key based on the model, method, and args
+                    const cacheKey = `${String(prop)}.${String(modelProp)}.${JSON.stringify(args)}`;
+                    
+                    // Check cache first for read operations
+                    const cachedResult = this.cache.get(cacheKey);
+                    if (cachedResult !== undefined) {
+                      return cachedResult;
+                    }
+                    
+                    // Record execution time
+                    const startTime = performance.now();
+                    
+                    try {
+                      // Ensure we're connected before executing query
+                      if (!globalForPrisma.prismaConnected) {
+                        await connectSafely();
+                      }
+                      
+                      // Execute the original method
+                      const result = await (modelMethod as Function).apply(modelTarget, args);
+                      
+                      // Cache the result for read operations
+                      this.cache.set(cacheKey, result);
+                      
+                      return result;
+                    } finally {
+                      // Track query timing for monitoring
+                      const endTime = performance.now();
+                      const executionTime = endTime - startTime;
+                      this.recordQueryTiming(`${String(prop)}.${String(modelProp)}`, executionTime);
+                    }
+                  };
+                }
+                
+                // For write operations, we need to invalidate cache
+                if (typeof modelMethod === 'function' && 
+                   (modelProp === 'create' || 
+                    modelProp === 'update' || 
+                    modelProp === 'delete' || 
+                    modelProp === 'upsert' || 
+                    modelProp === 'createMany' || 
+                    modelProp === 'updateMany' || 
+                    modelProp === 'deleteMany')) {
+                  
+                  return async (...args: any[]) => {
+                    // Record execution time
+                    const startTime = performance.now();
+                    
+                    try {
+                      // Ensure we're connected before executing query
+                      if (!globalForPrisma.prismaConnected) {
+                        await connectSafely();
+                      }
+                      
+                      // Execute the original method
+                      const result = await (modelMethod as Function).apply(modelTarget, args);
+                      
+                      // Invalidate cache for this model
+                      this.invalidateModelCache(String(prop));
+                      
+                      return result;
+                    } finally {
+                      // Track query timing for monitoring
+                      const endTime = performance.now();
+                      const executionTime = endTime - startTime;
+                      this.recordQueryTiming(`${String(prop)}.${String(modelProp)}`, executionTime);
+                    }
+                  };
+                }
+                
+                return modelMethod;
+              }
+            });
+          }
+          
+          return original;
         }
         
         return undefined;
       }
     });
   }
+  
+  // Helper to invalidate cache for a specific model
+  private invalidateModelCache(modelName: string) {
+    const keys = this.cache.keys();
+    const modelKeys = keys.filter(key => key.startsWith(`${modelName}.`));
+    
+    if (modelKeys.length > 0) {
+      this.cache.del(modelKeys);
+      console.log(`🧹 Invalidated ${modelKeys.length} cache entries for ${modelName}`);
+    }
+  }
+  
+  // Record query timing for monitoring
+  private recordQueryTiming(queryName: string, executionTime: number) {
+    const stats = this.queryTimings.get(queryName) || { count: 0, totalTime: 0, avgTime: 0 };
+    stats.count += 1;
+    stats.totalTime += executionTime;
+    stats.avgTime = stats.totalTime / stats.count;
+    this.queryTimings.set(queryName, stats);
+  }
+  
+  // Get query statistics for monitoring
+  public getQueryStatistics() {
+    return Array.from(this.queryTimings.entries()).map(([query, stats]) => ({
+      query,
+      count: stats.count,
+      totalTimeMs: Math.round(stats.totalTime),
+      avgTimeMs: Math.round(stats.avgTime)
+    }));
+  }
 
   // Import Session methods
   async findImportSession(id: string): Promise<ImportSessionModel | null> {
-    const result = await this.client.$queryRaw`
-      SELECT * FROM "ImportSession" WHERE id = ${id} LIMIT 1
-    `;
-    return Array.isArray(result) && result.length > 0 ? result[0] as ImportSessionModel : null;
+    // Generate cache key
+    const cacheKey = `importSession.${id}`;
+    
+    // Check cache first
+    const cachedResult = this.cache.get<ImportSessionModel>(cacheKey);
+    if (cachedResult) return cachedResult;
+    
+    const startTime = performance.now();
+    
+    try {
+      const result = await this.client.$queryRaw`
+        SELECT * FROM "ImportSession" WHERE id = ${id} LIMIT 1
+      `;
+      
+      const processed = Array.isArray(result) && result.length > 0 
+        ? result[0] as ImportSessionModel 
+        : null;
+      
+      // Cache the result
+      if (processed) {
+        this.cache.set(cacheKey, processed);
+      }
+      
+      return processed;
+    } finally {
+      const endTime = performance.now();
+      this.recordQueryTiming('importSession.findById', endTime - startTime);
+    }
   }
 
   async listImportSessions(options?: { include?: { createdBy?: boolean } }): Promise<ImportSessionModel[]> {
@@ -293,6 +479,6 @@ class CustomPrismaClient {
 }
 
 // Create the extended Prisma client
-export const prisma = new CustomPrismaClient(basePrisma);
+export const prisma = new CustomPrismaClient(safeBasePrisma);
 
 export default prisma; 

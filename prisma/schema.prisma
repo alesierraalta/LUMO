@@ -136,6 +136,7 @@ model User {
   priceHistory    PriceHistory[]
   sessions        UserSession[]
   customPermissions UserPermission[]
+  importSessions  ImportSession[]
 
   @@map("users")
 }
@@ -240,4 +241,41 @@ enum SaleStatus {
   PENDING
   COMPLETED
   CANCELLED
+}
+
+// Import Sessions
+model ImportSession {
+  id            String               @id @default(uuid())
+  fileName      String
+  filePath      String
+  status        String               @default("processing") // processing, completed, failed
+  notes         String?
+  totalItems    Int                  @default(0)
+  successItems  Int                  @default(0)
+  warningItems  Int                  @default(0)
+  errorItems    Int                  @default(0)
+  createdById   String
+  createdBy     User                 @relation(fields: [createdById], references: [id])
+  createdAt     DateTime             @default(now())
+  completedAt   DateTime?
+  details       ImportSessionDetail[]
+
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model ImportSessionDetail {
+  id           String        @id @default(uuid())
+  sessionId    String
+  session      ImportSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name         String
+  sku          String
+  status       String        // success, warning, error
+  message      String?
+  originalData String        // JSON string
+  importedData String?       // JSON string
+  createdAt    DateTime      @default(now())
+
+  @@index([sessionId])
+  @@index([status])
 } 

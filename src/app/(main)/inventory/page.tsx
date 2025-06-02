@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3, BatteryLow, MapPin, ShoppingCart } from "lucide-react";
+import { PlusCircle, Filter, Tags, Plus, Tag, Pencil, PackageOpen, BarChart3, BatteryLow, MapPin, ShoppingCart, Upload } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -449,6 +449,16 @@ export default async function InventoryPage({
             <Link href="/inventory/new" className="flex flex-col items-center gap-1 text-center">
               <PlusCircle className="h-5 w-5" />
               <span className="text-sm">Nuevo Producto</span>
+            </Link>
+          </Button>
+          <Button 
+            asChild 
+            variant="outline"
+            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+          >
+            <Link href="/inventory/import" className="flex flex-col items-center gap-1 text-center">
+              <Upload className="h-5 w-5" />
+              <span className="text-sm">Importar Excel</span>
             </Link>
           </Button>
         </div>

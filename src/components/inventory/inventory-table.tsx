@@ -47,7 +47,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StockStatus } from "@/services/inventoryService";
+import { StockStatus, calculateStockStatus } from "@/lib/inventory-utils";
 import { formatDate, formatCurrency, ensureValidDate } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -224,17 +224,7 @@ export default function InventoryTable({
   }, [categoryFilter, searchQuery, inventoryItems, sortField, sortDirection, stockStatusFilter]);
 
   // Calculate stock status based on quantity and min level
-  const calculateStockStatus = (quantity: number, minStockLevel: number): StockStatus => {
-    if (quantity <= 0) {
-      return StockStatus.OUT_OF_STOCK;
-    }
-    
-    if (quantity <= minStockLevel) {
-      return StockStatus.LOW;
-    }
-    
-    return StockStatus.NORMAL;
-  };
+  // calculateStockStatus is now imported from @/lib/inventory-utils
 
   // Calculate percentage for progress bar
   const calculateStockPercentage = (quantity: number, minStockLevel: number): number => {

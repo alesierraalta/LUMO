@@ -213,7 +213,7 @@ export default function EditUserPage({ params }: PageProps) {
           setCustomPermissions(newPermissions);
         } else {
           // Fall back to role-based permissions
-          setDefaultPermissions(userData.user.role.name);
+        setDefaultPermissions(userData.user.role.name);
         }
         
       } catch (error) {

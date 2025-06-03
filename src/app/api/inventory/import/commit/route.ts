@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // Schema for item validation
 const importItemSchema = z.object({
   rowId: z.number(),
-  name: z.string().min(1, "El nombre es requerido"),
+  name: z.string().optional(),
   sku: z.string().min(1, "El SKU es requerido"),
   price: z.number().nullable(),
   cost: z.number().nullable(),
@@ -68,16 +68,25 @@ export async function POST(request: NextRequest) {
     
     for (const item of items) {
       try {
-        // Check if product already exists by SKU
-        const existingProduct = await originalPrisma.inventoryItem.findFirst({
-          where: { sku: item.sku },
-        });
+        // Validate essential fields
+        if (!item.sku) {
+          results.error++;
+          results.items.push({
+            rowId: item.rowId,
+            name: item.name || 'unknown',
+            sku: item.sku || 'unknown',
+            status: "error",
+            message: 'SKU es obligatorio',
+            originalData: item.originalData,
+          });
+          continue;
+        }
         
         // Get or create category if provided
         let categoryId = null;
         if (item.category) {
           const category = await originalPrisma.category.findFirst({
-            where: { name: { equals: item.category, mode: 'insensitive' } },
+            where: { name: item.category },
           });
           
           if (category) {
@@ -87,7 +96,6 @@ export async function POST(request: NextRequest) {
             const newCategory = await originalPrisma.category.create({
               data: {
                 name: item.category,
-                createdBy: userId,
               },
             });
             categoryId = newCategory?.id || null;
@@ -98,7 +106,7 @@ export async function POST(request: NextRequest) {
         let locationId = null;
         if (item.location) {
           const location = await originalPrisma.location.findFirst({
-            where: { name: { equals: item.location, mode: 'insensitive' } },
+            where: { name: item.location },
           });
           
           if (location) {
@@ -108,104 +116,108 @@ export async function POST(request: NextRequest) {
             const newLocation = await originalPrisma.location.create({
               data: {
                 name: item.location,
-                createdBy: userId,
               },
             });
             locationId = newLocation?.id || null;
           }
         }
         
+        // Prepare product data
+        const productData: any = {
+          sku: item.sku,
+          name: item.name || item.sku, // Usar SKU como nombre si no hay nombre
+          price: item.price || 0,
+          cost: item.cost || 0,
+          quantity: item.quantity || 0,
+          categoryId: categoryId,
+          locationId: locationId,
+          active: true,
+          updatedAt: new Date(),
+        };
+        
+        // Check if product already exists by SKU
+        const existingProduct = await originalPrisma.inventoryItem.findFirst({
+          where: { sku: item.sku },
+        });
+        
         if (existingProduct) {
           // Update existing product
           const updatedProduct = await originalPrisma.inventoryItem.update({
             where: { id: existingProduct.id },
-            data: {
-              name: item.name,
-              price: item.price || existingProduct.price,
-              cost: item.cost || existingProduct.cost,
-              quantity: item.quantity !== null ? item.quantity : existingProduct.quantity,
-              categoryId: categoryId || existingProduct.categoryId,
-              locationId: locationId || existingProduct.locationId,
-              lastUpdatedBy: userId,
-              updatedAt: new Date(),
-            },
+            data: productData,
           });
           
-          // Log stock movement if quantity changed
+          // Record price change if different
+          if (item.price !== null && item.price !== existingProduct.price) {
+            await originalPrisma.priceHistory.create({
+              data: {
+                inventoryItemId: existingProduct.id,
+                oldPrice: existingProduct.price,
+                newPrice: item.price,
+                userId: userId,
+              }
+            });
+          }
+          
+          // Record quantity movement if different
           if (item.quantity !== null && item.quantity !== existingProduct.quantity) {
+            const difference = item.quantity - existingProduct.quantity;
             await originalPrisma.stockMovement.create({
               data: {
                 inventoryItemId: existingProduct.id,
-                quantity: item.quantity - existingProduct.quantity,
-                type: "IMPORT",
-                notes: `Importación: ${notes || "Actualización de inventario"}`,
-                userId,
-                createdBy: userId,
-              },
+                quantity: difference,
+                type: "ADJUSTMENT",
+                userId: userId,
+                notes: `Importación desde archivo`,
+              }
             });
           }
           
           results.success++;
           results.items.push({
             rowId: item.rowId,
-            name: item.name,
+            name: item.name || item.sku,
             sku: item.sku,
             status: "success",
-            message: "Producto actualizado correctamente",
-            importedData: updatedProduct,
+            message: 'Producto actualizado correctamente',
             originalData: item.originalData,
           });
-          
         } else {
           // Create new product
           const newProduct = await originalPrisma.inventoryItem.create({
-            data: {
-              name: item.name,
-              sku: item.sku,
-              price: item.price || 0,
-              cost: item.cost || 0,
-              quantity: item.quantity || 0,
-              categoryId: categoryId,
-              locationId: locationId,
-              active: true,
-              createdBy: userId,
-              lastUpdatedBy: userId,
-            },
+            data: productData,
           });
           
-          // Log stock movement if quantity provided
+          // Record initial quantity if provided
           if (item.quantity && item.quantity > 0) {
             await originalPrisma.stockMovement.create({
               data: {
-                inventoryItemId: newProduct?.id || "",
+                inventoryItemId: newProduct.id,
                 quantity: item.quantity,
-                type: "IMPORT",
-                notes: `Importación: ${notes || "Nuevo producto"}`,
-                userId,
-                createdBy: userId,
-              },
+                type: "INITIAL",
+                userId: userId,
+                notes: `Importación inicial desde archivo`,
+              }
             });
           }
           
           results.success++;
           results.items.push({
             rowId: item.rowId,
-            name: item.name,
+            name: item.name || item.sku,
             sku: item.sku,
             status: "success",
-            message: "Producto creado correctamente",
-            importedData: newProduct,
+            message: 'Producto creado correctamente',
             originalData: item.originalData,
           });
         }
-        
       } catch (error) {
-        console.error(`Error processing item ${item.sku}:`, error);
+        console.error("Error processing item:", error);
         results.error++;
         results.items.push({
           rowId: item.rowId,
-          name: item.name,
-          sku: item.sku,
+          name: item.name || 'unknown',
+          sku: item.sku || 'unknown',
           status: "error",
           message: error instanceof Error ? error.message : "Error al procesar el producto",
           originalData: item.originalData,
@@ -240,7 +252,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       total: results.total,
-      success: results.success,
+      successCount: results.success,
       warning: results.warning,
       error: results.error,
       message: "Importación completada"

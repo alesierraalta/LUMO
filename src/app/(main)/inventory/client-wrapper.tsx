@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import InventoryTable from "@/components/inventory/inventory-table";
-import { StockStatus } from "@/services/inventoryService";
+import { StockStatus } from "@/lib/inventory-utils";
 
 type InventoryClientWrapperProps = {
   inventoryItems: any[];

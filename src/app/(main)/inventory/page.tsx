@@ -16,10 +16,11 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
 import InventoryClientWrapper from "./client-wrapper";
+import { buttonVariants } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Inventario",
-  description: "Gestiona tus niveles de inventario y productos",
+  title: "Inventario | LUMO",
+  description: "Gestión de inventario para LUMO"
 };
 
 // Función de serialización personalizada específicamente para datos de inventario
@@ -352,10 +353,11 @@ export default async function InventoryPage({
     );
   }
 
-  // Fetch all inventory items with their category info
-  const inventoryItems = await prisma?.inventoryItem.findMany({
+  // Fetch all inventory items with their category and location info
+  const inventoryItems = await prisma.prisma.inventoryItem.findMany({
     include: {
       category: true,
+      locationRelation: true, // Incluir información de ubicación
     },
     orderBy: {
       updatedAt: 'desc',
@@ -366,7 +368,7 @@ export default async function InventoryPage({
   const serializedInventory = safeSerializeInventory(inventoryItems);
 
   // Fetch categories
-  const categories = await prisma?.category.findMany({
+  const categories = await prisma.prisma.category.findMany({
     orderBy: {
       name: 'asc',
     },
@@ -380,7 +382,7 @@ export default async function InventoryPage({
   }) || [];
 
   // Fetch locations
-  const locations = await prisma?.location.findMany({
+  const locations = await prisma.prisma.location.findMany({
     orderBy: {
       name: 'asc',
     },
@@ -405,7 +407,20 @@ export default async function InventoryPage({
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <h1 className="text-3xl font-bold">Inventario</h1>
+          <div className="flex justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
+            <div className="flex space-x-2">
+              <Link href="/inventory/add" className={buttonVariants({ variant: "default" })}>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
+              </Link>
+              <Link href="/inventory/import" className={buttonVariants({ variant: "outline" })}>
+                Importar
+              </Link>
+              <Link href="/inventory/scan-duplicates" className={buttonVariants({ variant: "secondary" })}>
+                Detectar Duplicados
+              </Link>
+            </div>
+          </div>
           <p className="text-muted-foreground">
             Gestiona tu inventario, categorías y ubicaciones de productos
           </p>

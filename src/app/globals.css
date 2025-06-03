@@ -249,21 +249,66 @@
   transition-duration: 150ms;
 }
 
+/* Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--secondary));
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
   background: hsl(var(--secondary));
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border-radius: 4px;
+  background: hsl(var(--primary) / 0.6);
+  border-radius: 6px;
+  border: 2px solid hsl(var(--secondary));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.6);
+  background: hsl(var(--primary) / 0.8);
+}
+
+/* Scrollbar específico para los componentes de Radix UI */
+.radix-scroll-area-scrollbar {
+  display: flex;
+  width: 10px !important;
+  padding: 0 2px;
+}
+
+.radix-scroll-area-thumb {
+  background: hsl(var(--primary) / 0.6) !important;
+  border-radius: 6px;
+  position: relative;
+}
+
+.radix-scroll-area-thumb:hover {
+  background: hsl(var(--primary) / 0.8) !important;
+}
+
+/* Estilos adicionales para scrollbars en diálogos de Radix */
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.6) transparent;
+}
+
+[data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.6);
+  border-radius: 6px;
+  border: 2px solid hsl(var(--secondary));
 }

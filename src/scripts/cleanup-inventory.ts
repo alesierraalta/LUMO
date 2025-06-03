@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { serializeDecimal } from '../lib/utils';
+import * as readline from 'readline';
 
 const prisma = new PrismaClient();
 
@@ -8,7 +9,117 @@ const prisma = new PrismaClient();
  * 1. Identifies products without inventory entries and creates them
  * 2. Identifies duplicate products and helps handle them 
  * 3. Shows a summary of the database state
+ * 4. Automatically fixes duplicates if requested
  */
+
+// Create readline interface for interactive questions
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+// Helper function to ask questions
+function question(query: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      resolve(answer);
+    });
+  });
+}
+
+// Function to automatically merge duplicates
+async function fixDuplicates(duplicateProducts: any[]) {
+  console.log('\nStarting automatic duplicate fix process...');
+  let fixedCount = 0;
+  
+  for (const { name, products } of duplicateProducts) {
+    console.log(`\nProcessing duplicates for "${name}" (${products.length} entries found)`);
+    
+    // Sort products by creation date (keep the oldest) and inventory quantity (prefer ones with stock)
+    const sortedProducts = [...products].sort((a, b) => {
+      // First prioritize products with inventory
+      const aHasInventory = a.inventory && a.inventory.quantity > 0;
+      const bHasInventory = b.inventory && b.inventory.quantity > 0;
+      
+      if (aHasInventory && !bHasInventory) return -1;
+      if (!aHasInventory && bHasInventory) return 1;
+      
+      // Then prioritize older products (assuming they're the original)
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+    
+    // The product to keep is the first one after sorting
+    const productToKeep = sortedProducts[0];
+    const productsToMerge = sortedProducts.slice(1);
+    
+    console.log(`Keeping product: ID ${productToKeep.id}, SKU: ${productToKeep.sku}, Created: ${productToKeep.createdAt.toLocaleDateString()}`);
+    console.log(`Merging ${productsToMerge.length} duplicate products into it...`);
+    
+    // Merge process
+    for (const duplicate of productsToMerge) {
+      try {
+        // Begin transaction to ensure data integrity
+        await prisma.$transaction(async (tx) => {
+          // 1. Update any sales or inventory movements to reference the product we're keeping
+          await tx.$executeRaw`
+            UPDATE "sales_items" 
+            SET "productId" = ${productToKeep.id}
+            WHERE "productId" = ${duplicate.id}
+          `;
+          
+          await tx.$executeRaw`
+            UPDATE "inventory_movements" 
+            SET "productId" = ${productToKeep.id}
+            WHERE "productId" = ${duplicate.id}
+          `;
+          
+          // 2. If the duplicate has inventory, merge it with the one we're keeping
+          if (duplicate.inventory) {
+            // If productToKeep doesn't have inventory yet, create it
+            if (!productToKeep.inventory) {
+              await tx.inventoryItem.create({
+                data: {
+                  productId: productToKeep.id,
+                  quantity: duplicate.inventory.quantity,
+                  minStockLevel: duplicate.inventory.minStockLevel
+                }
+              });
+            } else {
+              // Merge inventory quantities
+              await tx.inventoryItem.update({
+                where: { id: productToKeep.inventory.id },
+                data: {
+                  quantity: {
+                    increment: duplicate.inventory.quantity
+                  }
+                }
+              });
+            }
+            
+            // Delete the duplicate's inventory
+            await tx.inventoryItem.delete({
+              where: { id: duplicate.inventory.id }
+            });
+          }
+          
+          // 3. Finally, delete the duplicate product
+          await tx.product.delete({
+            where: { id: duplicate.id }
+          });
+        });
+        
+        console.log(`✓ Successfully merged and removed duplicate ID: ${duplicate.id}`);
+        fixedCount++;
+      } catch (error) {
+        console.error(`✗ Failed to merge duplicate ID: ${duplicate.id}`, error);
+      }
+    }
+  }
+  
+  console.log(`\nDuplicate fix process completed. Successfully merged ${fixedCount} duplicate products.`);
+  return fixedCount;
+}
+
 async function cleanupDatabase() {
   console.log('Starting database cleanup process...');
   
@@ -85,9 +196,16 @@ async function cleanupDatabase() {
         });
       });
       
-      console.log('\nDuplicate products detected but not automatically removed.');
-      console.log('To remove duplicates, use the following commands in the database:');
-      console.log('Example: DELETE FROM products WHERE id = \'[duplicate-id-to-remove]\';');
+      // Ask if user wants to automatically fix duplicates
+      const autoFix = await question('\nDo you want to automatically fix duplicates? [y/N]: ');
+      
+      if (autoFix.toLowerCase() === 'y') {
+        await fixDuplicates(duplicateProducts);
+      } else {
+        console.log('\nDuplicate products detected but not automatically removed.');
+        console.log('To remove duplicates, use the following commands in the database:');
+        console.log('Example: DELETE FROM products WHERE id = \'[duplicate-id-to-remove]\';');
+      }
     }
     
     // 5. Check for orphaned inventory records (inventory records that don't have valid products)
@@ -106,8 +224,26 @@ async function cleanupDatabase() {
         console.log(`- ID: ${item.id}, Product ID (invalid): ${item.productId}`);
       });
       
-      console.log('\nTo clean up these orphaned records, run:');
-      console.log('DELETE FROM inventory_items WHERE id IN (\'[orphaned-id-1]\', \'[orphaned-id-2]\', ...);');
+      // Ask if user wants to automatically fix orphaned records
+      const autoFixOrphaned = await question('\nDo you want to automatically remove orphaned inventory records? [y/N]: ');
+      
+      if (autoFixOrphaned.toLowerCase() === 'y') {
+        console.log('\nRemoving orphaned inventory records...');
+        const ids = orphanedInventory.map(item => item.id);
+        
+        const result = await prisma.inventoryItem.deleteMany({
+          where: {
+            id: {
+              in: ids
+            }
+          }
+        });
+        
+        console.log(`Successfully removed ${result.count} orphaned inventory records.`);
+      } else {
+        console.log('\nTo clean up these orphaned records, run:');
+        console.log('DELETE FROM inventory_items WHERE id IN (\'[orphaned-id-1]\', \'[orphaned-id-2]\', ...);');
+      }
     }
     
     // 6. Provide a data integrity summary
@@ -122,13 +258,12 @@ async function cleanupDatabase() {
     // 7. Provide instructions for next steps
     console.log('\nDatabase cleanup process completed!');
     console.log('\nNext steps:');
-    console.log('1. Review the list of duplicate products and decide which ones to keep');
-    console.log('2. After reviewing duplicates, you may want to delete unnecessary duplicates manually');
-    console.log('3. Review any orphaned inventory records and clean them up if needed');
-    console.log('4. Consider implementing database constraints to prevent data inconsistencies in the future');
+    console.log('1. Run this script periodically to maintain database integrity');
+    console.log('2. Consider implementing database constraints to prevent data inconsistencies in the future');
   } catch (error) {
     console.error('Error during database cleanup:', error);
   } finally {
+    rl.close();
     await prisma.$disconnect();
   }
 }

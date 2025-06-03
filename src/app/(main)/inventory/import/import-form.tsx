@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 // Define types
 interface ImportFormProps {
   userId: string;
@@ -83,6 +85,7 @@ type PreviewItem = {
     existingSku?: boolean;
     invalid?: boolean;
     negativeValues?: boolean;
+    duplicateName?: boolean;
   }
 };
 
@@ -96,6 +99,7 @@ export default function ImportForm({ userId }: ImportFormProps) {
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
   const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string>("");
   const [importStats, setImportStats] = useState<{
     total: number;
     success: number;
@@ -107,6 +111,7 @@ export default function ImportForm({ userId }: ImportFormProps) {
   const [templateName, setTemplateName] = useState<string>("");
   const [savedTemplates, setSavedTemplates] = useState<{name: string, mappings: FieldMapping[]}[]>([]);
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState<boolean>(false);
+
 
   // Cargar plantillas guardadas al inicio
   useEffect(() => {
@@ -304,7 +309,8 @@ export default function ImportForm({ userId }: ImportFormProps) {
       }
 
       setProgress(30);
-      const { filePath, sessionId } = await uploadResponse.json();
+      const { filePath, sessionId: uploadSessionId } = await uploadResponse.json();
+      setSessionId(uploadSessionId);
 
       // Process the file
       setStage('processing');
@@ -317,7 +323,7 @@ export default function ImportForm({ userId }: ImportFormProps) {
         body: JSON.stringify({
           filePath,
           fileName: selectedFile.name,
-          sessionId,
+          sessionId: uploadSessionId,
           userId,
         }),
       });
@@ -358,15 +364,29 @@ export default function ImportForm({ userId }: ImportFormProps) {
   // Update a preview item
   const updatePreviewItem = (index: number, field: keyof PreviewItem, value: any) => {
     const newPreviewData = [...previewData];
+    
+    // Convert numeric fields to proper numbers
+    if (field === 'price' || field === 'cost' || field === 'quantity') {
+      if (value === '' || value === null || value === undefined) {
+        // @ts-ignore - This is a dynamic field access
+        newPreviewData[index][field] = null;
+      } else {
+        const numValue = parseFloat(value);
+        // @ts-ignore - This is a dynamic field access
+        newPreviewData[index][field] = isNaN(numValue) ? null : numValue;
+      }
+    } else {
     // @ts-ignore - This is a dynamic field access
     newPreviewData[index][field] = value;
+    }
+    
     setPreviewData(newPreviewData);
   };
 
   // Proceed to preview
   const handleProceedToPreview = async () => {
     // Validate that all required fields are mapped
-    const requiredFields = ['name', 'sku', 'quantity'];
+    const requiredFields = ['sku', 'quantity'];
     const mappedFields = mappings
       .filter(m => m.inventoryField && m.inventoryField !== 'none')
       .map(m => m.inventoryField);
@@ -387,17 +407,23 @@ export default function ImportForm({ userId }: ImportFormProps) {
     try {
       // Verificar SKUs duplicados
       const skus = new Set<string>();
-      const duplicateSkus: string[] = [];
+      const duplicateSkuMap = new Map<string, number[]>();
       
       previewData.forEach(item => {
         if (item.sku) {
           if (skus.has(item.sku)) {
-            duplicateSkus.push(item.sku);
+            if (!duplicateSkuMap.has(item.sku)) {
+              duplicateSkuMap.set(item.sku, []);
+            }
+            duplicateSkuMap.get(item.sku)?.push(item.rowId);
           } else {
             skus.add(item.sku);
           }
         }
       });
+      
+      // Convertir el mapa a un array para facilitar la presentación
+      const duplicateSkus = Array.from(duplicateSkuMap.entries());
       
       // Verificar si los SKUs ya existen en la base de datos
       const existingSkus: {sku: string, existing: boolean}[] = [];
@@ -421,9 +447,8 @@ export default function ImportForm({ userId }: ImportFormProps) {
       
       // Verificar que los nombres no estén vacíos y tengan formato válido
       const invalidItems = previewData.filter(item => 
-        !item.name || 
-        item.name.trim() === '' || 
-        !item.sku || 
+        (!item.name && !item.sku) || // Si no hay nombre ni SKU
+        !item.sku || // Si no hay SKU (siempre requerido)
         item.sku.trim() === '' ||
         (item.quantity !== null && item.quantity < 0)
       );
@@ -438,7 +463,7 @@ export default function ImportForm({ userId }: ImportFormProps) {
       const warnings: string[] = [];
       
       if (duplicateSkus.length > 0) {
-        warnings.push(`Se encontraron ${duplicateSkus.length} SKUs duplicados en los datos importados.`);
+        warnings.push(`Se encontraron ${duplicateSkus.length} códigos SKU duplicados en los datos importados.`);
       }
       
       if (existingSkus.filter(e => e.existing).length > 0) {
@@ -467,11 +492,32 @@ export default function ImportForm({ userId }: ImportFormProps) {
         });
       }
       
+      // Mostrar detalles de SKUs duplicados si existen
+      if (duplicateSkus.length > 0) {
+        toast.warning("SKUs duplicados", {
+          description: (
+            <div className="space-y-2">
+              <p className="font-medium">Se han encontrado SKUs duplicados en los siguientes productos:</p>
+              <div className="max-h-[200px] overflow-y-auto border rounded-md bg-orange-50 p-2">
+                <ul className="list-disc pl-4 space-y-1">
+                  {duplicateSkus.map(([sku, rows], index) => (
+                    <li key={index} className="text-orange-800">
+                      <strong className="font-bold">{sku}</strong>: Filas {rows.join(', ')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ),
+          duration: 10000,
+        });
+      }
+      
       // Marcar visualmente los elementos con problemas
       const updatedPreviewData = previewData.map(item => {
-        const hasDuplicateSku = duplicateSkus.includes(item.sku);
+        const hasDuplicateSku = duplicateSkus.some(([sku, rows]) => sku === item.sku);
         const existingSku = existingSkus.find(e => e.sku === item.sku && e.existing);
-        const isInvalid = !item.name || !item.sku || (item.quantity !== null && item.quantity < 0);
+        const isInvalid = (!item.name && !item.sku) || !item.sku || (item.quantity !== null && item.quantity < 0);
         const hasNegativeValues = (item.price !== null && item.price < 0) || (item.cost !== null && item.cost < 0);
         
         // Añadir indicadores visuales para problemas
@@ -488,6 +534,64 @@ export default function ImportForm({ userId }: ImportFormProps) {
       
       // Actualizar los datos de vista previa con las advertencias
       setPreviewData(updatedPreviewData);
+      
+      // Detectar duplicados en los datos de vista previa
+      const skuMap = new Map();
+      const nameMap = new Map();
+      const skuDuplicates: { [key: string]: any[] } = {};
+      const nameDuplicates: { [key: string]: any[] } = {};
+      
+      // Primero, verificar duplicados en los datos importados
+      updatedPreviewData.forEach(item => {
+        // Verificar duplicados por SKU
+        if (item.sku) {
+          const skuKey = item.sku.toLowerCase();
+          if (!skuMap.has(skuKey)) {
+            skuMap.set(skuKey, []);
+          }
+          skuMap.get(skuKey).push(item);
+        }
+        
+        // Verificar duplicados por nombre
+        if (item.name) {
+          const nameKey = item.name.toLowerCase();
+          if (!nameMap.has(nameKey)) {
+            nameMap.set(nameKey, []);
+          }
+          nameMap.get(nameKey).push(item);
+        }
+      });
+      
+      // Marcar duplicados y agruparlos
+      for (const [sku, items] of skuMap.entries()) {
+        if (items.length > 1) {
+          skuDuplicates[sku] = items;
+          items.forEach(item => {
+            item.warnings = { 
+              ...item.warnings,
+              duplicateSku: true
+            };
+          });
+        }
+      }
+      
+      for (const [name, items] of nameMap.entries()) {
+        if (items.length > 1) {
+          nameDuplicates[name] = items;
+          
+          // Solo marcar como duplicados por nombre si no son duplicados por SKU
+          items.forEach(item => {
+            if (!item.warnings?.duplicateSku) {
+              item.warnings = { 
+                ...item.warnings,
+                duplicateName: true
+              };
+            }
+          });
+        }
+      }
+      
+
       
       setProgress(100);
     } catch (error) {
@@ -506,82 +610,92 @@ export default function ImportForm({ userId }: ImportFormProps) {
       setStage('importing');
       setProgress(0);
       
-      // Crear sesión de importación
-      const formData = new FormData();
-      if (selectedFile) {
-        formData.append('file', selectedFile);
+      // Verificar que tengamos un sessionId válido
+      if (!sessionId) {
+        throw new Error('No se encontró una sesión de importación válida. Por favor, sube el archivo nuevamente.');
       }
-      formData.append('notes', notes);
-      formData.append('data', JSON.stringify(previewData));
       
-      // Opción de importación en segundo plano
-      const importInBackground = true; // Hacer esto configurable con un checkbox
-      formData.append('background', String(importInBackground));
+      // Sanitizar datos antes de enviar - conversión más robusta
+      const sanitizedItems = previewData.map(item => {
+        // Función helper para convertir a número
+        const toNumber = (value: any): number | null => {
+          if (value === null || value === undefined || value === '') {
+            return null;
+          }
+          if (typeof value === 'number') {
+            return isNaN(value) ? null : value;
+          }
+          if (typeof value === 'string') {
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? null : parsed;
+          }
+          if (typeof value === 'object') {
+            // Si es un objeto, intentar extraer el valor
+            if (value.target && value.target.value !== undefined) {
+              return toNumber(value.target.value);
+            }
+            if (value.value !== undefined) {
+              return toNumber(value.value);
+            }
+            return null;
+          }
+          return null;
+        };
+
+        return {
+          ...item,
+          price: toNumber(item.price),
+          cost: toNumber(item.cost),
+          quantity: toNumber(item.quantity),
+          // Asegurar que los strings no estén vacíos
+          name: item.name || '',
+          sku: item.sku || '',
+          category: item.category || null,
+          location: item.location || null,
+          description: item.description || null
+        };
+      });
+      
+      // Enviar datos como JSON en lugar de FormData
+      const requestData = {
+        userId,
+        sessionId,
+        items: sanitizedItems,
+        notes: notes || ''
+      };
       
       const response = await fetch('/api/inventory/import/commit', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al procesar la importación');
+        throw new Error(errorData.message || 'Error al procesar la importación');
       }
       
       const data = await response.json();
       
-      if (importInBackground) {
-        // Si es en segundo plano, mostrar mensaje y redireccionar
-        toast.success('Importación iniciada en segundo plano', {
-          description: 'Puedes continuar trabajando mientras se procesa. Recibirás una notificación cuando finalice.'
-        });
-        
-        // Redirigir a la página de historial de importaciones
-        window.location.href = '/inventory/import/history';
-      } else {
-        // Si no es en segundo plano, esperar y mostrar resultados
-        const pollInterval = setInterval(async () => {
-          try {
-            const statusResponse = await fetch(`/api/inventory/import/status/${data.sessionId}`);
-            
-            if (!statusResponse.ok) {
-              clearInterval(pollInterval);
-              throw new Error('Error al verificar estado de importación');
-            }
-            
-            const statusData = await statusResponse.json();
-            
-            // Actualizar progreso
-            setProgress(Math.floor((statusData.processedItems / statusData.totalItems) * 100));
-            
-            // Actualizar estadísticas
-            setImportStats({
-              total: statusData.totalItems,
-              success: statusData.successItems,
-              warning: statusData.warningItems,
-              error: statusData.errorItems,
-            });
-            
-            // Verificar si ha terminado
-            if (statusData.status === 'completed') {
-              clearInterval(pollInterval);
-              setStage('completed');
-              
-              toast.success('Importación completada', {
-                description: `${statusData.successItems} de ${statusData.totalItems} items procesados exitosamente`
-              });
-            }
-            
-          } catch (error) {
-            clearInterval(pollInterval);
-            console.error('Error al verificar estado:', error);
-            
-            toast.error('Error al verificar estado', {
-              description: error instanceof Error ? error.message : 'Error desconocido'
-            });
-          }
-        }, 2000); // Verificar cada 2 segundos
-      }
+      // Actualizar estadísticas de importación
+      setImportStats({
+        total: data.total || 0,
+        success: data.successCount || 0,
+        warning: data.warning || 0,
+        error: data.error || 0,
+      });
+      
+      // Cambiar a la etapa completa
+      setStage('complete');
+      setProgress(100);
+      
+      // Mostrar mensaje de éxito
+      toast.success('Importación completada', {
+        description: `${data.successCount} de ${data.total} productos procesados exitosamente`
+      });
+      
     } catch (error) {
       setStage('error');
       console.error('Error en importación:', error);
@@ -640,6 +754,8 @@ export default function ImportForm({ userId }: ImportFormProps) {
       </TooltipProvider>
     );
   };
+
+
 
   // Render different stages
   const renderStageContent = () => {
@@ -876,215 +992,560 @@ export default function ImportForm({ userId }: ImportFormProps) {
               Revisa y edita los datos extraídos antes de importarlos al inventario. Los campos con confianza baja deben ser verificados.
             </p>
             
-            <div className="border rounded-md overflow-hidden overflow-x-auto">
-              <UITable>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead>Costo</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Categoría</TableHead>
-                    <TableHead>Ubicación</TableHead>
-                    <TableHead>Descripción</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewData.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            value={item.name || ''}
-                            onChange={(e) => updatePreviewItem(index, 'name', e.target.value)}
-                            className={`${item.confidence.name < 0.5 ? "border-yellow-500" : ""} 
-                              ${item.warnings?.invalid ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.confidence.name < 0.8 && renderConfidenceBadge(item.confidence.name)}
-                          {item.warnings?.invalid && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Nombre inválido o vacío</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            value={item.sku || ''}
-                            onChange={(e) => updatePreviewItem(index, 'sku', e.target.value)}
-                            className={`${item.confidence.sku < 0.5 ? "border-yellow-500" : ""} 
-                              ${item.warnings?.invalid ? "border-red-500 bg-red-50" : ""}
-                              ${item.warnings?.duplicateSku ? "border-orange-500 bg-orange-50" : ""}
-                              ${item.warnings?.existingSku ? "border-blue-500 bg-blue-50" : ""}`}
-                          />
-                          {item.confidence.sku < 0.8 && renderConfidenceBadge(item.confidence.sku)}
-                          {item.warnings?.duplicateSku && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-orange-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>SKU duplicado en los datos importados</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {item.warnings?.existingSku && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-blue-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>SKU ya existe en la base de datos</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            type="number"
-                            value={item.price !== null ? item.price : ''}
-                            onChange={(e) => updatePreviewItem(index, 'price', e.target.value ? parseFloat(e.target.value) : null)}
-                            className={`${item.price !== null && item.confidence.price < 0.5 ? "border-yellow-500" : ""}
-                              ${item.warnings?.negativeValues && item.price !== null && item.price < 0 ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.price !== null && item.confidence.price < 0.8 && renderConfidenceBadge(item.confidence.price)}
-                          {item.warnings?.negativeValues && item.price !== null && item.price < 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Precio negativo</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            type="number"
-                            value={item.cost !== null ? item.cost : ''}
-                            onChange={(e) => updatePreviewItem(index, 'cost', e.target.value ? parseFloat(e.target.value) : null)}
-                            className={`${item.cost !== null && item.confidence.cost < 0.5 ? "border-yellow-500" : ""}
-                              ${item.warnings?.negativeValues && item.cost !== null && item.cost < 0 ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.cost !== null && item.confidence.cost < 0.8 && renderConfidenceBadge(item.confidence.cost)}
-                          {item.warnings?.negativeValues && item.cost !== null && item.cost < 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Costo negativo</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            type="number"
-                            value={item.quantity !== null ? item.quantity : ''}
-                            onChange={(e) => updatePreviewItem(index, 'quantity', e.target.value ? parseFloat(e.target.value) : null)}
-                            className={`${item.quantity !== null && item.confidence.quantity < 0.5 ? "border-yellow-500" : ""}
-                              ${item.warnings?.invalid && item.quantity !== null && item.quantity < 0 ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.quantity !== null && item.confidence.quantity < 0.8 && renderConfidenceBadge(item.confidence.quantity)}
-                          {item.warnings?.invalid && item.quantity !== null && item.quantity < 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Cantidad negativa</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            value={item.category || ''}
-                            onChange={(e) => updatePreviewItem(index, 'category', e.target.value)}
-                            className={`${item.category !== null && item.confidence.category < 0.5 ? "border-yellow-500" : ""}
-                              ${item.warnings?.invalid && item.category !== null ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.category !== null && item.confidence.category < 0.8 && renderConfidenceBadge(item.confidence.category)}
-                          {item.warnings?.invalid && item.category !== null && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Categoría inválida o vacía</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            value={item.location || ''}
-                            onChange={(e) => updatePreviewItem(index, 'location', e.target.value)}
-                            className={`${item.location !== null && item.confidence.location < 0.5 ? "border-yellow-500" : ""}
-                              ${item.warnings?.invalid && item.location !== null ? "border-red-500 bg-red-50" : ""}`}
-                          />
-                          {item.location !== null && item.confidence.location < 0.8 && renderConfidenceBadge(item.confidence.location)}
-                          {item.warnings?.invalid && item.location !== null && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ubicación inválida o vacía</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            value={item.description || ''}
-                            onChange={(e) => updatePreviewItem(index, 'description', e.target.value)}
-                            className={`${item.confidence.description < 0.5 ? "border-yellow-500" : ""}`}
-                          />
-                          {item.confidence.description < 0.8 && renderConfidenceBadge(item.confidence.description)}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </UITable>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Vista previa de datos</h2>
+              </div>
+              
+              {/* Sección de duplicados detectados */}
+              {(() => {
+                const duplicatedSkus = previewData.filter(item => item.warnings?.duplicateSku);
+                const duplicatedNames = previewData.filter(item => item.warnings?.duplicateName);
+                const hasDuplicates = duplicatedSkus.length > 0 || duplicatedNames.length > 0;
+                
+                if (hasDuplicates) {
+                  return (
+                    <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-center mb-3">
+                        <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2" />
+                        <h3 className="font-semibold text-orange-800 dark:text-orange-200">Productos Duplicados Detectados</h3>
+                      </div>
+                      
+                      <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                        Se han encontrado productos con SKUs o nombres duplicados. Revisa los elementos resaltados en la tabla y edítalos según sea necesario.
+                      </p>
+                      
+                      <div className="space-y-2">
+                        {duplicatedSkus.length > 0 && (
+                          <div className="bg-white dark:bg-gray-800/50 rounded-md p-3 border border-orange-200 dark:border-orange-700">
+                            <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-2">SKUs Duplicados ({duplicatedSkus.length} productos)</h4>
+                            <div className="text-sm text-orange-700 dark:text-orange-300">
+                              <p className="mb-1">Productos con SKUs duplicados están resaltados en naranja.</p>
+                              <p><strong>Sugerencias:</strong></p>
+                              <ul className="list-disc list-inside ml-2 space-y-1">
+                                <li>Modifica los SKUs para hacerlos únicos</li>
+                                <li>Elimina los productos duplicados editando su contenido</li>
+                                <li>Verifica que los productos realmente sean diferentes</li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {duplicatedNames.length > 0 && (
+                          <div className="bg-white dark:bg-gray-800/50 rounded-md p-3 border border-orange-200 dark:border-orange-700">
+                            <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-2">Nombres Duplicados ({duplicatedNames.length} productos)</h4>
+                            <div className="text-sm text-orange-700 dark:text-orange-300">
+                              <p className="mb-1">Productos con nombres similares detectados.</p>
+                              <p><strong>Sugerencias:</strong></p>
+                              <ul className="list-disc list-inside ml-2 space-y-1">
+                                <li>Revisa si son realmente productos diferentes</li>
+                                <li>Modifica los nombres para diferenciarlos</li>
+                                <li>Considera si deben fusionarse en un solo producto</li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                        
+                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
+                           {/* Acciones para SKUs duplicados */}
+                           {duplicatedSkus.length > 0 && (
+                             <>
+                                                               <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => {
+                                    // Eliminar todos los productos con SKUs duplicados
+                                    const originalCount = previewData.length;
+                                    const updatedData = previewData.filter(item => !item.warnings?.duplicateSku);
+                                    const removedCount = originalCount - updatedData.length;
+                                    
+                                    setPreviewData(updatedData);
+                                    toast.success("SKUs duplicados eliminados", {
+                                      description: `Se eliminaron ${removedCount} productos con SKUs duplicados`
+                                    });
+                                  }}
+                                >
+                                  🗑️ Eliminar SKUs Duplicados
+                                </Button>
+                               
+                                                               <Button 
+                                  variant="secondary" 
+                                  size="sm"
+                                  onClick={() => {
+                                    // Mantener solo el primer producto de cada SKU duplicado
+                                    const seenSkus = new Set<string>();
+                                    const originalCount = previewData.length;
+                                    
+                                    const updatedData = previewData.filter(item => {
+                                      if (item.warnings?.duplicateSku && item.sku) {
+                                        if (seenSkus.has(item.sku)) {
+                                          return false; // Eliminar duplicados
+                                        }
+                                        seenSkus.add(item.sku);
+                                        // Limpiar la advertencia del primer elemento
+                                        item.warnings.duplicateSku = false;
+                                      }
+                                      return true;
+                                    });
+                                    
+                                    const removedCount = originalCount - updatedData.length;
+                                    setPreviewData(updatedData);
+                                    toast.success("Duplicados por SKU resueltos", {
+                                      description: `Se mantuvo solo el primer producto de cada SKU duplicado. Eliminados: ${removedCount}`
+                                    });
+                                  }}
+                                >
+                                  📝 Mantener Primeros SKUs
+                                </Button>
+                               
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                                  onClick={() => {
+                                    // Renombrar SKUs duplicados agregando sufijo numérico
+                                    const skuCounts = new Map<string, number>();
+                                    let renamedCount = 0;
+                                    
+                                    const updatedData = previewData.map(item => {
+                                      if (item.warnings?.duplicateSku && item.sku) {
+                                        const originalSku = item.sku.split('-')[0]; // En caso de que ya tenga sufijo
+                                        const count = skuCounts.get(originalSku) || 0;
+                                        skuCounts.set(originalSku, count + 1);
+                                        
+                                        if (count === 0) {
+                                          // El primer elemento mantiene el SKU original pero quita la advertencia
+                                          return {
+                                            ...item,
+                                            warnings: {
+                                              ...item.warnings,
+                                              duplicateSku: false
+                                            }
+                                          };
+                                        } else {
+                                          // Los siguientes obtienen sufijo numérico
+                                          renamedCount++;
+                                          return {
+                                            ...item,
+                                            sku: `${originalSku}-${count + 1}`,
+                                            warnings: {
+                                              ...item.warnings,
+                                              duplicateSku: false
+                                            }
+                                          };
+                                        }
+                                      }
+                                      return item;
+                                    });
+                                    
+                                    setPreviewData(updatedData);
+                                    toast.success("SKUs renombrados automáticamente", {
+                                      description: `Se renombraron ${renamedCount} SKUs duplicados con sufijos numéricos`
+                                    });
+                                  }}
+                                >
+                                  🔄 Auto-Renombrar SKUs
+                                </Button>
+                             </>
+                           )}
+                           
+                           {/* Acciones para nombres duplicados */}
+                           {duplicatedNames.length > 0 && (
+                             <>
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => {
+                                   // Renombrar nombres duplicados agregando información del SKU
+                                   const updatedData = previewData.map(item => {
+                                     if (item.warnings?.duplicateName) {
+                                       return {
+                                         ...item,
+                                         name: `${item.name} (${item.sku})`,
+                                         warnings: {
+                                           ...item.warnings,
+                                           duplicateName: false
+                                         }
+                                       };
+                                     }
+                                     return item;
+                                   });
+                                   
+                                   setPreviewData(updatedData);
+                                   toast.success("Nombres diferenciados", {
+                                     description: "Se agregó el SKU a los nombres duplicados para diferenciarlos"
+                                   });
+                                 }}
+                               >
+                                 🏷️ Diferenciar por SKU
+                               </Button>
+                               
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => {
+                                   // Agregar número secuencial a nombres duplicados
+                                   const nameCounts = new Map<string, number>();
+                                   const updatedData = previewData.map(item => {
+                                     if (item.warnings?.duplicateName && item.name) {
+                                       const count = nameCounts.get(item.name) || 0;
+                                       nameCounts.set(item.name, count + 1);
+                                       
+                                       if (count > 0) {
+                                         return {
+                                           ...item,
+                                           name: `${item.name} ${count + 1}`,
+                                           warnings: {
+                                             ...item.warnings,
+                                             duplicateName: false
+                                           }
+                                         };
+                                       }
+                                     }
+                                     return item;
+                                   });
+                                   
+                                   setPreviewData(updatedData);
+                                   toast.success("Nombres numerados", {
+                                     description: "Se agregaron números secuenciales a los nombres duplicados"
+                                   });
+                                 }}
+                               >
+                                 🔢 Numerar Nombres
+                               </Button>
+                             </>
+                           )}
+                           
+                           {/* Acciones generales */}
+                           <Button 
+                             variant="outline" 
+                             size="sm"
+                             onClick={() => {
+                               // Fusionar duplicados (mantener el que tenga más información)
+                               const skuGroups = new Map<string, PreviewItem[]>();
+                               
+                               // Agrupar por SKU
+                               previewData.forEach(item => {
+                                 if (item.warnings?.duplicateSku && item.sku) {
+                                   if (!skuGroups.has(item.sku)) {
+                                     skuGroups.set(item.sku, []);
+                                   }
+                                   skuGroups.get(item.sku)?.push(item);
+                                 }
+                               });
+                               
+                               // Crear lista de items únicos
+                               const mergedData = [...previewData];
+                               let mergedCount = 0;
+                               
+                               skuGroups.forEach((duplicates, sku) => {
+                                 if (duplicates.length > 1) {
+                                   // Encontrar el item con más información (menos nulls)
+                                   const bestItem = duplicates.reduce((best, current) => {
+                                     const bestNonNulls = Object.values(best).filter(v => v !== null && v !== '').length;
+                                     const currentNonNulls = Object.values(current).filter(v => v !== null && v !== '').length;
+                                     return currentNonNulls > bestNonNulls ? current : best;
+                                   });
+                                   
+                                   // Fusionar información de todos los duplicados
+                                   const mergedItem = { ...bestItem };
+                                   duplicates.forEach(item => {
+                                     Object.keys(item).forEach(key => {
+                                       if ((mergedItem as any)[key] === null || (mergedItem as any)[key] === '') {
+                                         (mergedItem as any)[key] = (item as any)[key];
+                                       }
+                                     });
+                                   });
+                                   
+                                   mergedItem.warnings = {
+                                     ...mergedItem.warnings,
+                                     duplicateSku: false
+                                   };
+                                   
+                                   // Reemplazar en el array
+                                   const firstIndex = mergedData.findIndex(item => item.sku === sku);
+                                   if (firstIndex !== -1) {
+                                     mergedData[firstIndex] = mergedItem;
+                                     
+                                     // Eliminar los demás duplicados
+                                     for (let i = mergedData.length - 1; i >= 0; i--) {
+                                       if (i !== firstIndex && mergedData[i].sku === sku && mergedData[i].warnings?.duplicateSku) {
+                                         mergedData.splice(i, 1);
+                                         mergedCount++;
+                                       }
+                                     }
+                                   }
+                                 }
+                               });
+                               
+                               setPreviewData(mergedData);
+                               toast.success("Duplicados fusionados", {
+                                 description: `Se fusionaron ${mergedCount} productos duplicados conservando la mejor información`
+                               });
+                             }}
+                           >
+                             🔀 Fusionar Inteligente
+                           </Button>
+                           
+                           <Button 
+                             variant="outline" 
+                             size="sm"
+                             onClick={() => {
+                               // Limpiar todas las advertencias de duplicados
+                               const updatedData = previewData.map(item => ({
+                                 ...item,
+                                 warnings: {
+                                   ...item.warnings,
+                                   duplicateSku: false,
+                                   duplicateName: false
+                                 }
+                               }));
+                               setPreviewData(updatedData);
+                               toast.success("Advertencias ocultadas", {
+                                 description: "Se ocultaron todas las advertencias de duplicados"
+                               });
+                             }}
+                           >
+                             👁️ Ocultar Advertencias
+                           </Button>
+                           
+                           <Button 
+                             variant="destructive" 
+                             size="sm"
+                             onClick={() => {
+                               // Eliminar TODOS los productos duplicados
+                               const updatedData = previewData.filter(item => 
+                                 !item.warnings?.duplicateSku && !item.warnings?.duplicateName
+                               );
+                               
+                               const removedCount = previewData.length - updatedData.length;
+                               setPreviewData(updatedData);
+                               toast.success("Todos los duplicados eliminados", {
+                                 description: `Se eliminaron ${removedCount} productos duplicados`
+                               });
+                             }}
+                           >
+                             🗑️ Eliminar Todos
+                  </Button>
+                </div>
+              </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
+              <div className="border rounded-md">
+                <ScrollArea className="h-[500px]">
+                  <UITable>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead key="head-row" className="w-16 text-center">Fila</TableHead>
+                        <TableHead key="head-sku">SKU</TableHead>
+                        <TableHead key="head-price">Precio</TableHead>
+                        <TableHead key="head-cost">Costo</TableHead>
+                        <TableHead key="head-quantity">Cantidad</TableHead>
+                        <TableHead key="head-category">Categoría</TableHead>
+                        <TableHead key="head-location">Ubicación</TableHead>
+                        <TableHead key="head-description">Descripción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.map((item, index) => (
+                        <TableRow 
+                          key={index}
+                          className={item.warnings?.duplicateSku ? 
+                            "bg-orange-100 border-l-4 border-l-orange-500" : ""}
+                        >
+                          <TableCell key={`cell-row-${index}`} className={`text-center font-medium ${item.warnings?.duplicateSku ? "text-orange-700" : ""}`}>
+                            {item.rowId}
+                          </TableCell>
+                          <TableCell key={`cell-sku-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                value={item.sku || ''}
+                                onChange={(e) => updatePreviewItem(index, 'sku', e.target.value)}
+                                className={`
+                                  ${item.confidence.sku < 0.5 ? "border-yellow-500" : ""} 
+                                  ${item.warnings?.invalid ? "border-red-500 bg-red-50" : ""}
+                                  ${item.warnings?.duplicateSku ? "border-orange-500 bg-orange-50 text-orange-800 font-medium" : ""}
+                                  ${item.warnings?.existingSku ? "border-blue-500 bg-blue-50" : ""}
+                                `}
+                              />
+                              {item.confidence.sku < 0.8 && renderConfidenceBadge(item.confidence.sku)}
+                              {item.warnings?.duplicateSku && (
+                                <TooltipProvider key={`tooltip-provider-${item.id}-sku`}>
+                                  <Tooltip>
+                                    <TooltipTrigger key={`tooltip-trigger-${item.id}-sku`} asChild>
+                                      <AlertCircle className="h-5 w-5 text-orange-600 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-700">
+                                      <p className="font-medium text-orange-800 dark:text-orange-200">SKU duplicado: {
+                                        previewData
+                                          .filter(otherItem => 
+                                            otherItem.sku === item.sku && 
+                                            otherItem.rowId !== item.rowId
+                                          )
+                                          .map(otherItem => `Fila ${otherItem.rowId}`)
+                                          .join(', ')
+                                      }</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {item.warnings?.existingSku && (
+                                <TooltipProvider key={`tooltip-provider-${item.id}-existing`}>
+                                  <Tooltip>
+                                    <TooltipTrigger key={`tooltip-trigger-${item.id}-existing`} asChild>
+                                      <AlertCircle className="h-5 w-5 text-blue-600 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-700">
+                                      <p className="font-medium text-blue-800 dark:text-blue-200">SKU ya existe en la base de datos</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                            {/* Campo oculto para mantener el nombre */}
+                            <Input
+                              type="hidden"
+                              value={item.name || ''}
+                              onChange={(e) => updatePreviewItem(index, 'name', e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell key={`cell-price-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                type="number"
+                                value={item.price !== null ? item.price : ''}
+                                onChange={(e) => updatePreviewItem(index, 'price', e.target.value ? parseFloat(e.target.value) : null)}
+                                className={`${item.price !== null && item.confidence.price < 0.5 ? "border-yellow-500" : ""}
+                                  ${item.warnings?.negativeValues && item.price !== null && item.price < 0 ? "border-red-500 bg-red-50" : ""}`}
+                              />
+                              {item.price !== null && item.confidence.price < 0.8 && renderConfidenceBadge(item.confidence.price)}
+                              {item.warnings?.negativeValues && item.price !== null && item.price < 0 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Precio negativo</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell key={`cell-cost-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                type="number"
+                                value={item.cost !== null ? item.cost : ''}
+                                onChange={(e) => updatePreviewItem(index, 'cost', e.target.value ? parseFloat(e.target.value) : null)}
+                                className={`${item.cost !== null && item.confidence.cost < 0.5 ? "border-yellow-500" : ""}
+                                  ${item.warnings?.negativeValues && item.cost !== null && item.cost < 0 ? "border-red-500 bg-red-50" : ""}`}
+                              />
+                              {item.cost !== null && item.confidence.cost < 0.8 && renderConfidenceBadge(item.confidence.cost)}
+                              {item.warnings?.negativeValues && item.cost !== null && item.cost < 0 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Costo negativo</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell key={`cell-quantity-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                type="number"
+                                value={item.quantity !== null ? item.quantity : ''}
+                                onChange={(e) => updatePreviewItem(index, 'quantity', e.target.value ? parseFloat(e.target.value) : null)}
+                                className={`${item.quantity !== null && item.confidence.quantity < 0.5 ? "border-yellow-500" : ""}
+                                  ${item.warnings?.invalid && item.quantity !== null && item.quantity < 0 ? "border-red-500 bg-red-50" : ""}`}
+                              />
+                              {item.quantity !== null && item.confidence.quantity < 0.8 && renderConfidenceBadge(item.confidence.quantity)}
+                              {item.warnings?.invalid && item.quantity !== null && item.quantity < 0 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Cantidad negativa</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell key={`cell-category-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                value={item.category || ''}
+                                onChange={(e) => updatePreviewItem(index, 'category', e.target.value)}
+                                className={`${item.category !== null && item.confidence.category < 0.5 ? "border-yellow-500" : ""}
+                                  ${item.warnings?.invalid && item.category !== null ? "border-red-500 bg-red-50" : ""}`}
+                              />
+                              {item.category !== null && item.confidence.category < 0.8 && renderConfidenceBadge(item.confidence.category)}
+                              {item.warnings?.invalid && item.category !== null && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Categoría inválida o vacía</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell key={`cell-location-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                value={item.location || ''}
+                                onChange={(e) => updatePreviewItem(index, 'location', e.target.value)}
+                                className={`${item.location !== null && item.confidence.location < 0.5 ? "border-yellow-500" : ""}
+                                  ${item.warnings?.invalid && item.location !== null ? "border-red-500 bg-red-50" : ""}`}
+                              />
+                              {item.location !== null && item.confidence.location < 0.8 && renderConfidenceBadge(item.confidence.location)}
+                              {item.warnings?.invalid && item.location !== null && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Ubicación inválida o vacía</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell key={`cell-description-${index}`}>
+                            <div className="flex items-center">
+                              <Input
+                                value={item.description || ''}
+                                onChange={(e) => updatePreviewItem(index, 'description', e.target.value)}
+                                className={`${item.confidence.description < 0.5 ? "border-yellow-500" : ""}`}
+                              />
+                              {item.confidence.description < 0.8 && renderConfidenceBadge(item.confidence.description)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </UITable>
+                </ScrollArea>
+              </div>
             </div>
             
             <div className="mt-6 flex justify-between">
@@ -1156,23 +1617,23 @@ export default function ImportForm({ userId }: ImportFormProps) {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Importar Productos desde Excel</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {errorMessage && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              {errorMessage}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {renderStageContent()}
-      </CardContent>
-    </Card>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Importar Productos desde Excel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {errorMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {renderStageContent()}
+        </CardContent>
+      </Card>
   );
 } 

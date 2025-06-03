@@ -67,14 +67,14 @@ export async function connectSafely() {
   }
   
   if (!globalForPrisma.prismaConnected) {
-    try {
+  try {
       await basePrisma.$connect();
       globalForPrisma.prismaConnected = true;
       console.log('📚 Database connected successfully');
-    } catch (error) {
-      console.error('❌ Database connection failed:', error);
-      throw error;
-    }
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    throw error;
+  }
   }
   
   return basePrisma;
@@ -481,4 +481,4 @@ class CustomPrismaClient {
 // Create the extended Prisma client
 export const prisma = new CustomPrismaClient(safeBasePrisma);
 
-export default prisma; 
+export default prisma;

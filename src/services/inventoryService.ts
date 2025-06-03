@@ -1,32 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { serializeDecimal } from "../lib/utils";
-
-/**
- * Tipo para definir el estado del stock
- */
-export enum StockStatus {
-  NORMAL = "normal",
-  LOW = "low",
-  OUT_OF_STOCK = "out_of_stock"
-}
-
-/**
- * Tipo para crear un movimiento de stock
- */
-export type StockMovementInput = {
-  inventoryItemId: string;
-  quantity: number;
-  type: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "INITIAL";
-  notes?: string;
-  createdBy?: string;
-};
+import { StockStatus, calculateStockStatus as calculateStockStatusUtil, StockMovementInput } from "@/lib/inventory-utils";
 
 /**
  * Obtiene todos los items de inventario
  */
 export async function getAllInventoryItems() {
-  const items = await prisma.inventoryItem.findMany({
+  const items = await prisma.prisma.inventoryItem.findMany({
     orderBy: {
       updatedAt: "asc",
     },
@@ -42,7 +23,7 @@ export async function getInventoryItemById(id: string) {
     throw new Error("El ID del item de inventario es requerido");
   }
   
-  const item = await prisma.inventoryItem.findUnique({
+  const item = await prisma.prisma.inventoryItem.findUnique({
     where: { id },
     include: {
       stockMovements: {
@@ -66,7 +47,7 @@ export async function getInventoryItemBySku(sku: string) {
   
   // Since sku is not directly accessible in InventoryItem, 
   // we need to query differently to find items by SKU
-  const items = await prisma.inventoryItem.findMany({
+  const items = await prisma.prisma.inventoryItem.findMany({
     where: {
       sku: {
         equals: sku
@@ -95,7 +76,7 @@ export async function updateMinStockLevel(inventoryItemId: string, minLevel: num
     throw new Error("El nivel mínimo de stock no puede ser negativo");
   }
 
-  return prisma.inventoryItem.update({
+  return prisma.prisma.inventoryItem.update({
     where: { id: inventoryItemId },
     data: { 
       minStockLevel: minLevel,
@@ -113,7 +94,7 @@ export async function updateItemLocation(inventoryItemId: string, location: stri
   }
   
   // Verificar que el item existe
-  const item = await prisma.inventoryItem.findUnique({
+  const item = await prisma.prisma.inventoryItem.findUnique({
     where: { id: inventoryItemId },
   });
   
@@ -121,7 +102,7 @@ export async function updateItemLocation(inventoryItemId: string, location: stri
     throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
   }
 
-  return prisma.inventoryItem.update({
+  return prisma.prisma.inventoryItem.update({
     where: { id: inventoryItemId },
     data: { 
       location,
@@ -130,20 +111,8 @@ export async function updateItemLocation(inventoryItemId: string, location: stri
   });
 }
 
-/**
- * Calcula el estado del stock basado en la cantidad actual y el nivel mínimo
- */
-export function calculateStockStatus(quantity: number, minStockLevel: number): StockStatus {
-  if (quantity <= 0) {
-    return StockStatus.OUT_OF_STOCK;
-  }
-  
-  if (quantity <= minStockLevel) {
-    return StockStatus.LOW;
-  }
-  
-  return StockStatus.NORMAL;
-}
+// Re-export the calculateStockStatus function for backward compatibility
+export const calculateStockStatus = calculateStockStatusUtil;
 
 /**
  * Registra un movimiento de entrada de stock y actualiza la cantidad del inventario
@@ -153,7 +122,7 @@ export async function addStock(inventoryItemId: string, quantity: number, notes?
     throw new Error("La cantidad debe ser mayor que cero para entradas de stock");
   }
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.prisma.$transaction(async (tx) => {
     // Obtener el item de inventario actual
     const inventoryItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
@@ -296,7 +265,7 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
  * Obtiene el historial completo de movimientos para un item de inventario
  */
 export async function getStockMovementHistory(inventoryItemId: string, limit?: number) {
-  const movements = await prisma.stockMovement.findMany({
+  const movements = await prisma.prisma.stockMovement.findMany({
     where: {
       inventoryItemId,
     },
@@ -415,7 +384,7 @@ export async function getAllStockMovements(params?: {
   }
   
   const [movements, total] = await Promise.all([
-    prisma.stockMovement.findMany({
+    prisma.prisma.stockMovement.findMany({
       where,
       include: {
         inventoryItem: {
@@ -423,6 +392,14 @@ export async function getAllStockMovements(params?: {
             id: true,
             name: true,
             sku: true,
+            locationId: true,
+            locationRelation: {
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            },
             category: {
               select: {
                 id: true,
@@ -436,7 +413,7 @@ export async function getAllStockMovements(params?: {
       take: limit,
       skip,
     }),
-    prisma.stockMovement.count({ where })
+    prisma.prisma.stockMovement.count({ where })
   ]);
   
   // Ensure movements is always an array and data is serialized properly
@@ -459,7 +436,7 @@ export async function getAllStockMovements(params?: {
  */
 export async function getLowStockItems() {
   // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.$queryRaw`
+  const items = await prisma.prisma.$queryRaw`
     SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
     FROM inventory_items i
     LEFT JOIN categories c ON i."categoryId" = c.id
@@ -487,7 +464,7 @@ export async function getLowStockItems() {
  */
 export async function getOutOfStockItems() {
   // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.$queryRaw`
+  const items = await prisma.prisma.$queryRaw`
     SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
     FROM inventory_items i
     LEFT JOIN categories c ON i."categoryId" = c.id
@@ -535,7 +512,7 @@ export async function deleteInventoryItem(inventoryItemId: string) {
     throw new Error("El ID del item de inventario es requerido");
   }
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.prisma.$transaction(async (tx) => {
     // Obtener el item antes de eliminarlo
     const itemToDelete = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },

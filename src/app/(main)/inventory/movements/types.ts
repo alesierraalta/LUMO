@@ -19,6 +19,29 @@ export interface Product {
   quantity?: number;
 }
 
+// Tipo para ubicación
+export interface Location {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Tipo para producto de inventario con más detalles
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string;
+  price?: number;
+  cost?: number;
+  quantity?: number;
+  locationId?: string;
+  locationRelation?: Location;
+  category?: {
+    id: string;
+    name: string;
+  };
+}
+
 // Tipo para movimiento
 export interface Movement {
   id: string;
@@ -27,7 +50,8 @@ export interface Movement {
   type: string;
   notes?: string;
   user?: User;
-  product?: Product;
+  product?: Product; // mantener por compatibilidad con código anterior
+  inventoryItem?: InventoryItem; // nuevo campo con información completa
   inventoryItemId: string;
   userId?: string;
 }

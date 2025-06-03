@@ -11,9 +11,10 @@ const ProductUpdateSchema = z.object({
   description: z.string().optional(),
   sku: z.string().min(1).optional(),
   cost: z.number().min(0).optional(),
-  price: z.number().min(0.01).optional(),
+  price: z.number().min(0).optional(), // Permitir 0 para precios
   margin: z.number().min(0).optional(),
   categoryId: z.string().optional().nullable(),
+  locationId: z.string().optional().nullable(), // Agregar locationId que faltaba
   imageUrl: z.string().optional(),
   active: z.boolean().optional(),
   // Inventory fields
@@ -41,7 +42,7 @@ export async function GET(
     }
 
     const resolvedParams = await params;
-    const product = await prisma.inventoryItem.findUnique({
+    const product = await prisma.prisma.inventoryItem.findUnique({
       where: { id: resolvedParams.id },
       include: {
         category: true,
@@ -92,7 +93,7 @@ export async function PATCH(
     delete validatedData.changeReason;
     
     // Check if product exists
-    const existingProduct = await prisma.inventoryItem.findUnique({
+    const existingProduct = await prisma.prisma.inventoryItem.findUnique({
       where: { id: resolvedParams.id }
     });
     
@@ -105,7 +106,7 @@ export async function PATCH(
     
     // If SKU is being updated, check it doesn't exist
     if (validatedData.sku && validatedData.sku !== existingProduct.sku) {
-      const duplicateSku = await prisma.inventoryItem.findUnique({
+      const duplicateSku = await prisma.prisma.inventoryItem.findUnique({
         where: { sku: validatedData.sku },
       });
 
@@ -151,7 +152,7 @@ export async function PATCH(
     }
     
     // Update the inventory item in a transaction
-    const product = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const product = await prisma.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update inventory item
       const updatedProduct = await tx.inventoryItem.update({
         where: { id: resolvedParams.id },
@@ -222,7 +223,7 @@ export async function DELETE(
     }
 
     const resolvedParams = await params;
-    await prisma.inventoryItem.delete({
+    await prisma.prisma.inventoryItem.delete({
       where: { id: resolvedParams.id },
     });
     

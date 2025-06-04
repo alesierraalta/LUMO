@@ -1,7 +1,7 @@
 "use client"
 
 import ProductCard from './ProductCard';
-import { getProducts } from '@/services/productService';
+import { getProducts } from '@/services/productService.client';
 
 interface ProductGridProps {
   searchParams?: {

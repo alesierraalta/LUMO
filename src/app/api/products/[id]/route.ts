@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getProductById } from '@/services/productService';
 
 // Product update validation schema
 const ProductUpdateSchema = z.object({
@@ -27,27 +28,11 @@ const ProductUpdateSchema = z.object({
 
 // GET /api/products/[id] - Get a single product
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!prisma) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
-    }
-
-    const resolvedParams = await params;
-    const product = await prisma.prisma.inventoryItem.findUnique({
-      where: { id: resolvedParams.id },
-      include: {
-        category: true,
-      },
-    });
+    const product = await getProductById(params.id);
     
     if (!product) {
       return NextResponse.json(
@@ -56,7 +41,7 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(serializeDecimal(product));
+    return NextResponse.json(product);
   } catch (error) {
     console.error('Error fetching product:', error);
     return NextResponse.json(

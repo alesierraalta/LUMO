@@ -94,7 +94,7 @@ const nextConfig = {
       
       // Don't bundle Node.js native modules for server builds
       config.externals = [...(config.externals || []), 
-        function(context, request, callback) {
+        function({ context, request }, callback) {
           if (nodeModules.includes(request)) {
             // Mark as external to prevent bundling
             return callback(null, `commonjs ${request}`);
@@ -120,7 +120,6 @@ const nextConfig = {
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    serverComponentsExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
   },
 };
 

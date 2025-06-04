@@ -23,18 +23,29 @@ spec:
         command: ls -la .next/standalone/scripts/
       - name: Add Execute Permissions
         command: chmod +x .next/standalone/scripts/*.js
-      - name: Copy ImportSession Fix Script
-        command: cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
+      - name: Copy ImportSession Fix Scripts
+        command: |
+          cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
+          cp scripts/fix-import-session-sqlite.js .next/standalone/scripts/
+          cp scripts/fix-import-session-auto.js .next/standalone/scripts/
       - name: Copy Prisma Schema
         command: cp -r prisma .next/standalone/
       - name: Copy Preflight Script
         command: cp scripts/choreo-preflight.js .next/standalone/scripts/
+      - name: Copy Essential Node Modules
+        command: |
+          mkdir -p .next/standalone/node_modules/server-only
+          cp -r node_modules/server-only/* .next/standalone/node_modules/server-only/
+      - name: Create Import Directories
+        command: |
+          mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
+          mkdir -p .next/standalone/node_modules/.prisma/client
     retryCount: 3
     timeoutSeconds: 900
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: node scripts/choreo-preflight.js && node server.js
+    command: node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080

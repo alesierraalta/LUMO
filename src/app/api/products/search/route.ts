@@ -1,32 +1,68 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { serializeDecimal } from '@/lib/utils';
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get('query') || '';
+    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+    const { page = '1', limit = '12', search, category, minPrice, maxPrice, inStock } = searchParams;
 
-    const products = await prisma.inventoryItem.findMany({
-      where: {
-        OR: [
-          { name: { contains: query } },
-          { sku: { contains: query } },
-          { description: { contains: query } },
-        ],
-      },
-      include: {
-        category: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
+    // Build the where clause
+    const where: any = { active: true };
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search.toString() } },
+        { sku: { contains: search.toString() } }
+      ];
+    }
+
+    if (category) {
+      where.categoryId = category.toString();
+    }
+
+    if (minPrice) {
+      where.price = { ...where.price, gte: parseFloat(minPrice.toString()) };
+    }
+
+    if (maxPrice) {
+      where.price = { ...where.price, lte: parseFloat(maxPrice.toString()) };
+    }
+
+    if (inStock === 'true') {
+      where.quantity = { gt: 0 };
+    }
+
+    // Execute the query
+    const [products, total] = await Promise.all([
+      prisma.prisma.inventoryItem.findMany({
+        where,
+        include: {
+          category: true
+        },
+        orderBy: {
+          name: 'asc'
+        },
+        skip: (parseInt(page.toString()) - 1) * parseInt(limit.toString()),
+        take: parseInt(limit.toString())
+      }),
+      prisma.prisma.inventoryItem.count({ where })
+    ]);
+
+    // Return the results
+    return NextResponse.json({
+      products: serializeDecimal(products),
+      pagination: {
+        total,
+        pages: Math.ceil(total / parseInt(limit.toString())),
+        currentPage: parseInt(page.toString()),
+        perPage: parseInt(limit.toString())
+      }
     });
-
-    return NextResponse.json(products);
   } catch (error) {
-    console.error('Error searching products:', error);
+    console.error('Error fetching products:', error);
     return NextResponse.json(
-      { error: 'Failed to search products' },
+      { error: 'Failed to fetch products' },
       { status: 500 }
     );
   }

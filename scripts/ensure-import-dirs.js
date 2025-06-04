@@ -19,6 +19,9 @@ const directories = [
   
   // Ensure scripts directory in standalone mode
   path.join(process.cwd(), '.next/standalone/scripts'),
+
+  // Ensure server-only module is available
+  path.join(process.cwd(), '.next/standalone/node_modules/server-only'),
 ];
 
 // Create directories if they don't exist
@@ -40,6 +43,7 @@ if (process.env.NODE_ENV === 'production') {
   const criticalScripts = [
     'fix-import-session-postgres.js',
     'fix-import-session-sqlite.js',
+    'fix-import-session-auto.js',
     'choreo-preflight.js',
     'verify-deployment.js',
     'ensure-import-dirs.js',
@@ -70,6 +74,33 @@ if (process.env.NODE_ENV === 'production') {
         console.warn(`⚠️ Script not found: ${sourcePath}`);
       }
     });
+  }
+
+  // Ensure server-only module is available
+  const serverOnlyDir = path.join(process.cwd(), 'node_modules/server-only');
+  const standaloneServerOnlyDir = path.join(process.cwd(), '.next/standalone/node_modules/server-only');
+  
+  if (fs.existsSync(serverOnlyDir)) {
+    // Create standalone server-only directory if it doesn't exist
+    if (!fs.existsSync(standaloneServerOnlyDir)) {
+      fs.mkdirSync(standaloneServerOnlyDir, { recursive: true });
+      
+      // Copy package.json if it exists
+      const packageJsonPath = path.join(serverOnlyDir, 'package.json');
+      if (fs.existsSync(packageJsonPath)) {
+        fs.copyFileSync(packageJsonPath, path.join(standaloneServerOnlyDir, 'package.json'));
+      }
+      
+      // Copy index.js if it exists
+      const indexJsPath = path.join(serverOnlyDir, 'index.js');
+      if (fs.existsSync(indexJsPath)) {
+        fs.copyFileSync(indexJsPath, path.join(standaloneServerOnlyDir, 'index.js'));
+      }
+      
+      console.log('✅ Copied server-only module to standalone directory');
+    }
+  } else {
+    console.warn('⚠️ server-only module not found in node_modules');
   }
 }
 

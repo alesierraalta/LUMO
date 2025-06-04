@@ -26,37 +26,43 @@ async function ensureImportTablesExist() {
       await prisma.prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSession" (
           id TEXT PRIMARY KEY,
-          filename TEXT NOT NULL,
-          status TEXT NOT NULL,
-          totalRows INTEGER NOT NULL DEFAULT 0,
-          processedRows INTEGER NOT NULL DEFAULT 0,
-          createdRows INTEGER NOT NULL DEFAULT 0,
-          updatedRows INTEGER NOT NULL DEFAULT 0,
-          errorRows INTEGER NOT NULL DEFAULT 0,
+          "fileName" TEXT NOT NULL,
+          "filePath" TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'processing',
+          notes TEXT,
+          "totalItems" INTEGER NOT NULL DEFAULT 0,
+          "successItems" INTEGER NOT NULL DEFAULT 0,
+          "warningItems" INTEGER NOT NULL DEFAULT 0,
+          "errorItems" INTEGER NOT NULL DEFAULT 0,
+          "createdById" TEXT NOT NULL,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "userId" TEXT,
-          error TEXT
+          "completedAt" TIMESTAMP(3),
+          FOREIGN KEY ("createdById") REFERENCES "users"("id")
         )
       `);
       
       // Create ImportSessionItem table
       await prisma.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "ImportSessionItem" (
+        CREATE TABLE IF NOT EXISTS "ImportSessionDetail" (
           id TEXT PRIMARY KEY,
           "sessionId" TEXT NOT NULL,
-          "rowNumber" INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          sku TEXT NOT NULL,
           status TEXT NOT NULL,
-          data JSONB NOT NULL,
-          error TEXT,
+          message TEXT,
+          "originalData" TEXT NOT NULL,
+          "importedData" TEXT,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          
-          CONSTRAINT "ImportSessionItem_sessionId_fkey" 
-          FOREIGN KEY ("sessionId") 
-          REFERENCES "ImportSession"(id) 
-          ON DELETE CASCADE ON UPDATE CASCADE
+          FOREIGN KEY ("sessionId") REFERENCES "ImportSession"("id") ON DELETE CASCADE
         )
+      `);
+      
+      // Create indexes
+      await prisma.prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "ImportSession_createdById_idx" ON "ImportSession"("createdById");
+        CREATE INDEX IF NOT EXISTS "ImportSession_createdAt_idx" ON "ImportSession"("createdAt");
+        CREATE INDEX IF NOT EXISTS "ImportSessionDetail_sessionId_idx" ON "ImportSessionDetail"("sessionId");
+        CREATE INDEX IF NOT EXISTS "ImportSessionDetail_status_idx" ON "ImportSessionDetail"("status");
       `);
       
       console.log("Created import tables successfully");

@@ -682,9 +682,92 @@ function findSimilarMapping(columns: string[]): Array<{ excelField: string; inve
   return null;
 }
 
+// Ensure the dictionary directory exists
+function ensureDictionaryDirExists() {
+  const dictDirs = [
+    // Development paths
+    path.join(process.cwd(), '.next/server/app/api/inventory/import/process/dict'),
+    
+    // Production paths (standalone mode)
+    path.join(process.cwd(), '.next/standalone/.next/server/app/api/inventory/import/process/dict'),
+  ];
+  
+  for (const dir of dictDirs) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created dictionary directory: ${dir}`);
+      }
+    } catch (error) {
+      console.error(`Error creating directory ${dir}:`, error);
+    }
+  }
+}
+
+async function ensureImportTablesExist() {
+  try {
+    // Check if ImportSession table exists
+    try {
+      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      return true; // Table exists
+    } catch (error) {
+      console.log("ImportSession table does not exist, creating required tables...");
+      
+      // Create ImportSession table
+      await prisma.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ImportSession" (
+          id TEXT PRIMARY KEY,
+          filename TEXT NOT NULL,
+          status TEXT NOT NULL,
+          totalRows INTEGER NOT NULL DEFAULT 0,
+          processedRows INTEGER NOT NULL DEFAULT 0,
+          createdRows INTEGER NOT NULL DEFAULT 0,
+          updatedRows INTEGER NOT NULL DEFAULT 0,
+          errorRows INTEGER NOT NULL DEFAULT 0,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "userId" TEXT,
+          error TEXT
+        )
+      `);
+      
+      // Create ImportSessionItem table
+      await prisma.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ImportSessionItem" (
+          id TEXT PRIMARY KEY,
+          "sessionId" TEXT NOT NULL,
+          "rowNumber" INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          data JSONB NOT NULL,
+          error TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          
+          CONSTRAINT "ImportSessionItem_sessionId_fkey" 
+          FOREIGN KEY ("sessionId") 
+          REFERENCES "ImportSession"(id) 
+          ON DELETE CASCADE ON UPDATE CASCADE
+        )
+      `);
+      
+      console.log("Created import tables successfully");
+      return true;
+    }
+  } catch (error) {
+    console.error("Error ensuring import tables exist:", error);
+    return false;
+  }
+}
+
 // Enhance the POST function to use row data for better column mapping
 export async function POST(request: NextRequest) {
   try {
+    // Ensure the dictionary directory exists before proceeding
+    ensureDictionaryDirExists();
+    
+    // Ensure import tables exist before proceeding
+    await ensureImportTablesExist();
+    
     // Parse and validate request body
     const body = await request.json();
     const { sessionId, userId } = processRequestSchema.parse(body);

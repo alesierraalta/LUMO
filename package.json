@@ -33,7 +33,7 @@
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
     "postinstall": "node scripts/fix-prisma-schema.js && prisma generate",
     "ensure-admin": "node scripts/ensure-admin.js",
-    "start": "node .next/standalone/server.js",
+    "start": "node scripts/ensure-import-dirs.js && node .next/standalone/server.js",
     "start:production": "NODE_ENV=production node scripts/manifest-validator.js && node server.js",
     "start:choreo": "npm run ensure-admin && node choreo-server.js",
     "start:safe": "node scripts/manifest-validator.js && node safe-server.js",

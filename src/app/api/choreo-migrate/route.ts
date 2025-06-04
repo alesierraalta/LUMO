@@ -2,21 +2,86 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+
 export async function GET() {
-  return new Response(JSON.stringify({
-    status: 'info',
-    message: 'Database migration endpoint',
-    instructions: [
-      'Use POST method to execute migration',
-      'Send JSON: {"action": "migrate"} to run db push',
-      'Send JSON: {"action": "seed"} to seed initial data'
-    ],
-    available_actions: ['migrate', 'seed'],
-    timestamp: new Date().toISOString()
-  }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  });
+  try {
+    console.log("Starting Choreo database migration...");
+    
+    // Check if ImportSession table exists
+    let importSessionExists = false;
+    try {
+      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      importSessionExists = true;
+    } catch (error) {
+      console.log("ImportSession table does not exist, will create it");
+    }
+    
+    if (!importSessionExists) {
+      // Create ImportSession table
+      await prisma.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ImportSession" (
+          id TEXT PRIMARY KEY,
+          filename TEXT NOT NULL,
+          status TEXT NOT NULL,
+          totalRows INTEGER NOT NULL DEFAULT 0,
+          processedRows INTEGER NOT NULL DEFAULT 0,
+          createdRows INTEGER NOT NULL DEFAULT 0,
+          updatedRows INTEGER NOT NULL DEFAULT 0,
+          errorRows INTEGER NOT NULL DEFAULT 0,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "userId" TEXT,
+          error TEXT
+        )
+      `);
+      console.log("Created ImportSession table");
+    }
+    
+    // Check if ImportSessionItem table exists
+    let importSessionItemExists = false;
+    try {
+      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSessionItem\" LIMIT 1");
+      importSessionItemExists = true;
+    } catch (error) {
+      console.log("ImportSessionItem table does not exist, will create it");
+    }
+    
+    if (!importSessionItemExists) {
+      // Create ImportSessionItem table
+      await prisma.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ImportSessionItem" (
+          id TEXT PRIMARY KEY,
+          "sessionId" TEXT NOT NULL,
+          "rowNumber" INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          data JSONB NOT NULL,
+          error TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          
+          CONSTRAINT "ImportSessionItem_sessionId_fkey" 
+          FOREIGN KEY ("sessionId") 
+          REFERENCES "ImportSession"(id) 
+          ON DELETE CASCADE ON UPDATE CASCADE
+        )
+      `);
+      console.log("Created ImportSessionItem table");
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: "Choreo database migration completed successfully"
+    });
+  } catch (error) {
+    console.error("Error during Choreo migration:", error);
+    return NextResponse.json(
+      { error: "Failed to run Choreo migration", details: String(error) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {

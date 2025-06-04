@@ -1,3 +1,86 @@
+# Choreo Deployment Guide
+
+This guide provides step-by-step instructions for deploying this application to Choreo.
+
+## Prerequisites
+
+- GitHub repository with access to the Choreo platform
+- Proper environment variables configured in Choreo
+
+## Automatic Fixes
+
+The application includes several automatic fixes for Choreo deployment:
+
+1. `scripts/prepare-choreo-build.js`: Temporarily disables problematic features during build
+2. `scripts/fix-client-components.js`: Adds 'use client' directive to components that need it
+3. `scripts/fix-prisma-binaries.js`: Ensures Prisma binary targets are configured correctly
+4. `scripts/manifest-validator.js`: Validates and repairs Next.js manifests
+5. `scripts/restore-disabled-features.js`: Restores disabled features after deployment
+
+These scripts run automatically during the build process in Choreo.
+
+## Deployment Steps
+
+### 1. Prepare Environment Variables
+
+Ensure you have the following environment variables set in Choreo:
+
+```
+DATABASE_URL=postgresql://user:password@host:port/dbname
+NEXTAUTH_URL=https://your-choreo-app-url
+NEXTAUTH_SECRET=your-secret-here
+```
+
+### 2. Deploy to Choreo
+
+1. Log in to the Choreo console
+2. Create a new component
+3. Connect to your GitHub repository
+4. Select the main branch or your deployment branch
+5. Configure the build settings:
+   - Build Command: `npm run build`
+   - Start Command: `npm start` 
+6. Add the required environment variables
+7. Deploy the application
+
+### 3. Verify Deployment
+
+After deployment, verify the following:
+
+1. The application is running correctly
+2. Database connections are working
+3. API endpoints are responding as expected
+
+### 4. Troubleshooting
+
+If you encounter issues during deployment:
+
+1. Check the Choreo build logs for specific errors
+2. Verify environment variables are correctly set
+3. Ensure database connectivity is working
+4. Check that Prisma binary targets are correctly configured
+
+## Post-Deployment
+
+After successful deployment, you can restore any disabled features:
+
+```bash
+node scripts/restore-disabled-features.js
+```
+
+## Known Issues
+
+- The duplicate detector feature is temporarily disabled in production
+- Some auth-related paths may be modified for Choreo compatibility
+
+## Additional Information
+
+For more detailed information about specific Choreo features, refer to the following documents:
+
+- [CHOREO_AUTH_SOLUTION.md](./CHOREO_AUTH_SOLUTION.md)
+- [CHOREO_ENVIRONMENT_VARIABLES.md](./CHOREO_ENVIRONMENT_VARIABLES.md)
+- [CHOREO_SSL_FIX.md](./CHOREO_SSL_FIX.md)
+
 # Choreo Deployment Guide - LUMO Inventory System
 
 ## Pre-Deployment Checklist

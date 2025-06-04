@@ -51,10 +51,19 @@ if (!hasBinaryTargets || !hasDebianTarget) {
 
 // Clean any existing generated clients
 console.log('[PRISMA-FIX] 🧹 Cleaning existing Prisma client...');
-const nodeModulesPrismaPath = path.join(workDir, 'node_modules/.prisma');
-if (fs.existsSync(nodeModulesPrismaPath)) {
-  console.log('[PRISMA-FIX] 🗑️ Removing:', nodeModulesPrismaPath);
-  fs.rmSync(nodeModulesPrismaPath, { recursive: true, force: true });
+const prismaDir = path.join(workDir, 'node_modules', '.prisma');
+console.log(`[PRISMA-FIX] 🗑️ Removing: ${prismaDir}`);
+
+if (fs.existsSync(prismaDir)) {
+  try {
+    fs.rmSync(prismaDir, { recursive: true, force: true });
+    console.log(`[PRISMA-FIX] ✅ Successfully removed Prisma client directory`);
+  } catch (error) {
+    console.log(`[PRISMA-FIX] ⚠️ Could not remove Prisma client directory: ${error.message}`);
+    console.log(`[PRISMA-FIX] ℹ️ This is not critical, continuing with regeneration...`);
+  }
+} else {
+  console.log(`[PRISMA-FIX] ℹ️ Prisma client directory does not exist, skipping removal`);
 }
 
 const generatedPrismaPath = path.join(workDir, 'src/generated/prisma');

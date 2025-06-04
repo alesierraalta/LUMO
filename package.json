@@ -26,7 +26,7 @@
     "final:check": "node scripts/final-deployment-check.js",
     "deployment:marker": "node scripts/create-deployment-marker.js",
     "deployment:verify": "node verify-deployment.js",
-    "prebuild": "npm run fix-manifests && node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js",
+    "prebuild": "npm run fix-manifests && node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js && node scripts/fix-client-components.js && node scripts/prepare-choreo-build.js",
     "prebuild:prod": "node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js",
     "build": "next build",
     "build:prod": "npm run mode:prod && npm run build",

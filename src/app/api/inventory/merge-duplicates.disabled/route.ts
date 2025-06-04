@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "@/lib/auth/auth-options";
 import { checkPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -52,9 +51,8 @@ export async function POST(request: Request) {
         }
 
         // Get the product to keep
-        const productToKeep = await prisma.product.findUnique({
-          where: { id: keepProductId },
-          include: { inventory: true }
+        const productToKeep = await prisma.prisma.inventoryItem.findUnique({
+          where: { id: keepProductId }
         });
 
         if (!productToKeep) {
@@ -65,59 +63,39 @@ export async function POST(request: Request) {
         // Process each product to merge
         for (const mergeId of mergeProductIds) {
           // Use a transaction to ensure data integrity
-          await prisma.$transaction(async (tx) => {
+          await prisma.prisma.$transaction(async (tx) => {
             // Get the product to merge
-            const productToMerge = await tx.product.findUnique({
-              where: { id: mergeId },
-              include: { inventory: true }
+            const productToMerge = await tx.inventoryItem.findUnique({
+              where: { id: mergeId }
             });
 
             if (!productToMerge) return; // Skip if not found
 
-            // Update any sales or inventory movements to reference the product we're keeping
+            // Update any sales or stock movements to reference the product we're keeping
             await tx.$executeRaw`
               UPDATE "sales_items" 
-              SET "productId" = ${keepProductId}
-              WHERE "productId" = ${mergeId}
+              SET "inventoryItemId" = ${keepProductId}
+              WHERE "inventoryItemId" = ${mergeId}
             `;
             
             await tx.$executeRaw`
-              UPDATE "inventory_movements" 
-              SET "productId" = ${keepProductId}
-              WHERE "productId" = ${mergeId}
+              UPDATE "stock_movements" 
+              SET "inventoryItemId" = ${keepProductId}
+              WHERE "inventoryItemId" = ${mergeId}
             `;
             
-            // If the product to merge has inventory, merge it with the one we're keeping
-            if (productToMerge.inventory) {
-              // If productToKeep doesn't have inventory yet, create it
-              if (!productToKeep.inventory) {
-                await tx.inventoryItem.create({
-                  data: {
-                    productId: keepProductId,
-                    quantity: productToMerge.inventory.quantity,
-                    minStockLevel: productToMerge.inventory.minStockLevel
-                  }
-                });
-              } else {
-                // Merge inventory quantities
-                await tx.inventoryItem.update({
-                  where: { id: productToKeep.inventory.id },
-                  data: {
-                    quantity: {
-                      increment: productToMerge.inventory.quantity
-                    }
-                  }
-                });
+            // Merge inventory quantities
+            await tx.inventoryItem.update({
+              where: { id: keepProductId },
+              data: {
+                quantity: {
+                  increment: productToMerge.quantity || 0
+                }
               }
-              
-              // Delete the duplicate's inventory
-              await tx.inventoryItem.delete({
-                where: { id: productToMerge.inventory.id }
-              });
-            }
+            });
             
             // Finally, delete the duplicate product
-            await tx.product.delete({
+            await tx.inventoryItem.delete({
               where: { id: mergeId }
             });
           });
@@ -138,7 +116,5 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error merging duplicates:", error);
     return NextResponse.json({ error: "Failed to merge duplicates" }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 } 

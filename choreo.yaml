@@ -11,76 +11,43 @@ spec:
     type: nodejs
     version: "20"
   build:
-    command: |
-      echo "[BUILD] === FORCED CACHE CLEARING ==="
-      echo "[BUILD] Clearing ALL caches to force fresh build..."
-      rm -rf .next node_modules/.prisma || true
-      echo "[BUILD] Cache clearing completed"
-      echo "[BUILD] === DEPLOYMENT MARKER VERIFICATION ==="
-      node verify-deployment.js
-      echo "[BUILD] === END MARKER VERIFICATION ==="
-      echo "[BUILD] Installing dependencies..."
-      npm ci --prefer-offline --no-audit
-      echo "[BUILD] === PRODUCTION SCHEMA CONFIGURATION ==="
-      echo "[BUILD] Environment info:"
-      echo "  DATABASE_URL: ${DATABASE_URL:-not-set}"
-      echo "  NODE_ENV: ${NODE_ENV:-not-set}"
-      echo "  CHOREO_DEPLOYMENT: ${CHOREO_DEPLOYMENT:-not-set}"
-      echo "[BUILD] Forcing PostgreSQL schema for production..."
-      npm run schema:postgresql
-      echo "[BUILD] Validating PostgreSQL configuration..."
-      npm run schema:validate
-      echo "[BUILD] Running Choreo deployment verification..."
-      npm run choreo:check
-      echo "[BUILD] Verifying schema provider:"
-      grep -n "provider.*=" prisma/schema.prisma || echo "No provider found"
-      echo "[BUILD] Regenerating Prisma client for PostgreSQL..."
-      npx prisma generate --schema=./prisma/schema.prisma
-      echo "[BUILD] === PRODUCTION BUILD PROCESS ==="
-      echo "[BUILD] Switching to production mode (without schema override)..."
-      node scripts/switch-mode.js prod
-      echo "[BUILD] Running pre-build scripts (skipping schema auto-selection)..."
-      node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js
-      echo "[BUILD] Fixing Next.js configuration..."
-      node scripts/fix-next-config.js
-      echo "[BUILD] Building application..."
-      npm run build
-      echo "[BUILD] Running post-build scripts..."
-      npm run postbuild
-      echo "[BUILD] Final schema verification:"
-      grep -A 2 -B 2 "provider.*=" prisma/schema.prisma || echo "Schema check failed"
-      echo "[BUILD] Build completed successfully!"
     env:
-      - name: NODE_ENV
-        value: "production"
-      - name: CHOREO_DEPLOYMENT
-        value: "true"
+      NEXT_PUBLIC_DEPLOY_ENV: choreo
+      NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
+      APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
+    command: npm run build
+    extraSteps:
+      - name: Copy Scripts to Standalone
+        command: cp -r scripts .next/standalone/
+      - name: Verify Files
+        command: ls -la .next/standalone/scripts/
+      - name: Add Execute Permissions
+        command: chmod +x .next/standalone/scripts/*.js
+      - name: Copy ImportSession Fix Script
+        command: cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
+      - name: Copy Prisma Schema
+        command: cp -r prisma .next/standalone/
+      - name: Copy Preflight Script
+        command: cp scripts/choreo-preflight.js .next/standalone/scripts/
     retryCount: 3
     timeoutSeconds: 900
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: |
-      echo "[DEPLOY] 🚀 Starting LUMO Inventory deployment..."
-      echo "[DEPLOY] Current directory: $(pwd)"
-      echo "[DEPLOY] === RUNTIME SCHEMA VERIFICATION ==="
-      node runtime-schema-check.js
-      echo "[DEPLOY] === END VERIFICATION ==="
-      echo "[DEPLOY] Checking build artifacts:"
-      ls -la .next/
-      echo "[DEPLOY] Checking server files:"
-      [ -f choreo-server.js ] && echo "✅ choreo-server.js found" || echo "❌ choreo-server.js missing"
-      [ -f server.js ] && echo "✅ server.js found" || echo "❌ server.js missing"
-      echo "[DEPLOY] Environment variables:"
-      echo "NODE_ENV: $NODE_ENV"
-      echo "PORT: $PORT"
-      echo "[DEPLOY] === EJECUTANDO PREFLIGHT CHECKS ==="
-      node scripts/choreo-preflight.js
-      echo "[DEPLOY] === FIN DE PREFLIGHT CHECKS ==="
-      echo "[DEPLOY] Verificando usuario administrador..."
-      node scripts/ensure-admin.js
-      echo "[DEPLOY] Starting Next.js standalone server..."
-      node .next/standalone/server.js
+    command: node scripts/choreo-preflight.js && node server.js
+    env:
+      NODE_ENV: production
+      PORT: 8080
+      NEXT_PUBLIC_APP_VERSION: 1.0.0
+      DEPLOY_ENV: choreo
+      CLERK_JWT_VERIFICATION_KEY: ${{ secrets.CLERK_JWT_VERIFICATION_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+    containerPort: 8080
+    baseMount: .next/standalone
   env:
     - name: NODE_ENV
       value: production
@@ -128,4 +95,15 @@ spec:
       failureThreshold: 3
   expose:
     type: HTTP
-    port: 8080 
+    port: 8080
+  ignoreSpec:
+    ignore:
+      - node_modules
+      - .git
+      - .github
+      - .next
+      - .env
+      - .env.local
+      - .env.development
+      - .env.production
+      - README.md 

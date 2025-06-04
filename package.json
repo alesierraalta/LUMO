@@ -66,7 +66,8 @@
     "fix-manifests": "node scripts/manifest-validator.js",
     "test-schema-fix": "node scripts/test-schema-fix.js",
     "choreo:build": "npm run build:prod",
-    "choreo:start": "npm run ensure-admin && node choreo-server.js"
+    "choreo:start": "npm run ensure-admin && node choreo-server.js",
+    "choreo:preflight": "node scripts/choreo-preflight.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

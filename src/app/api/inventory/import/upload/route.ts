@@ -185,21 +185,29 @@ export async function POST(request: NextRequest) {
     columns = columns.filter(col => col !== undefined && col !== null && col !== "");
     
     // Create an import session in the database
-    const importSession = await importService.createImportSession({
-      id: sessionId,
-      fileName: file.name,
-      filePath,
-      status: "processing",
-      notes: notes || undefined,
-      createdById: userId,
-    });
-    
-    return NextResponse.json({
-      success: true,
-      sessionId,
-      columns,
-      message: "Archivo subido correctamente y listo para procesar"
-    });
+    try {
+      const importSession = await importService.createImportSession({
+        id: sessionId,
+        fileName: file.name,
+        filePath,
+        status: "processing",
+        notes: notes || undefined,
+        createdById: userId,
+      });
+      
+      return NextResponse.json({
+        success: true,
+        sessionId,
+        columns,
+        message: "Archivo subido correctamente y listo para procesar"
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      return NextResponse.json(
+        { message: "Error al procesar el archivo: " + (error instanceof Error ? error.message : String(error)) },
+        { status: 500 }
+      );
+    }
     
   } catch (error) {
     console.error("Error uploading file:", error);

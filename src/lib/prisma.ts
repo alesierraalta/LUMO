@@ -355,13 +355,31 @@ class CustomPrismaClient {
     const notes = data.notes;
     const createdById = data.createdById;
     
-    await this.client.$executeRaw`
-      INSERT INTO "ImportSession" (
-        "id", "fileName", "filePath", "status", "notes", "createdById", "createdAt"
-      ) VALUES (
-        ${id}, ${fileName}, ${filePath}, ${status}, ${notes}, ${createdById}, datetime('now')
-      )
-    `;
+    try {
+      // Try to insert with fileName
+      await this.client.$executeRaw`
+        INSERT INTO "ImportSession" (
+          "id", "fileName", "filePath", "status", "notes", "createdById", "createdAt"
+        ) VALUES (
+          ${id}, ${fileName}, ${filePath}, ${status}, ${notes}, ${createdById}, CURRENT_TIMESTAMP
+        )
+      `;
+    } catch (error) {
+      // If the error is about the fileName column not existing
+      if (error instanceof Error && error.message.includes('column "fileName" of relation "ImportSession" does not exist')) {
+        // Insert without fileName
+        await this.client.$executeRaw`
+          INSERT INTO "ImportSession" (
+            "id", "filePath", "status", "notes", "createdById", "createdAt"
+          ) VALUES (
+            ${id}, ${filePath}, ${status}, ${notes}, ${createdById}, CURRENT_TIMESTAMP
+          )
+        `;
+      } else {
+        // For other errors, rethrow
+        throw error;
+      }
+    }
     
     return {
       id,

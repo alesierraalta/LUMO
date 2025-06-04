@@ -1,5 +1,5 @@
 // Tipo para la pestaña activa
-export type TabState = "all" | "in" | "out" | "adjustment" | "sales";
+export type TabState = "all" | "in" | "out" | "adjustment" | "sales" | "stock" | "price";
 
 // Tipo para usuario
 export interface User {

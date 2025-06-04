@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { serializeDecimal } from "../lib/utils";
 import { StockStatus, calculateStockStatus as calculateStockStatusUtil, StockMovementInput } from "@/lib/inventory-utils";
 
@@ -355,7 +355,7 @@ export async function getAllStockMovements(params?: {
   }
 
   // Determine the sorting options
-  const orderBy: any = {};
+  let orderBy: any = {};
   
   switch (sort) {
     case 'date-asc':
@@ -372,9 +372,13 @@ export async function getAllStockMovements(params?: {
       };
       break;
     case 'quantity-asc':
+      // For sorting by quantity, we need to use absolute values
+      // since the UI displays absolute values
       orderBy.quantity = 'asc';
       break;
     case 'quantity-desc':
+      // For sorting by quantity, we need to use absolute values
+      // since the UI displays absolute values
       orderBy.quantity = 'desc';
       break;
     case 'date-desc':
@@ -383,8 +387,79 @@ export async function getAllStockMovements(params?: {
       break;
   }
   
-  const [movements, total] = await Promise.all([
-    prisma.prisma.stockMovement.findMany({
+  // For quantity sorting, we need a special approach to sort by absolute values
+  let movements;
+  
+  if (sort === 'quantity-asc' || sort === 'quantity-desc') {
+    // Handle special case for quantity sorting using raw SQL to sort by absolute value
+    const sortDirection = sort === 'quantity-asc' ? 'ASC' : 'DESC';
+    
+    // We'll use a different approach for raw SQL
+    // First get the IDs of the movements sorted by absolute quantity
+         // For complex filtering with raw SQL, we need to first get filtered IDs
+     // from the standard query without sorting/pagination
+     const filteredIds = await prisma.prisma.stockMovement.findMany({
+       where,
+       select: { id: true }
+     });
+     
+     const idList = filteredIds.map(item => item.id);
+     
+     // Then use these IDs in our raw query for sorting by absolute quantity
+     const sortedIds = await prisma.prisma.$queryRaw`
+      SELECT id 
+      FROM "StockMovement"
+      WHERE id IN (${Prisma.join(idList)})
+      ORDER BY ABS(quantity) ${Prisma.sql`${sortDirection}`}
+      LIMIT ${limit}
+      OFFSET ${skip}
+    `;
+    
+    // Then get the actual movements with their relations
+    const ids = (sortedIds as any[]).map(item => item.id);
+    
+    movements = await prisma.prisma.stockMovement.findMany({
+      where: {
+        id: {
+          in: ids
+        }
+      },
+      include: {
+        inventoryItem: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            locationId: true,
+            locationRelation: {
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            },
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      // Preserve the order from our sorted IDs
+      orderBy: {
+        id: 'asc'
+      }
+    });
+    
+    // Sort the results manually to match the order of our IDs
+    movements = movements.sort((a, b) => {
+      return ids.indexOf(a.id) - ids.indexOf(b.id);
+    });
+  } else {
+    // For other sorting options, use the standard approach
+    movements = await prisma.prisma.stockMovement.findMany({
       where,
       include: {
         inventoryItem: {
@@ -412,9 +487,10 @@ export async function getAllStockMovements(params?: {
       orderBy,
       take: limit,
       skip,
-    }),
-    prisma.prisma.stockMovement.count({ where })
-  ]);
+    });
+  }
+  
+  const total = await prisma.prisma.stockMovement.count({ where });
   
   // Ensure movements is always an array and data is serialized properly
   const safeMovements = Array.isArray(movements) ? movements : [];

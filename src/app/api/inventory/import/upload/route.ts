@@ -7,77 +7,17 @@ import * as path from "path";
 import * as os from "os";
 import { importService } from "@/lib/importService";
 import { prisma } from "@/lib/prisma";
+import { ensureImportDirectories } from "@/lib/server-utils";
 
 export const runtime = "nodejs";
 
 // Maximum file size (10MB)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-async function ensureImportTablesExist() {
-  try {
-    // Check if ImportSession table exists
-    try {
-      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
-      return true; // Table exists
-    } catch (error) {
-      console.log("ImportSession table does not exist, creating required tables...");
-      
-      // Create ImportSession table
-      await prisma.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "ImportSession" (
-          id TEXT PRIMARY KEY,
-          "fileName" TEXT NOT NULL,
-          "filePath" TEXT NOT NULL,
-          status TEXT NOT NULL DEFAULT 'processing',
-          notes TEXT,
-          "totalItems" INTEGER NOT NULL DEFAULT 0,
-          "successItems" INTEGER NOT NULL DEFAULT 0,
-          "warningItems" INTEGER NOT NULL DEFAULT 0,
-          "errorItems" INTEGER NOT NULL DEFAULT 0,
-          "createdById" TEXT NOT NULL,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "completedAt" TIMESTAMP(3),
-          FOREIGN KEY ("createdById") REFERENCES "users"("id")
-        )
-      `);
-      
-      // Create ImportSessionItem table
-      await prisma.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "ImportSessionDetail" (
-          id TEXT PRIMARY KEY,
-          "sessionId" TEXT NOT NULL,
-          name TEXT NOT NULL,
-          sku TEXT NOT NULL,
-          status TEXT NOT NULL,
-          message TEXT,
-          "originalData" TEXT NOT NULL,
-          "importedData" TEXT,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY ("sessionId") REFERENCES "ImportSession"("id") ON DELETE CASCADE
-        )
-      `);
-      
-      // Create indexes
-      await prisma.prisma.$executeRawUnsafe(`
-        CREATE INDEX IF NOT EXISTS "ImportSession_createdById_idx" ON "ImportSession"("createdById");
-        CREATE INDEX IF NOT EXISTS "ImportSession_createdAt_idx" ON "ImportSession"("createdAt");
-        CREATE INDEX IF NOT EXISTS "ImportSessionDetail_sessionId_idx" ON "ImportSessionDetail"("sessionId");
-        CREATE INDEX IF NOT EXISTS "ImportSessionDetail_status_idx" ON "ImportSessionDetail"("status");
-      `);
-      
-      console.log("Created import tables successfully");
-      return true;
-    }
-  } catch (error) {
-    console.error("Error ensuring import tables exist:", error);
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // Ensure import tables exist before proceeding
-    await ensureImportTablesExist();
+    // Ensure directories exist for import files
+    ensureImportDirectories();
     
     // Check user permissions
     const user = await getCurrentUser();
@@ -188,11 +128,13 @@ export async function POST(request: NextRequest) {
     try {
       const importSession = await importService.createImportSession({
         id: sessionId,
-        fileName: file.name,
-        filePath,
+        fileName: file.name, // For backward compatibility
+        filePath: filePath,  // New field
         status: "processing",
         notes: notes || undefined,
         createdById: userId,
+        fileSize: file.size,
+        metadata: { columns } // Store columns in metadata
       });
       
       return NextResponse.json({

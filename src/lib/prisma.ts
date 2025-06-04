@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
-import { execSync } from 'child_process';
-import path from 'path';
-import fs from 'fs';
+// Remove direct imports of Node.js modules
+// import { execSync } from 'child_process';
+// import path from 'path';
+// import fs from 'fs';
+
+// Add server-only marker to ensure this is not used directly in client components
+import 'server-only';
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -569,7 +573,7 @@ export const prisma = new CustomPrismaClient(safeBasePrisma);
 
 export default prisma;
 
-// Enhanced createImportSession with error recovery
+// Enhanced createImportSession with error recovery - server-safe implementation
 export async function createImportSession(data: any) {
   try {
     // @ts-ignore - Using dynamic access to handle potential schema differences
@@ -586,6 +590,9 @@ export async function createImportSession(data: any) {
       console.error('Error creating import session, attempting to fix schema:', error);
       
       try {
+        // Dynamically import Node.js modules only on server
+        const { execSync } = await import('child_process');
+        
         // Determine the environment and choose the appropriate fix script
         const isProduction = process.env.NODE_ENV === 'production' || process.env.CHOREO_DEPLOYMENT === 'true';
         const scriptName = isProduction ? 'fix-import-session-postgres.js' : 'fix-import-session-sqlite.js';

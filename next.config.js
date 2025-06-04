@@ -13,8 +13,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Prisma configuration
-  serverExternalPackages: ['@prisma/client'],
+  // Prisma configuration and other Node.js modules for server-side only
+  serverExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
   
   // Enable compression for better performance
   compress: true,
@@ -87,10 +87,32 @@ const nextConfig = {
       config.optimization.minimize = true;
     }
     
-    // Handle prisma binary
-    config.resolve.alias = {
-      ...config.resolve.alias,
-    };
+    // Properly handle Node.js modules
+    if (isServer) {
+      // Mark certain Node.js modules as external for server
+      const nodeModules = ['child_process', 'fs', 'path', 'os', 'crypto'];
+      
+      // Don't bundle Node.js native modules for server builds
+      config.externals = [...(config.externals || []), 
+        function(context, request, callback) {
+          if (nodeModules.includes(request)) {
+            // Mark as external to prevent bundling
+            return callback(null, `commonjs ${request}`);
+          }
+          callback();
+        }
+      ];
+    } else {
+      // For client builds, handle modules that might be referenced
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        child_process: false,
+        crypto: false,
+      };
+    }
     
     return config;
   },
@@ -98,6 +120,7 @@ const nextConfig = {
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    serverComponentsExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
   },
 };
 

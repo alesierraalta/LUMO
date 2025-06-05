@@ -22,7 +22,10 @@ spec:
       - name: Verify Files
         command: ls -la .next/standalone/scripts/
       - name: Add Execute Permissions
-        command: chmod +x .next/standalone/scripts/*.js
+        command: |
+          chmod +x .next/standalone/scripts/*.js
+          chmod +x scripts/fix-database-url.js
+          chmod +x scripts/fix-import-session-model.js
       - name: Copy ImportSession Fix Scripts
         command: |
           cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
@@ -36,6 +39,8 @@ spec:
           cp scripts/verify-environment-config.js .next/standalone/scripts/
           cp scripts/verify-database-connection.js .next/standalone/scripts/
           cp scripts/deployment-verification-tests.js .next/standalone/scripts/
+          cp scripts/fix-database-url.js .next/standalone/scripts/
+          cp scripts/fix-import-session-model.js .next/standalone/scripts/
       - name: Copy Prisma Schema
         command: cp -r prisma .next/standalone/
       - name: Copy Preflight Script
@@ -44,6 +49,11 @@ spec:
         command: |
           mkdir -p .next/standalone/node_modules/server-only
           cp -r node_modules/server-only/* .next/standalone/node_modules/server-only/
+      - name: Copy Prisma Engines
+        command: |
+          mkdir -p .next/standalone/node_modules/.prisma/client
+          cp -r node_modules/.prisma/client/libquery_engine* .next/standalone/node_modules/.prisma/client/
+          ls -la .next/standalone/node_modules/.prisma/client/
       - name: Create Import Directories
         command: |
           mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
@@ -53,7 +63,7 @@ spec:
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: node scripts/verify-environment-config.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node scripts/verify-database-connection.js && node server.js
+    command: node scripts/fix-database-url.js && node scripts/verify-environment-config.js && node scripts/fix-import-session-model.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node scripts/verify-database-connection.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080

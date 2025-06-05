@@ -12,12 +12,14 @@ ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
 ARG NEXT_PUBLIC_APP_VERSION
 ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
+ARG DATABASE_URL
 
 # Set environment variables for build time
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-pk_test_dummy-key-for-build}
 ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-sk_test_dummy-key-for-build}
 ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
+ENV DATABASE_URL=${DATABASE_URL}
 ENV NODE_ENV=production
 
 # Copy package files first for better caching
@@ -26,6 +28,9 @@ COPY prisma ./prisma/
 
 # Install dependencies with cache optimization
 RUN npm ci --prefer-offline --no-audit --omit=dev && npm cache clean --force
+
+# Generate Prisma client without engine for serverless deployment
+RUN npx prisma generate --no-engine
 
 # Copy source files
 COPY . .
@@ -70,10 +75,12 @@ ENV HOSTNAME=0.0.0.0
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG CLERK_SECRET_KEY
 ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
+ARG DATABASE_URL
 
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
 ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
 ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
+ENV DATABASE_URL=${DATABASE_URL}
 
 # Copy essential files from builder
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
@@ -82,6 +89,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /app/server.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/choreo-server.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/debug-choreo.js ./
+
+# Copy Prisma client (without engine)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy Next.js build artifacts
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

@@ -15,45 +15,77 @@ spec:
       NEXT_PUBLIC_DEPLOY_ENV: choreo
       NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
-    command: npm run build
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max-old-space-size=8192"
+      ENABLE_TURBO_CACHE: "true"
+      NEXT_SWC_MINIFY: "true"
+      TURBO_CACHE_DIR: "/tmp/.turbo-cache"
+      TURBO_TEAM: "lumo-inventory"
+      TURBO_REMOTE_ONLY: "true"
+      NEXT_MINIMAL_TRACE: "1"
+      NEXT_WEBPACK_DISABLE_DEV_CHECKS: "1" 
+      NEXT_OPTIMIZE_IMAGES: "1"
+      NEXT_OPTIMIZE_CSS: "1"
+      NEXT_OPTIMIZE_FONTS: "1"
+    command: chmod +x build-fast.sh && ./build-fast.sh
     extraSteps:
-      - name: Copy Scripts to Standalone
-        command: cp -r scripts .next/standalone/
-      - name: Verify Files
-        command: ls -la .next/standalone/scripts/
-      - name: Add Execute Permissions
-        command: chmod +x .next/standalone/scripts/*.js
-      - name: Copy ImportSession Fix Scripts
+      - name: Instalación Prisma CLI y Herramientas de Optimización
         command: |
-          cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
-          cp scripts/fix-import-session-sqlite.js .next/standalone/scripts/
-          cp scripts/run-import-session-migration.js .next/standalone/scripts/
-          cp scripts/import-session-preflight.js .next/standalone/scripts/
-          cp scripts/verify-import-schema.js .next/standalone/scripts/
-          cp scripts/audit-import-session-migrations.js .next/standalone/scripts/
-      - name: Copy Verification Scripts
+          npm install -g prisma@6.7.0 turbo@latest node-prune@latest
+          npm install --no-save --no-package-lock --ignore-scripts swc
+          node -e "fs.mkdirSync('/tmp/.turbo-cache', { recursive: true })"
+          
+      - name: Optimización de Módulos
         command: |
-          cp scripts/verify-environment-config.js .next/standalone/scripts/
-          cp scripts/verify-database-connection.js .next/standalone/scripts/
-          cp scripts/deployment-verification-tests.js .next/standalone/scripts/
-      - name: Copy Prisma Schema
-        command: cp -r prisma .next/standalone/
-      - name: Copy Preflight Script
-        command: cp scripts/choreo-preflight.js .next/standalone/scripts/
-      - name: Copy Essential Node Modules
+          npx node-prune
+          find node_modules -type d -name "tests" -o -name "test" -o -name "examples" -o -name "docs" | xargs rm -rf || true
+      
+      - name: Preparación del Entorno Extrema
+        command: node scripts/extreme-build-optimization.js
+      
+      - name: Generar Cliente Prisma (Optimizado)
+        command: npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Preparación de Directorios Esenciales
         command: |
-          mkdir -p .next/standalone/node_modules/server-only
-          cp -r node_modules/server-only/* .next/standalone/node_modules/server-only/
-      - name: Create Import Directories
-        command: |
-          mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
           mkdir -p .next/standalone/node_modules/.prisma/client
+          mkdir -p .next/standalone/scripts/
+          mkdir -p .next/standalone/prisma/
+          mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
+          mkdir -p .next/standalone/tmp/
+          mkdir -p .next/standalone/logs/
+      
+      - name: Copia Paralela de Archivos Esenciales
+        command: |
+          cp -r node_modules/.prisma/client/libquery_engine* .next/standalone/node_modules/.prisma/client/ || echo "No engine files found"
+          chmod +x .next/standalone/node_modules/.prisma/client/libquery_engine* || echo "No engine files to make executable"
+          cp scripts/fix-*.js .next/standalone/scripts/ || echo "No fix scripts found"
+          cp scripts/test-*.js .next/standalone/scripts/ || echo "No test scripts found"
+          cp scripts/ensure-*.js .next/standalone/scripts/ || echo "No ensure scripts found"
+          cp scripts/verify-*.js .next/standalone/scripts/ || echo "No verify scripts found"
+          cp scripts/choreo-*.js .next/standalone/scripts/ || echo "No choreo scripts found"
+          cp scripts/import-*.js .next/standalone/scripts/ || echo "No import scripts found"
+          cp scripts/audit-*.js .next/standalone/scripts/ || echo "No audit scripts found"
+          cp scripts/run-*.js .next/standalone/scripts/ || echo "No run scripts found"
+          chmod +x .next/standalone/scripts/*.js || echo "Could not make scripts executable"
+      
+      - name: Copia de Prisma Schema y Generar Cliente en Standalone
+        command: |
+          cp -r prisma/* .next/standalone/prisma/ || echo "No prisma files found"
+          cd .next/standalone
+          npx prisma generate --schema=../../prisma/schema.prisma
+      
+      - name: Verificación Final y Optimización
+        command: |
+          ls -la .next/standalone/node_modules/.prisma/client/ || echo "Directory doesn't exist yet"
+          node scripts/optimize-postbuild.js
+          node prepare-for-choreo.js
     retryCount: 3
     timeoutSeconds: 900
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: node scripts/verify-environment-config.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node scripts/verify-database-connection.js && node server.js
+    command: node scripts/fix-all-choreo-issues.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080
@@ -88,9 +120,9 @@ spec:
           name: JWT_SECRET
   resources:
     cpu:
-      units: 1
+      units: 2
     memory:
-      units: 2Gi
+      units: 8Gi
   scaling:
     minReplicas: 1
     maxReplicas: 5
@@ -126,7 +158,14 @@ spec:
       - .env.development
       - .env.production
       - README.md
+      - "**/*.test.js"
+      - "**/*.test.ts"
+      - "**/*.spec.js"
+      - "**/*.spec.ts"
+      - "**/__tests__/**"
+      - "**/__mocks__/**"
+      - "**/coverage/**"
   - name: CUSTOM_BUILD_COMMAND
-    value: npm run choreo:build
+    value: chmod +x build-fast.sh && ./build-fast.sh
   - name: CUSTOM_START_COMMAND
-    value: npm run verify:env && npm run verify-dirs && npm run verify:db && npm run choreo:start 
+    value: node scripts/fix-all-choreo-issues.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js 

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
+import { initializeDatabaseUrl } from './database-url-fix';
 // Remove direct imports of Node.js modules
 // import { execSync } from 'child_process';
 // import path from 'path';
@@ -8,6 +9,9 @@ import NodeCache from 'node-cache';
 
 // Add server-only marker to ensure this is not used directly in client components
 import 'server-only';
+
+// Initialize database URL configuration before creating Prisma client
+initializeDatabaseUrl();
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -45,11 +49,20 @@ function createPrismaClient(): PrismaClient | undefined {
   try {
     console.log('🔧 Initializing Prisma Client...');
     
+    // Ensure DATABASE_URL is properly configured
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL environment variable is not set');
+      return undefined;
+    }
+    
+    console.log(`🔗 Database URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
+    
     const client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
+      // Remove explicit datasourceUrl to use schema.prisma configuration
     });
-    
+
     // Verify that the client has been initialized correctly
     const modelNames = Object.keys(client).filter(key => 
       !key.startsWith('_') && 
@@ -93,24 +106,24 @@ export async function connectSafely() {
     const newClient = createPrismaClient();
     if (!newClient) {
       throw new Error('Failed to create Prisma client');
-    }
+  }
     globalForPrisma.prisma = newClient;
   }
   
   const client = basePrisma as PrismaClient;
   
   if (!globalForPrisma.prismaConnected) {
-    try {
+  try {
       await client.$connect();
       globalForPrisma.prismaConnected = true;
       console.log('📚 Database connected successfully');
       
       // Verify critical models after connection
       await verifyPrismaModels(client);
-    } catch (error) {
-      console.error('❌ Database connection failed:', error);
-      throw error;
-    }
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    throw error;
+  }
   } else {
     // Even if already connected, verify models
     try {

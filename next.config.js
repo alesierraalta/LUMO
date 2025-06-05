@@ -12,6 +12,20 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Disable type checking for faster builds - handle this separately
+  transpilePackages: ['lucide-react'],
+  
+  // Skip source maps in production for faster builds
+  productionBrowserSourceMaps: false,
+  
+  // Disable file system cache for consistent clean builds
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
+  
+  // Configure build memory management
+  swcMinify: true, // More efficient minifier
   
   // Prisma configuration and other Node.js modules for server-side only
   serverExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
@@ -19,10 +33,7 @@ const nextConfig = {
   // Enable compression for better performance
   compress: true,
   
-  // Optimize for production
-  productionBrowserSourceMaps: false,
-  
-  // Image optimization
+  // Image optimization - disable image optimization for faster builds
   images: {
     unoptimized: true,
     domains: [],
@@ -77,15 +88,32 @@ const nextConfig = {
         destination: '/register',
         permanent: true,
       },
+      {
+        source: '/inventory/new',
+        destination: '/inventory/add',
+        permanent: true,
+      },
     ];
   },
 
   // Webpack optimization for Choreo
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Set max parallel operations
+    config.parallelism = 4;
+    
     if (!dev && isServer) {
       // Optimize for production server builds
       config.optimization.minimize = true;
     }
+    
+    // Improve build performance
+    config.cache = {
+      type: 'filesystem',
+      compression: 'gzip',
+      buildDependencies: {
+        config: [__filename],
+      },
+    };
     
     // Properly handle Node.js modules
     if (isServer) {
@@ -119,7 +147,13 @@ const nextConfig = {
 
   // Experimental features for better performance
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Faster bundling
+    turbotrace: {
+      logLevel: 'error',
+      memoryLimit: 4096, // 4GB limit
+    },
+    // Bundle optimization
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
   },
 };
 

@@ -15,49 +15,16 @@ spec:
       NEXT_PUBLIC_DEPLOY_ENV: choreo
       NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
-    command: npm run build
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      ENABLE_TURBO_CACHE: "true"
+      NEXT_SWC_MINIFY: "true"
+    command: chmod +x build-fast.sh && ./build-fast.sh
     extraSteps:
-      - name: Copy Scripts to Standalone
-        command: cp -r scripts .next/standalone/
-      - name: Verify Files
-        command: ls -la .next/standalone/scripts/
-      - name: Add Execute Permissions
-        command: |
-          chmod +x .next/standalone/scripts/*.js
-          chmod +x scripts/fix-database-url.js
-          chmod +x scripts/fix-import-session-model.js
-      - name: Copy ImportSession Fix Scripts
-        command: |
-          cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
-          cp scripts/fix-import-session-sqlite.js .next/standalone/scripts/
-          cp scripts/run-import-session-migration.js .next/standalone/scripts/
-          cp scripts/import-session-preflight.js .next/standalone/scripts/
-          cp scripts/verify-import-schema.js .next/standalone/scripts/
-          cp scripts/audit-import-session-migrations.js .next/standalone/scripts/
-      - name: Copy Verification Scripts
-        command: |
-          cp scripts/verify-environment-config.js .next/standalone/scripts/
-          cp scripts/verify-database-connection.js .next/standalone/scripts/
-          cp scripts/deployment-verification-tests.js .next/standalone/scripts/
-          cp scripts/fix-database-url.js .next/standalone/scripts/
-          cp scripts/fix-import-session-model.js .next/standalone/scripts/
-      - name: Copy Prisma Schema
-        command: cp -r prisma .next/standalone/
-      - name: Copy Preflight Script
-        command: cp scripts/choreo-preflight.js .next/standalone/scripts/
-      - name: Copy Essential Node Modules
-        command: |
-          mkdir -p .next/standalone/node_modules/server-only
-          cp -r node_modules/server-only/* .next/standalone/node_modules/server-only/
-      - name: Copy Prisma Engines
-        command: |
-          mkdir -p .next/standalone/node_modules/.prisma/client
-          cp -r node_modules/.prisma/client/libquery_engine* .next/standalone/node_modules/.prisma/client/
-          ls -la .next/standalone/node_modules/.prisma/client/
-      - name: Create Import Directories
-        command: |
-          mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
-          mkdir -p .next/standalone/node_modules/.prisma/client
+      - name: Verificar Archivos Clave
+        command: ls -la .next/standalone/node_modules/.prisma/client/
+      - name: Verificar Permisos Scripts
+        command: node prepare-for-choreo.js
     retryCount: 3
     timeoutSeconds: 900
     network:
@@ -98,9 +65,9 @@ spec:
           name: JWT_SECRET
   resources:
     cpu:
-      units: 1
+      units: 2
     memory:
-      units: 2Gi
+      units: 4Gi
   scaling:
     minReplicas: 1
     maxReplicas: 5
@@ -137,6 +104,6 @@ spec:
       - .env.production
       - README.md
   - name: CUSTOM_BUILD_COMMAND
-    value: npm run choreo:build
+    value: chmod +x build-fast.sh && ./build-fast.sh
   - name: CUSTOM_START_COMMAND
     value: npm run verify:env && npm run verify-dirs && npm run verify:db && npm run choreo:start 

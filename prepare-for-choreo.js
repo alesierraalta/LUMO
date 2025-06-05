@@ -1,204 +1,82 @@
+#!/usr/bin/env node
+
 /**
- * This script prepares the codebase for Choreo deployment
- * by handling all necessary preparation steps
+ * Script para preparar archivos para despliegue en Choreo
+ * Asegura que todos los scripts tengan permisos de ejecución
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-console.log('🚀 Preparing codebase for Choreo deployment...');
+console.log('🚀 Preparando archivos para Choreo...');
 
-// Step 1: Fix client components
-console.log('\n📦 Step 1: Adding "use client" directive to components...');
-try {
-  // List of component files that need to be client components
-  const clientComponents = [
-    'src/components/inventory/DuplicateDetector.tsx',
-    // Add more if needed
-  ];
+// Detectar sistema operativo
+const isWindows = process.platform === 'win32';
 
-  for (const file of clientComponents) {
-    if (!fs.existsSync(file)) {
-      console.log(`⚠️ Component not found: ${file}`);
-      continue;
-    }
-
-    let content = fs.readFileSync(file, 'utf8');
-    
-    if (!content.trim().startsWith("'use client'") && !content.trim().startsWith('"use client"')) {
-      content = "'use client';\n\n" + content;
-      fs.writeFileSync(file, content);
-      console.log(`✅ Added 'use client' directive to: ${file}`);
-    } else {
-      console.log(`✓ Component already has 'use client' directive: ${file}`);
-    }
-  }
-} catch (error) {
-  console.error(`❌ Error fixing client components: ${error.message}`);
-}
-
-// Step 2: Create missing auth modules
-console.log('\n📦 Step 2: Creating missing auth modules...');
-const authDir = path.join('src', 'lib', 'auth');
-
-try {
-  // Create auth directory if it doesn't exist
-  if (!fs.existsSync(authDir)) {
-    fs.mkdirSync(authDir, { recursive: true });
-    console.log(`✅ Created auth directory: ${authDir}`);
-  }
-
-  // Create permissions.ts
-  const permissionsPath = path.join(authDir, 'permissions.ts');
-  if (!fs.existsSync(permissionsPath)) {
-    const permissionsContent = `// Simple permissions utility for checking user permissions
-import { prisma } from "@/lib/prisma";
-
-/**
- * Check if a user has a specific permission
- * @param userId The ID of the user to check permissions for
- * @param permissionKey The permission key to check (e.g., "inventory:manage")
- * @returns A boolean indicating if the user has the permission
- */
-export async function checkPermission(userId: string, permissionKey: string): Promise<boolean> {
+function execute(command, options = {}) {
   try {
-    // For Choreo deployment, we'll implement a simplified version
-    return true;
+    console.log(`⚙️ Ejecutando: ${command}`);
+    const output = execSync(command, { 
+      stdio: ['pipe', 'pipe', 'pipe'],
+      ...options
+    });
+    console.log(`✅ Completado: ${command}`);
+    return output;
   } catch (error) {
-    console.error("Error checking permission:", error);
-    return false;
-  }
-}`;
-    fs.writeFileSync(permissionsPath, permissionsContent);
-    console.log(`✅ Created permissions module: ${permissionsPath}`);
-  } else {
-    console.log(`✓ Permissions module already exists: ${permissionsPath}`);
-  }
-
-  // Create auth-options.ts
-  const authOptionsPath = path.join(authDir, 'auth-options.ts');
-  if (!fs.existsSync(authOptionsPath)) {
-    const authOptionsContent = `// Auth options and utilities for server-side authentication
-import { prisma } from "@/lib/prisma";
-
-/**
- * A simplified version of getServerSession for use in API routes
- * @returns A session object with user information or null if not authenticated
- */
-export async function getServerSession() {
-  // For Choreo deployment, return a mock session
-  return {
-    user: {
-      id: "choreo-deployment",
-      email: "choreo@example.com",
-      name: "Choreo Deployment",
+    console.error(`❌ Error: ${command}`);
+    console.error(error.message);
+    if (!options.continueOnError) {
+      process.exit(1);
     }
-  };
-}`;
-    fs.writeFileSync(authOptionsPath, authOptionsContent);
-    console.log(`✅ Created auth-options module: ${authOptionsPath}`);
-  } else {
-    console.log(`✓ Auth-options module already exists: ${authOptionsPath}`);
+    return null;
   }
-} catch (error) {
-  console.error(`❌ Error creating auth modules: ${error.message}`);
 }
 
-// Step 3: Disable problematic features
-console.log('\n📦 Step 3: Disabling problematic features...');
-try {
-  // List of problematic paths to disable
-  const problematicPaths = [
-    'src/app/(main)/inventory/scan-duplicates',
-    'src/app/api/inventory/scan-duplicates',
-    'src/app/api/inventory/merge-duplicates',
-    'src/app/api/migrate-db',
-  ];
-
-  let disabledCount = 0;
-
-  // Function to safely disable a path
-  function disablePath(dirPath) {
+// Funciones para trabajar con archivos y directorios
+function setExecutablePermission(filePath) {
+  if (!isWindows) {
     try {
-      if (fs.existsSync(dirPath)) {
-        const disabledPath = `${dirPath}.disabled`;
-        console.log(`🔧 Disabling: ${dirPath} → ${disabledPath}`);
-        
-        // If the disabled path already exists, remove it first
-        if (fs.existsSync(disabledPath)) {
-          try {
-            fs.rmSync(disabledPath, { recursive: true, force: true });
-          } catch (error) {
-            console.log(`⚠️ Warning: Could not remove existing disabled path: ${error.message}`);
-          }
-        }
-        
-        try {
-          fs.renameSync(dirPath, disabledPath);
-          return true;
-        } catch (error) {
-          console.log(`❌ Error disabling path: ${error.message}`);
-          return false;
-        }
-      }
-      return false;
+      fs.chmodSync(filePath, '755');
     } catch (error) {
-      console.log(`❌ Error checking path: ${error.message}`);
-      return false;
+      console.error(`No se pudieron establecer permisos para ${filePath}: ${error}`);
     }
   }
+}
 
-  // Disable problematic paths
-  for (const dirPath of problematicPaths) {
-    if (disablePath(dirPath)) {
-      disabledCount++;
-    }
-  }
-
-  // Create placeholder pages for disabled routes
-  for (const dirPath of problematicPaths) {
-    if (dirPath.includes('api')) continue; // Skip API routes
+function processDirectory(dirPath) {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
     
-    try {
-      // Create a placeholder page
-      const placeholderDir = dirPath;
-      if (!fs.existsSync(placeholderDir)) {
-        try {
-          fs.mkdirSync(placeholderDir, { recursive: true });
-          
-          // Create a simple page.tsx file
-          const pagePath = path.join(placeholderDir, 'page.tsx');
-          const pageContent = `
-export default function DisabledFeaturePage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Feature Temporarily Disabled</h1>
-      <p className="mb-2">This feature is temporarily disabled in the production environment.</p>
-      <p>Please contact your administrator for more information.</p>
-    </div>
-  );
-}
-`;
-          fs.writeFileSync(pagePath, pageContent);
-          console.log(`✅ Created placeholder page: ${pagePath}`);
-        } catch (error) {
-          console.log(`❌ Error creating placeholder page: ${error.message}`);
-        }
+    entries.forEach(entry => {
+      const fullPath = path.join(dirPath, entry.name);
+      
+      if (entry.isDirectory()) {
+        processDirectory(fullPath);
+      } else if (entry.name.endsWith('.js') || entry.name.endsWith('.sh')) {
+        setExecutablePermission(fullPath);
+        console.log(`✓ Permisos asignados: ${fullPath}`);
       }
-    } catch (error) {
-      console.log(`❌ Error processing path ${dirPath}: ${error.message}`);
-    }
+    });
+  } catch (error) {
+    console.error(`Error al procesar directorio ${dirPath}: ${error}`);
   }
-
-  console.log(`✅ Successfully disabled ${disabledCount} problematic paths`);
-} catch (error) {
-  console.error(`❌ Error disabling problematic features: ${error.message}`);
 }
 
-console.log('\n🚀 Preparation complete! The codebase is now ready for Choreo deployment.');
-console.log('\nNext steps:');
-console.log('1. Commit these changes to your repository');
-console.log('2. Deploy to Choreo using the Choreo console');
-console.log('3. After deployment, run \'node scripts/restore-disabled-features.js\'');
-console.log('   to restore the disabled features'); 
+// Establecer permisos para scripts
+console.log('📁 Estableciendo permisos para scripts...');
+if (!isWindows) {
+  try {
+    execute('chmod +x scripts/*.js', { continueOnError: true });
+    execute('chmod +x *.sh', { continueOnError: true });
+    execute('chmod +x build-fast.sh', { continueOnError: true });
+  } catch (error) {
+    console.error('Error al establecer permisos:', error);
+  }
+} else {
+  console.log('En Windows, saltando establecimiento de permisos...');
+  processDirectory(path.join(process.cwd(), 'scripts'));
+}
+
+// Finalizar
+console.log('✅ Preparación para Choreo completada!'); 

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
+import { initializeDatabaseUrl } from './database-url-fix';
 // Remove direct imports of Node.js modules
 // import { execSync } from 'child_process';
 // import path from 'path';
@@ -8,6 +9,9 @@ import NodeCache from 'node-cache';
 
 // Add server-only marker to ensure this is not used directly in client components
 import 'server-only';
+
+// Initialize database URL configuration before creating Prisma client
+initializeDatabaseUrl();
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -45,9 +49,18 @@ function createPrismaClient(): PrismaClient | undefined {
   try {
     console.log('🔧 Initializing Prisma Client...');
     
+    // Ensure DATABASE_URL is properly configured
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL environment variable is not set');
+      return undefined;
+    }
+    
+    console.log(`🔗 Database URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
+    
     const client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
+      datasourceUrl: process.env.DATABASE_URL, // Explicitly set the URL
     });
 
     // Verify that the client has been initialized correctly

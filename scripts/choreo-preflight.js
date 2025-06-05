@@ -101,6 +101,25 @@ function testDatabaseConnection() {
       return true;
     }
 
+    console.log(`🔗 DATABASE_URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
+    
+    // Check URL format
+    const dbUrl = process.env.DATABASE_URL;
+    if (dbUrl.startsWith('prisma://')) {
+      console.log('✅ Using Prisma Postgres protocol');
+    } else if (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')) {
+      console.log('✅ Using standard PostgreSQL protocol');
+      
+      // Fix postgres:// to postgresql:// if needed
+      if (dbUrl.startsWith('postgres://')) {
+        const fixedUrl = dbUrl.replace('postgres://', 'postgresql://');
+        process.env.DATABASE_URL = fixedUrl;
+        console.log('🔧 Fixed postgres:// to postgresql:// protocol');
+      }
+    } else {
+      console.log(`⚠️ Unknown database protocol: ${dbUrl.split('://')[0]}`);
+    }
+
     // Simple connection test without full Prisma initialization
     preflightResults.databaseConnection = true;
     console.log('✅ Database connection assumed healthy');

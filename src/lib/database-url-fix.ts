@@ -19,9 +19,9 @@ export function fixDatabaseUrl(): string | undefined {
   console.log('🔍 DATABASE_URL configuration check...');
   console.log(`📋 Original URL pattern: ${originalUrl.substring(0, 30)}...`);
   
-  // Check if URL already has correct protocol
-  if (originalUrl.startsWith('prisma://')) {
-    console.log('✅ DATABASE_URL already has prisma:// protocol');
+  // Check if URL is Prisma Accelerate/Data Platform format
+  if (originalUrl.startsWith('prisma://') || originalUrl.includes('accelerate.prisma-data.net')) {
+    console.log('✅ DATABASE_URL uses Prisma Accelerate/Data Platform format');
     return originalUrl;
   }
   
@@ -29,8 +29,7 @@ export function fixDatabaseUrl(): string | undefined {
   if (originalUrl.startsWith('postgresql://') || originalUrl.startsWith('postgres://')) {
     console.log('🔧 Converting PostgreSQL URL to standard format...');
     
-    // For Choreo environment, ensure URL is properly formatted
-    // Don't convert to prisma:// as that's for Prisma Postgres specifically
+    // For direct PostgreSQL connections, ensure proper protocol
     let fixedUrl = originalUrl;
     
     // Ensure postgresql:// (not postgres://)

@@ -60,7 +60,7 @@ function createPrismaClient(): PrismaClient | undefined {
     const client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
-      datasourceUrl: process.env.DATABASE_URL, // Explicitly set the URL
+      // Remove explicit datasourceUrl to use schema.prisma configuration
     });
 
     // Verify that the client has been initialized correctly

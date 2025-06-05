@@ -15,7 +15,8 @@ console.log('📋 Environment: PRODUCTION/CHOREO');
 const preflightResults = {
   importDirs: false,
   prismaGenerate: false,
-  databaseConnection: false
+  databaseConnection: false,
+  prismaConfig: false
 };
 
 // Quick function to run commands with timeout
@@ -89,24 +90,24 @@ function checkPrismaGenerate() {
   }
 }
 
-// 3. Quick database connection test (non-blocking)
-function testDatabaseConnection() {
-  console.log('🔗 Testing database connection...');
+// 3. Validate Prisma configuration (critical)
+function validatePrismaConfig() {
+  console.log('🔧 Validating Prisma configuration...');
   
   try {
     // Quick environment check
     if (!process.env.DATABASE_URL) {
-      console.log('⚠️ DATABASE_URL not set, skipping connection test');
-      preflightResults.databaseConnection = true; // Don't block on this
+      console.log('⚠️ DATABASE_URL not set, skipping Prisma validation');
+      preflightResults.prismaConfig = true; // Don't block on this
       return true;
     }
 
     console.log(`🔗 DATABASE_URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
     
-    // Check URL format
+    // Check URL format and fix if needed
     const dbUrl = process.env.DATABASE_URL;
-    if (dbUrl.startsWith('prisma://')) {
-      console.log('✅ Using Prisma Postgres protocol');
+    if (dbUrl.startsWith('prisma://') || dbUrl.includes('accelerate.prisma-data.net')) {
+      console.log('✅ Using Prisma Accelerate/Data Platform protocol');
     } else if (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')) {
       console.log('✅ Using standard PostgreSQL protocol');
       
@@ -120,6 +121,34 @@ function testDatabaseConnection() {
       console.log(`⚠️ Unknown database protocol: ${dbUrl.split('://')[0]}`);
     }
 
+    // Test Prisma client creation without datasourceUrl override
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const testClient = new PrismaClient({
+        log: ['error'],
+        // Don't set datasourceUrl to use schema.prisma configuration
+      });
+      console.log('✅ Prisma client configuration validated');
+      testClient.$disconnect().catch(() => {});
+      preflightResults.prismaConfig = true;
+      return true;
+    } catch (error) {
+      console.error('❌ Prisma client validation failed:', error.message);
+      preflightResults.prismaConfig = false;
+      return false;
+    }
+  } catch (error) {
+    console.log('⚠️ Prisma configuration validation skipped:', error.message);
+    preflightResults.prismaConfig = true; // Don't block startup
+    return true;
+  }
+}
+
+// 4. Quick database connection test (non-blocking)
+function testDatabaseConnection() {
+  console.log('🔗 Testing database connection...');
+  
+  try {
     // Simple connection test without full Prisma initialization
     preflightResults.databaseConnection = true;
     console.log('✅ Database connection assumed healthy');
@@ -140,7 +169,8 @@ async function runPreflightChecks() {
   // Run critical checks only
   const step1 = ensureImportDirs();
   const step2 = checkPrismaGenerate();
-  const step3 = testDatabaseConnection();
+  const step3 = validatePrismaConfig();
+  const step4 = testDatabaseConnection();
   
   const endTime = Date.now();
   const duration = endTime - startTime;
@@ -148,10 +178,11 @@ async function runPreflightChecks() {
   console.log('\n📊 Preflight Check Summary:');
   console.log(`${step1 ? '✅' : '❌'} importDirs: ${step1 ? 'PASSED' : 'FAILED'}`);
   console.log(`${step2 ? '✅' : '❌'} prismaGenerate: ${step2 ? 'PASSED' : 'FAILED'}`);
-  console.log(`${step3 ? '✅' : '❌'} databaseConnection: ${step3 ? 'PASSED' : 'FAILED'}`);
+  console.log(`${step3 ? '✅' : '❌'} prismaConfig: ${step3 ? 'PASSED' : 'FAILED'}`);
+  console.log(`${step4 ? '✅' : '❌'} databaseConnection: ${step4 ? 'PASSED' : 'FAILED'}`);
   console.log(`⏱️ Duration: ${duration}ms`);
   
-  const allPassed = step1 && step2 && step3;
+  const allPassed = step1 && step2 && step3 && step4;
   
   if (allPassed) {
     console.log('\n✅ All checks PASSED');

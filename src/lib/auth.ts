@@ -80,8 +80,13 @@ export const verifyToken = (token: string): SessionData | null => {
   }
 };
 
-// Acceder al cliente Prisma original
-const originalPrisma = prisma.prisma;
+// Access the Prisma client through the custom wrapper
+const getPrismaClient = () => {
+  if (!prisma?.prisma) {
+    throw new Error('Prisma client not initialized');
+  }
+  return prisma.prisma;
+};
 
 // Session management
 export const createSession = async (
@@ -91,9 +96,7 @@ export const createSession = async (
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> => {
-  if (!originalPrisma) {
-    throw new Error('Prisma client not initialized');
-  }
+  const client = getPrismaClient();
 
   const token = generateToken({ 
     userId, 
@@ -103,7 +106,7 @@ export const createSession = async (
   
   const expiresAt = new Date(Date.now() + SESSION_DURATION * 1000);
   
-  await originalPrisma.userSession.create({
+  await client.userSession.create({
     data: {
       userId,
       token,
@@ -117,25 +120,29 @@ export const createSession = async (
 };
 
 export const invalidateSession = async (token: string): Promise<void> => {
-  if (!originalPrisma) return;
-  
-  await originalPrisma.userSession.delete({
-    where: { token },
-  }).catch(() => {
+  try {
+    const client = getPrismaClient();
+    await client.userSession.delete({
+      where: { token },
+    });
+  } catch (error) {
     // Session might not exist, ignore error
-  });
+  }
 };
 
 export const cleanupExpiredSessions = async (): Promise<void> => {
-  if (!originalPrisma) return;
-  
-  await originalPrisma.userSession.deleteMany({
-    where: {
-      expiresAt: {
-        lt: new Date(),
+  try {
+    const client = getPrismaClient();
+    await client.userSession.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.warn('Failed to cleanup expired sessions:', error);
+  }
 };
 
 // User authentication
@@ -146,12 +153,10 @@ export const authenticateUser = async (
   ipAddress?: string
 ): Promise<AuthResult> => {
   try {
-    if (!originalPrisma) {
-      return { success: false, error: 'Database not available' };
-    }
+    const client = getPrismaClient();
 
     // Find user with role and permissions
-    const user = await originalPrisma.user.findUnique({
+    const user = await client.user.findUnique({
       where: { email },
       include: {
         role: {
@@ -191,7 +196,7 @@ export const authenticateUser = async (
       const attempts = user.loginAttempts + 1;
       const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null; // Lock for 15 minutes
       
-      await originalPrisma.user.update({
+      await client.user.update({
         where: { id: user.id },
         data: {
           loginAttempts: attempts,
@@ -202,8 +207,8 @@ export const authenticateUser = async (
       return { success: false, error: 'Invalid email or password' };
     }
 
-    // Reset login attempts and update last login
-    await originalPrisma.user.update({
+    // Reset login attempts on successful login
+    await client.user.update({
       where: { id: user.id },
       data: {
         loginAttempts: 0,
@@ -215,30 +220,19 @@ export const authenticateUser = async (
     // Create session
     const token = await createSession(user.id, user.email, user.roleId, userAgent, ipAddress);
 
+    console.log(`[Auth] Successful login for email: ${email}`);
     return {
       success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName || undefined,
-        lastName: user.lastName || undefined,
-        roleId: user.roleId,
-        role: user.role,
-        isActive: user.isActive,
-        isEmailVerified: user.isEmailVerified,
-        lastLoginAt: user.lastLoginAt || undefined,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: user as User,
       token,
     };
   } catch (error) {
     console.error('Authentication error:', error);
-    return { success: false, error: 'Authentication failed' };
+    return { success: false, error: 'An error occurred during authentication' };
   }
 };
 
-// Register new user
+// User registration
 export const registerUser = async (
   email: string,
   password: string,
@@ -247,51 +241,42 @@ export const registerUser = async (
   roleId?: string
 ): Promise<AuthResult> => {
   try {
-    if (!originalPrisma) {
-      return { success: false, error: 'Database not available' };
-    }
+    const client = getPrismaClient();
 
     // Check if user already exists
-    const existingUser = await originalPrisma.user.findUnique({
+    const existingUser = await client.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return { success: false, error: 'User with this email already exists' };
+      return { success: false, error: 'User already exists with this email' };
     }
 
-    // Get default role (user) if not specified
-    let userRoleId = roleId;
-    if (!userRoleId) {
-      const defaultRole = await originalPrisma.role.findFirst({
-        where: { name: 'user' },
+    // Get or create default role
+    let defaultRole = await client.role.findFirst({
+      where: { name: 'user' },
+    });
+
+    if (!defaultRole) {
+      defaultRole = await client.role.create({
+        data: {
+          name: 'user',
+          description: 'Default user role',
+        },
       });
-      
-      if (!defaultRole) {
-        // Create default role if it doesn't exist
-        const newRole = await originalPrisma.role.create({
-          data: {
-            name: 'user',
-            description: 'Default user role',
-          },
-        });
-        userRoleId = newRole.id;
-      } else {
-        userRoleId = defaultRole.id;
-      }
     }
 
     // Hash password
     const passwordHash = await hashPassword(password);
 
     // Create user
-    const user = await originalPrisma.user.create({
+    const user = await client.user.create({
       data: {
         email,
         passwordHash,
         firstName,
         lastName,
-        roleId: userRoleId!,
+        roleId: roleId || defaultRole.id,
       },
       include: {
         role: {
@@ -306,51 +291,39 @@ export const registerUser = async (
       },
     });
 
+    console.log(`[Auth] User registered successfully: ${email}`);
     return {
       success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName || undefined,
-        lastName: user.lastName || undefined,
-        roleId: user.roleId,
-        role: user.role,
-        isActive: user.isActive,
-        isEmailVerified: user.isEmailVerified,
-        lastLoginAt: user.lastLoginAt || undefined,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: user as User,
     };
   } catch (error) {
     console.error('Registration error:', error);
-    return { success: false, error: 'Registration failed' };
+    return { success: false, error: 'An error occurred during registration' };
   }
 };
 
-// Get current user from session
+// Get current user from token
 export const getCurrentUser = async (token?: string): Promise<User | null> => {
   try {
-    if (!originalPrisma) return null;
+    const client = getPrismaClient();
 
-    if (!token) {
-      const cookieStore = await cookies();
-      token = cookieStore.get(COOKIE_NAME)?.value;
-    }
+    // Get token from parameter or cookies
+    const cookieStore = await cookies();
+    const authToken = token || cookieStore.get(COOKIE_NAME)?.value;
 
-    if (!token) {
+    if (!authToken) {
       return null;
     }
 
     // Verify token
-    const payload = verifyToken(token);
-    if (!payload) {
+    const sessionData = verifyToken(authToken);
+    if (!sessionData) {
       return null;
     }
 
-    // Check if session exists and is valid
-    const session = await originalPrisma.userSession.findUnique({
-      where: { token },
+    // Check if session exists in database
+    const session = await client.userSession.findUnique({
+      where: { token: authToken },
       include: {
         user: {
           include: {
@@ -363,37 +336,25 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
                 },
               },
             },
+            customPermissions: {
+              include: {
+                permission: true,
+              },
+            },
           },
         },
       },
     });
 
     if (!session || session.expiresAt < new Date()) {
+      // Clean up expired session
       if (session) {
-        await invalidateSession(token);
+        await invalidateSession(authToken);
       }
       return null;
     }
 
-    const user = session.user;
-
-    if (!user.isActive) {
-      return null;
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName || undefined,
-      lastName: user.lastName || undefined,
-      roleId: user.roleId,
-      role: user.role,
-      isActive: user.isActive,
-      isEmailVerified: user.isEmailVerified,
-      lastLoginAt: user.lastLoginAt || undefined,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    return session.user as User;
   } catch (error) {
     console.error('Get current user error:', error);
     return null;
@@ -403,28 +364,29 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
 // Logout user
 export const logoutUser = async (token?: string): Promise<void> => {
   try {
-    if (!token) {
-      const cookieStore = await cookies();
-      token = cookieStore.get(COOKIE_NAME)?.value;
+    const cookieStore = await cookies();
+    const authToken = token || cookieStore.get(COOKIE_NAME)?.value;
+    
+    if (authToken) {
+      await invalidateSession(authToken);
     }
 
-    if (token) {
-      await invalidateSession(token);
-    }
+    await clearAuthCookie();
   } catch (error) {
     console.error('Logout error:', error);
   }
 };
 
-// Cookie utilities
+// Cookie management
 export const setAuthCookie = async (token: string): Promise<void> => {
   const cookieStore = await cookies();
+  const expires = new Date(Date.now() + SESSION_DURATION * 1000);
+  
   cookieStore.set(COOKIE_NAME, token, {
+    expires,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: SESSION_DURATION,
-    path: '/',
   });
 };
 
@@ -433,41 +395,35 @@ export const clearAuthCookie = async (): Promise<void> => {
   cookieStore.delete(COOKIE_NAME);
 };
 
-// Request utilities
+// Request helpers
 export const getTokenFromRequest = (request: NextRequest): string | null => {
-  // Try cookie first
-  const cookieToken = request.cookies.get(COOKIE_NAME)?.value;
-  if (cookieToken) return cookieToken;
-
-  // Try Authorization header
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
 
-  return null;
+  const cookieToken = request.cookies.get(COOKIE_NAME)?.value;
+  return cookieToken || null;
 };
 
-// Permission utilities
+// Permission helpers
 export const hasPermission = (user: User, resource: string, action: string): boolean => {
-  // Check custom user permissions first (they override role permissions)
+  // Check role permissions
+  const hasRolePermission = user.role.permissions.some(
+    (rp) => rp.permission.resource === resource && rp.permission.action === action
+  );
+
+  if (hasRolePermission) return true;
+
+  // Check custom permissions
   if (user.customPermissions) {
     const customPermission = user.customPermissions.find(
-      cp => cp.permission.resource === resource && cp.permission.action === action
+      (cp) => cp.permission.resource === resource && cp.permission.action === action
     );
-    if (customPermission) {
-      return customPermission.granted;
-    }
+    return customPermission?.granted || false;
   }
 
-  // Fallback to role permissions
-  if (!user.role.permissions) return false;
-  
-  return user.role.permissions.some(
-    (rp) => 
-      rp.permission.resource === resource && 
-      rp.permission.action === action
-  );
+  return false;
 };
 
 export const hasPageAccess = (user: User, page: string): boolean => {
@@ -475,7 +431,7 @@ export const hasPageAccess = (user: User, page: string): boolean => {
 };
 
 export const isAdmin = (user: User): boolean => {
-  return user?.role?.name === 'admin' || user?.role?.name === 'administrator';
+  return user.role.name === 'admin';
 };
 
 // Constants

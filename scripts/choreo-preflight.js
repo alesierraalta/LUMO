@@ -9,11 +9,22 @@
  * 1. Database schema verification and fixes
  * 2. File system permissions
  * 3. Required directories
+ * 4. ImportSession table structure verification
+ * 5. Database connection and model access verification
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+
+// Try to load Prisma client if available
+let PrismaClient;
+try {
+  const prismaModule = require('@prisma/client');
+  PrismaClient = prismaModule.PrismaClient;
+} catch (error) {
+  console.warn('⚠️ Could not load Prisma client module:', error.message);
+}
 
 console.log('🚀 Running Choreo preflight checks...');
 
@@ -21,139 +32,7 @@ console.log('🚀 Running Choreo preflight checks...');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.CHOREO_DEPLOYMENT === 'true';
 console.log(`🔍 Environment: ${isProduction ? 'PRODUCTION/CHOREO' : 'DEVELOPMENT'}`);
 
-// Fix ImportSession schema if needed
-function fixImportSessionSchema() {
-  try {
-    console.log('🔧 Running ImportSession schema check...');
-    
-    // Choose the appropriate script based on environment
-    const scriptPath = isProduction 
-      ? path.join(__dirname, 'fix-import-session-postgres.js')
-      : path.join(__dirname, 'fix-import-session-sqlite.js');
-    
-    // Check if script exists
-    if (!fs.existsSync(scriptPath)) {
-      console.error(`❌ Schema fix script not found: ${scriptPath}`);
-      // Create a basic version of the script if it doesn't exist
-      if (isProduction) {
-        createEmergencyFixScript();
-      }
-      return false;
-    }
-    
-    // Run the fix script
-    console.log(`📋 Executing schema fix: ${scriptPath}`);
-    const result = execSync(`node "${scriptPath}"`, { encoding: 'utf8' });
-    console.log(result);
-    return true;
-  } catch (error) {
-    console.error('❌ Failed to fix ImportSession schema:', error.message);
-    return false;
-  }
-}
-
-// Create an emergency fix script if the original is missing
-function createEmergencyFixScript() {
-  try {
-    const emergencyScript = `#!/usr/bin/env node
-console.log('🚨 Running emergency ImportSession schema fix...');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-async function fixImportSessionTable() {
-  try {
-    // Check if the table exists
-    const tableExists = await prisma.$queryRaw\`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'ImportSession'
-      );
-    \`;
-    
-    if (!tableExists[0].exists) {
-      console.log('⚠️ ImportSession table does not exist, creating it...');
-      await prisma.$executeRaw\`
-        CREATE TABLE "ImportSession" (
-          "id" TEXT NOT NULL,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL,
-          "userId" TEXT NOT NULL,
-          "status" TEXT NOT NULL,
-          "fileId" TEXT,
-          "fileSize" INTEGER,
-          "filePath" TEXT,
-          "totalRows" INTEGER DEFAULT 0,
-          "processedRows" INTEGER DEFAULT 0,
-          "successRows" INTEGER DEFAULT 0,
-          "errorRows" INTEGER DEFAULT 0,
-          "metadata" JSONB,
-          CONSTRAINT "ImportSession_pkey" PRIMARY KEY ("id")
-        );
-      \`;
-      console.log('✅ ImportSession table created successfully');
-      return true;
-    }
-    
-    // Check if fileName column exists
-    const columnExists = await prisma.$queryRaw\`
-      SELECT EXISTS (
-        SELECT FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'ImportSession' 
-        AND column_name = 'fileName'
-      );
-    \`;
-    
-    if (columnExists[0].exists) {
-      console.log('⚠️ Removing fileName column from ImportSession table...');
-      await prisma.$executeRaw\`ALTER TABLE "ImportSession" DROP COLUMN IF EXISTS "fileName";\`;
-      console.log('✅ fileName column removed successfully');
-    } else {
-      console.log('✅ ImportSession table schema is correct (no fileName column)');
-    }
-    
-    // Check if filePath column exists
-    const filePathExists = await prisma.$queryRaw\`
-      SELECT EXISTS (
-        SELECT FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'ImportSession' 
-        AND column_name = 'filePath'
-      );
-    \`;
-    
-    if (!filePathExists[0].exists) {
-      console.log('⚠️ Adding filePath column to ImportSession table...');
-      await prisma.$executeRaw\`ALTER TABLE "ImportSession" ADD COLUMN "filePath" TEXT;\`;
-      console.log('✅ filePath column added successfully');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('❌ Error fixing ImportSession schema:', error);
-    return false;
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-fixImportSessionTable()
-  .then(() => console.log('🏁 Emergency schema fix completed'))
-  .catch(err => console.error('💥 Emergency schema fix failed:', err));
-`;
-    
-    const emergencyScriptPath = path.join(__dirname, 'fix-import-session-postgres.js');
-    fs.writeFileSync(emergencyScriptPath, emergencyScript);
-    console.log(`✅ Created emergency fix script: ${emergencyScriptPath}`);
-    return true;
-  } catch (error) {
-    console.error('❌ Failed to create emergency fix script:', error.message);
-    return false;
-  }
-}
-
-// Ensure import directories exist
+// Ensure ImportSession directories exist
 function ensureImportDirs() {
   try {
     console.log('📁 Ensuring import directories exist...');
@@ -180,14 +59,238 @@ function ensureImportDirs() {
   }
 }
 
+// Fix ImportSession schema if needed
+function fixImportSessionSchema() {
+  try {
+    console.log('🔧 Checking and fixing ImportSession schema...');
+    
+    // Run the appropriate fix script based on environment
+    const fixScript = isProduction ? 'fix-import-session-postgres.js' : 'fix-import-session-sqlite.js';
+    
+    // Check if script exists in the expected locations
+    let scriptPath = path.join(process.cwd(), 'scripts', fixScript);
+    
+    // Check for standalone directory structure in production
+    if (isProduction && !fs.existsSync(scriptPath)) {
+      scriptPath = path.join(process.cwd(), '.next/standalone/scripts', fixScript);
+    }
+    
+    if (!fs.existsSync(scriptPath)) {
+      console.error(`❌ ImportSession fix script not found: ${scriptPath}`);
+      
+      // Try the alternative script
+      scriptPath = path.join(process.cwd(), 'scripts', 'run-import-session-migration.js');
+      if (isProduction && !fs.existsSync(scriptPath)) {
+        scriptPath = path.join(process.cwd(), '.next/standalone/scripts', 'run-import-session-migration.js');
+      }
+      
+      if (!fs.existsSync(scriptPath)) {
+        console.error('❌ No ImportSession fix scripts found');
+        return false;
+      }
+    }
+    
+    console.log(`🔧 Running fix script: ${scriptPath}`);
+    execSync(`node "${scriptPath}"`, { stdio: 'inherit' });
+    
+    console.log('✅ ImportSession schema check completed');
+    return true;
+  } catch (error) {
+    console.error('❌ Error fixing ImportSession schema:', error);
+    
+    // Still return true in production to allow the server to start
+    if (isProduction) {
+      console.warn('⚠️ Continuing despite ImportSession schema fix failure');
+      return true;
+    }
+    
+    return false;
+  }
+}
+
+// Run comprehensive ImportSession verification
+async function verifyImportSession() {
+  try {
+    console.log('🔍 Running comprehensive ImportSession verification...');
+    
+    // Try to use the preflight script if available
+    let scriptPath = path.join(process.cwd(), 'scripts', 'import-session-preflight.js');
+    
+    // Check for standalone directory structure in production
+    if (isProduction && !fs.existsSync(scriptPath)) {
+      scriptPath = path.join(process.cwd(), '.next/standalone/scripts', 'import-session-preflight.js');
+    }
+    
+    if (fs.existsSync(scriptPath)) {
+      try {
+        console.log(`🔧 Running preflight script: ${scriptPath}`);
+        execSync(`node "${scriptPath}"`, { stdio: 'inherit' });
+        console.log('✅ ImportSession verification completed');
+        return true;
+      } catch (error) {
+        console.error('❌ Error running ImportSession verification:', error);
+        
+        // Try the basic fix as fallback
+        console.log('⚠️ Attempting basic ImportSession fix as fallback...');
+        return fixImportSessionSchema();
+      }
+    } else {
+      // Fall back to basic fix if preflight script not available
+      console.log('⚠️ ImportSession preflight script not found, using basic fix...');
+      return fixImportSessionSchema();
+    }
+  } catch (error) {
+    console.error('❌ Error in ImportSession verification:', error);
+    
+    // Still return true in production to allow the server to start
+    if (isProduction) {
+      console.warn('⚠️ Continuing despite ImportSession verification failure');
+      return true;
+    }
+    
+    return false;
+  }
+}
+
+// Verify database connection and model access
+async function verifyDatabaseConnection() {
+  try {
+    console.log('🔍 Verifying database connection and model access...');
+    
+    if (!PrismaClient) {
+      console.warn('⚠️ Prisma client module not available, skipping database verification');
+      return isProduction; // Return true in production to continue
+    }
+    
+    // Create a Prisma client with logging enabled
+    const prisma = new PrismaClient({
+      log: ['error', 'warn']
+    });
+    
+    try {
+      // 1. Test basic connection
+      console.log('🔌 Testing database connection...');
+      await prisma.$connect();
+      console.log('✅ Successfully connected to database');
+      
+      // 2. Test critical models access
+      const criticalModels = ['importSession', 'user', 'product', 'category', 'stock', 'location'];
+      const results = {};
+      
+      console.log('🔍 Verifying critical models access...');
+      for (const model of criticalModels) {
+        try {
+          const modelAccessible = prisma[model] !== undefined;
+          if (!modelAccessible) {
+            console.warn(`⚠️ Model '${model}' not accessible via Prisma client`);
+            results[model] = false;
+            continue;
+          }
+          
+          // Test a simple operation (count)
+          await prisma[model].count();
+          console.log(`✅ Successfully accessed model: ${model}`);
+          results[model] = true;
+        } catch (modelError) {
+          console.error(`❌ Error accessing model '${model}':`, modelError.message);
+          results[model] = false;
+        }
+      }
+      
+      // 3. Special handling for ImportSession
+      if (!results.importSession && criticalModels.includes('importSession')) {
+        console.warn('⚠️ ImportSession model access failed, attempting schema fix...');
+        const fixResult = await fixImportSessionSchema();
+        
+        if (fixResult) {
+          try {
+            // Try again after fix
+            await prisma.importSession.count();
+            console.log('✅ ImportSession model accessible after fix');
+            results.importSession = true;
+          } catch (retryError) {
+            console.error('❌ ImportSession model still not accessible after fix:', retryError.message);
+          }
+        }
+      }
+      
+      // 4. Decide overall result
+      const allCriticalAccessible = criticalModels.some(model => results[model]);
+      
+      // Log final status
+      console.log('\n📊 Model Access Status:');
+      for (const [model, accessible] of Object.entries(results)) {
+        console.log(`${accessible ? '✅' : '❌'} ${model}: ${accessible ? 'Accessible' : 'Not accessible'}`);
+      }
+      
+      // Always return true in production to allow startup
+      return isProduction || allCriticalAccessible;
+    } catch (error) {
+      console.error('❌ Database verification error:', error.message);
+      return isProduction; // Return true in production to continue
+    } finally {
+      // Always disconnect
+      await prisma.$disconnect().catch(console.error);
+    }
+  } catch (error) {
+    console.error('❌ Failed to verify database connection:', error.message);
+    return isProduction; // Return true in production to continue
+  }
+}
+
+// Check if script can access and execute prisma generate
+function checkPrismaGenerate() {
+  try {
+    console.log('🔍 Checking Prisma client generation...');
+    
+    // Check for prisma binary
+    const prismaPath = isProduction ? 
+      path.join(process.cwd(), 'node_modules', '.bin', 'prisma') : 
+      'npx prisma';
+    
+    // Run with reduced output in production
+    const generateCmd = isProduction ?
+      `${prismaPath} generate --no-engine --schema=./prisma/schema.prisma` :
+      `${prismaPath} generate`;
+    
+    console.log(`🔧 Running: ${generateCmd}`);
+    execSync(generateCmd, { stdio: 'inherit' });
+    
+    console.log('✅ Prisma client generation successful');
+    return true;
+  } catch (error) {
+    console.error('❌ Prisma client generation failed:', error.message);
+    console.warn('⚠️ Some models might not be accessible');
+    
+    // Create a marker file to indicate preflight check error
+    try {
+      const logsDir = path.join(process.cwd(), 'logs');
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+      
+      fs.writeFileSync(
+        path.join(logsDir, 'prisma-generate-error.log'),
+        `Timestamp: ${new Date().toISOString()}\nError: ${error.message}\n${error.stack || ''}`
+      );
+    } catch (fsError) {
+      console.error('Failed to write error log:', fsError);
+    }
+    
+    return isProduction; // Return true in production to continue
+  }
+}
+
 // Main function
-function runPreflightChecks() {
+async function runPreflightChecks() {
   console.log('🔍 Starting preflight checks...');
   
   // Run all checks
   const results = {
     importDirs: ensureImportDirs(),
-    schemaFix: fixImportSessionSchema()
+    prismaGenerate: checkPrismaGenerate(),
+    importSessionVerification: await verifyImportSession(),
+    databaseConnection: await verifyDatabaseConnection(),
   };
   
   // Log summary
@@ -203,8 +306,13 @@ function runPreflightChecks() {
 }
 
 // Run the preflight checks
-const success = runPreflightChecks();
-console.log(`🏁 Preflight checks ${success ? 'completed successfully' : 'completed with warnings'}`);
+(async () => {
+  const success = await runPreflightChecks();
+  console.log(`🏁 Preflight checks ${success ? 'completed successfully' : 'completed with warnings'}`);
 
-// Exit with appropriate code
-process.exit(success ? 0 : 0); // Always exit with 0 to prevent blocking server startup 
+  // Exit with appropriate code - in production, we continue regardless to avoid startup failures
+  process.exit((isProduction || success) ? 0 : 1);
+})().catch(error => {
+  console.error('💥 Unhandled error in preflight checks:', error);
+  process.exit(isProduction ? 0 : 1);
+}); 

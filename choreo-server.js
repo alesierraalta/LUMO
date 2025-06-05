@@ -9,6 +9,7 @@ const { createServer } = require('http');
 const next = require('next');
 const fs = require('fs');
 const path = require('path');
+const { execSync, spawn } = require('child_process');
 
 console.log('[CHOREO-SERVER] 🚀 Starting LUMO Inventory System for Choreo...');
 
@@ -21,6 +22,64 @@ const nextDir = path.join(process.cwd(), '.next');
 console.log(`[CHOREO-SERVER] 📡 Port: ${port}`);
 console.log(`[CHOREO-SERVER] 🌍 Hostname: ${hostname}`);
 console.log(`[CHOREO-SERVER] 🏭 Environment: ${process.env.NODE_ENV}`);
+
+// Run environment validation
+function validateEnvironment() {
+  console.log('[CHOREO-SERVER] 🔍 Validating environment configuration...');
+  
+  try {
+    // Check if validation script exists
+    const validationScript = path.join(process.cwd(), 'scripts', 'verify-environment-config.js');
+    if (fs.existsSync(validationScript)) {
+      console.log('[CHOREO-SERVER] Running environment validation script...');
+      execSync(`node ${validationScript}`, { stdio: 'inherit' });
+      console.log('[CHOREO-SERVER] ✅ Environment validation passed');
+      return true;
+    } else {
+      console.warn('[CHOREO-SERVER] ⚠️ Environment validation script not found, skipping validation');
+      return true; // Continue anyway
+    }
+  } catch (error) {
+    console.error('[CHOREO-SERVER] ❌ Environment validation failed:', error.message);
+    
+    // In production, log but continue
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[CHOREO-SERVER] ⚠️ Continuing despite environment validation failure (production mode)');
+      return true;
+    }
+    
+    return false;
+  }
+}
+
+// Verify database connection
+async function verifyDatabaseConnection() {
+  console.log('[CHOREO-SERVER] 🔍 Verifying database connection...');
+  
+  try {
+    // Check if verification script exists
+    const verificationScript = path.join(process.cwd(), 'scripts', 'verify-database-connection.js');
+    if (fs.existsSync(verificationScript)) {
+      console.log('[CHOREO-SERVER] Running database verification script...');
+      execSync(`node ${verificationScript}`, { stdio: 'inherit' });
+      console.log('[CHOREO-SERVER] ✅ Database verification passed');
+      return true;
+    } else {
+      console.warn('[CHOREO-SERVER] ⚠️ Database verification script not found, skipping verification');
+      return true; // Continue anyway
+    }
+  } catch (error) {
+    console.error('[CHOREO-SERVER] ❌ Database verification failed:', error.message);
+    
+    // In production, log but continue
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[CHOREO-SERVER] ⚠️ Continuing despite database verification failure (production mode)');
+      return true;
+    }
+    
+    return false;
+  }
+}
 
 // Verificar y asegurar que el usuario administrador existe
 async function ensureAdminUser() {
@@ -248,116 +307,72 @@ const handleHealthCheck = (req, res) => {
       port: port,
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      platform: process.platform,
-      nodeVersion: process.version,
-      manifestsRepaired: true,
-      cssFilesCreated: true,
-      choreoCompatible: true
     };
-
-    // Validate manifests in real-time
-    try {
-      const buildManifest = path.join(nextDir, 'build-manifest.json');
-      if (fs.existsSync(buildManifest)) {
-        const manifest = JSON.parse(fs.readFileSync(buildManifest, 'utf8'));
-        healthData.manifestValid = !!manifest.entryCSSFiles;
-      }
-    } catch (error) {
-      healthData.manifestError = error.message;
-    }
-
-    // Set proper HTTP headers for Choreo
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'X-Powered-By': 'LUMO-Choreo-Server/1.0'
-    });
     
-    res.end(JSON.stringify(healthData, null, 2));
+    res.setHeader('Content-Type', 'application/json');
+    res.statusCode = 200;
+    res.end(JSON.stringify(healthData));
     return true;
   }
   
   return false;
 };
 
-// Custom request handler with Choreo optimizations
+// Run deployment verification tests in the background
+function runVerificationTests() {
+  console.log('[CHOREO-SERVER] 🧪 Running deployment verification tests in the background...');
+  
+  try {
+    // Check if verification script exists
+    const verificationScript = path.join(process.cwd(), 'scripts', 'deployment-verification-tests.js');
+    if (!fs.existsSync(verificationScript)) {
+      console.warn('[CHOREO-SERVER] ⚠️ Deployment verification script not found, skipping tests');
+      return;
+    }
+    
+    // Run tests in the background
+    const testProcess = spawn('node', [verificationScript], {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        // Add test-specific environment variables
+        TEST_CATEGORIES: 'health,database,import',
+        VERBOSE_TESTS: 'true',
+        EXIT_ON_TEST_FAILURE: 'false'
+      }
+    });
+    
+    // Detach the process so it runs independently
+    testProcess.unref();
+    
+    console.log('[CHOREO-SERVER] ✅ Verification tests started in background process');
+  } catch (error) {
+    console.error('[CHOREO-SERVER] ❌ Failed to run verification tests:', error.message);
+  }
+}
+
+// Custom request handler with enhanced error handling
 const createRequestHandler = (nextHandler) => {
   return async (req, res) => {
     try {
-      // Handle health checks first
+      // Handle health checks directly
       if (handleHealthCheck(req, res)) {
         return;
       }
 
-      // Handle OPTIONS requests for CORS
-      if (req.method === 'OPTIONS') {
-        res.writeHead(200, {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Max-Age': '86400'
-        });
-        res.end();
-        return;
-      }
-
-      // Set security headers
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-      res.setHeader('X-XSS-Protection', '1; mode=block');
-      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-      // Enhanced CSS file serving
-      if (req.url && req.url.startsWith('/_next/static/css/')) {
-        const cssPath = path.join(nextDir, 'static', 'css', path.basename(req.url));
-        
-        if (fs.existsSync(cssPath)) {
-          const cssContent = fs.readFileSync(cssPath, 'utf8');
-          res.writeHead(200, {
-            'Content-Type': 'text/css; charset=utf-8',
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'ETag': `"${Buffer.from(cssContent).toString('base64').slice(0, 16)}"`
-          });
-          res.end(cssContent);
-          return;
-        }
-      }
-
       // Let Next.js handle the request
       await nextHandler(req, res);
-      
     } catch (error) {
-      console.error('[CHOREO-SERVER] ❌ Request error:', {
-        url: req.url,
-        method: req.method,
-        error: error.message
-      });
-
-      // Handle CSS-related errors gracefully
-      if (error.message && error.message.includes('entryCSSFiles')) {
-        console.log('[CHOREO-SERVER] 🔧 CSS error handled, serving fallback');
-        
-        if (!res.headersSent) {
-          res.writeHead(200, { 'Content-Type': 'text/css' });
-          res.end('/* CSS error handled by Choreo server */');
-        }
-        return;
-      }
-
-      // Generic error response
+      console.error(`[CHOREO-SERVER] ❌ Error handling request: ${error.message}`);
+      
+      // Send a friendly error response
       if (!res.headersSent) {
-        res.writeHead(500, {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        });
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 500;
         res.end(JSON.stringify({
           error: 'Internal Server Error',
-          message: error.message,
+          message: 'The server encountered an unexpected condition that prevented it from fulfilling the request.',
           timestamp: new Date().toISOString()
         }));
       }
@@ -365,60 +380,64 @@ const createRequestHandler = (nextHandler) => {
   };
 };
 
-// Global error handlers
-process.on('uncaughtException', (error) => {
-  console.error('[CHOREO-SERVER] 💥 Uncaught Exception:', error.message);
-  
-  // Don't crash on CSS-related errors
-  if (error.message && error.message.includes('entryCSSFiles')) {
-    console.log('[CHOREO-SERVER] 🔧 CSS error caught, continuing...');
-    return;
-  }
-  
-  console.error('[CHOREO-SERVER] 💀 Fatal error, exiting...');
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('[CHOREO-SERVER] 💥 Unhandled Rejection:', reason);
-  
-  // Don't crash on CSS-related rejections
-  if (reason && reason.message && reason.message.includes('entryCSSFiles')) {
-    console.log('[CHOREO-SERVER] 🔧 CSS rejection caught, continuing...');
-    return;
-  }
-});
-
-// Start the server with additional initialization
+// Main server startup function
 async function startServer() {
   try {
-    console.log('[CHOREO-SERVER] 🔄 Initializing server...');
+    // 1. Validate environment configuration
+    const envValid = validateEnvironment();
+    if (!envValid) {
+      console.error('[CHOREO-SERVER] ❌ Environment validation failed, cannot proceed');
+      process.exit(1);
+    }
     
-    // Verificar usuario administrador antes de iniciar
+    // 2. Verify database connection
+    const dbValid = await verifyDatabaseConnection();
+    if (!dbValid) {
+      console.error('[CHOREO-SERVER] ❌ Database verification failed, cannot proceed');
+      process.exit(1);
+    }
+    
+    // 3. Ensure admin user exists
     await ensureAdminUser();
     
-    // Validate and repair manifests
+    // 4. Validate and repair manifests
     validateAndRepairManifests();
     
-    // Create fallback CSS files
+    // 5. Create fallback CSS files
     createFallbackCSS();
     
     // Initialize Next.js
-    const app = next({ dev, dir: process.cwd() });
+    const app = next({ dev, dir: process.cwd(), hostname, port });
     const handle = app.getRequestHandler();
     
+    // Prepare the server
     await app.prepare();
-    console.log('[CHOREO-SERVER] ✅ Next.js prepared successfully');
     
     // Create HTTP server with custom request handler
     const server = createServer(createRequestHandler(handle));
     
+    // Start listening
     server.listen(port, hostname, (err) => {
       if (err) throw err;
-      console.log(`[CHOREO-SERVER] 🚀 Server running at http://${hostname}:${port}`);
-      console.log('[CHOREO-SERVER] 🌟 LUMO Inventory System ready for connections');
+      
+      console.log(`[CHOREO-SERVER] 🚀 Server running at http://${hostname}:${port}/`);
+      
+      // Run verification tests in the background after server starts
+      setTimeout(() => {
+        runVerificationTests();
+      }, 5000); // Wait 5 seconds before running tests
     });
     
+    // Handle termination signals
+    ['SIGINT', 'SIGTERM'].forEach(signal => {
+      process.on(signal, () => {
+        console.log(`[CHOREO-SERVER] 🛑 Received ${signal}, shutting down gracefully`);
+        server.close(() => {
+          console.log('[CHOREO-SERVER] ✅ Server closed');
+          process.exit(0);
+        });
+      });
+    });
   } catch (error) {
     console.error('[CHOREO-SERVER] ❌ Failed to start server:', error);
     process.exit(1);

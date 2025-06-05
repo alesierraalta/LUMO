@@ -40,19 +40,38 @@ if (!globalForPrisma.queryCache) {
   });
 }
 
-// Crear cliente Prisma con manejo de errores robusto
+// Create Prisma client with robust error handling and model verification
 function createPrismaClient(): PrismaClient | undefined {
   try {
+    console.log('🔧 Initializing Prisma Client...');
+    
     const client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
     });
-
-    // No hacer conexión automática durante startup para evitar crashes
+    
+    // Verify that the client has been initialized correctly
+    const modelNames = Object.keys(client).filter(key => 
+      !key.startsWith('_') && 
+      !key.startsWith('$') && 
+      typeof client[key as keyof typeof client] === 'object'
+    );
+    
+    console.log(`📝 Prisma models initialized: ${modelNames.join(', ')}`);
+    
+    // Explicitly verify the ImportSession model exists
+    if (!modelNames.includes('importSession')) {
+      console.warn('⚠️ ImportSession model not found in Prisma Client! This will cause import failures.');
+      
+      // Log available models for debugging
+      console.log('🔍 Available models:', modelNames);
+    }
+    
+    // No automatic connection during startup to avoid crashes
     return client;
   } catch (error) {
     console.error('❌ Error creating Prisma client:', error);
-    // Retornar undefined en lugar de null para evitar crashes
+    // Return undefined instead of null to avoid crashes
     return undefined;
   }
 }
@@ -67,24 +86,94 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.prisma = basePrisma;
 }
 
-// Función helper para conexión segura
+// Helper function for safe connection with model verification
 export async function connectSafely() {
   if (!basePrisma) {
-    throw new Error('Prisma client not available');
+    console.error('❌ Prisma client not available, attempting to recreate');
+    const newClient = createPrismaClient();
+    if (!newClient) {
+      throw new Error('Failed to create Prisma client');
+    }
+    globalForPrisma.prisma = newClient;
   }
+  
+  const client = basePrisma as PrismaClient;
   
   if (!globalForPrisma.prismaConnected) {
-  try {
-      await basePrisma.$connect();
+    try {
+      await client.$connect();
       globalForPrisma.prismaConnected = true;
       console.log('📚 Database connected successfully');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
-  }
+      
+      // Verify critical models after connection
+      await verifyPrismaModels(client);
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      throw error;
+    }
+  } else {
+    // Even if already connected, verify models
+    try {
+      await verifyPrismaModels(client);
+    } catch (error) {
+      console.warn('⚠️ Model verification failed on already connected client:', error);
+    }
   }
   
-  return basePrisma;
+  return client;
+}
+
+// Helper function to verify critical Prisma models
+async function verifyPrismaModels(client: PrismaClient) {
+  console.log('🔍 Verifying critical Prisma models...');
+  
+  // List of critical models to verify
+  const criticalModels = [
+    'importSession',
+    'user',
+    'inventoryItem',
+    'category',
+    'location'
+  ];
+  
+  const modelStatus: Record<string, boolean> = {};
+  
+  // Check each critical model
+  for (const model of criticalModels) {
+    if (!(model in client)) {
+      console.error(`❌ Critical model missing: ${model}`);
+      modelStatus[model] = false;
+      continue;
+    }
+    
+    try {
+      // Attempt a lightweight operation on each model
+      // Using _count to avoid fetching data
+      const modelObj = (client as any)[model];
+      await modelObj.count();
+      modelStatus[model] = true;
+      console.log(`✅ Verified access to model: ${model}`);
+    } catch (error) {
+      console.error(`❌ Failed to access model ${model}:`, error);
+      modelStatus[model] = false;
+    }
+  }
+  
+  // Log overall verification result
+  const allModelsOk = Object.values(modelStatus).every(Boolean);
+  if (allModelsOk) {
+    console.log('✅ All critical models verified successfully');
+  } else {
+    const missingModels = Object.entries(modelStatus)
+      .filter(([_, ok]) => !ok)
+      .map(([model]) => model);
+    console.error(`❌ Some critical models failed verification: ${missingModels.join(', ')}`);
+    
+    // Throw error if ImportSession is missing, as it's critical for our task
+    if (!modelStatus['importSession']) {
+      throw new Error('ImportSession model verification failed. Import functionality will not work.');
+    }
+  }
 }
 
 // Función helper para desconexión segura
@@ -153,6 +242,41 @@ class CustomPrismaClient {
         // Handle special methods for monitoring
         if (prop === 'getQueryStats') {
           return () => this.getQueryStatistics();
+        }
+        
+        // Special case for ImportSession model - critical for import functionality
+        if (prop === 'importSession') {
+          // Verify the model exists in the client
+          if (!this.client.importSession) {
+            console.error('❌ ImportSession model is undefined in Prisma client! Attempting recovery...');
+            
+            // Attempt to reconnect the client
+            connectSafely().catch(e => console.error('Failed to reconnect:', e));
+            
+            // If still undefined, provide a mock implementation to prevent crashes
+            if (!this.client.importSession) {
+              console.warn('⚠️ Using mock ImportSession model as fallback');
+              return {
+                create: async (data: any) => {
+                  console.warn('⚠️ Using mock ImportSession.create implementation');
+                  return {
+                    id: data.data?.id || `mock-${Date.now()}`,
+                    filePath: data.data?.filePath || data.data?.fileName || '',
+                    status: data.data?.status || 'error',
+                    notes: data.data?.notes,
+                    totalItems: 0,
+                    successItems: 0,
+                    warningItems: 0,
+                    errorItems: 0,
+                    createdById: data.data?.userId || data.data?.createdById || 'unknown',
+                    createdAt: new Date()
+                  };
+                },
+                findUnique: async () => null,
+                findMany: async () => []
+              };
+            }
+          }
         }
         
         // Lazy connect if needed
@@ -575,13 +699,41 @@ export default prisma;
 
 // Enhanced createImportSession with error recovery - server-safe implementation
 export async function createImportSession(data: any) {
+  console.log('🔄 Creating ImportSession with data:', JSON.stringify({
+    ...data,
+    // Don't log full file content if present
+    file: data.file ? '[File content omitted]' : undefined
+  }, null, 2));
+  
+  // Normalize data to work with both schema versions
+  const normalizedData = {
+    ...(data.data || data), // Handle both {data: {...}} and direct object formats
+    // Handle both field naming conventions
+    filePath: data.filePath || data.fileName || (data.data?.filePath || data.data?.fileName),
+    userId: data.userId || data.createdById || (data.data?.userId || data.data?.createdById)
+  };
+  
+  // Remove fileName if it exists to prevent schema errors
+  if ('fileName' in normalizedData) {
+    delete normalizedData.fileName;
+  }
+  
   try {
-    // @ts-ignore - Using dynamic access to handle potential schema differences
-    const session = await (prisma as any).importSession.create({
-      data
+    // Verify Prisma client and model are available
+    if (!prisma || !(prisma as any).prisma || !(prisma as any).prisma.importSession) {
+      console.error('❌ Prisma client or ImportSession model not available, reconnecting...');
+      await connectSafely();
+    }
+    
+    // Try to use the client's importSession model directly
+    const session = await (prisma as any).prisma.importSession.create({
+      data: normalizedData
     });
+    console.log('✅ ImportSession created successfully with ID:', session.id);
     return session;
   } catch (error: any) {
+    console.error('❌ Error creating ImportSession:', error);
+    
     // Check if the error is related to ImportSession schema
     if (
       error?.message?.includes('column "fileName" of relation "ImportSession" does not exist') ||

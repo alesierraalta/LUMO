@@ -67,9 +67,13 @@ export interface DatabaseLogInfo {
   query?: string;
   duration: number;
   rowsAffected?: number;
+  recordCount?: number;
   operation: string;
   table?: string;
   connectionId?: string;
+  success?: boolean;
+  error?: string;
+  params?: Record<string, any>;
 }
 
 export interface APILogInfo {

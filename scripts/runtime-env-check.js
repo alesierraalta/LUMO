@@ -64,8 +64,8 @@ try {
   const { PrismaClient } = require('@prisma/client');
   
   const testClient = new PrismaClient({
-    log: ['error'],
-    datasourceUrl: databaseUrl
+    log: ['error']
+    // Remove datasourceUrl to use schema.prisma configuration
   });
   
   console.log('✅ Prisma client created successfully');

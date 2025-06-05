@@ -104,7 +104,7 @@ export async function fixImportSessionSchema(): Promise<boolean> {
       
       if (schemaOk && modelAccessOk) {
         console.log(`[${fixId}] ✅ ImportSession schema fix and verification SUCCESSFUL`);
-        return true;
+    return true;
       } else if (schemaOk) {
         console.warn(`[${fixId}] ⚠️ Schema structure OK but model access FAILED`);
         return false;

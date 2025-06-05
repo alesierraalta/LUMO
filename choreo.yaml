@@ -16,38 +16,70 @@ spec:
       NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       NEXT_TELEMETRY_DISABLED: "1"
-      NODE_OPTIONS: "--max-old-space-size=4096"
+      NODE_OPTIONS: "--max-old-space-size=8192"
       ENABLE_TURBO_CACHE: "true"
       NEXT_SWC_MINIFY: "true"
+      TURBO_CACHE_DIR: "/tmp/.turbo-cache"
+      TURBO_TEAM: "lumo-inventory"
+      TURBO_REMOTE_ONLY: "true"
+      NEXT_MINIMAL_TRACE: "1"
+      NEXT_WEBPACK_DISABLE_DEV_CHECKS: "1" 
+      NEXT_OPTIMIZE_IMAGES: "1"
+      NEXT_OPTIMIZE_CSS: "1"
+      NEXT_OPTIMIZE_FONTS: "1"
     command: chmod +x build-fast.sh && ./build-fast.sh
     extraSteps:
-      - name: Instalación Prisma CLI
-        command: npm install -g prisma@6.7.0
-      - name: Generar Cliente Prisma
+      - name: Instalación Prisma CLI y Herramientas de Optimización
+        command: |
+          npm install -g prisma@6.7.0 turbo@latest node-prune@latest
+          npm install --no-save --no-package-lock --ignore-scripts swc
+          node -e "fs.mkdirSync('/tmp/.turbo-cache', { recursive: true })"
+          
+      - name: Optimización de Módulos
+        command: |
+          npx node-prune
+          find node_modules -type d -name "tests" -o -name "test" -o -name "examples" -o -name "docs" | xargs rm -rf || true
+      
+      - name: Preparación del Entorno Extrema
+        command: node scripts/extreme-build-optimization.js
+      
+      - name: Generar Cliente Prisma (Optimizado)
         command: npx prisma generate --schema=prisma/schema.prisma
-      - name: Copiar Motores de Prisma
+
+      - name: Preparación de Directorios Esenciales
         command: |
           mkdir -p .next/standalone/node_modules/.prisma/client
+          mkdir -p .next/standalone/scripts/
+          mkdir -p .next/standalone/prisma/
+          mkdir -p .next/standalone/.next/server/app/api/inventory/import/process/dict
+          mkdir -p .next/standalone/tmp/
+          mkdir -p .next/standalone/logs/
+      
+      - name: Copia Paralela de Archivos Esenciales
+        command: |
           cp -r node_modules/.prisma/client/libquery_engine* .next/standalone/node_modules/.prisma/client/ || echo "No engine files found"
           chmod +x .next/standalone/node_modules/.prisma/client/libquery_engine* || echo "No engine files to make executable"
-          ls -la node_modules/.prisma/client/ || echo "Can't list client dir"
-      - name: Copiar Scripts de Corrección
-        command: |
-          mkdir -p .next/standalone/scripts/
-          cp scripts/fix-choreo-deploy.js .next/standalone/scripts/
-          cp scripts/fix-database-env.js .next/standalone/scripts/
-          cp scripts/copy-prisma-engines.js .next/standalone/scripts/
-          cp scripts/fix-all-choreo-issues.js .next/standalone/scripts/
-          cp scripts/test-import-session.js .next/standalone/scripts/
+          cp scripts/fix-*.js .next/standalone/scripts/ || echo "No fix scripts found"
+          cp scripts/test-*.js .next/standalone/scripts/ || echo "No test scripts found"
+          cp scripts/ensure-*.js .next/standalone/scripts/ || echo "No ensure scripts found"
+          cp scripts/verify-*.js .next/standalone/scripts/ || echo "No verify scripts found"
+          cp scripts/choreo-*.js .next/standalone/scripts/ || echo "No choreo scripts found"
+          cp scripts/import-*.js .next/standalone/scripts/ || echo "No import scripts found"
+          cp scripts/audit-*.js .next/standalone/scripts/ || echo "No audit scripts found"
+          cp scripts/run-*.js .next/standalone/scripts/ || echo "No run scripts found"
           chmod +x .next/standalone/scripts/*.js || echo "Could not make scripts executable"
-      - name: Generar Cliente Prisma en Standalone
+      
+      - name: Copia de Prisma Schema y Generar Cliente en Standalone
         command: |
+          cp -r prisma/* .next/standalone/prisma/ || echo "No prisma files found"
           cd .next/standalone
           npx prisma generate --schema=../../prisma/schema.prisma
-      - name: Verificar Archivos Clave
-        command: ls -la .next/standalone/node_modules/.prisma/client/ || echo "Directory doesn't exist yet"
-      - name: Verificar Permisos Scripts
-        command: node prepare-for-choreo.js
+      
+      - name: Verificación Final y Optimización
+        command: |
+          ls -la .next/standalone/node_modules/.prisma/client/ || echo "Directory doesn't exist yet"
+          node scripts/optimize-postbuild.js
+          node prepare-for-choreo.js
     retryCount: 3
     timeoutSeconds: 900
     network:
@@ -90,7 +122,7 @@ spec:
     cpu:
       units: 2
     memory:
-      units: 4Gi
+      units: 8Gi
   scaling:
     minReplicas: 1
     maxReplicas: 5
@@ -126,6 +158,13 @@ spec:
       - .env.development
       - .env.production
       - README.md
+      - "**/*.test.js"
+      - "**/*.test.ts"
+      - "**/*.spec.js"
+      - "**/*.spec.ts"
+      - "**/__tests__/**"
+      - "**/__mocks__/**"
+      - "**/coverage/**"
   - name: CUSTOM_BUILD_COMMAND
     value: chmod +x build-fast.sh && ./build-fast.sh
   - name: CUSTOM_START_COMMAND

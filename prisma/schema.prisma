@@ -1,12 +1,12 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+  previewFeatures = ["queryCompiler", "driverAdapters"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Category {

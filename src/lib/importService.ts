@@ -70,18 +70,18 @@ export const importService = {
       hasMetadata: !!data.metadata
     });
     
-    // Normalize the data to ensure it works with both old and new schemas
-    const normalizedData = {
-      id: data.id || uuidv4(),
-      userId: data.createdById, // New schema uses userId instead of createdById
-      status: data.status || 'processing',
-      fileId: data.fileId || null,
-      fileSize: data.fileSize || null,
-      // Use filePath if provided, otherwise fall back to fileName
-      filePath: data.filePath || data.fileName || '',
-      metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+      // Normalize the data to ensure it works with both old and new schemas
+      const normalizedData = {
+        id: data.id || uuidv4(),
+        userId: data.createdById, // New schema uses userId instead of createdById
+        status: data.status || 'processing',
+        fileId: data.fileId || null,
+        fileSize: data.fileSize || null,
+        // Use filePath if provided, otherwise fall back to fileName
+        filePath: data.filePath || data.fileName || '',
+        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
       notes: data.notes || null,
-    };
+      };
     
     // Remove fileName to prevent schema errors
     if ('fileName' in normalizedData) {
@@ -104,29 +104,29 @@ export const importService = {
             await prisma.prisma.$connect();
           }
         }
-        
-        // @ts-ignore - Use dynamic property access for flexibility
-        const session = await (prisma as any).importSession.create({
-          data: normalizedData
-        });
-        
+      
+      // @ts-ignore - Use dynamic property access for flexibility
+      const session = await (prisma as any).importSession.create({
+        data: normalizedData
+      });
+      
         console.log(`[${requestId}] ✅ ImportSession created successfully with ID: ${session.id}`);
         
         // Normalize the response to match expected interface
-        return {
-          ...session,
-          createdById: session.userId || data.createdById, // Map back to expected property
-          status: session.status || 'processing',
-          totalItems: session.totalRows || 0,
-          successItems: session.successRows || 0,
+      return {
+        ...session,
+        createdById: session.userId || data.createdById, // Map back to expected property
+        status: session.status || 'processing',
+        totalItems: session.totalRows || 0,
+        successItems: session.successRows || 0,
           warningItems: session.warningRows || 0,
-          errorItems: session.errorRows || 0,
-          // Ensure createdAt is a Date object
-          createdAt: session.createdAt instanceof Date ? session.createdAt : new Date(session.createdAt || Date.now())
-        };
-      } catch (error: any) {
+        errorItems: session.errorRows || 0,
+        // Ensure createdAt is a Date object
+        createdAt: session.createdAt instanceof Date ? session.createdAt : new Date(session.createdAt || Date.now())
+      };
+    } catch (error: any) {
         console.error(`[${requestId}] ❌ Error creating ImportSession (attempt ${attempt}/${maxRetries}):`, error);
-        
+      
         // Log detailed error information
         console.error(`[${requestId}] 🔍 Error details:`, {
           message: error.message,
@@ -138,7 +138,7 @@ export const importService = {
         
         // Check for specific error types and handle accordingly
         const isSchemaError = 
-          error?.message?.includes('column "fileName" of relation "ImportSession" does not exist') ||
+        error?.message?.includes('column "fileName" of relation "ImportSession" does not exist') ||
           error?.meta?.field_name === 'fileName';
           
         const isConnectionError = 
@@ -195,18 +195,18 @@ export const importService = {
         
         // All retries failed or non-recoverable error
         console.warn(`[${requestId}] ⚠️ Creating fallback ImportSession as last resort`);
-        
-        // Return a mock object as last resort
-        return {
-          id: data.id || `mock-${Date.now()}`,
-          filePath: data.filePath || data.fileName || '',
+          
+          // Return a mock object as last resort
+          return {
+            id: data.id || `mock-${Date.now()}`,
+            filePath: data.filePath || data.fileName || '',
           status: 'error',
           notes: `Auto-generated fallback due to error: ${error.message}`,
-          createdById: data.createdById,
-          createdAt: new Date(),
-          totalItems: 0,
-          successItems: 0,
-          warningItems: 0,
+            createdById: data.createdById,
+            createdAt: new Date(),
+            totalItems: 0,
+            successItems: 0,
+            warningItems: 0,
           errorItems: 1,
           // Include additional diagnostic info in the mock object
           metadata: {
@@ -216,10 +216,10 @@ export const importService = {
             fallbackCreated: new Date().toISOString(),
             originalRequest: requestId
           }
-        };
+          };
+        }
       }
-    }
-    
+      
     // Start the create process with retry logic
     return attemptCreate(1);
   },

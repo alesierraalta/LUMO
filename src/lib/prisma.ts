@@ -49,7 +49,7 @@ function createPrismaClient(): PrismaClient | undefined {
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
     });
-    
+
     // Verify that the client has been initialized correctly
     const modelNames = Object.keys(client).filter(key => 
       !key.startsWith('_') && 
@@ -93,24 +93,24 @@ export async function connectSafely() {
     const newClient = createPrismaClient();
     if (!newClient) {
       throw new Error('Failed to create Prisma client');
-    }
+  }
     globalForPrisma.prisma = newClient;
   }
   
   const client = basePrisma as PrismaClient;
   
   if (!globalForPrisma.prismaConnected) {
-    try {
+  try {
       await client.$connect();
       globalForPrisma.prismaConnected = true;
       console.log('📚 Database connected successfully');
       
       // Verify critical models after connection
       await verifyPrismaModels(client);
-    } catch (error) {
-      console.error('❌ Database connection failed:', error);
-      throw error;
-    }
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    throw error;
+  }
   } else {
     // Even if already connected, verify models
     try {

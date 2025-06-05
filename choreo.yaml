@@ -129,4 +129,4 @@ spec:
   - name: CUSTOM_BUILD_COMMAND
     value: npm run choreo:build
   - name: CUSTOM_START_COMMAND
-    value: npm run verify-env && npm run verify-dirs && npm run verify-db && npm run choreo:start 
+    value: npm run verify:env && npm run verify-dirs && npm run verify:db && npm run choreo:start 

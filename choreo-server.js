@@ -3,6 +3,9 @@
  * 
  * Fixes 505 HTTP Version Not Supported error and ensures
  * full compatibility with Choreo infrastructure.
+ * 
+ * Enhanced with environment validation, database verification,
+ * and post-deployment verification tests.
  */
 
 const { createServer } = require('http');

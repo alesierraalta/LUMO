@@ -88,6 +88,11 @@ const nextConfig = {
         destination: '/register',
         permanent: true,
       },
+      {
+        source: '/inventory/new',
+        destination: '/inventory/add',
+        permanent: true,
+      },
     ];
   },
 

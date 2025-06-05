@@ -30,6 +30,8 @@
     "verify:import-session": "node scripts/verify-import-schema.js",
     "preflight:import-session": "node scripts/import-session-preflight.js",
     "choreo:check": "node scripts/choreo-deployment-check.js",
+    "choreo:excel-fix": "node scripts/choreo-excel-importer-fix.js",
+    "choreo:startup": "node scripts/choreo-startup-fix.js",
     "final:check": "node scripts/final-deployment-check.js",
     "deployment:marker": "node scripts/create-deployment-marker.js",
     "deployment:verify": "node verify-deployment.js",
@@ -44,7 +46,7 @@
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
     "postinstall": "node scripts/fix-prisma-schema.js && prisma generate",
     "ensure-admin": "node scripts/ensure-admin.js",
-    "start": "node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node .next/standalone/server.js",
+    "start": "node scripts/choreo-startup-fix.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node .next/standalone/server.js",
     "start:production": "NODE_ENV=production node scripts/manifest-validator.js && node server.js",
     "start:choreo": "npm run ensure-admin && node choreo-server.js",
     "start:safe": "node scripts/manifest-validator.js && node safe-server.js",
@@ -78,7 +80,7 @@
     "verify-dirs": "node scripts/ensure-import-dirs.js",
     "preflight": "node scripts/choreo-preflight.js && node scripts/verify-database-connection.js",
     "start:safe": "npm run preflight && npm start",
-    "deploy:verify-all": "npm run verify-env && npm run verify-dirs && npm run verify-db && npm run verify-deployment"
+    "deploy:verify-all": "npm run verify-env && npm run verify-dirs && npm run verify-db && npm run verify:deployment"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

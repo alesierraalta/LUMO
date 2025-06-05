@@ -1,221 +1,348 @@
 #!/usr/bin/env node
 
 /**
- * ImportSession SQLite Schema Fix
+ * Fix ImportSession Schema for SQLite
  * 
- * This script fixes the ImportSession table schema in SQLite databases.
- * It's used in development environments to handle the fileName/filePath issue.
+ * This script ensures the ImportSession table in SQLite has the correct structure.
+ * It checks for the presence of required columns and adds them if they're missing.
  */
 
-console.log('🔧 ImportSession SQLite Schema Fix');
-console.log('======================================');
-
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const fs = require('fs');
+const path = require('path');
 
-async function checkTableExists() {
+// Create Prisma client
+const prisma = new PrismaClient({
+  log: process.env.DEBUG_PRISMA === 'true' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+// Log with timestamps
+function log(level, ...messages) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${level}]`, ...messages);
+}
+
+// Helper to check database file access
+function checkDatabaseFileAccess() {
   try {
-    console.log('🔍 Checking if ImportSession table exists...');
+    const url = process.env.DATABASE_URL || '';
+    if (!url || !url.includes('file:')) {
+      log('WARN', 'Database URL does not appear to be a SQLite file URL');
+      return true; // Continue anyway
+    }
+    
+    // Extract file path from SQLite URL
+    const filePath = url.replace(/^file:/i, '').split('?')[0];
+    
+    if (!fs.existsSync(filePath)) {
+      log('ERROR', `SQLite database file not found: ${filePath}`);
+      return false;
+    }
+    
+    // Try accessing the file
+    try {
+      fs.accessSync(filePath, fs.constants.R_OK | fs.constants.W_OK);
+      log('INFO', `SQLite database file is accessible: ${filePath}`);
+      return true;
+    } catch (e) {
+      log('ERROR', `SQLite database file access error: ${e.message}`);
+      return false;
+    }
+  } catch (err) {
+    log('ERROR', 'Error checking database file access:', err);
+    return false;
+  }
+}
+
+// Check if table exists
+async function tableExists() {
+  try {
     const result = await prisma.$queryRaw`
-      SELECT name FROM sqlite_master 
+      SELECT name FROM sqlite_master
       WHERE type='table' AND name='ImportSession';
     `;
-    return result && result.length > 0;
+    return result.length > 0;
   } catch (error) {
-    console.error('❌ Error checking table existence:', error);
+    log('ERROR', 'Failed to check if table exists:', error);
     return false;
   }
 }
 
-async function checkColumnExists(columnName) {
+// Get table columns
+async function getTableColumns() {
   try {
-    console.log(`🔍 Checking if column '${columnName}' exists in ImportSession table...`);
-    const result = await prisma.$queryRaw`
-      PRAGMA table_info(ImportSession);
-    `;
-    return result && result.some(col => col.name === columnName);
+    const columns = await prisma.$queryRaw`PRAGMA table_info("ImportSession");`;
+    return columns.map(col => ({
+      name: col.name,
+      type: col.type,
+      notnull: col.notnull,
+      dflt_value: col.dflt_value
+    }));
   } catch (error) {
-    console.error(`❌ Error checking column '${columnName}' existence:`, error);
-    return false;
+    log('ERROR', 'Failed to get table columns:', error);
+    return [];
   }
 }
 
-async function createImportSessionTable() {
+// Create table if it doesn't exist
+async function createTableIfNeeded() {
   try {
-    console.log('📝 Creating ImportSession table from scratch...');
-    await prisma.$executeRaw`
-      CREATE TABLE "ImportSession" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL,
-        "userId" TEXT NOT NULL,
-        "status" TEXT NOT NULL,
-        "fileId" TEXT,
-        "fileSize" INTEGER,
-        "filePath" TEXT,
-        "totalRows" INTEGER DEFAULT 0,
-        "processedRows" INTEGER DEFAULT 0,
-        "successRows" INTEGER DEFAULT 0,
-        "errorRows" INTEGER DEFAULT 0,
-        "metadata" TEXT
-      );
-    `;
-    console.log('✅ ImportSession table created successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ Error creating ImportSession table:', error);
-    return false;
-  }
-}
-
-async function alterTableSchema() {
-  try {
-    // SQLite doesn't support ALTER TABLE DROP COLUMN directly
-    // We need to create a new table, copy data, drop the old table, and rename the new one
+    const exists = await tableExists();
     
-    console.log('🔄 Creating new table structure...');
-    await prisma.$executeRaw`
-      CREATE TABLE "ImportSession_new" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "userId" TEXT NOT NULL,
-        "status" TEXT NOT NULL,
-        "fileId" TEXT,
-        "fileSize" INTEGER,
-        "filePath" TEXT,
-        "totalRows" INTEGER DEFAULT 0,
-        "processedRows" INTEGER DEFAULT 0,
-        "successRows" INTEGER DEFAULT 0,
-        "errorRows" INTEGER DEFAULT 0,
-        "metadata" TEXT
-      );
-    `;
-    
-    // Transfer data
-    console.log('🔄 Transferring data to new table structure...');
-    const hasFileNameColumn = await checkColumnExists('fileName');
-    
-    if (hasFileNameColumn) {
-      console.log('🔄 Copying data with fileName to filePath...');
+    if (!exists) {
+      log('INFO', 'Creating ImportSession table');
+      
       await prisma.$executeRaw`
-        INSERT INTO "ImportSession_new" (
-          id, createdAt, updatedAt, userId, status, fileId, fileSize, filePath, 
-          totalRows, processedRows, successRows, errorRows, metadata
-        )
-        SELECT 
-          id, 
-          createdAt, 
-          COALESCE(updatedAt, createdAt) as updatedAt, 
-          COALESCE(userId, createdById) as userId, 
-          status, 
-          fileId,
-          fileSize,
-          COALESCE(filePath, fileName) as filePath,
-          COALESCE(totalRows, totalItems, 0) as totalRows, 
-          COALESCE(processedRows, 0) as processedRows, 
-          COALESCE(successRows, successItems, 0) as successRows, 
-          COALESCE(errorRows, errorItems, 0) as errorRows, 
-          metadata
-        FROM "ImportSession";
+        CREATE TABLE "ImportSession" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "filePath" TEXT NOT NULL,
+          "status" TEXT NOT NULL,
+          "createdById" TEXT NOT NULL,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME
+        );
       `;
-    } else {
-      console.log('🔄 Copying data with existing schema...');
-      await prisma.$executeRaw`
-        INSERT INTO "ImportSession_new" (
-          id, createdAt, updatedAt, userId, status, fileId, fileSize, filePath, 
-          totalRows, processedRows, successRows, errorRows, metadata
-        )
-        SELECT 
-          id, 
-          createdAt, 
-          COALESCE(updatedAt, createdAt) as updatedAt, 
-          COALESCE(userId, createdById) as userId, 
-          status, 
-          fileId,
-          fileSize,
-          filePath,
-          COALESCE(totalRows, totalItems, 0) as totalRows, 
-          COALESCE(processedRows, 0) as processedRows, 
-          COALESCE(successRows, successItems, 0) as successRows, 
-          COALESCE(errorRows, errorItems, 0) as errorRows, 
-          metadata
-        FROM "ImportSession";
-      `;
+      
+      log('INFO', 'ImportSession table created successfully');
+      return true;
     }
     
-    // Drop old table
-    console.log('🔄 Dropping old ImportSession table...');
+    log('INFO', 'ImportSession table already exists');
+    return false;
+  } catch (error) {
+    log('ERROR', 'Failed to create table:', error);
+    throw error;
+  }
+}
+
+// Helper to create a temporary table and copy data
+async function recreateTableWithCorrectSchema(currentColumns) {
+  try {
+    log('INFO', 'Creating temporary table with correct schema');
+    
+    // Create temp table with correct schema
+    await prisma.$executeRaw`
+      CREATE TABLE "ImportSession_temp" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "filePath" TEXT NOT NULL,
+        "status" TEXT NOT NULL,
+        "createdById" TEXT NOT NULL, 
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME
+      );
+    `;
+    
+    // Build column list for existing data
+    const columnsToCopy = [];
+    const currentColumnNames = currentColumns.map(c => c.name);
+    
+    // Map old column names to new names
+    const mappings = {
+      'id': 'id',
+      'fileName': 'filePath', 
+      'filePath': 'filePath',
+      'userId': 'createdById',
+      'createdById': 'createdById',
+      'status': 'status',
+      'createdAt': 'createdAt',
+      'updatedAt': 'updatedAt'
+    };
+    
+    // Identify which columns can be copied
+    for (const [oldCol, newCol] of Object.entries(mappings)) {
+      if (currentColumnNames.includes(oldCol)) {
+        columnsToCopy.push({
+          oldName: oldCol,
+          newName: newCol
+        });
+      }
+    }
+    
+    // Log what we're going to copy
+    log('INFO', `Will copy these columns: ${columnsToCopy.map(c => `${c.oldName} -> ${c.newName}`).join(', ')}`);
+    
+    // Prepare INSERT statement
+    const oldColumns = columnsToCopy.map(c => `"${c.oldName}"`).join(', ');
+    const newColumns = columnsToCopy.map(c => `"${c.newName}"`).join(', ');
+    
+    // Only attempt copy if we have columns to copy
+    if (columnsToCopy.length > 0) {
+      log('INFO', 'Copying data to temporary table');
+      
+      // Use raw SQL to copy data
+      await prisma.$executeRaw`
+        INSERT INTO "ImportSession_temp"(${newColumns})
+        SELECT ${oldColumns} FROM "ImportSession";
+      `;
+      
+      log('INFO', 'Data copied successfully');
+    }
+    
+    // Drop original table
+    log('INFO', 'Dropping original table');
     await prisma.$executeRaw`DROP TABLE "ImportSession";`;
     
-    // Rename new table
-    console.log('🔄 Renaming new table to ImportSession...');
-    await prisma.$executeRaw`ALTER TABLE "ImportSession_new" RENAME TO "ImportSession";`;
+    // Rename temp table
+    log('INFO', 'Renaming temporary table to ImportSession');
+    await prisma.$executeRaw`ALTER TABLE "ImportSession_temp" RENAME TO "ImportSession";`;
     
-    console.log('✅ ImportSession table structure updated successfully');
+    log('INFO', 'Table recreation completed successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error altering ImportSession table:', error);
+    log('ERROR', 'Failed to recreate table:', error);
+    throw error;
+  }
+}
+
+// Fix column issues in SQLite
+async function fixSchema() {
+  try {
+    const columns = await getTableColumns();
+    log('INFO', `Current table has ${columns.length} columns`);
+    
+    if (columns.length === 0) {
+      log('ERROR', 'Failed to get column information');
+      return false;
+    }
+    
+    // Map column names for easier access
+    const columnMap = columns.reduce((acc, col) => {
+      acc[col.name] = col;
+      return acc;
+    }, {});
+    
+    // Check for required columns
+    const requiredColumns = ['id', 'status', 'createdAt'];
+    const missingRequired = requiredColumns.filter(col => !columnMap[col]);
+    
+    // Check for filePath (or fileName which would need migration)
+    const hasFilePath = !!columnMap.filePath;
+    const hasFileName = !!columnMap.fileName;
+    
+    // Check for createdById vs userId
+    const hasCreatedById = !!columnMap.createdById;
+    const hasUserId = !!columnMap.userId;
+    
+    // Decide if we need schema fixes
+    const needsSchemaFix = missingRequired.length > 0 || 
+                           (!hasFilePath && !hasFileName) ||
+                           (!hasCreatedById && !hasUserId);
+                          
+    if (needsSchemaFix) {
+      log('INFO', 'Schema needs fixing, recreating table with correct structure');
+      const result = await recreateTableWithCorrectSchema(columns);
+      return result;
+    } else if (hasFileName && !hasFilePath) {
+      log('INFO', 'Need to rename fileName to filePath');
+      // In SQLite, we need to recreate the table to rename a column
+      const result = await recreateTableWithCorrectSchema(columns);
+      return result;
+    } else {
+      log('INFO', 'Schema is already correct, no changes needed');
+      return true;
+    }
+  } catch (error) {
+    log('ERROR', 'Failed to fix schema:', error);
     return false;
   }
 }
 
-async function fixImportSessionTable() {
-  console.log('🚀 Starting ImportSession table fix...');
+// Update default values
+async function updateDefaultValues() {
+  try {
+    // Set non-empty defaults for required fields
+    await prisma.$executeRaw`
+      UPDATE "ImportSession" 
+      SET "status" = 'PENDING' 
+      WHERE "status" = '' OR "status" IS NULL;
+    `;
+    
+    // Set current timestamp for createdAt where NULL or empty
+    await prisma.$executeRaw`
+      UPDATE "ImportSession" 
+      SET "createdAt" = CURRENT_TIMESTAMP 
+      WHERE "createdAt" IS NULL;
+    `;
+    
+    // Ensure non-empty filePath
+    await prisma.$executeRaw`
+      UPDATE "ImportSession" 
+      SET "filePath" = 'unknown-file' 
+      WHERE "filePath" = '' OR "filePath" IS NULL;
+    `;
+    
+    // Ensure non-empty createdById
+    await prisma.$executeRaw`
+      UPDATE "ImportSession" 
+      SET "createdById" = 'unknown-user' 
+      WHERE "createdById" = '' OR "createdById" IS NULL;
+    `;
+    
+    log('INFO', 'Default values updated');
+    return true;
+  } catch (error) {
+    log('ERROR', 'Failed to update default values:', error);
+    return false;
+  }
+}
+
+// Test model access
+async function testModelAccess() {
+  try {
+    log('INFO', 'Testing model access...');
+    const count = await prisma.importSession.count();
+    log('INFO', `ImportSession model is accessible, found ${count} records`);
+    return true;
+  } catch (error) {
+    log('ERROR', 'Failed to access importSession model:', error);
+    return false;
+  }
+}
+
+// Main function
+async function main() {
+  log('INFO', '🚀 Starting ImportSession schema fix for SQLite');
   
   try {
-    // Check if table exists
-    const tableExists = await checkTableExists();
-    
-    if (!tableExists) {
-      console.log('⚠️ ImportSession table does not exist');
-      await createImportSessionTable();
-      return;
+    // Check database file access first
+    if (!checkDatabaseFileAccess()) {
+      log('ERROR', 'Cannot access database file, aborting');
+      process.exit(1);
     }
     
-    console.log('✅ ImportSession table exists');
+    // Connect to the database
+    await prisma.$connect();
     
-    // Check columns
-    const fileNameExists = await checkColumnExists('fileName');
-    const filePathExists = await checkColumnExists('filePath');
+    let tableCreated = false;
     
-    console.log(`📊 Current schema status:
-- fileName column: ${fileNameExists ? 'EXISTS ⚠️' : 'MISSING ✅'}
-- filePath column: ${filePathExists ? 'EXISTS ✅' : 'MISSING ⚠️'}`);
-    
-    // Run fixes if needed
-    if (fileNameExists || !filePathExists) {
-      await alterTableSchema();
-    } else {
-      console.log('✅ Schema is already correct (filePath exists, fileName does not)');
+    // Create table if it doesn't exist
+    if (!await tableExists()) {
+      tableCreated = await createTableIfNeeded();
     }
     
-    // Verify final state
-    const finalFileNameExists = await checkColumnExists('fileName');
-    const finalFilePathExists = await checkColumnExists('filePath');
-    
-    console.log(`\n📊 Final schema status:
-- fileName column: ${finalFileNameExists ? 'EXISTS ⚠️' : 'MISSING ✅'}
-- filePath column: ${finalFilePathExists ? 'EXISTS ✅' : 'MISSING ⚠️'}`);
-    
-    if (!finalFileNameExists && finalFilePathExists) {
-      console.log('✅ ImportSession table fix SUCCESSFUL');
-    } else {
-      console.log('⚠️ ImportSession table fix INCOMPLETE');
+    if (!tableCreated) {
+      // Fix schema if table already existed
+      await fixSchema();
     }
+    
+    // Update default values
+    await updateDefaultValues();
+    
+    // Test if model is accessible
+    const modelAccessible = await testModelAccess();
+    if (!modelAccessible) {
+      log('WARN', 'ImportSession model is not accessible via Prisma client.');
+      log('WARN', 'You may need to restart the application or regenerate Prisma client.');
+    }
+    
+    log('INFO', '✅ ImportSession schema fix completed');
   } catch (error) {
-    console.error('💥 Unexpected error fixing ImportSession table:', error);
+    log('ERROR', '❌ Failed to fix ImportSession schema:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the fix
-fixImportSessionTable()
-  .then(() => {
-    console.log('🏁 ImportSession SQLite fix script completed');
-  })
-  .catch(error => {
-    console.error('💥 Fatal error:', error);
-    process.exit(1);
-  }); 
+// Run the main function
+main(); 

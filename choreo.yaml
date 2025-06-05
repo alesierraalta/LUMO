@@ -27,7 +27,15 @@ spec:
         command: |
           cp scripts/fix-import-session-postgres.js .next/standalone/scripts/
           cp scripts/fix-import-session-sqlite.js .next/standalone/scripts/
-          cp scripts/fix-import-session-auto.js .next/standalone/scripts/
+          cp scripts/run-import-session-migration.js .next/standalone/scripts/
+          cp scripts/import-session-preflight.js .next/standalone/scripts/
+          cp scripts/verify-import-schema.js .next/standalone/scripts/
+          cp scripts/audit-import-session-migrations.js .next/standalone/scripts/
+      - name: Copy Verification Scripts
+        command: |
+          cp scripts/verify-environment-config.js .next/standalone/scripts/
+          cp scripts/verify-database-connection.js .next/standalone/scripts/
+          cp scripts/deployment-verification-tests.js .next/standalone/scripts/
       - name: Copy Prisma Schema
         command: cp -r prisma .next/standalone/
       - name: Copy Preflight Script
@@ -45,7 +53,7 @@ spec:
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js
+    command: node scripts/verify-environment-config.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node scripts/verify-database-connection.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080
@@ -117,4 +125,8 @@ spec:
       - .env.local
       - .env.development
       - .env.production
-      - README.md 
+      - README.md
+  - name: CUSTOM_BUILD_COMMAND
+    value: npm run choreo:build
+  - name: CUSTOM_START_COMMAND
+    value: npm run verify:env && npm run verify-dirs && npm run verify:db && npm run choreo:start 

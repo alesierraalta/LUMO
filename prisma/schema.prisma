@@ -246,8 +246,7 @@ enum SaleStatus {
 // Import Sessions
 model ImportSession {
   id            String               @id @default(uuid())
-  fileName      String
-  filePath      String
+  filePath      String               // Primary file path field - the only one that should be used
   status        String               @default("processing") // processing, completed, failed
   notes         String?
   totalItems    Int                  @default(0)

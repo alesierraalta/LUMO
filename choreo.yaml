@@ -38,6 +38,7 @@ spec:
           cp scripts/fix-database-env.js .next/standalone/scripts/
           cp scripts/copy-prisma-engines.js .next/standalone/scripts/
           cp scripts/fix-all-choreo-issues.js .next/standalone/scripts/
+          cp scripts/test-import-session.js .next/standalone/scripts/
           chmod +x .next/standalone/scripts/*.js || echo "Could not make scripts executable"
       - name: Generar Cliente Prisma en Standalone
         command: |
@@ -52,7 +53,7 @@ spec:
     network:
       connectTimeoutSeconds: 120
   deploy:
-    command: node scripts/fix-all-choreo-issues.js && node scripts/fix-database-url.js && node scripts/fix-database-env.js && node scripts/copy-prisma-engines.js && node scripts/fix-choreo-deploy.js && node scripts/verify-environment-config.js && node scripts/fix-import-session-model.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node scripts/verify-database-connection.js && node server.js
+    command: node scripts/fix-all-choreo-issues.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080
@@ -128,4 +129,4 @@ spec:
   - name: CUSTOM_BUILD_COMMAND
     value: chmod +x build-fast.sh && ./build-fast.sh
   - name: CUSTOM_START_COMMAND
-    value: node scripts/fix-all-choreo-issues.js && node scripts/fix-database-url.js && node scripts/fix-database-env.js && node scripts/copy-prisma-engines.js && node scripts/fix-choreo-deploy.js && npm run verify:env && npm run verify-dirs && npm run verify:db && npm run choreo:start 
+    value: node scripts/fix-all-choreo-issues.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node server.js 

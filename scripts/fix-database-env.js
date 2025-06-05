@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Log con timestamp
 function log(level, ...messages) {
@@ -18,13 +19,13 @@ function log(level, ...messages) {
 
 // Función principal
 function fixDatabaseUrl() {
-  log('INFO', '🔍 Verificando DATABASE_URL...');
+  log('INFO', '🚀 Starting DATABASE_URL format fix...');
   
   // Obtener la URL de la base de datos
   const dbUrl = process.env.DATABASE_URL;
   
   if (!dbUrl) {
-    log('ERROR', '❌ DATABASE_URL no está definida');
+    log('WARN', '⚠️ DATABASE_URL not defined');
     return false;
   }
   
@@ -32,59 +33,34 @@ function fixDatabaseUrl() {
   
   // Verificar si la URL comienza con prisma://
   if (dbUrl.startsWith('prisma://')) {
-    log('WARN', '⚠️ Encontrado formato incorrecto: prisma://');
+    log('🔄 Converting DATABASE_URL from prisma:// to postgresql://');
     
-    try {
-      // Corregir la URL reemplazando prisma:// con postgresql://
-      const correctedUrl = dbUrl.replace(/^prisma:\/\//, 'postgresql://');
-      
-      // Establecer la URL corregida en el entorno
-      process.env.DATABASE_URL = correctedUrl;
-      
-      // Guardar la URL corregida para depuración
-      const envLocalPath = path.join(process.cwd(), '.env.local');
-      const envContent = `# Corregida por fix-database-env.js a ${new Date().toISOString()}\nDATABASE_URL="${correctedUrl}"\n`;
-      
-      // Crear el directorio logs si no existe
-      const logsDir = path.join(process.cwd(), 'logs');
-      if (!fs.existsSync(logsDir)) {
-        fs.mkdirSync(logsDir, { recursive: true });
-      }
-      
-      // Escribir a un archivo de log para referencia futura
-      const logPath = path.join(logsDir, 'database-url-fix.log');
-      const logContent = `[${new Date().toISOString()}] Corrected DATABASE_URL from prisma:// to postgresql://\n`;
-      fs.appendFileSync(logPath, logContent);
-      
-      // Escribir a .env.local si estamos en desarrollo
-      if (process.env.NODE_ENV !== 'production') {
-        fs.writeFileSync(envLocalPath, envContent, { flag: 'a' });
-        log('INFO', `✅ URL corregida guardada en ${envLocalPath}`);
-      }
-      
-      // Para depuración, imprimir partes de la URL (ocultando credenciales)
-      const urlParts = new URL(correctedUrl);
-      log('INFO', '🔄 Partes de la URL corregida:');
-      log('INFO', `  - Protocolo: ${urlParts.protocol}`);
-      log('INFO', `  - Host: ${urlParts.host}`);
-      log('INFO', `  - Path: ${urlParts.pathname}`);
-      
-      log('INFO', '✅ DATABASE_URL corregida de prisma:// a postgresql://');
-      
-      // Imprimir la URL variable para que pueda ser capturada por scripts externos
-      console.log(`DATABASE_URL=${correctedUrl}`);
-      
-      return true;
-    } catch (error) {
-      log('ERROR', `❌ Error al corregir DATABASE_URL: ${error.message}`);
+    // Extract the host and credentials from the prisma:// URL
+    const match = dbUrl.match(/prisma:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/);
+    
+    if (!match) {
+      log('❌ Failed to parse prisma:// URL format');
       return false;
     }
+    
+    const [_, username, password, host, port, database] = match;
+    
+    // Create the postgresql:// URL
+    const correctedUrl = `postgresql://${username}:${password}@${host}:${port}/${database}`;
+    
+    // Establecer la URL corregida en el entorno
+    process.env.DATABASE_URL = correctedUrl;
+    
+    // Mask the password for logging
+    const maskedUrl = correctedUrl.replace(/\/\/([^:]+):[^@]+@/, '//\\1:****@');
+    log('INFO', `✅ DATABASE_URL corrected: ${maskedUrl}`);
+    
+    return true;
   } else if (dbUrl.startsWith('postgresql://')) {
-    log('INFO', '✅ DATABASE_URL ya tiene el formato correcto (postgresql://)');
+    log('INFO', '✅ DATABASE_URL already in correct format (postgresql://)');
     return true;
   } else {
-    log('WARN', `⚠️ DATABASE_URL usa un protocolo no esperado: ${dbUrl.split('://')[0]}://`);
-    log('INFO', 'ℹ️ Formato esperado: postgresql://usuario:contraseña@host:puerto/basedatos');
+    log('WARN', `⚠️ DATABASE_URL has unknown format: ${dbUrl.substring(0, 10)}...`);
     return false;
   }
 }
@@ -137,4 +113,7 @@ if (urlFixed && prismaOk) {
   log('WARN', '⚠️ Se encontraron problemas con el entorno de base de datos');
   // No fallamos el script, solo reportamos
   process.exit(0);
-} 
+}
+
+// Export for use in other scripts
+module.exports = { fixDatabaseUrl }; 

@@ -91,6 +91,7 @@
     "choreo:build": "npm run optimize:prebuild && npm run build:prod && npm run optimize:postbuild",
     "choreo:start": "npm run ensure-admin && node choreo-server.js",
     "choreo:preflight": "node scripts/choreo-preflight.js",
+    "choreo:verify": "node scripts/verify-choreo-deployment.js",
     "verify-dirs": "node scripts/ensure-import-dirs.js",
     "preflight": "node scripts/choreo-preflight.js && node scripts/verify-database-connection.js",
     "deploy:verify-all": "npm run verify-env && npm run verify-dirs && npm run verify-db && npm run verify:deployment"

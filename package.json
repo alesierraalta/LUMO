@@ -62,7 +62,7 @@
     "start:debug": "node scripts/runtime-env-check.js && node scripts/choreo-preflight.js && node scripts/ensure-import-dirs.js && node .next/standalone/server.js",
     "start:production": "NODE_ENV=production node scripts/manifest-validator.js && node server.js",
     "start:choreo": "npm run ensure-admin && node choreo-server.js",
-    "start:safe": "node scripts/manifest-validator.js && node safe-server.js",
+    "start:safe": "npm run preflight && npm start",
     "start:alt": "node scripts/ensure-import-dirs.js && cross-env PORT=3001 node .next/standalone/server.js",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -91,12 +91,12 @@
     "choreo:preflight": "node scripts/choreo-preflight.js",
     "verify-dirs": "node scripts/ensure-import-dirs.js",
     "preflight": "node scripts/choreo-preflight.js && node scripts/verify-database-connection.js",
-    "start:safe": "npm run preflight && npm start",
     "deploy:verify-all": "npm run verify-env && npm run verify-dirs && npm run verify-db && npm run verify:deployment"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
     "@prisma/client": "^6.7.0",
+    "@prisma/extension-accelerate": "^2.0.1",
     "@radix-ui/react-accordion": "^1.2.8",
     "@radix-ui/react-alert-dialog": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.1",

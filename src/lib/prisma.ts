@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { withAccelerate } from '@prisma/extension-accelerate';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
 import { initializeDatabaseUrl } from './database-url-fix';
@@ -20,13 +21,13 @@ initializeDatabaseUrl();
 // https://pris.ly/d/help/next-js-best-practices
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  var prisma: any | undefined;
   var prismaConnected: boolean | undefined;
   var queryCache: NodeCache | undefined;
 }
 
 const globalForPrisma = global as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: any | undefined;
   prismaConnected: boolean | undefined;
   queryCache: NodeCache | undefined;
 };
@@ -45,9 +46,9 @@ if (!globalForPrisma.queryCache) {
 }
 
 // Create Prisma client with robust error handling and model verification
-function createPrismaClient(): PrismaClient | undefined {
+function createPrismaClient() {
   try {
-    console.log('🔧 Initializing Prisma Client...');
+    console.log('🔧 Initializing Prisma Client with Accelerate...');
     
     // Ensure DATABASE_URL is properly configured
     if (!process.env.DATABASE_URL) {
@@ -57,11 +58,13 @@ function createPrismaClient(): PrismaClient | undefined {
     
     console.log(`🔗 Database URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
     
+    // Create PrismaClient with Accelerate extension
     const client = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
-      // Remove explicit datasourceUrl to use schema.prisma configuration
-    });
+      // Note: Don't override datasourceUrl when using Accelerate
+      // Let the client use the DATABASE_URL from environment
+    }).$extends(withAccelerate());
 
     // Verify that the client has been initialized correctly
     const modelNames = Object.keys(client).filter(key => 
@@ -80,6 +83,8 @@ function createPrismaClient(): PrismaClient | undefined {
       console.log('🔍 Available models:', modelNames);
     }
     
+    console.log('✅ Prisma Client with Accelerate initialized successfully');
+    
     // No automatic connection during startup to avoid crashes
     return client;
   } catch (error) {
@@ -92,13 +97,6 @@ function createPrismaClient(): PrismaClient | undefined {
 // Create PrismaClient instance (lazy)
 const basePrisma = globalForPrisma.prisma || createPrismaClient();
 
-// Fix for type safety
-const safeBasePrisma = basePrisma as PrismaClient;
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = basePrisma;
-}
-
 // Helper function for safe connection with model verification
 export async function connectSafely() {
   if (!basePrisma) {
@@ -106,24 +104,24 @@ export async function connectSafely() {
     const newClient = createPrismaClient();
     if (!newClient) {
       throw new Error('Failed to create Prisma client');
-  }
+    }
     globalForPrisma.prisma = newClient;
   }
   
-  const client = basePrisma as PrismaClient;
+  const client = basePrisma as any;
   
   if (!globalForPrisma.prismaConnected) {
-  try {
+    try {
       await client.$connect();
       globalForPrisma.prismaConnected = true;
       console.log('📚 Database connected successfully');
       
       // Verify critical models after connection
       await verifyPrismaModels(client);
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
-  }
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      throw error;
+    }
   } else {
     // Even if already connected, verify models
     try {
@@ -137,7 +135,7 @@ export async function connectSafely() {
 }
 
 // Helper function to verify critical Prisma models
-async function verifyPrismaModels(client: PrismaClient) {
+async function verifyPrismaModels(client: any) {
   console.log('🔍 Verifying critical Prisma models...');
   
   // List of critical models to verify
@@ -162,7 +160,7 @@ async function verifyPrismaModels(client: PrismaClient) {
     try {
       // Attempt a lightweight operation on each model
       // Using _count to avoid fetching data
-      const modelObj = (client as any)[model];
+      const modelObj = client[model];
       await modelObj.count();
       modelStatus[model] = true;
       console.log(`✅ Verified access to model: ${model}`);
@@ -706,7 +704,7 @@ class CustomPrismaClient {
 }
 
 // Create the extended Prisma client
-export const prisma = new CustomPrismaClient(safeBasePrisma);
+export const prisma = new CustomPrismaClient(basePrisma);
 
 export default prisma;
 

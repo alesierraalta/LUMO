@@ -184,7 +184,7 @@ class DeploymentDashboard {
 
   async checkEnhancedLogin() {
     this.status.enhancedLogin.status = 'checking';
-    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/enhanced-login`);
+    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/login`);
     
     this.status.enhancedLogin.lastCheck = new Date();
     this.status.enhancedLogin.responseTime = result.responseTime;
@@ -214,7 +214,7 @@ class DeploymentDashboard {
 
   async checkAuth() {
     this.status.auth.status = 'checking';
-    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/enhanced-login`, {
+    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

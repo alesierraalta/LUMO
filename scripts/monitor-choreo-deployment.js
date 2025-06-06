@@ -111,8 +111,8 @@ class DeploymentMonitor {
   }
 
   async checkEnhancedLoginHealth() {
-    this.log('🔧 Checking enhanced login health...', 'cyan');
-    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/enhanced-login`);
+    this.log('🔧 Checking login health...', 'cyan');
+    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/login`);
     
     if (result.success && result.status === 200) {
       try {
@@ -151,7 +151,7 @@ class DeploymentMonitor {
 
   async testAuthentication() {
     this.log('🔐 Testing authentication endpoint...', 'cyan');
-    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/enhanced-login`, {
+    const result = await this.makeRequest(`${CHOREO_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

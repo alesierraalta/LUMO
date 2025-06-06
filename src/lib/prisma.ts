@@ -51,13 +51,15 @@ if (!globalForPrisma.queryCache) {
 const getDatabaseInfo = () => {
   const databaseUrl = process.env.DATABASE_URL || '';
   const isSQLite = databaseUrl.startsWith('file:');
-  const isPostgreSQL = databaseUrl.startsWith('postgres') || databaseUrl.startsWith('prisma://');
+  const isPostgreSQL = databaseUrl.startsWith('postgres');
+  const isAccelerate = databaseUrl.startsWith('prisma://');
   
   return {
     url: databaseUrl,
     isSQLite,
     isPostgreSQL,
-    type: isSQLite ? 'sqlite' : isPostgreSQL ? 'postgresql' : 'unknown'
+    isAccelerate,
+    type: isSQLite ? 'sqlite' : isPostgreSQL ? 'postgresql' : isAccelerate ? 'accelerate' : 'unknown'
   };
 };
 
@@ -83,13 +85,24 @@ const createPrismaClient = () => {
     } 
     
     if (dbInfo.isPostgreSQL) {
-      // PostgreSQL: Use Accelerate extension
-      console.log('🔧 Creating PostgreSQL client with Accelerate...');
+      // Direct PostgreSQL: Use standard client (no Accelerate)
+      console.log('🔧 Creating PostgreSQL client (direct connection)...');
+      const client = new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        errorFormat: 'minimal',
+      });
+      console.log('✅ PostgreSQL client created successfully');
+      return client;
+    }
+    
+    if (dbInfo.isAccelerate) {
+      // Accelerate URL: Use Accelerate extension
+      console.log('🔧 Creating Accelerate client...');
       const client = new PrismaClient({
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
         errorFormat: 'minimal',
       }).$extends(withAccelerate());
-      console.log('✅ PostgreSQL client with Accelerate created successfully');
+      console.log('✅ Accelerate client created successfully');
       return client;
     }
     

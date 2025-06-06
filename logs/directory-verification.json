@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-06-06T13:47:27.145Z",
+  "environment": {
+    "production": true,
+    "platform": "win32",
+    "nodeVersion": "v24.1.0"
+  },
+  "diskSpace": {
+    "success": true,
+    "freeSpaceMB": 883458
+  },
+  "directories": {
+    "success": true,
+    "created": [
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\server\\app\\api\\inventory\\import\\process\\dict",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\.next\\server\\app\\api\\inventory\\import\\process\\dict",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\node_modules\\server-only",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\tmp"
+    ],
+    "failed": [],
+    "permissionsFailed": [],
+    "alreadyExisted": [
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\node_modules\\.prisma\\client",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\scripts",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\logs"
+    ]
+  },
+  "scripts": {
+    "success": true,
+    "copied": [
+      "fix-import-session-postgres.js",
+      "fix-import-session-sqlite.js",
+      "run-import-session-migration.js",
+      "import-session-preflight.js",
+      "verify-import-schema.js",
+      "choreo-preflight.js",
+      "verify-deployment.js",
+      "ensure-import-dirs.js",
+      "audit-import-session-migrations.js"
+    ],
+    "failed": [],
+    "notFound": [],
+    "permissionsFailed": []
+  },
+  "serverOnlyModule": {
+    "success": true
+  },
+  "success": true
+}

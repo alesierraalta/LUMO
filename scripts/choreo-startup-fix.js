@@ -11,15 +11,26 @@ const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
-// Initialize Prisma client with production settings
-const prisma = new PrismaClient({
-  log: ['error'],
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
-    }
+// Smart Prisma client creation based on database URL
+function createSmartPrismaClient() {
+  const databaseUrl = process.env.DATABASE_URL || '';
+  
+  if (databaseUrl.startsWith('prisma://')) {
+    // Accelerate URL: Use with Accelerate extension
+    const { withAccelerate } = require('@prisma/extension-accelerate');
+    return new PrismaClient({
+      log: ['error'],
+    }).$extends(withAccelerate());
+  } else {
+    // Direct PostgreSQL or SQLite: Use standard client
+    return new PrismaClient({
+      log: ['error'],
+    });
   }
-});
+}
+
+// Initialize Prisma client with smart configuration
+const prisma = createSmartPrismaClient();
 
 // Log with timestamps
 function log(level, ...messages) {

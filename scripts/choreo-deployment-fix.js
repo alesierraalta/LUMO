@@ -86,7 +86,11 @@ async function setupAccelerate() {
     const { execSync } = require('child_process');
     
     try {
-      execSync('npx prisma generate --no-engine', { 
+      // Use appropriate generator based on URL type
+      const isAccelerate = accelerateUrl.startsWith('prisma://');
+      const generateCommand = isAccelerate ? 'npx prisma generate --no-engine' : 'npx prisma generate';
+      
+      execSync(generateCommand, { 
         stdio: 'inherit',
         env: { ...process.env }
       });
@@ -100,13 +104,18 @@ async function setupAccelerate() {
     console.log('🧪 Testing Prisma client creation...');
     try {
       const { PrismaClient } = require('@prisma/client');
-      const { withAccelerate } = require('@prisma/extension-accelerate');
       
-      const client = new PrismaClient().$extends(withAccelerate());
-      console.log('✅ Prisma client with Accelerate created successfully');
+      if (accelerateUrl.startsWith('prisma://')) {
+        const { withAccelerate } = require('@prisma/extension-accelerate');
+        const client = new PrismaClient().$extends(withAccelerate());
+        console.log('✅ Prisma client with Accelerate created successfully');
+      } else {
+        const client = new PrismaClient();
+        console.log('✅ Prisma client (direct connection) created successfully');
+      }
       
       // Don't test connection here - let the app handle it at runtime
-      console.log('✅ Prisma Accelerate configuration complete');
+      console.log('✅ Prisma configuration complete');
       return true;
       
     } catch (error) {

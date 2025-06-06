@@ -13,13 +13,13 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Disable type checking for faster builds - handle this separately
+  // Transpile necessary packages
   transpilePackages: ['lucide-react'],
   
   // Skip source maps in production for faster builds
   productionBrowserSourceMaps: false,
   
-  // Disable file system cache for consistent clean builds
+  // Generate consistent build ID for deployment
   generateBuildId: async () => {
     return `build-${Date.now()}`;
   },
@@ -30,16 +30,14 @@ const nextConfig = {
   // Enable compression for better performance
   compress: true,
   
-  // Image optimization - disable image optimization for faster builds
+  // Image optimization - optimized for production
   images: {
-    unoptimized: true,
+    unoptimized: false,
     domains: [],
-    formats: ['image/webp'],
-  },
-  
-  // Environment variables
-  env: {
-    CUSTOM_KEY: 'my-value',
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
   },
 
   // Headers for security and CORS
@@ -54,6 +52,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'X-Accel-Buffering', value: 'no' }, // For Nginx proxy
         ],
       },
       {
@@ -93,9 +92,9 @@ const nextConfig = {
     ];
   },
 
-  // Webpack optimization for Choreo
+  // Webpack optimization for production deployment
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Set max parallel operations
+    // Optimize parallelism for build performance
     config.parallelism = 4;
     
     if (!dev && isServer) {
@@ -103,7 +102,7 @@ const nextConfig = {
       config.optimization.minimize = true;
     }
     
-    // Improve build performance
+    // Improve build performance with caching
     config.cache = {
       type: 'filesystem',
       compression: 'gzip',
@@ -112,23 +111,20 @@ const nextConfig = {
       },
     };
     
-    // Properly handle Node.js modules
+    // Handle Node.js modules properly
     if (isServer) {
-      // Mark certain Node.js modules as external for server
       const nodeModules = ['child_process', 'fs', 'path', 'os', 'crypto'];
       
-      // Don't bundle Node.js native modules for server builds
       config.externals = [...(config.externals || []), 
         function({ context, request }, callback) {
           if (nodeModules.includes(request)) {
-            // Mark as external to prevent bundling
             return callback(null, `commonjs ${request}`);
           }
           callback();
         }
       ];
     } else {
-      // For client builds, handle modules that might be referenced
+      // For client builds, provide fallbacks for Node.js modules
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -142,10 +138,12 @@ const nextConfig = {
     return config;
   },
 
-  // Experimental features for better performance
+  // Experimental features - ONLY include supported options
   experimental: {
-    // Bundle optimization
+    // Bundle optimization for performance
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+    // Enable CSS chunking for better performance
+    cssChunking: true,
   },
 };
 

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-
 export async function GET() {
   try {
     return NextResponse.json({
@@ -9,9 +8,8 @@ export async function GET() {
       environment: {
         NODE_ENV: process.env.NODE_ENV,
         DATABASE_URL: process.env.DATABASE_URL ? 'configured' : 'missing',
-        CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ? 'configured' : 'missing',
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'configured' : 'missing',
-      }
+        : process.env. ? 'configured' : 'missing',
+        : process.env. ? 'configured' : 'missing'}
     });
   } catch (error: any) {
     return NextResponse.json({
@@ -20,4 +18,4 @@ export async function GET() {
       timestamp: new Date().toISOString()
     }, { status: 500 });
   }
-} 
+}

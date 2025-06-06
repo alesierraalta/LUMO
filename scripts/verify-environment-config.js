@@ -1,25 +1,21 @@
 #!/usr/bin/env node
-
 /**
  * Environment-Specific Configuration Validator
- * 
+ *
  * This script validates that all required environment variables are present
  * and correctly configured for the current environment (dev, prod, choreo).
- * 
+ *
  * It checks:
  * 1. Required environment variables per environment
  * 2. Format validation for critical variables
  * 3. Compatibility between related variables
  * 4. Environment-specific configuration requirements
  */
-
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-
 // Start validation
 console.log('🔍 Starting environment configuration validation...');
-
 // Determine current environment
 function detectEnvironment() {
   // Determine environment from multiple indicators
@@ -27,85 +23,64 @@ function detectEnvironment() {
   const deployEnv = process.env.DEPLOY_ENV || '';
   const choreoDeployment = process.env.CHOREO_DEPLOYMENT === 'true';
   const dbUrl = process.env.DATABASE_URL || '';
-  
   // Production indicators
-  const isProduction = 
+  const isProduction =
     nodeEnv === 'production' ||
     deployEnv === 'production' ||
     choreoDeployment ||
     /postgres(ql)?:\/\//.test(dbUrl);
-    
   // Choreo specific detection
-  const isChoreo = 
+  const isChoreo =
     choreoDeployment ||
     deployEnv === 'choreo' ||
     process.env.NEXT_PUBLIC_DEPLOY_ENV === 'choreo';
-    
   // Development environment
   const isDevelopment = !isProduction;
-  
   const environment = {
     name: isChoreo ? 'choreo' : (isProduction ? 'production' : 'development'),
     isProduction,
     isDevelopment,
     isChoreo,
     nodeEnv,
-    deployEnv,
-  };
-  
+    deployEnv};
   console.log(`🌍 Detected environment: ${environment.name.toUpperCase()}`);
   console.log(`  - NODE_ENV: ${environment.nodeEnv}`);
   console.log(`  - DEPLOY_ENV: ${environment.deployEnv || '(not set)'}`);
   console.log(`  - Production mode: ${environment.isProduction ? 'Yes' : 'No'}`);
   console.log(`  - Choreo mode: ${environment.isChoreo ? 'Yes' : 'No'}`);
-  
   return environment;
 }
-
 // Define required variables per environment
 function getRequiredVariables(environment) {
   // Common required variables for all environments
   const common = [
     'NODE_ENV',
-    'DATABASE_URL',
-  ];
-  
+    'DATABASE_URL'];
   // Production/Choreo specific requirements
   const production = [
     'JWT_SECRET',
     'NEXTAUTH_SECRET',
     'NEXTAUTH_URL',
-    'APP_URL',
-  ];
-  
+    'APP_URL'];
   // Choreo specific requirements
   const choreo = [
-    'CLERK_JWT_VERIFICATION_KEY',
-    'CLERK_SECRET_KEY',
-    'CLERK_PUBLISHABLE_KEY',
-  ];
-  
+    ,
+    ];
   // Development specific
   const development = [];
-  
   // Combine required variables based on environment
   let required = [...common];
-  
   if (environment.isProduction) {
     required = [...required, ...production];
   }
-  
   if (environment.isChoreo) {
     required = [...required, ...choreo];
   }
-  
   if (environment.isDevelopment) {
     required = [...required, ...development];
   }
-  
   return required;
 }
-
 // Validate individual environment variable
 function validateVariable(name, value, environment) {
   // Skip if value is undefined (will be caught by missing check)
@@ -115,7 +90,6 @@ function validateVariable(name, value, environment) {
       message: 'Variable is not defined'
     };
   }
-  
   // Format validation functions for specific variables
   const validators = {
     DATABASE_URL: (val) => {
@@ -132,7 +106,7 @@ function validateVariable(name, value, environment) {
           // Try parsing as URL to validate format
           new URL(val);
           return {
-            valid: true, 
+            valid: true,
             message: 'PostgreSQL connection string',
             type: 'postgresql',
             compatible: true // PostgreSQL valid in all environments
@@ -151,12 +125,10 @@ function validateVariable(name, value, environment) {
         };
       }
     },
-    
     NEXTAUTH_URL: (val) => {
       try {
         const url = new URL(val);
         const isSecure = url.protocol === 'https:';
-        
         return {
           valid: true,
           message: `Valid URL (${url.protocol}//${url.host})`,
@@ -171,12 +143,10 @@ function validateVariable(name, value, environment) {
         };
       }
     },
-    
     APP_URL: (val) => {
       try {
         const url = new URL(val);
         const isSecure = url.protocol === 'https:';
-        
         return {
           valid: true,
           message: `Valid URL (${url.protocol}//${url.host})`,
@@ -191,7 +161,6 @@ function validateVariable(name, value, environment) {
         };
       }
     },
-    
     JWT_SECRET: (val) => {
       const isStrong = val.length >= 32;
       return {
@@ -201,7 +170,6 @@ function validateVariable(name, value, environment) {
         compatible: true
       };
     },
-    
     NEXTAUTH_SECRET: (val) => {
       const isStrong = val.length >= 32;
       return {
@@ -211,15 +179,12 @@ function validateVariable(name, value, environment) {
         compatible: true
       };
     },
-    
     // Add validators for other variables as needed
   };
-  
   // Use specific validator if available, otherwise just check not empty
   if (validators[name]) {
     return validators[name](value);
   }
-  
   // Default validator just ensures value is not empty
   return {
     valid: value.trim() !== '',
@@ -227,7 +192,6 @@ function validateVariable(name, value, environment) {
     compatible: true
   };
 }
-
 // Main validation function
 function validateEnvironmentVariables(environment) {
   const required = getRequiredVariables(environment);
@@ -239,26 +203,21 @@ function validateEnvironmentVariables(environment) {
     valid: [],
     optional: []
   };
-  
   // Define optional variables (useful but not required)
   const optionalVars = [
     'NEXT_PUBLIC_APP_VERSION',
     'PORT'
   ];
-  
   // Validate each required variable
   required.forEach(varName => {
     const value = process.env[varName];
-    
     // Check if variable exists
     if (value === undefined) {
       results.missing.push(varName);
       return;
     }
-    
     // Validate variable format
     const validation = validateVariable(varName, value, environment);
-    
     if (!validation.valid) {
       results.invalid.push({
         name: varName,
@@ -282,7 +241,6 @@ function validateEnvironmentVariables(environment) {
       results.valid.push(varName);
     }
   });
-  
   // Check optional variables
   optionalVars.forEach(varName => {
     const value = process.env[varName];
@@ -308,14 +266,11 @@ function validateEnvironmentVariables(environment) {
       });
     }
   });
-  
   return results;
 }
-
 // Custom environment-specific checks
 function performEnvironmentSpecificChecks(environment) {
   const issues = [];
-  
   // Production specific validations
   if (environment.isProduction) {
     // Check database type (must be PostgreSQL in production)
@@ -329,7 +284,6 @@ function performEnvironmentSpecificChecks(environment) {
         }
       });
     }
-    
     // Check URL security
     const urlVars = ['NEXTAUTH_URL', 'APP_URL'];
     urlVars.forEach(varName => {
@@ -346,7 +300,6 @@ function performEnvironmentSpecificChecks(environment) {
       }
     });
   }
-  
   // Choreo specific validations
   if (environment.isChoreo) {
     // Check ports
@@ -360,32 +313,26 @@ function performEnvironmentSpecificChecks(environment) {
         }
       });
     }
-    
-    // Check for Clerk keys if in Choreo auth mode
-    const clerkMode = process.env.AUTH_PROVIDER === 'clerk' || process.env.NEXT_AUTH_PROVIDER === 'clerk';
-    if (clerkMode) {
-      const clerkVars = ['CLERK_JWT_VERIFICATION_KEY', 'CLERK_SECRET_KEY', 'CLERK_PUBLISHABLE_KEY'];
-      const missingClerkVars = clerkVars.filter(v => !process.env[v]);
-      
-      if (missingClerkVars.length > 0) {
+    const  = process.env.AUTH_PROVIDER ===  || process.env.NEXT_AUTH_PROVIDER === ;
+    if () {
+      const  = [];
+      const  = .filter(v => !process.env[v]);
+      if (.length > 0) {
         issues.push({
           severity: 'critical',
-          message: 'Missing Clerk authentication variables in Clerk mode',
+          message: ,
           context: {
-            missing: missingClerkVars.join(', ')
+            missing: .join(', ')
           }
         });
       }
     }
   }
-  
   return issues;
 }
-
 // Generate recommendations for fixing issues
 function generateRecommendations(environment, validationResults, specificIssues) {
   const recommendations = [];
-  
   // Handle missing variables
   if (validationResults.missing.length > 0) {
     recommendations.push({
@@ -394,7 +341,6 @@ function generateRecommendations(environment, validationResults, specificIssues)
       importance: 'critical'
     });
   }
-  
   // Handle invalid variables
   if (validationResults.invalid.length > 0) {
     validationResults.invalid.forEach(item => {
@@ -405,7 +351,6 @@ function generateRecommendations(environment, validationResults, specificIssues)
       });
     });
   }
-  
   // Handle insecure variables
   if (validationResults.insecure.length > 0) {
     validationResults.insecure.forEach(item => {
@@ -416,7 +361,6 @@ function generateRecommendations(environment, validationResults, specificIssues)
       });
     });
   }
-  
   // Handle environment-specific issues
   if (specificIssues.length > 0) {
     specificIssues.forEach(issue => {
@@ -435,57 +379,45 @@ function generateRecommendations(environment, validationResults, specificIssues)
       }
     });
   }
-  
   return recommendations;
 }
-
 // Determine if validation should halt the application
 function shouldHaltApplication(environment, validationResults, specificIssues) {
   // Always halt if critical variables are missing in any environment
   if (validationResults.missing.length > 0) {
     return true;
   }
-  
   // Always halt if variables have invalid formats
   if (validationResults.invalid.length > 0) {
     return true;
   }
-  
   // Check for critical environment-specific issues
   const hasCriticalIssues = specificIssues.some(issue => issue.severity === 'critical');
-  
   // In production, be more lenient to prevent deployment failures
   if (environment.isProduction) {
     // Only halt for the most critical issues in production
     return hasCriticalIssues;
   }
-  
   // In development, be more strict
   return hasCriticalIssues || validationResults.incompatible.length > 0;
 }
-
 // Main function
 function main() {
   try {
     // Detect environment
     const environment = detectEnvironment();
-    
     // Validate environment variables
     const validationResults = validateEnvironmentVariables(environment);
-    
     // Perform environment-specific checks
     const specificIssues = performEnvironmentSpecificChecks(environment);
-    
     // Generate recommendations
     const recommendations = generateRecommendations(
-      environment, 
-      validationResults, 
+      environment,
+      validationResults,
       specificIssues
     );
-    
     // Print validation results
     console.log('\n📊 Environment Validation Results:');
-    
     // Valid variables
     console.log(`\n✅ Valid Variables (${validationResults.valid.length}):`);
     if (validationResults.valid.length > 0) {
@@ -493,7 +425,6 @@ function main() {
     } else {
       console.log('  (None)');
     }
-    
     // Missing variables
     console.log(`\n❌ Missing Required Variables (${validationResults.missing.length}):`);
     if (validationResults.missing.length > 0) {
@@ -501,47 +432,42 @@ function main() {
     } else {
       console.log('  (None)');
     }
-    
     // Invalid variables
     console.log(`\n⚠️ Invalid Variables (${validationResults.invalid.length}):`);
     if (validationResults.invalid.length > 0) {
-      validationResults.invalid.forEach(item => 
+      validationResults.invalid.forEach(item =>
         console.log(`  - ${item.name}: ${item.reason}`)
       );
     } else {
       console.log('  (None)');
     }
-    
     // Incompatible with environment
     console.log(`\n🚫 Environment Incompatibilities (${validationResults.incompatible.length}):`);
     if (validationResults.incompatible.length > 0) {
-      validationResults.incompatible.forEach(item => 
+      validationResults.incompatible.forEach(item =>
         console.log(`  - ${item.name}: ${item.reason} [${item.environment}]`)
       );
     } else {
       console.log('  (None)');
     }
-    
     // Security warnings
     console.log(`\n🔒 Security Concerns (${validationResults.insecure.length}):`);
     if (validationResults.insecure.length > 0) {
-      validationResults.insecure.forEach(item => 
+      validationResults.insecure.forEach(item =>
         console.log(`  - ${item.name}: ${item.reason}`)
       );
     } else {
       console.log('  (None)');
     }
-    
     // Environment-specific issues
     console.log(`\n🌍 Environment-Specific Issues (${specificIssues.length}):`);
     if (specificIssues.length > 0) {
-      specificIssues.forEach(issue => 
+      specificIssues.forEach(issue =>
         console.log(`  - [${issue.severity.toUpperCase()}] ${issue.message}`)
       );
     } else {
       console.log('  (None)');
     }
-    
     // Optional variables
     console.log('\n📝 Optional Variables:');
     validationResults.optional.forEach(item => {
@@ -553,16 +479,14 @@ function main() {
         console.log(`  - ${item.name}: ℹ️ Not provided (optional)`);
       }
     });
-    
     // Recommendations
     console.log('\n🛠️ Recommendations:');
     if (recommendations.length > 0) {
       recommendations.forEach((rec, index) => {
-        const importanceEmoji = 
+        const importanceEmoji =
           rec.importance === 'critical' ? '🔴' :
-          rec.importance === 'high' ? '🟠' : 
+          rec.importance === 'high' ? '🟠' :
           rec.importance === 'medium' ? '🟡' : '🔵';
-          
         console.log(`  ${index + 1}. ${importanceEmoji} ${rec.action}`);
         if (rec.details) {
           console.log(`     ${rec.details}`);
@@ -571,10 +495,8 @@ function main() {
     } else {
       console.log('  ✅ No recommendations - configuration looks good!');
     }
-    
     // Final result
     const shouldHalt = shouldHaltApplication(environment, validationResults, specificIssues);
-    
     console.log('\n🏁 Final Result:');
     if (shouldHalt) {
       console.log('❌ FAILED: Critical configuration issues detected');
@@ -586,12 +508,10 @@ function main() {
       }
       process.exit(0);
     }
-    
   } catch (error) {
     console.error('❌ Error during environment validation:', error);
     process.exit(1);
   }
 }
-
 // Run the validation
 main();

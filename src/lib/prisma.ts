@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
@@ -45,54 +45,66 @@ if (!globalForPrisma.queryCache) {
   });
 }
 
-// Create Prisma client with robust error handling and model verification
-function createPrismaClient() {
+/**
+ * Database URL Analysis
+ */
+const getDatabaseInfo = () => {
+  const databaseUrl = process.env.DATABASE_URL || '';
+  const isSQLite = databaseUrl.startsWith('file:');
+  const isPostgreSQL = databaseUrl.startsWith('postgres') || databaseUrl.startsWith('prisma://');
+  
+  return {
+    url: databaseUrl,
+    isSQLite,
+    isPostgreSQL,
+    type: isSQLite ? 'sqlite' : isPostgreSQL ? 'postgresql' : 'unknown'
+  };
+};
+
+/**
+ * Create Prisma Client with appropriate configuration
+ */
+const createPrismaClient = () => {
   try {
-    console.log('🔧 Initializing Prisma Client with Accelerate...');
+    console.log('🔧 Initializing Prisma Client...');
     
-    // Ensure DATABASE_URL is properly configured
-    if (!process.env.DATABASE_URL) {
-      console.error('❌ DATABASE_URL environment variable is not set');
-      return undefined;
+    const dbInfo = getDatabaseInfo();
+    console.log(`🔗 Database type: ${dbInfo.type}...`);
+    
+    if (dbInfo.isSQLite) {
+      // SQLite: Use standard PrismaClient (no Accelerate)
+      console.log('🔧 Creating SQLite client (standard)...');
+      const client = new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        errorFormat: 'minimal',
+      });
+      console.log('✅ SQLite client created successfully');
+      return client;
+    } 
+    
+    if (dbInfo.isPostgreSQL) {
+      // PostgreSQL: Use Accelerate extension
+      console.log('🔧 Creating PostgreSQL client with Accelerate...');
+      const client = new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        errorFormat: 'minimal',
+      }).$extends(withAccelerate());
+      console.log('✅ PostgreSQL client with Accelerate created successfully');
+      return client;
     }
     
-    console.log(`🔗 Database URL pattern: ${process.env.DATABASE_URL.substring(0, 30)}...`);
-    
-    // Create PrismaClient with Accelerate extension
-    const client = new PrismaClient({
+    // Fallback: Standard client
+    console.log('⚠️ Unknown database type, using standard client...');
+    return new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'minimal',
-      // Note: Don't override datasourceUrl when using Accelerate
-      // Let the client use the DATABASE_URL from environment
-    }).$extends(withAccelerate());
-
-    // Verify that the client has been initialized correctly
-    const modelNames = Object.keys(client).filter(key => 
-      !key.startsWith('_') && 
-      !key.startsWith('$') && 
-      typeof client[key as keyof typeof client] === 'object'
-    );
+    });
     
-    console.log(`📝 Prisma models initialized: ${modelNames.join(', ')}`);
-    
-    // Explicitly verify the ImportSession model exists
-    if (!modelNames.includes('importSession')) {
-      console.warn('⚠️ ImportSession model not found in Prisma Client! This will cause import failures.');
-      
-      // Log available models for debugging
-      console.log('🔍 Available models:', modelNames);
-    }
-    
-    console.log('✅ Prisma Client with Accelerate initialized successfully');
-    
-    // No automatic connection during startup to avoid crashes
-    return client;
   } catch (error) {
     console.error('❌ Error creating Prisma client:', error);
-    // Return undefined instead of null to avoid crashes
-    return undefined;
+    return null;
   }
-}
+};
 
 // Create PrismaClient instance (lazy)
 const basePrisma = globalForPrisma.prisma || createPrismaClient();

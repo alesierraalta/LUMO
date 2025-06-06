@@ -1,10 +1,8 @@
 // Endpoint específico para Choreo - Ultra robusto
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
 export async function GET() {
   const startTime = Date.now();
-  
   try {
     // Información básica del servidor
     const serverInfo = {
@@ -15,16 +13,14 @@ export async function GET() {
       environment: process.env.NODE_ENV || 'production',
       uptime_seconds: Math.floor(process.uptime()),
       response_time_ms: Date.now() - startTime,
-      
       // Variables de entorno críticas (sin valores sensibles)
       env_check: {
         database_url: !!process.env.DATABASE_URL,
-        clerk_publishable: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-        clerk_secret: !!process.env.CLERK_SECRET_KEY,
+        : !!process.env.,
+        : !!process.env.,
         node_env: process.env.NODE_ENV,
         hostname: process.env.HOSTNAME || 'choreo-container'
       },
-      
       // Información del sistema
       system: {
         memory_usage: process.memoryUsage(),
@@ -32,7 +28,6 @@ export async function GET() {
         node_version: process.version
       }
     };
-
     return new Response(JSON.stringify(serverInfo, null, 2), {
       status: 200,
       headers: {
@@ -42,7 +37,6 @@ export async function GET() {
         'X-Platform': 'Choreo'
       }
     });
-    
   } catch (error: any) {
     return new Response(JSON.stringify({
       status: 'error',
@@ -58,7 +52,6 @@ export async function GET() {
     });
   }
 }
-
 export async function POST() {
   return new Response(JSON.stringify({
     method: 'POST',
@@ -71,4 +64,4 @@ export async function POST() {
       'Content-Type': 'application/json'
     }
   });
-} 
+}

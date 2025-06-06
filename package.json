@@ -36,6 +36,8 @@
     "fix:deployment-errors": "node scripts/fix-deployment-errors.js",
     "validate:deployment": "node scripts/validate-deployment-ready.js",
     "fix:buildpack-issues": "node scripts/fix-choreo-buildpack-issues.js",
+    "fix:prisma-mismatch": "node scripts/fix-prisma-accelerate-mismatch.js",
+    "emergency:p6001": "node scripts/emergency-fix-p6001.js",
     "choreo:check": "node scripts/choreo-deployment-check.js",
     "choreo:excel-fix": "node scripts/choreo-excel-importer-fix.js",
     "choreo:startup": "node scripts/choreo-startup-fix.js",

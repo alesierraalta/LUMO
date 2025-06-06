@@ -7,9 +7,8 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       environment: {
         NODE_ENV: process.env.NODE_ENV,
-        DATABASE_URL: process.env.DATABASE_URL ? 'configured' : 'missing',
-        : process.env. ? 'configured' : 'missing',
-        : process.env. ? 'configured' : 'missing'}
+        DATABASE_URL: process.env.DATABASE_URL ? 'configured' : 'missing'
+      }
     });
   } catch (error: any) {
     return NextResponse.json({

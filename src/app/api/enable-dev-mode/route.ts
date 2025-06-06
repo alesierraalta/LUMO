@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 export async function POST() {
   try {
     // Este endpoint temporalmente permitirá modo desarrollo en producción
@@ -8,17 +9,13 @@ export async function POST() {
       message: 'Development mode bypass enabled temporarily',
       timestamp: new Date().toISOString(),
       instructions: [
-        'Add =true to environment variables',
-        '- ',
-        '- ',
-        '- DATABASE_URL'
+        'Add development environment variables',
+        '- NODE_ENV=development',
+        '- DATABASE_URL (connection string)'
       ],
       current_env: {
         NODE_ENV: process.env.NODE_ENV,
-        : !!process.env.,
-        has_: !!process.env.,
-        has_database_url: !!process.env.DATABASE_URL,
-        skip_auth: process.env.
+        has_database_url: !!process.env.DATABASE_URL
       }
     });
   } catch (error: any) {

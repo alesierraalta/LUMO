@@ -16,8 +16,6 @@ export async function GET() {
       // Variables de entorno críticas (sin valores sensibles)
       env_check: {
         database_url: !!process.env.DATABASE_URL,
-        : !!process.env.,
-        : !!process.env.,
         node_env: process.env.NODE_ENV,
         hostname: process.env.HOSTNAME || 'choreo-container'
       },

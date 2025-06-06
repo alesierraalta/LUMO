@@ -24,9 +24,6 @@ const nextConfig = {
     return `build-${Date.now()}`;
   },
   
-  // Configure build memory management
-  swcMinify: true, // More efficient minifier
-  
   // Prisma configuration and other Node.js modules for server-side only
   serverExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
   
@@ -147,11 +144,6 @@ const nextConfig = {
 
   // Experimental features for better performance
   experimental: {
-    // Faster bundling
-    turbotrace: {
-      logLevel: 'error',
-      memoryLimit: 4096, // 4GB limit
-    },
     // Bundle optimization
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
   },

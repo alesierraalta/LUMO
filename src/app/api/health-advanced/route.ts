@@ -168,29 +168,28 @@ export async function GET(request: NextRequest) {
     await prisma.$disconnect();
   }
 }
-async function (): Promise<{ status: 'healthy' | 'unhealthy'; details?: any }> {
+
+async function checkAuthSystem(): Promise<{ status: 'healthy' | 'unhealthy'; details?: any }> {
   try {
-    // Basic configuration check
-    const hasPublishableKey = typeof process !== 'undefined' ?
-      !!process.env. : false;
-    const hasSecretKey = typeof process !== 'undefined' ?
-      !!process.env. : false;
-    if (!hasPublishableKey || !hasSecretKey) {
+    // Basic JWT configuration check
+    const hasJwtSecret = typeof process !== 'undefined' ?
+      !!process.env.JWT_SECRET : false;
+
+    if (!hasJwtSecret) {
       return {
         status: 'unhealthy',
         details: {
-          publishableKey: hasPublishableKey,
-          secretKey: hasSecretKey,
-          reason:
+          jwtSecret: hasJwtSecret,
+          reason: 'JWT_SECRET not configured'
         }
       };
     }
+
     // For now, just verify configuration exists
     return {
       status: 'healthy',
       details: {
-        publishableKey: hasPublishableKey,
-        secretKey: hasSecretKey,
+        jwtSecret: hasJwtSecret,
         configured: true
       }
     };

@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
+import safePrisma from './prisma-safe';
 import { v4 as uuidv4 } from 'uuid';
 import NodeCache from 'node-cache';
 import { initializeDatabaseUrl } from './database-url-fix';
@@ -728,8 +729,8 @@ class CustomPrismaClient {
   }
 }
 
-// Create the extended Prisma client
-export const prisma = new CustomPrismaClient(basePrisma);
+// Create the extended Prisma client with P6001 protection
+export const prisma = new CustomPrismaClient(process.env.NODE_ENV === 'production' ? safePrisma : basePrisma);
 
 export default prisma;
 

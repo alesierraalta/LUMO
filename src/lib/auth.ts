@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { patchPrismaClient } from '@/lib/runtime-p6001-patch';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
 const COOKIE_NAME = 'auth-token';
@@ -80,11 +81,17 @@ export const verifyToken = (token: string): SessionData | null => {
   }
 };
 
-// Access the Prisma client through the custom wrapper
+// Access the Prisma client through the custom wrapper with P6001 protection
 const getPrismaClient = () => {
   if (!prisma?.prisma) {
     throw new Error('Prisma client not initialized');
   }
+  
+  // Apply runtime P6001 patch in production
+  if (process.env.NODE_ENV === 'production') {
+    return patchPrismaClient(prisma.prisma);
+  }
+  
   return prisma.prisma;
 };
 

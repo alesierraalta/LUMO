@@ -1,120 +1,86 @@
-# syntax=docker/dockerfile:1
+# Multi-stage Node.js Dockerfile for LUMO Inventory Management System
+# Optimized for Choreo deployment with buildpack bypass
 
-# Stage 1: Install dependencies and build
-FROM node:20-alpine AS builder
+# Stage 1: Base Node.js setup
+FROM node:20-slim AS base
+
+# Set working directory
 WORKDIR /app
 
-# Install necessary build tools
-RUN apk add --no-cache libc6-compat
+# Install required system dependencies for Node.js and Prisma
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Add build arguments for environment variables
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-ARG CLERK_SECRET_KEY
-ARG NEXT_PUBLIC_APP_VERSION
-ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
-ARG DATABASE_URL
-
-# Set environment variables for build time
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-pk_test_dummy-key-for-build}
-ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-sk_test_dummy-key-for-build}
-ENV NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION}
-ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-true}
-ENV DATABASE_URL=${DATABASE_URL}
-ENV NODE_ENV=production
-
-# Copy package files first for better caching
-COPY package.json package-lock.json ./
+# Copy package files
+COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies with cache optimization
-RUN npm ci --prefer-offline --no-audit --omit=dev && npm cache clean --force
+# Stage 2: Dependencies installation
+FROM base AS deps
 
-# Generate Prisma client without engine for serverless deployment
-RUN npx prisma generate --no-engine
+# Install dependencies
+RUN npm ci --only=production --ignore-scripts
 
-# Copy source files
+# Stage 3: Build stage
+FROM base AS build
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci --ignore-scripts
+
+# Copy source code
 COPY . .
 
-# Run manifest validation before build
-RUN npm run prebuild
+# Generate Prisma client
+RUN npx prisma generate --no-engine
 
-# Build the application with proper CSS handling
+# Build the application
 RUN npm run build
 
-# Run post-build validation
-RUN npm run postbuild
+# Stage 4: Runtime stage
+FROM node:20-slim AS runtime
 
-# Verify build artifacts
-RUN echo "[BUILD-VERIFY] Checking build artifacts..." && \
-    ls -la .next/ && \
-    echo "[BUILD-VERIFY] Checking manifests:" && \
-    test -f .next/build-manifest.json && echo "✓ build-manifest.json exists" || echo "✗ build-manifest.json missing" && \
-    test -f .next/app-build-manifest.json && echo "✓ app-build-manifest.json exists" || echo "✗ app-build-manifest.json missing" && \
-    echo "[BUILD-VERIFY] Checking CSS directory:" && \
-    ls -la .next/static/css/ || echo "CSS directory not found" && \
-    echo "[BUILD-VERIFY] Standalone check:" && \
-    test -f .next/standalone/server.js && echo "✓ Standalone server exists" || echo "✗ Standalone server missing"
-
-# Stage 2: Production runtime
-FROM node:20-alpine AS runner
+# Set working directory
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache \
-    curl \
-    dumb-init \
-    && addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 nextjs
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set production environment
-ENV NODE_ENV=production
-ENV PORT=8080
-ENV HOSTNAME=0.0.0.0
+# Create non-root user for security
+RUN groupadd --gid 1001 nodejs
+RUN useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nextjs
 
-# Set runtime environment variables
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-ARG CLERK_SECRET_KEY
-ARG NEXT_PUBLIC_SKIP_CLERK_AUTH
-ARG DATABASE_URL
+# Copy built application from build stage
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
 
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-ENV NEXT_PUBLIC_SKIP_CLERK_AUTH=${NEXT_PUBLIC_SKIP_CLERK_AUTH:-false}
-ENV DATABASE_URL=${DATABASE_URL}
+# Copy deployment scripts
+COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
 
-# Copy essential files from builder
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma/
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts/
-COPY --from=builder --chown=nextjs:nodejs /app/server.js ./
-COPY --from=builder --chown=nextjs:nodejs /app/choreo-server.js ./
-COPY --from=builder --chown=nextjs:nodejs /app/debug-choreo.js ./
+# Copy package.json for reference
+COPY --from=build --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copy Prisma client (without engine)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-
-# Copy Next.js build artifacts
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Ensure proper permissions
-RUN chown -R nextjs:nodejs /app && \
-    chmod +x scripts/manifest-validator.js && \
-    chmod +x server.js && \
-    chmod +x choreo-server.js && \
-    chmod +x debug-choreo.js
-
-# Switch to non-root user
+# Set proper permissions
+RUN chown -R nextjs:nodejs /app
 USER nextjs
 
 # Expose port
-EXPOSE 8080
+EXPOSE 3000
 
-# Health check using the enhanced health endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Use Choreo-optimized server with proper signal handling
-CMD ["dumb-init", "node", "choreo-server.js"] 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Start the application
+CMD ["node", "server.js"] 

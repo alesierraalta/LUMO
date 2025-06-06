@@ -1,0 +1,61 @@
+# Choreo ignore file to prevent buildpack cache issues
+# Force fresh builds by excluding cached artifacts
+
+# Development files
+.env.local
+.env.development
+dev.db
+temp/
+tmp/
+logs/
+
+# Build artifacts that might cause cache issues
+.next/
+node_modules/
+dist/
+out/
+
+# Cache files that could be corrupted
+*.cache
+.cache/
+**/.cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git files
+.git/
+.gitignore
+
+# Documentation and markdown (not needed for runtime)
+*.md
+docs/
+
+# Test files
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+__tests__/
+
+# Deprecated config files that might cause conflicts
+next.config.backup.ts
+next.config.simple.js
+
+# Large or unnecessary files
+screenshots/
+*.log
+*.tgz
+*.tar.gz 

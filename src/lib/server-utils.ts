@@ -9,9 +9,7 @@ import 'server-only';
 import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './prisma';
 
 /**
  * Fixes the ImportSession table schema in the database and verifies model access

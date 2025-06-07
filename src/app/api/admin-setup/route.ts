@@ -1,5 +1,5 @@
 // Endpoint para crear usuario administrador en producción
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    const prisma = new PrismaClient();
     console.log('🔐 Admin setup: Verificando usuario administrador...');
     
     // Buscar usuario administrador

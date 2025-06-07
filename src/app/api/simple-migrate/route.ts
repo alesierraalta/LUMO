@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { connectSafely, disconnectSafely } from '../../../lib/prisma';
+import { prisma, disconnectPrisma } from '../../../lib/prisma';
 
 // Simple endpoint para migrar la base de datos PostgreSQL
 export async function GET() {
   try {
     // Usar conexión segura
-    const prisma = await connectSafely();
+    // Prisma client is already available and connected
     console.log('✅ Database connected successfully');
 
     // Hacer un query simple para verificar que las tablas existen
@@ -38,7 +38,7 @@ export async function GET() {
         timestamp: new Date().toISOString()
       });
     } finally {
-      await disconnectSafely();
+      await disconnectPrisma();
     }
     
   } catch (error: any) {

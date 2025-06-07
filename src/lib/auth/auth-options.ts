@@ -11,7 +11,7 @@ export async function getServerSession() {
     // For now, we'll return a mock session to allow the build to complete
     
     // Get the first admin user as a fallback
-    const adminUser = await prisma.prisma.user.findFirst({
+    const adminUser = await prisma.user.findFirst({
       where: {
         role: {
           name: "admin"

@@ -354,7 +354,7 @@ export default async function InventoryPage({
   }
 
   // Fetch all inventory items with their category and location info
-  const inventoryItems = await prisma.prisma.inventoryItem.findMany({
+  const inventoryItems = await prisma.inventoryItem.findMany({
     include: {
       category: true,
       locationRelation: true, // Incluir información de ubicación
@@ -368,7 +368,7 @@ export default async function InventoryPage({
   const serializedInventory = safeSerializeInventory(inventoryItems);
 
   // Fetch categories
-  const categories = await prisma.prisma.category.findMany({
+  const categories = await prisma.category.findMany({
     orderBy: {
       name: 'asc',
     },
@@ -382,7 +382,7 @@ export default async function InventoryPage({
   }) || [];
 
   // Fetch locations
-  const locations = await prisma.prisma.location.findMany({
+  const locations = await prisma.location.findMany({
     orderBy: {
       name: 'asc',
     },

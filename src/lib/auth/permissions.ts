@@ -14,7 +14,7 @@ export async function checkPermission(userId: string, permissionKey: string): Pr
     // in the database
     
     // Get user with role
-    const user = await prisma.prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         role: {

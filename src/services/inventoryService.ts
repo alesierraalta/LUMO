@@ -1,36 +1,46 @@
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { serializeDecimal } from "../lib/utils";
-import { StockStatus, calculateStockStatus as calculateStockStatusUtil, StockMovementInput } from "@/lib/inventory-utils";
+import { prisma } from '../lib/prisma';
+import { MovementType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { serializeDecimal } from '@/lib/utils';
+import { StockStatus } from '@/lib/inventory-utils';
+import { StockMovementInput } from "@/lib/inventory-utils";
 
 /**
- * Obtiene todos los items de inventario
+ * Obtiene todos los elementos de inventario
  */
 export async function getAllInventoryItems() {
-  const items = await prisma.prisma.inventoryItem.findMany({
+  const items = await prisma.inventoryItem.findMany({
+    include: {
+      category: true,
+    },
     orderBy: {
-      updatedAt: "asc",
+      name: 'asc',
     },
   });
   return serializeDecimal(items);
 }
 
 /**
- * Obtiene un item de inventario por su ID
+ * Obtiene un elemento de inventario por ID
  */
 export async function getInventoryItemById(id: string) {
-  if (!id) {
-    throw new Error("El ID del item de inventario es requerido");
-  }
-  
-  const item = await prisma.prisma.inventoryItem.findUnique({
+  const item = await prisma.inventoryItem.findUnique({
     where: { id },
     include: {
-      stockMovements: {
-        orderBy: {
-          date: "desc",
+      category: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
         },
-        take: 10,
+      },
+      locationRelation: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+        },
       },
     },
   });
@@ -38,181 +48,166 @@ export async function getInventoryItemById(id: string) {
 }
 
 /**
- * Obtiene un item de inventario por SKU
+ * Obtiene un elemento de inventario por SKU
  */
 export async function getInventoryItemBySku(sku: string) {
-  if (!sku) {
-    throw new Error("El SKU del producto es requerido");
-  }
-  
-  // Since sku is not directly accessible in InventoryItem, 
-  // we need to query differently to find items by SKU
-  const items = await prisma.prisma.inventoryItem.findMany({
+  const items = await prisma.inventoryItem.findMany({
     where: {
-      sku: {
-        equals: sku
-      }
+      OR: [
+        { sku: { contains: sku, mode: 'insensitive' } },
+        { name: { contains: sku, mode: 'insensitive' } },
+      ],
     },
     include: {
-      stockMovements: {
-        orderBy: {
-          date: "desc",
+      category: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
         },
-        take: 10,
+      },
+      locationRelation: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+        },
       },
     },
-    take: 1
+    take: 10,
   });
-  
-  const item = items.length > 0 ? items[0] : null;
-  return serializeDecimal(item);
+  return serializeDecimal(items);
 }
 
 /**
- * Actualiza la cantidad mínima de stock para un item
+ * Actualiza el nivel mínimo de stock de un producto
  */
 export async function updateMinStockLevel(inventoryItemId: string, minLevel: number) {
-  if (minLevel < 0) {
-    throw new Error("El nivel mínimo de stock no puede ser negativo");
-  }
-
-  return prisma.prisma.inventoryItem.update({
+  return prisma.inventoryItem.update({
     where: { id: inventoryItemId },
-    data: { 
-      minStockLevel: minLevel,
-      lastUpdated: new Date() // Set the lastUpdated date explicitly
-    },
+    data: { minStockLevel: minLevel },
   });
 }
 
 /**
- * Actualiza la ubicación de un item en el inventario
+ * Actualiza la ubicación de un producto
  */
 export async function updateItemLocation(inventoryItemId: string, location: string) {
-  if (!inventoryItemId) {
-    throw new Error("El ID del item de inventario es requerido");
-  }
-  
-  // Verificar que el item existe
-  const item = await prisma.prisma.inventoryItem.findUnique({
+  // First, get the item to check current location  
+  const item = await prisma.inventoryItem.findUnique({
     where: { id: inventoryItemId },
+    select: { location: true, name: true },
   });
-  
-  if (!item) {
-    throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
-  }
 
-  return prisma.prisma.inventoryItem.update({
+  return prisma.inventoryItem.update({
     where: { id: inventoryItemId },
     data: { 
       location,
-      lastUpdated: new Date() // Set the lastUpdated date explicitly 
+      lastUpdated: new Date(),
     },
   });
 }
 
-// Re-export the calculateStockStatus function for backward compatibility
-export const calculateStockStatus = calculateStockStatusUtil;
-
 /**
- * Registra un movimiento de entrada de stock y actualiza la cantidad del inventario
+ * Agrega stock a un producto
  */
 export async function addStock(inventoryItemId: string, quantity: number, notes?: string, createdBy?: string) {
   if (quantity <= 0) {
-    throw new Error("La cantidad debe ser mayor que cero para entradas de stock");
-  }
-
-  return await prisma.prisma.$transaction(async (tx) => {
-    // Obtener el item de inventario actual
-    const inventoryItem = await tx.inventoryItem.findUnique({
-      where: { id: inventoryItemId },
-    });
-
-    if (!inventoryItem) {
-      throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
-    }
-
-    // Registrar el movimiento con fecha explícita
-    const movement = await tx.stockMovement.create({
-      data: {
-        inventoryItemId,
-        quantity,
-        type: "STOCK_IN",
-        notes,
-        createdBy,
-        date: new Date(), // Establecer fecha explícitamente
-      },
-    });
-
-    // Actualizar la cantidad en el inventario
-    const updatedItem = await tx.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: {
-        quantity: inventoryItem.quantity + quantity,
-        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
-      },
-    });
-
-    return {
-      movement,
-      inventoryItem: updatedItem,
-    };
-  });
-}
-
-/**
- * Registra un movimiento de salida de stock y actualiza la cantidad del inventario
- */
-export async function removeStock(inventoryItemId: string, quantity: number, notes?: string, createdBy?: string) {
-  if (quantity <= 0) {
-    throw new Error("La cantidad debe ser mayor que cero para salidas de stock");
+    throw new Error("La cantidad debe ser mayor a 0");
   }
 
   return await prisma.$transaction(async (tx) => {
-    // Obtener el item de inventario actual
-    const inventoryItem = await tx.inventoryItem.findUnique({
+    // Obtener el producto actual
+    const currentItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
     });
 
-    if (!inventoryItem) {
-      throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
+    if (!currentItem) {
+      throw new Error("Producto no encontrado");
     }
 
-    // Verificar si hay suficiente stock
-    if (inventoryItem.quantity < quantity) {
-      throw new Error(`Stock insuficiente. Disponible: ${inventoryItem.quantity}, Solicitado: ${quantity}`);
-    }
+    // Calcular nueva cantidad
+    const newQuantity = currentItem.quantity + quantity;
 
-    // Registrar el movimiento con fecha explícita
-    const movement = await tx.stockMovement.create({
-      data: {
-        inventoryItemId,
-        quantity,
-        type: "STOCK_OUT",
-        notes,
-        createdBy,
-        date: new Date(), // Establecer fecha explícitamente
-      },
-    });
-
-    // Actualizar la cantidad en el inventario
+    // Actualizar el producto
     const updatedItem = await tx.inventoryItem.update({
       where: { id: inventoryItemId },
       data: {
-        quantity: inventoryItem.quantity - quantity,
-        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
+        quantity: newQuantity,
+        lastUpdated: new Date(),
       },
     });
 
-    return {
-      movement,
-      inventoryItem: updatedItem,
-    };
+    // Crear movimiento de stock
+    await tx.stockMovement.create({
+      data: {
+        inventoryItemId,
+        quantity,
+        type: MovementType.STOCK_IN,
+        notes: notes || `Stock añadido: ${quantity}`,
+        createdBy,
+      },
+    });
+
+    return serializeDecimal(updatedItem);
   });
 }
 
 /**
- * Registra un ajuste de stock y actualiza la cantidad del inventario
+ * Remueve stock de un producto
+ */
+export async function removeStock(inventoryItemId: string, quantity: number, notes?: string, createdBy?: string) {
+  if (quantity <= 0) {
+    throw new Error("La cantidad debe ser mayor a 0");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // Obtener el producto actual
+    const currentItem = await tx.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+
+    if (!currentItem) {
+      throw new Error("Producto no encontrado");
+    }
+
+    // Verificar que hay suficiente stock
+    if (currentItem.quantity < quantity) {
+      throw new Error(
+        `Stock insuficiente. Disponible: ${currentItem.quantity}, Solicitado: ${quantity}`
+      );
+    }
+
+    // Calcular nueva cantidad
+    const newQuantity = currentItem.quantity - quantity;
+
+    // Actualizar el producto
+    const updatedItem = await tx.inventoryItem.update({
+      where: { id: inventoryItemId },
+      data: {
+        quantity: newQuantity,
+        lastUpdated: new Date(),
+      },
+    });
+
+    // Crear movimiento de stock
+    await tx.stockMovement.create({
+      data: {
+        inventoryItemId,
+        quantity: -quantity, // Negativo para indicar salida
+        type: MovementType.STOCK_OUT,
+        notes: notes || `Stock removido: ${quantity}`,
+        createdBy,
+      },
+    });
+
+    return serializeDecimal(updatedItem);
+  });
+}
+
+/**
+ * Ajusta el stock de un producto a una cantidad específica
  */
 export async function adjustStock(inventoryItemId: string, newQuantity: number, notes?: string, createdBy?: string) {
   if (newQuantity < 0) {
@@ -220,65 +215,66 @@ export async function adjustStock(inventoryItemId: string, newQuantity: number, 
   }
 
   return await prisma.$transaction(async (tx) => {
-    // Obtener el item de inventario actual
-    const inventoryItem = await tx.inventoryItem.findUnique({
+    // Obtener el producto actual
+    const currentItem = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },
     });
 
-    if (!inventoryItem) {
-      throw new Error(`Item de inventario con ID '${inventoryItemId}' no encontrado`);
+    if (!currentItem) {
+      throw new Error("Producto no encontrado");
     }
 
-    // Calcular la diferencia para el registro del movimiento
-    const difference = newQuantity - inventoryItem.quantity;
-    const movementType = difference >= 0 ? "ADJUSTMENT" : "ADJUSTMENT";
+    // Calcular la diferencia
+    const difference = newQuantity - currentItem.quantity;
 
-    // Registrar el movimiento con fecha explícita
-    const movement = await tx.stockMovement.create({
-      data: {
-        inventoryItemId,
-        quantity: Math.abs(difference),
-        type: movementType,
-        notes: notes || `Ajuste de stock de ${inventoryItem.quantity} a ${newQuantity}`,
-        createdBy,
-        date: new Date(), // Establecer fecha explícitamente
-      },
-    });
-
-    // Actualizar la cantidad en el inventario
+    // Actualizar el producto
     const updatedItem = await tx.inventoryItem.update({
       where: { id: inventoryItemId },
       data: {
         quantity: newQuantity,
-        lastUpdated: new Date(), // Actualizar también la fecha de última actualización
+        lastUpdated: new Date(),
       },
     });
 
-    return {
-      movement,
-      inventoryItem: updatedItem,
-    };
+    // Crear movimiento de stock
+    await tx.stockMovement.create({
+      data: {
+        inventoryItemId,
+        quantity: difference,
+        type: MovementType.ADJUSTMENT,
+        notes: notes || `Ajuste de stock: ${currentItem.quantity} → ${newQuantity}`,
+        createdBy,
+      },
+    });
+
+    return serializeDecimal(updatedItem);
   });
 }
 
 /**
- * Obtiene el historial completo de movimientos para un item de inventario
+ * Obtiene el historial de movimientos de stock para un producto
  */
 export async function getStockMovementHistory(inventoryItemId: string, limit?: number) {
-  const movements = await prisma.prisma.stockMovement.findMany({
-    where: {
-      inventoryItemId,
-    },
-    orderBy: {
-      date: "desc",
-    },
+  const movements = await prisma.stockMovement.findMany({
+    where: { inventoryItemId },
+    orderBy: { date: 'desc' },
     take: limit,
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
   });
   return serializeDecimal(movements);
 }
 
 /**
- * Obtiene todos los movimientos de stock con detalles del producto
+ * Obtiene todos los movimientos de stock con filtros y paginación
  */
 export async function getAllStockMovements(params?: {
   limit?: number;
@@ -290,135 +286,118 @@ export async function getAllStockMovements(params?: {
   search?: string;
   sort?: string;
 }) {
-  const { 
-    limit = 50, 
-    page = 1, 
-    type, 
-    startDate, 
+  const {
+    limit = 50,
+    page = 1,
+    type = "all",
+    startDate,
     endDate,
     categoryId,
     search,
-    sort = "date-desc"
+    sort = "date_desc",
   } = params || {};
-  
+
   const skip = (page - 1) * limit;
 
+  // Build where clause
   const where: any = {};
-  
-  if (type && type !== 'all') {
+
+  // Filter by type
+  if (type && type !== "all") {
     where.type = type;
   }
-  
+
+  // Filter by date range
   if (startDate || endDate) {
     where.date = {};
-    if (startDate) {
-      where.date.gte = startDate;
-    }
-    if (endDate) {
-      where.date.lte = endDate;
-    }
+    if (startDate) where.date.gte = startDate;
+    if (endDate) where.date.lte = endDate;
   }
 
-  // Category filtering
-  if (categoryId && categoryId !== "all") {
+  // Filter by category
+  if (categoryId) {
     where.inventoryItem = {
-      categoryId
+      categoryId,
     };
   }
 
-  // Search functionality
-  if (search) {
+  // Filter by search term
+  if (search && search.trim()) {
     where.OR = [
       {
         inventoryItem: {
           name: {
             contains: search,
-            mode: 'insensitive'
-          }
-        }
+            mode: "insensitive",
+          },
+        },
       },
       {
         inventoryItem: {
           sku: {
             contains: search,
-            mode: 'insensitive'
-          }
-        }
+            mode: "insensitive",
+          },
+        },
       },
       {
         notes: {
           contains: search,
-          mode: 'insensitive'
-        }
-      }
+          mode: "insensitive",
+        },
+      },
     ];
   }
 
-  // Determine the sorting options
-  let orderBy: any = {};
-  
-  switch (sort) {
-    case 'date-asc':
-      orderBy.date = 'asc';
-      break;
-    case 'product-asc':
-      orderBy.inventoryItem = {
-        name: 'asc'
-      };
-      break;
-    case 'product-desc':
-      orderBy.inventoryItem = {
-        name: 'desc'
-      };
-      break;
-    case 'quantity-asc':
-      // For sorting by quantity, we need to use absolute values
-      // since the UI displays absolute values
-      orderBy.quantity = 'asc';
-      break;
-    case 'quantity-desc':
-      // For sorting by quantity, we need to use absolute values
-      // since the UI displays absolute values
-      orderBy.quantity = 'desc';
-      break;
-    case 'date-desc':
-    default:
-      orderBy.date = 'desc';
-      break;
+  // Build order by clause
+  let orderBy: any = { date: 'desc' };
+
+  if (sort) {
+    const [field, direction] = sort.split('_');
+    const dir = direction === 'asc' ? 'asc' : 'desc';
+
+    switch (field) {
+      case 'date':
+        orderBy = { date: dir };
+        break;
+      case 'quantity':
+        orderBy = { quantity: dir };
+        break;
+      case 'type':
+        orderBy = { type: dir };
+        break;
+      case 'product':
+        orderBy = { inventoryItem: { name: dir } };
+        break;
+      default:
+        orderBy = { date: 'desc' };
+    }
   }
-  
-  // For quantity sorting, we need a special approach to sort by absolute values
+
   let movements;
-  
-  if (sort === 'quantity-asc' || sort === 'quantity-desc') {
-    // Handle special case for quantity sorting using raw SQL to sort by absolute value
-    const sortDirection = sort === 'quantity-asc' ? 'ASC' : 'DESC';
-    
-    // We'll use a different approach for raw SQL
-    // First get the IDs of the movements sorted by absolute quantity
-         // For complex filtering with raw SQL, we need to first get filtered IDs
-     // from the standard query without sorting/pagination
-     const filteredIds = await prisma.prisma.stockMovement.findMany({
-       where,
-       select: { id: true }
-     });
-     
-     const idList = filteredIds.map(item => item.id);
-     
-     // Then use these IDs in our raw query for sorting by absolute quantity
-     const sortedIds = await prisma.prisma.$queryRaw`
-      SELECT id 
-      FROM "StockMovement"
-      WHERE id IN (${Prisma.join(idList)})
-      ORDER BY ABS(quantity) ${Prisma.sql`${sortDirection}`}
-      LIMIT ${limit}
-      OFFSET ${skip}
+
+  // Special handling for quantity sorting since we need to sort by absolute value
+  if (sort?.startsWith('quantity_')) {
+    // First, get filtered IDs sorted by quantity
+    const filteredIds = await prisma.stockMovement.findMany({
+      where,
+      select: { id: true, quantity: true },
+    });
+
+    // Sort by absolute value of quantity
+    const sortedIds = await prisma.$queryRaw`
+      SELECT id FROM (
+        SELECT id, ABS(quantity) as abs_quantity
+        FROM stock_movements 
+        WHERE id IN (${Prisma.join(filteredIds.map(item => item.id))})
+      ) sorted
+      ORDER BY abs_quantity ${sort.endsWith('_asc') ? Prisma.sql`ASC` : Prisma.sql`DESC`}
+      LIMIT ${limit} OFFSET ${skip}
     `;
-    
-    // Then get the actual movements with their relations
+
     const ids = (sortedIds as any[]).map(item => item.id);
-    
-    movements = await prisma.prisma.stockMovement.findMany({
+
+    movements = await prisma.stockMovement.findMany({
       where: {
         id: {
           in: ids
@@ -459,7 +438,7 @@ export async function getAllStockMovements(params?: {
     });
   } else {
     // For other sorting options, use the standard approach
-    movements = await prisma.prisma.stockMovement.findMany({
+    movements = await prisma.stockMovement.findMany({
       where,
       include: {
         inventoryItem: {
@@ -490,7 +469,7 @@ export async function getAllStockMovements(params?: {
     });
   }
   
-  const total = await prisma.prisma.stockMovement.count({ where });
+  const total = await prisma.stockMovement.count({ where });
   
   // Ensure movements is always an array and data is serialized properly
   const safeMovements = Array.isArray(movements) ? movements : [];
@@ -512,7 +491,7 @@ export async function getAllStockMovements(params?: {
  */
 export async function getLowStockItems() {
   // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.prisma.$queryRaw`
+  const items = await prisma.$queryRaw`
     SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
     FROM inventory_items i
     LEFT JOIN categories c ON i."categoryId" = c.id
@@ -540,7 +519,7 @@ export async function getLowStockItems() {
  */
 export async function getOutOfStockItems() {
   // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.prisma.$queryRaw`
+  const items = await prisma.$queryRaw`
     SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
     FROM inventory_items i
     LEFT JOIN categories c ON i."categoryId" = c.id
@@ -588,7 +567,7 @@ export async function deleteInventoryItem(inventoryItemId: string) {
     throw new Error("El ID del item de inventario es requerido");
   }
 
-  return await prisma.prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     // Obtener el item antes de eliminarlo
     const itemToDelete = await tx.inventoryItem.findUnique({
       where: { id: inventoryItemId },

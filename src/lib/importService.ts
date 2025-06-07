@@ -96,12 +96,12 @@ export const importService = {
         if (attempt > 1) {
           try {
             // Use Prisma raw query to verify database connection
-            await prisma.prisma.$queryRaw`SELECT 1`;
+            await prisma.$queryRaw`SELECT 1`;
             console.log(`[${requestId}] ✅ Database connection verified`);
           } catch (connError) {
             console.error(`[${requestId}] ❌ Database connection failed:`, connError);
             // Try reconnect explicitly
-            await prisma.prisma.$connect();
+            await prisma.$connect();
           }
         }
       
@@ -294,7 +294,7 @@ export const importService = {
               : null;
             
             // Try direct database operation using raw query
-            await prisma.prisma.$executeRaw`
+            await prisma.$executeRaw`
               INSERT INTO "ImportSessionDetail" (
                 "id", "sessionId", "name", "sku", "status", "message", "originalData", "importedData", "createdAt"
               ) VALUES (
@@ -347,7 +347,7 @@ export const importService = {
     }
     
     // Get user information
-    const user = await prisma.prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: session.createdById },
       select: {
         id: true,

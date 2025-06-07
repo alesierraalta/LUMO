@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     // Execute the query
     const [products, total] = await Promise.all([
-      prisma.prisma.inventoryItem.findMany({
+      prisma.inventoryItem.findMany({
         where,
         include: {
           category: true
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         skip: (parseInt(page.toString()) - 1) * parseInt(limit.toString()),
         take: parseInt(limit.toString())
       }),
-      prisma.prisma.inventoryItem.count({ where })
+      prisma.inventoryItem.count({ where })
     ]);
 
     // Return the results

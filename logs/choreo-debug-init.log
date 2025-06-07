@@ -1,0 +1,19 @@
+[2025-06-07T22:30:31.596Z] Choreo Automated Debug Log System Initialization
+Environment: unknown
+Is Choreo: No
+Auto-fix: Enabled
+Node version: v24.1.0
+Platform: win32
+Architecture: x64
+
+[2025-06-07T22:30:31.598Z] [DETECT] Starting issue detection...
+[2025-06-07T22:30:31.598Z] [DETECT] Checking DATABASE_URL format...
+[2025-06-07T22:30:31.598Z] [DETECT] Checking port configuration...
+[2025-06-07T22:30:31.598Z] [DETECT] Checking Clerk configuration...
+[2025-06-07T22:30:31.599Z] [DETECT] Issue detection completed. Found 0 issues.
+[2025-06-07T22:30:31.599Z] [FIX] Starting auto-fix for 0 issues...
+[2025-06-07T22:30:31.600Z] [FIX] Auto-fix completed. Applied 0 fixes successfully.
+[2025-06-07T22:30:31.600Z] [SUMMARY] 
+Generating diagnostics summary...
+[2025-06-07T22:30:31.601Z] [SUMMARY] Summary written to C:\Users\alesierraalta\Documents\Projects\lumo\LUMO\logs\choreo-debug-summary.json
+[2025-06-07T22:30:31.602Z] [EXIT] Initialization completed successfully

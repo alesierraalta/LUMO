@@ -708,13 +708,13 @@ async function ensureImportTablesExist() {
   try {
     // Check if ImportSession table exists
     try {
-      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
       return true; // Table exists
     } catch (error) {
       console.log("ImportSession table does not exist, creating required tables...");
       
       // Create ImportSession table
-      await prisma.prisma.$executeRawUnsafe(`
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSession" (
           id TEXT PRIMARY KEY,
           "fileName" TEXT NOT NULL,
@@ -733,7 +733,7 @@ async function ensureImportTablesExist() {
       `);
       
       // Create ImportSessionDetail table
-      await prisma.prisma.$executeRawUnsafe(`
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSessionDetail" (
           id TEXT PRIMARY KEY,
           "sessionId" TEXT NOT NULL,
@@ -749,7 +749,7 @@ async function ensureImportTablesExist() {
       `);
       
       // Create indexes
-      await prisma.prisma.$executeRawUnsafe(`
+      await prisma.$executeRawUnsafe(`
         CREATE INDEX IF NOT EXISTS "ImportSession_createdById_idx" ON "ImportSession"("createdById");
         CREATE INDEX IF NOT EXISTS "ImportSession_createdAt_idx" ON "ImportSession"("createdAt");
         CREATE INDEX IF NOT EXISTS "ImportSessionDetail_sessionId_idx" ON "ImportSessionDetail"("sessionId");

@@ -13,7 +13,7 @@ export async function GET() {
     // Check if ImportSession table exists
     let importSessionExists = false;
     try {
-      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
       importSessionExists = true;
     } catch (error) {
       console.log("ImportSession table does not exist, will create it");
@@ -21,7 +21,7 @@ export async function GET() {
     
     if (!importSessionExists) {
       // Create ImportSession table
-      await prisma.prisma.$executeRawUnsafe(`
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSession" (
           id TEXT PRIMARY KEY,
           filename TEXT NOT NULL,
@@ -43,7 +43,7 @@ export async function GET() {
     // Check if ImportSessionItem table exists
     let importSessionItemExists = false;
     try {
-      await prisma.prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSessionItem\" LIMIT 1");
+      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSessionItem\" LIMIT 1");
       importSessionItemExists = true;
     } catch (error) {
       console.log("ImportSessionItem table does not exist, will create it");
@@ -51,7 +51,7 @@ export async function GET() {
     
     if (!importSessionItemExists) {
       // Create ImportSessionItem table
-      await prisma.prisma.$executeRawUnsafe(`
+      await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSessionItem" (
           id TEXT PRIMARY KEY,
           "sessionId" TEXT NOT NULL,

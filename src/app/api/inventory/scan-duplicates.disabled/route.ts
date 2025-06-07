@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     // Get all products with their inventory and category
-    const allProducts = await prisma.prisma.inventoryItem.findMany({
+    const allProducts = await prisma.inventoryItem.findMany({
       include: {
         category: true,
       },

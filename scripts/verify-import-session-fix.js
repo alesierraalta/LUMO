@@ -16,7 +16,7 @@ async function main() {
     try {
       // Create a test record with fileName field
       const testId = 'test-' + Date.now();
-      const createResult = await prisma.prisma.$executeRaw`
+      const createResult = await prisma.$executeRaw`
         INSERT INTO "ImportSession" (
           "id", "fileName", "filePath", "status", "notes", "createdById", "createdAt",
           "totalItems", "successItems", "warningItems", "errorItems"
@@ -29,7 +29,7 @@ async function main() {
       console.log('✅ Successfully created test record with fileName');
       
       // Delete the test record
-      await prisma.prisma.$executeRaw`DELETE FROM "ImportSession" WHERE "id" = ${testId}`;
+      await prisma.$executeRaw`DELETE FROM "ImportSession" WHERE "id" = ${testId}`;
       console.log('✅ Successfully deleted test record');
       
       console.log('✅ Verification completed: ImportSession table structure is correct');

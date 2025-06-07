@@ -121,6 +121,7 @@ export class ChoreoDebugSystem {
   private issuesLogPath: string;
   private statusLogPath: string;
   private autoFixEnabled: boolean;
+  private fixModules: Map<string, any> = new Map();
   
   constructor(options: { autoFix?: boolean } = {}) {
     this.deploymentId = uuidv4();
@@ -168,9 +169,39 @@ export class ChoreoDebugSystem {
   }
   
   /**
+   * Load all available fix modules
+   */
+  private async loadFixModules(): Promise<void> {
+    try {
+      // Load P6001 fix
+      const { diagnoseAndFixP6001 } = await import('./choreo-fixes/prisma-p6001-fix');
+      this.fixModules.set('prisma-p6001', diagnoseAndFixP6001);
+      
+      // Load Clerk fix module
+      const { clerkDebugModule } = await import('./choreo-fixes/clerk-ssl-fix');
+      this.fixModules.set('clerk-debug', clerkDebugModule);
+      
+      // Load Build/Deployment detector
+      const { buildDeploymentDetector } = await import('./choreo-fixes/build-deployment-detector');
+      this.fixModules.set('build-deployment', buildDeploymentDetector);
+      
+      this.logger.info('DEBUG_SYSTEM', 'All fix modules loaded successfully', {
+        loadedModules: Array.from(this.fixModules.keys())
+      });
+    } catch (error) {
+      this.logger.error('DEBUG_SYSTEM', 'Failed to load fix modules', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+  
+  /**
    * Register built-in issue detectors
    */
   private registerBuiltInDetectors(): void {
+    // Load all available fix modules
+    this.loadFixModules();
+    
     // Will dynamically load detectors from choreo-fixes directory
     try {
       const fixesDir = path.join(process.cwd(), 'src', 'lib', 'choreo-fixes');

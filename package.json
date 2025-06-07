@@ -102,7 +102,9 @@
     "verify-dirs": "node scripts/ensure-import-dirs.js",
     "preflight": "node scripts/choreo-preflight.js && node scripts/verify-database-connection.js",
     "deploy:verify-all": "npm run verify-env && npm run verify-dirs && npm run verify-db && npm run verify:deployment",
-    "choreo-debug": "node scripts/auto-debug-init.js"
+    "choreo-debug": "node scripts/auto-debug-init.js",
+    "validate-debug-system": "node scripts/validate-debug-system.js",
+    "deploy-ready": "npm run validate-debug-system && echo 'System validated successfully!'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

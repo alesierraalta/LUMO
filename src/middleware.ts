@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isPublicRoute } from './lib/auth/route-protection';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
 
@@ -97,62 +98,49 @@ const getTokenFromRequest = (request: NextRequest): string | null => {
   return null;
 };
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Allow API routes without authentication check (they handle auth internally)
-  if (pathname.startsWith('/api/')) {
+// This middleware runs before each request
+export function middleware(request: NextRequest) {
+  const url = request.nextUrl.pathname;
+  
+  // Skip middleware for public static files
+  if (url.includes('.') || url.startsWith('/api/')) {
     return NextResponse.next();
   }
-
-  // Allow public routes
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+  
+  // Special handling for Choreo debug dashboard - never redirect to login
+  if (url === '/choreo-status' || url.startsWith('/choreo-status/')) {
+    // Add special debug headers and allow access
+    const response = NextResponse.next();
+    response.headers.set('X-Choreo-Debug', 'Enabled');
+    return response;
+  }
+  
+  // For other public routes, allow access without redirect
+  if (isPublicRoute(url)) {
     return NextResponse.next();
   }
-
-  // Allow static files and Next.js internals
-  if (
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/api/_next/') ||
-    pathname.includes('.') // Static files
-  ) {
-    return NextResponse.next();
+  
+  // Check for auth token cookie
+  const authToken = request.cookies.get('auth-token')?.value;
+  
+  // If no auth token and not a public route, redirect to login
+  if (!authToken && !url.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
-
-  // Get token from request
-  const token = getTokenFromRequest(request);
-
-  if (!token) {
-    // Redirect to login for protected routes
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Verify token (Edge Runtime compatible verification)
-  const payload = await verifyTokenSimple(token);
-  if (!payload) {
-    // Invalid token, redirect to login
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // For admin routes, role checking will be done in the actual route handlers
-  // since we can't access the database in edge runtime middleware
   
   return NextResponse.next();
 }
 
+// Configure which routes the middleware applies to
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match all request paths except:
+     * 1. /api/ routes with POST, PUT, DELETE methods (let these pass through for API handling)
+     * 2. /_next/ (internal Next.js routes)
+     * 3. /_vercel/ (Vercel system routes)
+     * 4. /favicon.ico, /sitemap.xml, /robots.txt (common static files)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next|_vercel|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 }; 

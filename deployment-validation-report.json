@@ -1,38 +1,29 @@
 {
-  "timestamp": "2025-06-06T13:53:20.590Z",
-  "score": 23,
-  "maxScore": 23,
-  "percentage": 100,
-  "status": "ready",
-  "details": {
-    "passed": [
-      "Output set to standalone ✅",
-      "No deprecated turbotrace option ✅",
-      "ESLint ignored during builds ✅",
-      "TypeScript errors ignored ✅",
-      "Script \"build\" exists ✅",
-      "Script \"start\" exists ✅",
-      "Script \"fix:deployment-errors\" exists ✅",
-      "Build includes Prisma generation ✅",
-      "Prisma client generator found ✅",
-      "Database provider configured ✅",
-      "Environment-aware database URL ✅",
-      "skipLibCheck enabled for faster builds ✅",
-      "Strict mode disabled for deployment ✅",
-      "Incremental compilation enabled ✅",
-      "Deployment script exists: choreo-deployment-complete.js ✅",
-      "Deployment script exists: fix-deployment-errors.js ✅",
-      "Deployment script exists: choreo-startup-fix.js ✅",
-      "Clean state: .next not present ✅",
-      "Clean state: node_modules/.cache not present ✅",
-      "Clean state: next.config.backup.ts not present ✅",
-      "Clean state: next.config.simple.js not present ✅",
-      "Required env var present: DATABASE_URL ✅",
-      "Required env var present: NODE_ENV ✅"
-    ],
-    "warnings": [],
-    "failed": [],
-    "score": 23,
-    "maxScore": 23
-  }
+  "timestamp": "2025-06-07T19:44:33.304Z",
+  "validationStatus": "FAILED",
+  "systemReady": false,
+  "components": {
+    "coreSystem": true,
+    "apiEndpoints": true,
+    "dashboard": true,
+    "notifications": true,
+    "fixModules": true,
+    "logging": true,
+    "authentication": true,
+    "environment": false,
+    "overall": false
+  },
+  "criticalIssues": [
+    "Missing required environment variables: DATABASE_URL, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY",
+    "TypeScript compilation errors need to be resolved"
+  ],
+  "warnings": [
+    "Consider configuring notification channels for production"
+  ],
+  "recommendedActions": [
+    "Review and fix all critical issues",
+    "Re-run validation script",
+    "Ensure all required files are present",
+    "Verify environment configuration"
+  ]
 }

@@ -443,3 +443,9 @@ export const isAdmin = (user: User): boolean => {
 
 // Constants
 export { COOKIE_NAME, SESSION_DURATION }; 
+export const isAdmin = (user: User): boolean => {
+  return user.role.name === 'admin';
+};
+
+// Constants
+export { COOKIE_NAME, SESSION_DURATION }; 

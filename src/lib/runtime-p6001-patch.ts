@@ -93,5 +93,5 @@ if (typeof global !== 'undefined') {
     
     return originalConsoleError.apply(console, args)
   }
-}
+} 
  

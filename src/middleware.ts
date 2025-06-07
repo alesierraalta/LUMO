@@ -101,12 +101,12 @@ const getTokenFromRequest = (request: NextRequest): string | null => {
 // This middleware runs before each request
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
-  
+
   // Skip middleware for public static files
   if (url.includes('.') || url.startsWith('/api/')) {
     return NextResponse.next();
   }
-  
+
   // Special handling for Choreo debug dashboard - never redirect to login
   if (url === '/choreo-status' || url.startsWith('/choreo-status/')) {
     // Add special debug headers and allow access
@@ -119,7 +119,7 @@ export function middleware(request: NextRequest) {
   if (isPublicRoute(url)) {
     return NextResponse.next();
   }
-  
+
   // Check for auth token cookie
   const authToken = request.cookies.get('auth-token')?.value;
   

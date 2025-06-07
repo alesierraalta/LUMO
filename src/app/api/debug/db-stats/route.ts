@@ -1,17 +1,32 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { isBuildTime, safeDbOperation, getEnvironmentInfo } from '@/lib/build-time-guards';
 
 export async function GET() {
   try {
+    // During build time, return a placeholder response
+    if (isBuildTime()) {
+      return NextResponse.json({
+        buildTime: true,
+        message: 'Database stats are only available at runtime',
+        environment: getEnvironmentInfo()
+      });
+    }
+
+    // Only import and use Prisma at runtime
+    const { prisma } = await import('@/lib/prisma');
+    
     // Verificar que el usuario es administrador
     const user = await getCurrentUser();
     if (!user || !isAdmin(user)) {
       return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 403 });
     }
 
-    // @ts-ignore - Esta función está definida en nuestro CustomPrismaClient pero no en los tipos
-    const queryStats = prisma.getQueryStats ? prisma.getQueryStats() : [];
+    // Safe database operations with fallbacks
+    const queryStats = await safeDbOperation(async () => {
+      // @ts-ignore - Esta función está definida en nuestro CustomPrismaClient pero no en los tipos
+      return prisma.getQueryStats ? prisma.getQueryStats() : [];
+    }, []);
     
     // Obtener estadísticas de cache
     const cacheStats = {
@@ -37,12 +52,16 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       queries: queryStats,
       cache: cacheStats,
-      system: systemStats
+      system: systemStats,
+      environment: getEnvironmentInfo()
     });
   } catch (error) {
     console.error('Error al obtener estadísticas de BD:', error);
     return NextResponse.json(
-      { error: 'Error al obtener estadísticas' },
+      { 
+        error: 'Error al obtener estadísticas',
+        environment: getEnvironmentInfo()
+      },
       { status: 500 }
     );
   }

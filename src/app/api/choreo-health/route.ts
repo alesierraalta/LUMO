@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
     };
     
     return NextResponse.json(response, {
-      status: 200,
-      headers: {
+    status: 200,
+    headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
-    });
+    }
+  });
   }
 }

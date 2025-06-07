@@ -33,7 +33,7 @@ export async function getInventoryItemById(id: string) {
           name: true,
           description: true,
         },
-      },
+        },
       locationRelation: {
         select: {
           id: true,
@@ -65,7 +65,7 @@ export async function getInventoryItemBySku(sku: string) {
           name: true,
           description: true,
         },
-      },
+        },
       locationRelation: {
         select: {
           id: true,
@@ -286,27 +286,27 @@ export async function getAllStockMovements(params?: {
   search?: string;
   sort?: string;
 }) {
-  const {
-    limit = 50,
-    page = 1,
+  const { 
+    limit = 50, 
+    page = 1, 
     type = "all",
-    startDate,
+    startDate, 
     endDate,
     categoryId,
     search,
     sort = "date_desc",
   } = params || {};
-
+  
   const skip = (page - 1) * limit;
 
   // Build where clause
   const where: any = {};
-
+  
   // Filter by type
   if (type && type !== "all") {
     where.type = type;
   }
-
+  
   // Filter by date range
   if (startDate || endDate) {
     where.date = {};
@@ -351,7 +351,7 @@ export async function getAllStockMovements(params?: {
 
   // Build order by clause
   let orderBy: any = { date: 'desc' };
-
+  
   if (sort) {
     const [field, direction] = sort.split('_');
     const dir = direction === 'asc' ? 'asc' : 'desc';
@@ -359,31 +359,31 @@ export async function getAllStockMovements(params?: {
     switch (field) {
       case 'date':
         orderBy = { date: dir };
-        break;
+      break;
       case 'quantity':
         orderBy = { quantity: dir };
-        break;
+      break;
       case 'type':
         orderBy = { type: dir };
-        break;
+      break;
       case 'product':
         orderBy = { inventoryItem: { name: dir } };
-        break;
-      default:
+      break;
+    default:
         orderBy = { date: 'desc' };
     }
   }
-
+  
   let movements;
-
+  
   // Special handling for quantity sorting since we need to sort by absolute value
   if (sort?.startsWith('quantity_')) {
     // First, get filtered IDs sorted by quantity
     const filteredIds = await prisma.stockMovement.findMany({
-      where,
+       where,
       select: { id: true, quantity: true },
     });
-
+     
     // Sort by absolute value of quantity
     const sortedIds = await prisma.$queryRaw`
       SELECT id FROM (
@@ -394,9 +394,9 @@ export async function getAllStockMovements(params?: {
       ORDER BY abs_quantity ${sort.endsWith('_asc') ? Prisma.sql`ASC` : Prisma.sql`DESC`}
       LIMIT ${limit} OFFSET ${skip}
     `;
-
+    
     const ids = (sortedIds as any[]).map(item => item.id);
-
+    
     movements = await prisma.stockMovement.findMany({
       where: {
         id: {

@@ -127,3 +127,4 @@ export function registerWithHealthSystem() {
     targetIssues: ['P6001', 'database-connection', 'prisma-url']
   };
 }
+ 

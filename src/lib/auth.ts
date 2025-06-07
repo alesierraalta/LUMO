@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isBuildTime, safeDbOperation } from './build-time-guards';
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
@@ -308,56 +309,65 @@ export const registerUser = async (
 // Get current user from token
 export const getCurrentUser = async (token?: string): Promise<User | null> => {
   try {
-    const client = getPrismaClient();
-
-    // Get token from parameter or cookies
-    const cookieStore = await cookies();
-    const authToken = token || cookieStore.get(COOKIE_NAME)?.value;
-
-    if (!authToken) {
+    // During build time, return null to prevent database operations
+    if (isBuildTime()) {
+      console.warn('getCurrentUser called during build time, returning null');
       return null;
     }
 
-    // Verify token
-    const sessionData = verifyToken(authToken);
-    if (!sessionData) {
-      return null;
-    }
+    // Safe database operation wrapper
+    return await safeDbOperation(async () => {
+      const client = getPrismaClient();
 
-    // Check if session exists in database
-    const session = await client.userSession.findUnique({
-      where: { token: authToken },
-      include: {
-        user: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: {
-                    permission: true,
+      // Get token from parameter or cookies
+      const cookieStore = await cookies();
+      const authToken = token || cookieStore.get(COOKIE_NAME)?.value;
+
+      if (!authToken) {
+        return null;
+      }
+
+      // Verify token
+      const sessionData = verifyToken(authToken);
+      if (!sessionData) {
+        return null;
+      }
+
+      // Check if session exists in database
+      const session = await client.userSession.findUnique({
+        where: { token: authToken },
+        include: {
+          user: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
                   },
                 },
               },
-            },
-            customPermissions: {
-              include: {
-                permission: true,
+              customPermissions: {
+                include: {
+                  permission: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!session || session.expiresAt < new Date()) {
-      // Clean up expired session
-      if (session) {
-        await invalidateSession(authToken);
+      if (!session || session.expiresAt < new Date()) {
+        // Clean up expired session
+        if (session) {
+          await invalidateSession(authToken);
+        }
+        return null;
       }
-      return null;
-    }
 
-    return session.user as User;
+      return session.user as User;
+    }, null);
   } catch (error) {
     console.error('Get current user error:', error);
     return null;

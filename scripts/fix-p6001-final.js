@@ -318,11 +318,11 @@ console.log('\n🔍 INTEGRATING WITH AUTOMATED DEBUG LOG SYSTEM');
 console.log('----------------------------------------');
 
 // Import path for consistency
-const choreoLogPath = path.join(process.cwd(), 'src', 'lib', 'choreo-debug-logger.ts');
+const choreoLogPath = path.join(process.cwd(), 'src', 'lib', 'choreo-debug-system.ts');
 
-// Check if the debug logger exists
+// Check if the debug system exists
 if (!fs.existsSync(choreoLogPath)) {
-  console.log('⚠️ Choreo Debug Logger not found, creating minimal integration');
+  console.log('⚠️ Choreo Debug System not found, creating minimal integration');
   
   // Create a simple log entry to document this fix
   const logDir = path.join(process.cwd(), 'logs');
@@ -337,7 +337,8 @@ if (!fs.existsSync(choreoLogPath)) {
     issue: 'P6001',
     resolution: 'applied-fix-script',
     databaseUrl: databaseUrl ? `${databaseUrl.slice(0, 15)}...` : 'not-set',
-    environment: process.env.NODE_ENV || 'unknown'
+    environment: process.env.NODE_ENV || 'unknown',
+    buildTime: isBuildTime()
   };
   
   fs.appendFileSync(
@@ -347,7 +348,7 @@ if (!fs.existsSync(choreoLogPath)) {
   
   console.log('✅ Created minimal deployment log entry');
 } else {
-  console.log('✅ Choreo Debug Logger found, integrating P6001 fix');
+  console.log('✅ Choreo Debug System found, integrating P6001 fix');
   
   // Create an enhanced integration file
   const enhancedIntegrationPath = path.join(process.cwd(), 'src', 'lib', 'choreo-fixes', 'prisma-p6001-fix.ts');
@@ -367,111 +368,58 @@ if (!fs.existsSync(choreoLogPath)) {
  * - Automatic detection of P6001 errors
  * - Self-healing capabilities for common database URL issues
  * - Integration with deployment health monitoring
+ * - Build-time safety guards
  */
 
-import { ChoreoDebugLogger } from '../choreo-debug-logger';
-
-// Create logger instance
-const logger = new ChoreoDebugLogger();
+import { isBuildTime, safeDbOperation } from '../build-time-guards';
 
 /**
- * Diagnose and fix Prisma P6001 errors
+ * Diagnose and fix Prisma P6001 errors with build-time safety
  */
 export async function diagnoseAndFixP6001() {
-  logger.info('PRISMA_FIX', 'Starting P6001 diagnostics');
-  logger.startPerformanceTimer('p6001-diagnosis');
+  console.log('🔍 Starting P6001 diagnostics with build-time safety');
+  
+  // Skip database operations during build time
+  if (isBuildTime()) {
+    console.log('⚠️ Build time detected - skipping database diagnostics');
+    return {
+      buildTime: true,
+      urlFixed: false,
+      message: 'P6001 diagnostics skipped during build time'
+    };
+  }
   
   // 1. Check DATABASE_URL format
   const databaseUrl = process.env.DATABASE_URL || '';
   let urlFixed = false;
   
-  logger.info('PRISMA_FIX', 'Checking DATABASE_URL format', {
-    urlPrefix: databaseUrl.slice(0, 15) + '...'
-  });
+  console.log('🔍 Checking DATABASE_URL format:', databaseUrl.slice(0, 15) + '...');
   
   if (databaseUrl.startsWith('prisma://')) {
-    logger.warn('PRISMA_FIX', 'Found prisma:// protocol, converting to postgresql://', {
-      issue: 'invalid-protocol',
-      severity: 'high',
-      autoFixed: true
-    });
-    
-    // Fix the URL
+    console.log('🔧 Found prisma:// protocol, converting to postgresql://');
     process.env.DATABASE_URL = databaseUrl.replace('prisma://', 'postgresql://');
     urlFixed = true;
   } else if (databaseUrl.startsWith('postgres://')) {
-    logger.warn('PRISMA_FIX', 'Found postgres:// protocol, converting to postgresql://', {
-      issue: 'legacy-protocol',
-      severity: 'medium',
-      autoFixed: true
-    });
-    
-    // Fix the URL
+    console.log('🔧 Found postgres:// protocol, converting to postgresql://');
     process.env.DATABASE_URL = databaseUrl.replace('postgres://', 'postgresql://');
     urlFixed = true;
   }
   
-  // 2. Check schema.prisma configuration
-  try {
-    const schemaPath = './prisma/schema.prisma';
-    const schemaContent = await import('fs').then(fs => 
-      fs.promises.readFile(schemaPath, 'utf8')
-    );
-    
-    // Check for proper provider configuration
-    if (!schemaContent.includes('provider = "postgresql"')) {
-      logger.error('PRISMA_FIX', 'schema.prisma is not configured for PostgreSQL', {
-        issue: 'invalid-provider',
-        severity: 'high',
-        autoFixed: false
-      });
-    }
-    
-    // Check for binary targets
-    if (!schemaContent.includes('binaryTargets = ')) {
-      logger.error('PRISMA_FIX', 'Missing binary targets in schema.prisma', {
-        issue: 'missing-binary-targets',
-        severity: 'high',
-        autoFixed: false,
-        recommendation: 'Add binaryTargets = ["native", "debian-openssl-3.0.x"] to generator section'
-      });
-    } else if (!schemaContent.includes('debian-openssl-3.0.x')) {
-      logger.error('PRISMA_FIX', 'Missing Choreo binary target in schema.prisma', {
-        issue: 'incomplete-binary-targets',
-        severity: 'high',
-        autoFixed: false,
-        recommendation: 'Ensure binaryTargets includes "debian-openssl-3.0.x"'
-      });
-    }
-  } catch (error) {
-    logger.error('PRISMA_FIX', 'Failed to analyze schema.prisma', {
-      error: error.message
-    });
-  }
-  
-  // 3. Verify fix effectiveness
-  try {
+  // 2. Test connection with safe operation wrapper
+  const connectionTest = await safeDbOperation(async () => {
     const { PrismaClient } = require('@prisma/client');
     const testClient = new PrismaClient();
     await testClient.$connect();
-    
-    logger.info('PRISMA_FIX', 'Successfully connected to database', {
-      success: true
-    });
-    
     await testClient.$disconnect();
-  } catch (error) {
-    logger.error('PRISMA_FIX', 'Failed to connect to database after fixes', {
-      error: error.message,
-      code: error.code || 'unknown',
-      recommendation: error.code === 'P6001' 
-        ? 'Database URL protocol still incorrect, check DATABASE_URL value' 
-        : 'Connection failed for other reasons, check database credentials and availability'
-    });
-  }
+    return true;
+  }, false);
   
-  logger.endPerformanceTimer('p6001-diagnosis');
-  return urlFixed;
+  return {
+    buildTime: false,
+    urlFixed,
+    connectionTest,
+    timestamp: new Date().toISOString()
+  };
 }
 
 /**
@@ -481,50 +429,26 @@ export function registerWithHealthSystem() {
   return {
     name: 'prisma-p6001-fix',
     status: 'active',
-    description: 'Fixes Prisma P6001 connection issues',
+    description: 'Fixes Prisma P6001 connection issues with build-time safety',
     lastRun: new Date().toISOString(),
     autoFix: true,
-    targetIssues: ['P6001', 'database-connection', 'prisma-url']
+    targetIssues: ['P6001', 'database-connection', 'prisma-url', 'build-time-errors']
   };
 }
 `;
 
   fs.writeFileSync(enhancedIntegrationPath, enhancedIntegrationContent);
   console.log(`✅ Created enhanced integration: ${enhancedIntegrationPath}`);
-  
-  // Update verification script to use the new integration
-  const verifyPath = path.join(process.cwd(), 'scripts', 'verify-p6001-fix.js');
-  let verifyContent = fs.readFileSync(verifyPath, 'utf8');
-  
-  verifyContent = verifyContent.replace(
-    `console.log('🧪 Verificando solución P6001...');`,
-    `console.log('🧪 Verificando solución P6001...');
+}
 
-// Integration with Automated Debug Log System
-try {
-  console.log('🔍 Using enhanced diagnostics...');
-  const logDir = join(process.cwd(), 'logs');
-  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
-  
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    type: 'verification',
-    component: 'prisma',
-    issue: 'P6001',
-    environment: process.env.NODE_ENV || 'unknown'
-  };
-  
-  appendFileSync(
-    join(logDir, 'choreo-deployment.log'),
-    JSON.stringify(logEntry) + '\\n'
+// Helper function to detect build time
+function isBuildTime() {
+  return (
+    typeof process === 'undefined' ||
+    !process.env.DATABASE_URL ||
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    (process.env.CI === 'true' && !process.env.DATABASE_URL)
   );
-} catch (error) {
-  console.log('⚠️ Could not initialize enhanced diagnostics:', error.message);
-}`
-  );
-  
-  fs.writeFileSync(verifyPath, verifyContent);
-  console.log(`✅ Updated verification script with enhanced diagnostics`);
 }
 
 // 10. Resumen final

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, disconnectPrisma } from '../../../lib/prisma';
+import { prisma } from '../../../lib/prisma';
 
 // Simple endpoint para migrar la base de datos PostgreSQL
 export async function GET() {
@@ -38,7 +38,8 @@ export async function GET() {
         timestamp: new Date().toISOString()
       });
     } finally {
-      await disconnectPrisma();
+      // Prisma client will auto-disconnect
+      console.log('✅ Database operation completed');
     }
     
   } catch (error: any) {

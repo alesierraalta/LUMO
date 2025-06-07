@@ -54,7 +54,7 @@ try {
       console.log('✅ Prisma integrado importado exitosamente');
       
       return prisma.$queryRaw`SELECT 1 as integrated_test`;
-    } catch (error) {
+} catch (error) {
       console.log('⚠️ Error usando integración de Prisma:', error.message);
       return null;
     }

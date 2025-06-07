@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-06-07T19:44:33.304Z",
+  "timestamp": "2025-06-07T22:15:32.148Z",
   "validationStatus": "FAILED",
   "systemReady": false,
   "components": {
@@ -14,7 +14,7 @@
     "overall": false
   },
   "criticalIssues": [
-    "Missing required environment variables: DATABASE_URL, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY",
+    "Missing required environment variables: DATABASE_URL",
     "TypeScript compilation errors need to be resolved"
   ],
   "warnings": [

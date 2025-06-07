@@ -295,16 +295,16 @@ console.log('\n🌍 TESTING ENVIRONMENT CONFIGURATION');
 console.log('----------------------------------');
 
 const requiredEnvVars = [
-  'DATABASE_URL',
-  'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
-  'CLERK_SECRET_KEY'
+  'DATABASE_URL'
 ];
 
 const optionalEnvVars = [
   'SLACK_WEBHOOK_URL',
   'MONITORING_WEBHOOK_URL',
   'SMTP_HOST',
-  'ALERT_EMAIL_RECIPIENTS'
+  'ALERT_EMAIL_RECIPIENTS',
+  'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+  'CLERK_SECRET_KEY'
 ];
 
 let envValid = true;

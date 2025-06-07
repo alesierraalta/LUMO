@@ -172,27 +172,16 @@ export class ChoreoDebugSystem {
    * Load all available fix modules
    */
   private async loadFixModules(): Promise<void> {
-    try {
-      // Load P6001 fix
-      const { diagnoseAndFixP6001 } = await import('./choreo-fixes/prisma-p6001-fix');
-      this.fixModules.set('prisma-p6001', diagnoseAndFixP6001);
-      
-      // Load Clerk fix module
-      const { clerkDebugModule } = await import('./choreo-fixes/clerk-ssl-fix');
-      this.fixModules.set('clerk-debug', clerkDebugModule);
-      
-      // Load Build/Deployment detector
-      const { buildDeploymentDetector } = await import('./choreo-fixes/build-deployment-detector');
-      this.fixModules.set('build-deployment', buildDeploymentDetector);
-      
-      this.logger.info('DEBUG_SYSTEM', 'All fix modules loaded successfully', {
-        loadedModules: Array.from(this.fixModules.keys())
-      });
-    } catch (error) {
-      this.logger.error('DEBUG_SYSTEM', 'Failed to load fix modules', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
+    // Dynamic module loading disabled - using built-in detectors only
+    // This avoids TypeScript import errors for optional modules
+    
+    this.logger.info('DEBUG_SYSTEM', 'Using built-in detectors only (no dynamic module loading)', {
+      reason: 'Avoiding optional module import errors'
+    });
+    
+    // Note: P6001 fix is handled directly in the detector below
+    // Clerk fix module removed - not using Clerk auth
+    // Build/deployment fixes can be added as built-in detectors as needed
   }
   
   /**
@@ -313,60 +302,7 @@ export class ChoreoDebugSystem {
       }
     });
     
-    // Register Clerk authentication detector
-    this.registerDetector({
-      id: 'clerk-auth',
-      name: 'Clerk Authentication Detector',
-      description: 'Detects Clerk authentication configuration and loading issues',
-      category: IssueCategory.CLERK,
-      detect: async () => {
-        const issues: DetectedIssue[] = [];
-        
-        // Check for required Clerk environment variables
-        const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-        const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-        
-        if (!clerkPublishableKey) {
-          issues.push({
-            id: `clerk-publishable-key-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            detector: 'clerk-auth',
-            category: IssueCategory.CLERK,
-            title: 'Missing Clerk Publishable Key',
-            description: 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY environment variable is not set',
-            severity: IssueSeverity.CRITICAL,
-            possibleFixes: [
-              'Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to Choreo secrets',
-              'Verify secret name matches exactly in choreo.yaml',
-              'Check Clerk dashboard for correct key'
-            ],
-            autoFixAvailable: false
-          });
-        }
-        
-        if (!clerkSecretKey) {
-          issues.push({
-            id: `clerk-secret-key-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            detector: 'clerk-auth',
-            category: IssueCategory.CLERK,
-            title: 'Missing Clerk Secret Key',
-            description: 'CLERK_SECRET_KEY environment variable is not set',
-            severity: IssueSeverity.CRITICAL,
-            possibleFixes: [
-              'Add CLERK_SECRET_KEY to Choreo secrets',
-              'Verify secret name matches exactly in choreo.yaml',
-              'Check Clerk dashboard for correct key'
-            ],
-            autoFixAvailable: false
-          });
-        }
-        
-        // Check for CDN loading issues would be done at runtime with client-side checks
-        
-        return issues;
-      }
-    });
+    // Clerk detector removed - not using Clerk authentication
     
     // Register Environment Configuration detector
     this.registerDetector({
@@ -377,12 +313,10 @@ export class ChoreoDebugSystem {
       detect: async () => {
         const issues: DetectedIssue[] = [];
         
-        // Check for essential environment variables
+        // Check for essential environment variables (Clerk auth not used)
         const essentialVars = [
-          'DATABASE_URL',
-          'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
-          'CLERK_SECRET_KEY',
-          'PORT'
+          'DATABASE_URL'
+          // PORT is optional in many cases
         ];
         
         const missingVars = essentialVars.filter(varName => !process.env[varName]);

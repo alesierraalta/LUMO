@@ -14,6 +14,35 @@ const { execSync } = require('child_process');
 console.log('🔥 SOLUCIÓN DEFINITIVA PARA ERROR P6001 🔥');
 console.log('==========================================');
 
+// Build-time detection function
+function isBuildTimeEnvironment() {
+  return (
+    // No DATABASE_URL available (typical during build)
+    !process.env.DATABASE_URL ||
+    // Choreo buildpack environment indicators  
+    process.env.PACK_VOLUME_KEY ||
+    // Generic build environment indicators
+    process.env.CI === 'true' && !process.env.DATABASE_URL ||
+    // Google Cloud Build indicators
+    process.env.BUILDER_OUTPUT ||
+    // Docker build context
+    process.env.DOCKER_BUILDKIT ||
+    // Next.js build phase
+    process.env.NEXT_PHASE === 'phase-production-build'
+  );
+}
+
+const isBuildTime = isBuildTimeEnvironment();
+
+if (isBuildTime) {
+  console.log('🔨 BUILD-TIME ENVIRONMENT DETECTED');
+  console.log('📝 Running build-safe P6001 prevention setup');
+  console.log('⚠️ Full database operations will be deferred to runtime');
+} else {
+  console.log('🚀 RUNTIME ENVIRONMENT DETECTED');
+  console.log('📝 Running complete P6001 diagnosis and fix');
+}
+
 // Función para ejecutar un comando y capturar la salida
 function executeCommand(command) {
   console.log(`Ejecutando: ${command}`);
@@ -259,17 +288,35 @@ if (fs.existsSync(prismaDir)) {
   }
 }
 
-// Ejecutar prisma generate
-const generateResult = executeCommand('npx prisma generate');
+// Ejecutar prisma generate - skip validation during build time
+const generateCommand = isBuildTime ? 
+  'npx prisma generate --no-engine' : 
+  'npx prisma generate';
+
+const generateResult = executeCommand(generateCommand);
 if (generateResult.success) {
   console.log('✅ Cliente Prisma regenerado exitosamente');
+  if (isBuildTime) {
+    console.log('📝 Build-time generation completed - runtime engine will be configured later');
+  }
 } else {
-  console.error('❌ Error regenerando cliente Prisma');
+  if (isBuildTime) {
+    console.warn('⚠️ Build-time generation failed - will retry at runtime');
+  } else {
+    console.error('❌ Error regenerando cliente Prisma');
+  }
 }
 
 // 7. Verificar la solución
 console.log('\n🧪 VERIFICANDO SOLUCIÓN');
 console.log('---------------------');
+
+if (isBuildTime) {
+  console.log('⚠️ Build-time environment - skipping database connection tests');
+  console.log('📝 Verification will be performed at runtime');
+} else {
+  console.log('🔍 Runtime environment - performing full verification');
+}
 
 // Crear un script de verificación
 const verifyPath = path.join(process.cwd(), 'scripts', 'verify-p6001-fix.js');

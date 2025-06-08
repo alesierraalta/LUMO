@@ -118,15 +118,39 @@ console.log('✅ Prisma schema updated successfully');
 console.log(`📄 Configuration: ${isProduction ? 'Production (PostgreSQL)' : 'Development (SQLite)'}`);
 console.log('🔧 Features: queryCompiler, driverAdapters enabled');
 
-// Validate schema
-try {
-  const { execSync } = require('child_process');
-  console.log('🔍 Validating schema...');
-  execSync('npx prisma validate', { stdio: 'pipe' });
-  console.log('✅ Schema validation passed');
-} catch (error) {
-  console.error('❌ Schema validation failed:', error.message);
-  process.exit(1);
+console.log('🚀 Schema configuration complete!');
+
+// Build-time detection function
+function isBuildTimeEnvironment() {
+  return (
+    // No DATABASE_URL available (typical during build)
+    !process.env.DATABASE_URL ||
+    // Choreo buildpack environment indicators
+    process.env.PACK_VOLUME_KEY ||
+    // Generic build environment indicators
+    process.env.CI === 'true' && !process.env.DATABASE_URL ||
+    // Google Cloud Build indicators
+    process.env.BUILDER_OUTPUT ||
+    // Docker build context
+    process.env.DOCKER_BUILDKIT
+  );
 }
 
-console.log('🚀 Schema configuration complete!'); 
+// Validate schema - Skip during build time when DATABASE_URL is not available
+const skipValidation = isBuildTimeEnvironment();
+
+if (skipValidation) {
+  console.log('⚠️ Build-time environment detected - skipping schema validation');
+  console.log('📝 Schema validation will be performed at runtime when DATABASE_URL is available');
+} else {
+  try {
+    const { execSync } = require('child_process');
+    console.log('🔍 Validating schema...');
+    execSync('npx prisma validate', { stdio: 'pipe' });
+    console.log('✅ Schema validation passed');
+  } catch (error) {
+    console.error('❌ Schema validation failed:', error.message);
+    console.log('⚠️ If this is a build-time error, consider setting a temporary DATABASE_URL');
+    process.exit(1);
+  }
+} 

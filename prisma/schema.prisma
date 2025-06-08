@@ -1,13 +1,12 @@
 // Generator configuration for direct PostgreSQL
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["queryCompiler"]
-  binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
-// Direct PostgreSQL datasource
+// Flexible datasource - supports both SQLite (dev) and PostgreSQL (prod)
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 

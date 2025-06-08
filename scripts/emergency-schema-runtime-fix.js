@@ -47,9 +47,8 @@ function createDirectPostgreSQLSchema() {
   // Create direct PostgreSQL schema
   const directSchema = `// Generator configuration for direct PostgreSQL
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["queryCompiler"]
-  binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 // Direct PostgreSQL datasource

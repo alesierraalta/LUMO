@@ -6,7 +6,7 @@ generator client {
 
 // Flexible datasource - supports both SQLite (dev) and PostgreSQL (prod)
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

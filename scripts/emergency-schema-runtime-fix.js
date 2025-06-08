@@ -1,4 +1,51 @@
-// Generator configuration for direct PostgreSQL
+#!/usr/bin/env node
+
+/**
+ * EMERGENCY SCHEMA RUNTIME FIX
+ * 
+ * This script detects Prisma client/schema mismatches at runtime and 
+ * rebuilds the client configuration to match the actual DATABASE_URL.
+ * 
+ * Specifically fixes P6001 errors where client expects prisma:// but 
+ * DATABASE_URL is direct PostgreSQL.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+console.log('🚨 EMERGENCY SCHEMA RUNTIME FIX');
+console.log('===============================');
+
+function detectProtocolMismatch() {
+  const databaseUrl = process.env.DATABASE_URL || '';
+  
+  console.log(`📊 Analyzing environment:`)
+  console.log(`   DATABASE_URL: ${databaseUrl.slice(0, 25)}...`);
+  
+  const isDirect = databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://');
+  const isAccelerate = databaseUrl.startsWith('prisma://');
+  
+  console.log(`   Direct PostgreSQL: ${isDirect ? '✅' : '❌'}`);
+  console.log(`   Prisma Accelerate: ${isAccelerate ? '✅' : '❌'}`);
+  
+  return { isDirect, isAccelerate, databaseUrl };
+}
+
+function createDirectPostgreSQLSchema() {
+  console.log('🔧 Creating direct PostgreSQL schema...');
+  
+  const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+  const backupPath = path.join(process.cwd(), 'prisma', 'schema.prisma.backup-runtime');
+  
+  // Backup current schema
+  if (fs.existsSync(schemaPath)) {
+    fs.copyFileSync(schemaPath, backupPath);
+    console.log('📋 Backed up current schema');
+  }
+  
+  // Create direct PostgreSQL schema
+  const directSchema = `// Generator configuration for direct PostgreSQL
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["queryCompiler", "driverAdapters"]
@@ -202,3 +249,85 @@ model ImportSessionDetail {
   @@index([importSessionId])
   @@index([status])
 }
+`;
+
+  fs.writeFileSync(schemaPath, directSchema);
+  console.log('✅ Created direct PostgreSQL schema');
+  
+  return schemaPath;
+}
+
+function regenerateClient() {
+  console.log('🔄 Regenerating Prisma client...');
+  
+  try {
+    // Clear cache
+    const cacheDir = path.join(process.cwd(), 'node_modules', '.prisma');
+    if (fs.existsSync(cacheDir)) {
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+      console.log('🗑️ Cleared Prisma cache');
+    }
+    
+    // Regenerate
+    execSync('npx prisma generate', { stdio: 'inherit' });
+    console.log('✅ Client regeneration completed');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Client regeneration failed:', error.message);
+    return false;
+  }
+}
+
+function emergencyFix() {
+  console.log('\n🚨 Starting emergency runtime fix...');
+  
+  const { isDirect, isAccelerate } = detectProtocolMismatch();
+  
+  if (isDirect) {
+    console.log('🔧 Direct PostgreSQL detected - creating compatible schema...');
+    
+    // Create direct schema
+    createDirectPostgreSQLSchema();
+    
+    // Regenerate client
+    const success = regenerateClient();
+    
+    if (success) {
+      console.log('✅ Emergency fix completed successfully');
+      console.log('📝 Prisma client now configured for direct PostgreSQL');
+      return true;
+    } else {
+      console.error('❌ Emergency fix failed during client regeneration');
+      return false;
+    }
+  } else if (isAccelerate) {
+    console.log('ℹ️ Prisma Accelerate URL detected - no schema changes needed');
+    return true;
+  } else {
+    console.warn('⚠️ Unrecognized DATABASE_URL format');
+    return false;
+  }
+}
+
+function main() {
+  console.log('🎯 Emergency Schema Runtime Fix - Execution Started');
+  
+  const success = emergencyFix();
+  
+  if (success) {
+    console.log('\n✅ EMERGENCY FIX COMPLETED SUCCESSFULLY');
+    console.log('🚀 Application should now be able to connect to database');
+  } else {
+    console.log('\n❌ EMERGENCY FIX FAILED');
+    console.log('📝 Manual intervention may be required');
+  }
+  
+  return success;
+}
+
+module.exports = { main, emergencyFix, createDirectPostgreSQLSchema, regenerateClient };
+
+if (require.main === module) {
+  main();
+} 

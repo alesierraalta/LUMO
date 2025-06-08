@@ -29,6 +29,15 @@ if (!dev) {
   } catch (error) {
     console.warn('[SERVER] Runtime environment fix failed:', error.message);
   }
+  
+  // Apply runtime Prisma P6001 fix
+  console.log('[SERVER] Applying runtime Prisma P6001 fix...');
+  try {
+    const prismaFix = require('./scripts/runtime-prisma-fix');
+    prismaFix.main();
+  } catch (error) {
+    console.warn('[SERVER] Runtime Prisma fix failed:', error.message);
+  }
 }
 
 // For standalone mode, use the generated server

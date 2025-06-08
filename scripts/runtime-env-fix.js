@@ -135,5 +135,6 @@ if (require.main === module) {
 module.exports = {
   fixEnvironmentFiles,
   checkEnvironmentStatus,
-  generateEnvScript
+  generateEnvScript,
+  main
 };

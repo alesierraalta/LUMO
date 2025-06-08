@@ -169,7 +169,7 @@ async function fixPrismaMismatch() {
     console.log('📜 Creating production startup configuration...');
     
     const startupConfig = {
-      databaseUrl: fixedUrl,
+      databaseUrl: "${DATABASE_URL}",
       connectionType: 'direct-postgresql',
       timestamp: new Date().toISOString(),
       fix: 'prisma-accelerate-mismatch-resolved'

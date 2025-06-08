@@ -58,7 +58,7 @@
     "build:optimized": "npm run optimize:deployment && npm run build",
     "build:turbo": "chmod +x build-fast.sh && ./build-fast.sh",
     "build:extreme": "node scripts/extreme-build-optimization.js && next build && npm run optimize:postbuild",
-    "prebuild": "npm run fix-manifests && node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js && node scripts/fix-client-components.js && node scripts/prepare-choreo-build.js",
+    "prebuild": "npm run fix-manifests && node scripts/fix-prisma-schema.js --force-postgresql && node scripts/fix-prisma-binaries.js && node scripts/manifest-validator.js && node scripts/fix-client-components.js && node scripts/prepare-choreo-build.js",
     "prebuild:prod": "npm run optimize:deployment",
     "build": "prisma generate --no-engine && next build",
     "build:prod": "npm run mode:prod && npm run build",

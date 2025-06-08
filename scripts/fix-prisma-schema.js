@@ -15,12 +15,24 @@ const args = process.argv.slice(2);
 const forcePostgres = args.includes('--force-postgresql');
 const forceSqlite = args.includes('--force-sqlite');
 
-// Environment detection
+// Environment detection - Enhanced for Choreo
+const isChoreoEnvironment = !!(
+  process.env.CHOREO_DEPLOYMENT === 'true' ||
+  process.env.CHOREO_TOKEN ||
+  process.env.CHOREO_ENVIRONMENT ||
+  process.env.VERCEL_URL ||
+  process.platform === 'linux' && process.env.NODE_ENV === 'production'
+);
+
 const isProduction = process.env.NODE_ENV === 'production' || 
-                    process.env.CHOREO_DEPLOYMENT === 'true' || 
+                    isChoreoEnvironment || 
                     forcePostgres;
 
 const isDevelopment = !isProduction || forceSqlite;
+
+if (isChoreoEnvironment) {
+  console.log('🔍 Choreo deployment environment detected - forcing PostgreSQL');
+}
 
 console.log('🔧 Configuring Prisma schema...');
 console.log(`📋 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);

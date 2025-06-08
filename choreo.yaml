@@ -21,6 +21,8 @@ spec:
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_OPTIONS: "--max-old-space-size=4096"
       NODE_ENV: production
+      # Database connection for Prisma client generation
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       # Disable caching to prevent corruption
       DOCKER_BUILDKIT_CACHE: "false"
       BUILDKIT_INLINE_CACHE: "0"

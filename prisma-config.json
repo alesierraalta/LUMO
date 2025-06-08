@@ -1,6 +1,6 @@
 {
   "databaseUrl": "${DATABASE_URL}",
-  "connectionType": "direct",
+  "connectionType": "prisma-accelerate",
   "timestamp": "2025-06-08T15:54:20.276Z",
   "fix": "prisma-p6001-fix-enhanced"
 }

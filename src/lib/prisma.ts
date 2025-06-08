@@ -8,14 +8,29 @@
  * - Ensures client is always properly initialized
  */
 
-// ¡ATENCIÓN! Este archivo ha sido modificado por el P6001-FIX agresivo
-// Ahora solo re-exporta el cliente seguro desde prisma-monkey-patch.js
+// Import the monkey-patched Prisma client
+import { PrismaClient } from '@prisma/client';
 
-const { prisma } = require('./prisma-monkey-patch.js');
+// Import the monkey-patched client
+const { prisma } = require('./prisma-monkey-patch.js') as { prisma: PrismaClient };
 
-// Re-exportar todo desde el monkey patch
+// Export the Prisma client with proper TypeScript types
 export { prisma };
 export default prisma;
 
-// Mantener compatibilidad con la API existente
-export const basePrisma = prisma;
+// Maintain compatibility with existing API
+export const basePrisma: PrismaClient = prisma;
+
+// Re-export Prisma types for convenience
+export * from '@prisma/client';
+
+// Extend the PrismaClient type with our custom methods
+declare module '@prisma/client' {
+  interface PrismaClient {
+    healthCheck?(): Promise<{
+      status: string;
+      connection: string;
+      error?: string;
+    }>;
+  }
+}

@@ -459,6 +459,18 @@ docker-compose restart database
 docker-compose logs database
 ```
 
+
+#### Prisma P6001 Errors
+
+**Problem**: `Error validating datasource \`db\`: the URL must start with the protocol \`prisma://\` or \`prisma+postgres://\``
+
+**Solution**:
+```bash
+# Regenerate Prisma client for direct connections
+npm run fix:prisma-mismatch
+```
+Running this script saves a `prisma-config.json` file with the resolved configuration. Restart the app and verify login works without P6001 errors.
+
 #### Authentication Issues
 
 **Problem**: `Clerk authentication failed`

@@ -170,9 +170,9 @@ async function fixPrismaMismatch() {
     
     const startupConfig = {
       databaseUrl: "${DATABASE_URL}",
-      connectionType: 'direct-postgresql',
+      connectionType: isAccelerateUrl ? 'data-proxy' : 'direct-postgresql',
       timestamp: new Date().toISOString(),
-      fix: 'prisma-accelerate-mismatch-resolved'
+      fix: 'prisma-p6001-fix-enhanced'
     };
     
     const configPath = path.join(process.cwd(), 'prisma-config.json');

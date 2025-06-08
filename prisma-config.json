@@ -1,6 +1,6 @@
 {
   "databaseUrl": "${DATABASE_URL}",
-  "connectionType": "direct-postgresql",
+  "connectionType": "direct",
   "timestamp": "2025-06-08T15:54:20.276Z",
-  "fix": "prisma-accelerate-mismatch-resolved"
+  "fix": "prisma-p6001-fix-enhanced"
 }

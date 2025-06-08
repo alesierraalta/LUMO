@@ -15,28 +15,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
-  roleId: string;
-  role: {
-    id: string;
-    name: string;
-    permissions: Array<{
-      permission: {
-        id: string;
-        name: string;
-        resource: string;
-        action: string;
-      };
-    }>;
-  };
-  customPermissions?: Array<{
-    permission: {
-      id: string;
-      name: string;
-      resource: string;
-      action: string;
-    };
-    granted: boolean;
-  }>;
+  role: string;
   isActive: boolean;
   isEmailVerified: boolean;
   lastLoginAt?: Date;
@@ -96,7 +75,7 @@ const getPrismaClient = () => {
 export const createSession = async (
   userId: string,
   email: string,
-  roleId: string,
+  role: string,
   userAgent?: string,
   ipAddress?: string
 ): Promise<string> => {
@@ -105,7 +84,7 @@ export const createSession = async (
   const token = generateToken({ 
     userId, 
     email,
-    roleId
+    roleId: role // For backward compatibility with existing token structure
   });
   
   const expiresAt = new Date(Date.now() + SESSION_DURATION * 1000);
@@ -159,20 +138,9 @@ export const authenticateUser = async (
   try {
     const client = getPrismaClient();
 
-    // Find user with role and permissions
+    // Find user - no longer including role as a relation
     const user = await client.user.findUnique({
       where: { email },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!user) {
@@ -221,13 +189,24 @@ export const authenticateUser = async (
       },
     });
 
-    // Create session
-    const token = await createSession(user.id, user.email, user.roleId, userAgent, ipAddress);
+    // Create session - Now using role directly as it's a string
+    const token = await createSession(user.id, user.email, user.role, userAgent, ipAddress);
 
     console.log(`[Auth] Successful login for email: ${email}`);
     return {
       success: true,
-      user: user as User,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        isEmailVerified: user.isEmailVerified,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      } as User,
       token,
     };
   } catch (error) {
@@ -242,7 +221,7 @@ export const registerUser = async (
   password: string,
   firstName?: string,
   lastName?: string,
-  roleId?: string
+  role?: string
 ): Promise<AuthResult> => {
   try {
     const client = getPrismaClient();
@@ -256,49 +235,35 @@ export const registerUser = async (
       return { success: false, error: 'User already exists with this email' };
     }
 
-    // Get or create default role
-    let defaultRole = await client.role.findFirst({
-      where: { name: 'user' },
-    });
-
-    if (!defaultRole) {
-      defaultRole = await client.role.create({
-        data: {
-          name: 'user',
-          description: 'Default user role',
-        },
-      });
-    }
-
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create user
+    // Create user with default role "USER" if not specified
     const user = await client.user.create({
       data: {
         email,
-        passwordHash,
+        password: passwordHash,
         firstName,
         lastName,
-        roleId: roleId || defaultRole.id,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
+        role: role || "USER",
       },
     });
 
     console.log(`[Auth] User registered successfully: ${email}`);
     return {
       success: true,
-      user: user as User,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        isEmailVerified: user.isEmailVerified,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      } as User,
     };
   } catch (error) {
     console.error('Registration error:', error);
@@ -337,24 +302,7 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
       const session = await client.userSession.findUnique({
         where: { token: authToken },
         include: {
-          user: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
-                    },
-                  },
-                },
-              },
-              customPermissions: {
-                include: {
-                  permission: true,
-                },
-              },
-            },
-          },
+          user: true
         },
       });
 
@@ -366,7 +314,20 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
         return null;
       }
 
-      return session.user as User;
+      // Convert to our User interface
+      const user = session.user;
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        isEmailVerified: user.isEmailVerified,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      } as User;
     }, null);
   } catch (error) {
     console.error('Get current user error:', error);
@@ -421,30 +382,50 @@ export const getTokenFromRequest = (request: NextRequest): string | null => {
 
 // Permission helpers
 export const hasPermission = (user: User, resource: string, action: string): boolean => {
-  // Check role permissions
-  const hasRolePermission = user.role.permissions.some(
-    (rp) => rp.permission.resource === resource && rp.permission.action === action
-  );
-
-  if (hasRolePermission) return true;
-
-  // Check custom permissions
-  if (user.customPermissions) {
-    const customPermission = user.customPermissions.find(
-      (cp) => cp.permission.resource === resource && cp.permission.action === action
-    );
-    return customPermission?.granted || false;
+  // Since role is now a string, we need to check based on role name
+  // Admin role has all permissions
+  if (user.role === 'admin') {
+    return true;
   }
-
+  
+  // For other roles, we need a simplified permission model
+  // This is a basic implementation - you may need to adjust based on your requirements
+  if (user.role === 'manager' && resource === 'inventory') {
+    return true;
+  }
+  
+  // Default user permissions
+  if (user.role === 'user') {
+    // Allow basic read access
+    if (action === 'read' && ['products', 'categories'].includes(resource)) {
+      return true;
+    }
+  }
+  
   return false;
 };
 
 export const hasPageAccess = (user: User, page: string): boolean => {
-  return hasPermission(user, 'page', page);
+  // Admin can access all pages
+  if (user.role === 'admin') {
+    return true;
+  }
+  
+  // Managers can access most pages
+  if (user.role === 'manager') {
+    return !['settings', 'users'].includes(page);
+  }
+  
+  // Regular users have limited access
+  if (user.role === 'user') {
+    return ['dashboard', 'inventory', 'products'].includes(page);
+  }
+  
+  return false;
 };
 
 export const isAdmin = (user: User): boolean => {
-  return user.role.name === 'admin';
+  return user.role === 'admin';
 };
 
 // Constants

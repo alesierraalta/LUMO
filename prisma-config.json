@@ -1,0 +1,6 @@
+{
+  "databaseUrl": "postgresql://neondb_owner:npg_U56jCTFfzKtH@ep-jolly-feather-a5zw59mq-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require",
+  "connectionType": "direct-postgresql",
+  "timestamp": "2025-06-08T15:54:20.276Z",
+  "fix": "prisma-accelerate-mismatch-resolved"
+}

@@ -3,6 +3,9 @@ const nextConfig = {
   // Essential for Choreo deployment
   output: 'standalone',
   
+  // File tracing configuration (moved from experimental)
+  outputFileTracingRoot: process.cwd(),
+  
   // Disable ESLint during build for deployment
   eslint: {
     ignoreDuringBuilds: true,
@@ -144,10 +147,6 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
     // Enable CSS chunking for better performance
     cssChunking: true,
-    // Ensure correct file tracing for production builds
-    outputFileTracingRoot: process.cwd(),
-    // Enable file tracing to include all necessary files in the output
-    outputFileTracing: true,
   },
   
   // Handle static assets for production builds

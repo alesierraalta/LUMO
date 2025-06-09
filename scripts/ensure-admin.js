@@ -225,7 +225,7 @@ async function setupAdminWithPermissions() {
       include: {
         role: {
           include: {
-            permissions: {
+            rolePermissions: {
               include: {
                 permission: true
               }
@@ -238,7 +238,7 @@ async function setupAdminWithPermissions() {
     console.log('✅ Estado del usuario administrador:');
     console.log(`   - Email: ${finalAdmin.email}`);
     console.log(`   - Rol: ${finalAdmin.role.name}`);
-    console.log(`   - Permisos: ${finalAdmin.role.permissions.length}`);
+    console.log(`   - Permisos: ${finalAdmin.role.rolePermissions.length}`);
     console.log(`   - Activo: ${finalAdmin.isActive ? 'Sí' : 'No'}`);
 
     // Verificar permisos críticos para sidebar
@@ -247,7 +247,7 @@ async function setupAdminWithPermissions() {
     
     criticalPerms.forEach(permKey => {
       const [resource, action] = permKey.split(':');
-      const hasIt = finalAdmin.role.permissions.some(rp => 
+      const hasIt = finalAdmin.role.rolePermissions.some(rp => 
         rp.permission.resource === resource && rp.permission.action === action
       );
       console.log(`   ${hasIt ? '✅' : '❌'} ${permKey}`);

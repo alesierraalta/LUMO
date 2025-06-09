@@ -1,11 +1,44 @@
 # 🚀 LUMO Inventory App - Choreo Deployment Ready
 
-## ✅ Status: DEPLOYMENT READY + ADMIN PERMISSIONS FIXED
+## ✅ Status: DEPLOYMENT READY + PERMISSION CATEGORY FIX APPLIED
 
-Last Updated: `2025-06-09 14:00 UTC`  
+Last Updated: `2025-06-09 14:15 UTC`  
 Build Status: ✅ **SUCCESSFUL**  
 Auth System: ✅ **FUNCTIONAL**  
-Admin User: ✅ **GUARANTEED WITH FULL PERMISSIONS**
+Admin User: ✅ **GUARANTEED WITH FULL PERMISSIONS**  
+Permission Fix: ✅ **CATEGORY FIELD ISSUE RESOLVED**
+
+---
+
+## 🔧 CRITICAL FIX APPLIED (Latest Update)
+
+### **Issue Identified:**
+The deployment was failing because the `Permission` model in Prisma schema requires a `category` field that was missing from the permission creation script.
+
+**Error Message:**
+```
+PrismaClientValidationError: Argument `category` is missing.
+```
+
+### **Solution Applied:**
+✅ **Permission Category Field Added**: All permission definitions now include required `category` field  
+✅ **Permission Categories Implemented**:
+- `page` - For navigation/view permissions (Dashboard, Inventory list, etc.)
+- `data` - For CRUD operation permissions (Create, Edit, Delete)
+
+✅ **Updated Permissions Structure**:
+```javascript
+// Navigation Permissions (category: 'page')
+{ name: 'Ver Dashboard', resource: 'dashboard', action: 'view', category: 'page' }
+{ name: 'Ver Inventario', resource: 'inventory', action: 'view', category: 'page' }
+
+// Data Operation Permissions (category: 'data')  
+{ name: 'Crear Producto', resource: 'inventory', action: 'create', category: 'data' }
+{ name: 'Editar Producto', resource: 'inventory', action: 'edit', category: 'data' }
+```
+
+✅ **Script Updated**: `scripts/ensure-admin.js` now properly creates all permissions with category field  
+✅ **Changes Deployed**: Latest code pushed to repository and ready for Choreo deployment
 
 ---
 
@@ -198,4 +231,52 @@ If you encounter any issues:
 - [ ] Full sidebar access confirmed
 - [ ] Application functionality tested
 
-**Status**: 🎉 **READY FOR PRODUCTION DEPLOYMENT** 
+**Status**: 🎉 **READY FOR PRODUCTION DEPLOYMENT**
+
+### 🔧 CORRECCIÓN CRÍTICA APLICADA (9 Jun 2024)
+
+**PROBLEMA IDENTIFICADO**: El modelo `Permission` en el schema de Prisma requiere un campo `category` que no estaba siendo proporcionado en el script `ensure-admin.js`.
+
+**ERROR CORREGIDO**:
+```
+PrismaClientValidationError: Argument `category` is missing.
+```
+
+**SOLUCIÓN IMPLEMENTADA**:
+- ✅ Agregado campo `category` a todas las definiciones de permisos
+- ✅ Categorías implementadas:
+  - `page`: Para permisos de navegación/visualización
+  - `data`: Para permisos de operaciones CRUD
+- ✅ Script actualizado y funcionando correctamente
+- ✅ Cambios pusheados y listos para deployment
+
+### 📋 CONFIGURACIÓN ACTUALIZADA DE PERMISOS
+
+El sistema ahora incluye permisos categorizados:
+
+**Permisos de Página (category: 'page')**:
+- `dashboard:view` - Ver Dashboard
+- `inventory:view` - Ver Inventario  
+- `sales:view` - Ver Ventas
+- `locations:view` - Ver Ubicaciones
+- `categories:view` - Ver Categorías
+- `users:view` - Ver Usuarios
+- `settings:view` - Ver Configuración
+- `permissions:view` - Ver Permisos
+- `reports:view` - Ver Reportes
+
+**Permisos de Datos (category: 'data')**:
+- `inventory:create/edit/delete/adjust` - Operaciones de inventario
+- `sales:create/edit` - Operaciones de ventas
+- `locations:create/edit` - Operaciones de ubicaciones
+- `categories:create/edit` - Operaciones de categorías
+- `users:create/edit` - Operaciones de usuarios
+- `settings:edit` - Editar configuración
+- `permissions:edit` - Editar permisos
+
+### 🎯 USUARIO ADMINISTRADOR
+
+- **Email**: `alesierraalta@gmail.com`
+- **Password**: `admin123`
+- **Rol**: `ADMIN` (con todos los permisos automáticamente)
+- **Configuración**: Automática en startup 

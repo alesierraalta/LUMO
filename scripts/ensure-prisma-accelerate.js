@@ -72,7 +72,43 @@ if (dbUrl.startsWith('file:')) {
   process.exit(1);
 }
 
-// 3. Ensure prisma-config.json exists and is properly configured
+// 3. Update schema.prisma based on database type
+console.log('📝 Updating schema.prisma...');
+const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+
+if (fs.existsSync(schemaPath)) {
+  try {
+    let schema = fs.readFileSync(schemaPath, 'utf8');
+    
+    if (connectionType === 'sqlite') {
+      // Configure for SQLite
+      if (!schema.includes('provider = "sqlite"')) {
+        schema = schema.replace(/provider\s*=\s*"postgresql"/, 'provider = "sqlite"');
+        fs.writeFileSync(schemaPath, schema);
+        console.log('✅ Schema configured for SQLite');
+      } else {
+        console.log('ℹ️ Schema already configured for SQLite');
+      }
+    } else if (connectionType === 'postgresql-direct' || connectionType === 'prisma-accelerate') {
+      // Configure for PostgreSQL
+      if (!schema.includes('provider = "postgresql"')) {
+        schema = schema.replace(/provider\s*=\s*"sqlite"/, 'provider = "postgresql"');
+        fs.writeFileSync(schemaPath, schema);
+        console.log('✅ Schema configured for PostgreSQL');
+      } else {
+        console.log('ℹ️ Schema already configured for PostgreSQL');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error updating schema.prisma:', error.message);
+    process.exit(1);
+  }
+} else {
+  console.error('❌ schema.prisma not found');
+  process.exit(1);
+}
+
+// 4. Ensure prisma-config.json exists and is properly configured
 const configPath = path.join(process.cwd(), 'prisma-config.json');
 let config = {
   databaseUrl: process.env.DATABASE_URL,
@@ -98,7 +134,7 @@ try {
   process.exit(1);
 }
 
-// 4. Ensure the Prisma client is properly generated
+// 5. Ensure the Prisma client is properly generated
 console.log('🔄 Verifying Prisma client...');
 try {
   // This will be handled by the postinstall script

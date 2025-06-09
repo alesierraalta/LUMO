@@ -12,7 +12,7 @@ spec:
     dockerfile: ./Dockerfile
   build:
     # Force Dockerfile build instead of buildpacks
-    dockerFile: ./Dockerfile
+    dockerfile: ./Dockerfile # Changed for consistency
     # Build environment variables
     env:
       NEXT_PUBLIC_DEPLOY_ENV: choreo

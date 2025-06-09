@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';

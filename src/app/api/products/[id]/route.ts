@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 import { prisma } from '@/lib/prisma';
 import { getProductById } from '@/services/productService';
 

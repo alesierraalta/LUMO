@@ -1,6 +1,10 @@
 /**
- * This script prepares the codebase for Choreo deployment
- * by temporarily disabling problematic features/routes
+ * Choreo Build Preparation Script
+ * 
+ * This script prepares the codebase for Choreo deployment by:
+ * - Removing problematic routes that cause build issues
+ * - Creating placeholder pages for disabled routes
+ * - Ensuring the build process completes successfully
  */
 
 const fs = require('fs');
@@ -8,86 +12,62 @@ const path = require('path');
 
 console.log('📦 Preparing codebase for Choreo deployment...');
 
-// List of problematic directories to temporarily disable
+// List of problematic paths that should be removed during build
 const problematicPaths = [
   'src/app/(main)/inventory/scan-duplicates',
-  'src/app/api/inventory/scan-duplicates',
-  'src/app/api/inventory/merge-duplicates',
+  'src/app/api/debug',
+  'src/app/api/health-advanced',
+  'src/app/api/health-simple',
+  'src/app/api/logs',
+  'src/app/api/status',
+  'src/app/api/choreo-health',
+  'src/app/api/choreo-db',
 ];
 
-// Function to safely rename a directory by adding .disabled suffix
-function disablePath(dirPath) {
-  try {
-    if (fs.existsSync(dirPath)) {
-      const disabledPath = `${dirPath}.disabled`;
-      console.log(`🔧 Disabling: ${dirPath} → ${disabledPath}`);
+// Function to remove a path completely
+function removePath(targetPath) {
+  if (fs.existsSync(targetPath)) {
+    console.log(`🗑️ Removing: ${targetPath}`);
+    
+    // Remove the path completely
+    fs.rmSync(targetPath, { recursive: true, force: true });
+    
+    // Create a placeholder page if it was a page route
+    if (targetPath.includes('app/') && !targetPath.includes('api/')) {
+      const placeholderDir = targetPath;
+      const placeholderFile = path.join(placeholderDir, 'page.tsx');
       
-      // If the disabled path already exists, remove it first
-      if (fs.existsSync(disabledPath)) {
-        try {
-          fs.rmSync(disabledPath, { recursive: true, force: true });
-        } catch (error) {
-          console.log(`⚠️ Warning: Could not remove existing disabled path: ${error.message}`);
-        }
-      }
+      // Create directory
+      fs.mkdirSync(placeholderDir, { recursive: true });
       
-      try {
-        fs.renameSync(dirPath, disabledPath);
-        return true;
-      } catch (error) {
-        console.log(`❌ Error disabling path: ${error.message}`);
-        return false;
-      }
-    }
-    return false;
-  } catch (error) {
-    console.log(`❌ Error checking path: ${error.message}`);
-    return false;
-  }
-}
-
-// Disable problematic paths
-let disabledCount = 0;
-for (const dirPath of problematicPaths) {
-  if (disablePath(dirPath)) {
-    disabledCount++;
-  }
-}
-
-// Create placeholder pages for disabled routes
-problematicPaths.forEach(dirPath => {
-  if (dirPath.includes('api')) return; // Skip API routes
-  
-  try {
-    // Create a placeholder page
-    const placeholderDir = dirPath;
-    if (!fs.existsSync(placeholderDir)) {
-      try {
-        fs.mkdirSync(placeholderDir, { recursive: true });
-        
-        // Create a simple page.tsx file
-        const pagePath = path.join(placeholderDir, 'page.tsx');
-        const pageContent = `
-export default function DisabledFeaturePage() {
+      // Create placeholder page
+      const placeholderContent = `export default function DisabledPage() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Feature Temporarily Disabled</h1>
-      <p className="mb-2">This feature is temporarily disabled in the production environment.</p>
-      <p>Please contact your administrator for more information.</p>
+    <div className="container mx-auto py-6">
+      <h1 className="text-2xl font-bold mb-4">Funcionalidad Temporalmente Deshabilitada</h1>
+      <p>Esta funcionalidad está temporalmente deshabilitada durante el despliegue.</p>
+      <p>Estará disponible una vez que la aplicación esté completamente desplegada.</p>
     </div>
   );
-}
-`;
-        fs.writeFileSync(pagePath, pageContent);
-        console.log(`✅ Created placeholder page: ${pagePath}`);
-      } catch (error) {
-        console.log(`❌ Error creating placeholder page: ${error.message}`);
-      }
+}`;
+      
+      fs.writeFileSync(placeholderFile, placeholderContent);
+      console.log(`✅ Created placeholder page: ${placeholderFile}`);
     }
-  } catch (error) {
-    console.log(`❌ Error processing path ${dirPath}: ${error.message}`);
+    
+    return true;
   }
-});
+  
+  return false;
+}
 
-console.log(`✅ Successfully disabled ${disabledCount} problematic paths`);
+// Remove problematic paths
+let removedCount = 0;
+for (const problematicPath of problematicPaths) {
+  if (removePath(problematicPath)) {
+    removedCount++;
+  }
+}
+
+console.log(`✅ Successfully removed ${removedCount} problematic paths`);
 console.log('🚀 Ready for Choreo deployment!'); 

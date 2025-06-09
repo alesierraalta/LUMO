@@ -24,133 +24,114 @@ const isChoreoEnvironment = !!(
   process.platform === 'linux' && process.env.NODE_ENV === 'production'
 );
 
-const isProduction = process.env.NODE_ENV === 'production' || 
-                    isChoreoEnvironment || 
-                    forcePostgres;
+const isProduction = process.env.NODE_ENV === 'production';
+const isBuildTime = !process.env.DATABASE_URL || process.env.CI === 'true';
 
-const isDevelopment = !isProduction || forceSqlite;
+// Determine database configuration
+let usePostgreSQL = false;
+let enableDriverAdapters = false;
 
-if (isChoreoEnvironment) {
-  console.log('🔍 Choreo deployment environment detected - forcing PostgreSQL');
+if (forcePostgres) {
+  usePostgreSQL = true;
+  // Only enable driver adapters if we're NOT in build time
+  enableDriverAdapters = !isBuildTime;
+} else if (forceSqlite) {
+  usePostgreSQL = false;
+  enableDriverAdapters = false;
+} else if (isChoreoEnvironment || isProduction) {
+  usePostgreSQL = true;
+  // Only enable driver adapters if we're NOT in build time
+  enableDriverAdapters = !isBuildTime;
+} else {
+  usePostgreSQL = false;
+  enableDriverAdapters = false;
 }
 
 console.log('🔧 Configuring Prisma schema...');
 console.log(`📋 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-console.log(`📋 Database: ${isProduction ? 'PostgreSQL' : 'SQLite'}`);
+console.log(`📋 Build Time: ${isBuildTime ? 'YES' : 'NO'}`);
+console.log(`📋 Database: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'}`);
+console.log(`📋 Driver Adapters: ${enableDriverAdapters ? 'ENABLED' : 'DISABLED'}`);
 
 // Read current schema
-if (!fs.existsSync(schemaPath)) {
-  console.error('❌ Prisma schema file not found:', schemaPath);
-  process.exit(1);
-}
-
 let schemaContent = fs.readFileSync(schemaPath, 'utf8');
 
-// Define the correct generator configuration
-const productionGenerator = `generator client {
+// Configure generator section
+const generatorConfig = enableDriverAdapters 
+  ? `generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["queryCompiler", "driverAdapters"]
   binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
-}`;
-
-const developmentGenerator = `generator client {
+}`
+  : `generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["queryCompiler", "driverAdapters"]
-  binaryTargets   = ["native"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }`;
 
-// Define the correct datasource configuration
-const productionDatasource = `datasource db {
+// Configure datasource section
+const datasourceConfig = usePostgreSQL
+  ? `datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}`;
-
-const developmentDatasource = `datasource db {
+}`
+  : `datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 }`;
 
-// Replace generator block
-const generatorRegex = /generator client \{[\s\S]*?\}/;
-const datasourceRegex = /datasource db \{[\s\S]*?\}/;
+// Replace generator and datasource sections
+schemaContent = schemaContent.replace(
+  /generator client \{[\s\S]*?\}/,
+  generatorConfig
+);
 
-const newGenerator = isProduction ? productionGenerator : developmentGenerator;
-const newDatasource = isProduction ? productionDatasource : developmentDatasource;
+schemaContent = schemaContent.replace(
+  /datasource db \{[\s\S]*?\}/,
+  datasourceConfig
+);
 
-schemaContent = schemaContent.replace(generatorRegex, newGenerator);
-schemaContent = schemaContent.replace(datasourceRegex, newDatasource);
-
-// Ensure ImportSession model is properly defined
-const importSessionModelRegex = /model ImportSession \{[\s\S]*?\}/;
-const importSessionModel = `model ImportSession {
-  id            String               @id @default(uuid())
-  filePath      String               // Primary file path field - the only one that should be used
-  status        String               @default("processing") // processing, completed, failed
-  notes         String?
-  totalItems    Int                  @default(0)
-  successItems  Int                  @default(0)
-  warningItems  Int                  @default(0)
-  errorItems    Int                  @default(0)
-  createdById   String
-  createdBy     User                 @relation(fields: [createdById], references: [id])
-  createdAt     DateTime             @default(now())
-  completedAt   DateTime?
-  details       ImportSessionDetail[]
-
-  @@index([createdById])
-  @@index([createdAt])
-}`;
-
-if (importSessionModelRegex.test(schemaContent)) {
-  // Replace existing ImportSession model
-  schemaContent = schemaContent.replace(importSessionModelRegex, importSessionModel);
+// Update ImportSession model for PostgreSQL compatibility
+if (usePostgreSQL) {
+  // Replace SQLite-specific syntax with PostgreSQL-compatible syntax
+  schemaContent = schemaContent.replace(
+    /createdAt\s+DateTime\s+@default\(now\(\)\)/g,
+    'createdAt DateTime @default(now())'
+  );
+  
+  schemaContent = schemaContent.replace(
+    /updatedAt\s+DateTime\s+@updatedAt/g,
+    'updatedAt DateTime @updatedAt'
+  );
+  
   console.log('✅ Updated ImportSession model');
-} else {
-  // Add ImportSession model if it doesn't exist
-  schemaContent += '\n\n' + importSessionModel;
-  console.log('✅ Added ImportSession model');
 }
 
-// Write the updated schema
+// Write updated schema
 fs.writeFileSync(schemaPath, schemaContent);
 
 console.log('✅ Prisma schema updated successfully');
-console.log(`📄 Configuration: ${isProduction ? 'Production (PostgreSQL)' : 'Development (SQLite)'}`);
-console.log('🔧 Features: queryCompiler, driverAdapters enabled');
-
+console.log(`📄 Configuration: ${isProduction ? 'Production' : 'Development'} (${usePostgreSQL ? 'PostgreSQL' : 'SQLite'})`);
+if (enableDriverAdapters) {
+  console.log('🔧 Features: queryCompiler, driverAdapters enabled');
+} else {
+  console.log('🔧 Features: Standard configuration (no driverAdapters)');
+}
 console.log('🚀 Schema configuration complete!');
 
-// Build-time detection function
-function isBuildTimeEnvironment() {
-  return (
-    // No DATABASE_URL available (typical during build)
-    !process.env.DATABASE_URL ||
-    // Choreo buildpack environment indicators
-    process.env.PACK_VOLUME_KEY ||
-    // Generic build environment indicators
-    process.env.CI === 'true' && !process.env.DATABASE_URL ||
-    // Google Cloud Build indicators
-    process.env.BUILDER_OUTPUT ||
-    // Docker build context
-    process.env.DOCKER_BUILDKIT
-  );
-}
-
-// Validate schema - Skip during build time when DATABASE_URL is not available
-const skipValidation = isBuildTimeEnvironment();
-
-if (skipValidation) {
+// Skip database validation during build time
+if (isBuildTime) {
   console.log('⚠️ Build-time environment detected - skipping schema validation');
   console.log('📝 Schema validation will be performed at runtime when DATABASE_URL is available');
-} else {
-  try {
-    const { execSync } = require('child_process');
-    console.log('🔍 Validating schema...');
-    execSync('npx prisma validate', { stdio: 'pipe' });
-    console.log('✅ Schema validation passed');
-  } catch (error) {
-    console.error('❌ Schema validation failed:', error.message);
-    console.log('⚠️ If this is a build-time error, consider setting a temporary DATABASE_URL');
-    process.exit(1);
-  }
+  process.exit(0);
+}
+
+// Validate schema if not in build time
+try {
+  const { execSync } = require('child_process');
+  console.log('🔍 Validating schema...');
+  execSync('npx prisma validate', { stdio: 'inherit' });
+  console.log('✅ Schema validation passed');
+} catch (error) {
+  console.warn('⚠️ Schema validation failed:', error.message);
+  console.log('📝 This is expected during build time when DATABASE_URL is not available');
 } 

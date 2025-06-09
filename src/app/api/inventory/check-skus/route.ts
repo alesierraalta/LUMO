@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 
 export async function POST(request: Request) {
   try {
     // Verificar usuario autenticado
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(request as any);
+    if (!token) {
+      return NextResponse.json({ error: 'Token no encontrado' }, { status: 401 });
+    }
+    
+    const user = await getCurrentUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }

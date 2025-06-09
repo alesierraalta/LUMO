@@ -3,7 +3,8 @@ import { Settings, User, Shield, Bell, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarginSettings } from "@/components/margin-settings";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
+import { isAdmin } from "@/lib/auth-simple";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -45,13 +46,13 @@ export default async function SettingsPage() {
           <CardContent>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                <strong>Name:</strong> {user.firstName} {user.lastName}
+                <strong>Name:</strong> {user.name}
               </p>
               <p className="text-sm text-muted-foreground">
                 <strong>Email:</strong> {user.email}
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>Role:</strong> <span className="capitalize">{user.role.name}</span>
+                <strong>Role:</strong> <span className="capitalize">{user.role}</span>
               </p>
             </div>
           </CardContent>

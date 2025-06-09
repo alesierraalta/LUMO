@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
+import { isAdmin } from "@/lib/auth-simple";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BulkAdjustForm from "./bulk-adjust-form";

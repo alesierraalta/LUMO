@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser, getTokenFromRequest, hasPageAccess } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin, isManager } from '@/lib/auth-simple';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current user
-    const user = await getCurrentUser(token);
+    const user = await getCurrentUserFromToken(token);
 
     if (!user) {
       return NextResponse.json(
@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Crear objeto con permisos de páginas
+    // Crear objeto con permisos de páginas basado en rol
     const pagePermissions = {
-      dashboard: hasPageAccess(user, 'dashboard'),
-      inventory: hasPageAccess(user, 'inventory'),
-      settings: hasPageAccess(user, 'settings'),
-      userManagement: hasPageAccess(user, 'user-management'),
+      dashboard: true, // All authenticated users can access dashboard
+      inventory: true, // All authenticated users can access inventory
+      settings: isManager(user) || isAdmin(user), // Only managers and admins can access settings
+      userManagement: isAdmin(user), // Only admins can access user management
     };
 
     // Return user information
@@ -40,19 +40,11 @@ export async function GET(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role.name,
-        isEmailVerified: user.isEmailVerified,
+        name: user.name,
+        role: user.role,
         isActive: user.isActive,
-        lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,
       },
-      permissions: user.role.permissions.map(rp => ({
-        name: rp.permission.name,
-        resource: rp.permission.resource,
-        action: rp.permission.action,
-      })),
       pageAccess: pagePermissions,
     });
 

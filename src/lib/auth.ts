@@ -13,12 +13,9 @@ const SESSION_DURATION = 7 * 24 * 60 * 60; // 7 days in seconds
 export interface User {
   id: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string;
   role: string;
   isActive: boolean;
-  isEmailVerified: boolean;
-  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

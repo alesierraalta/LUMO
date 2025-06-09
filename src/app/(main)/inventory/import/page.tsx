@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
+import { isAdmin } from "@/lib/auth-simple";
 import { redirect } from "next/navigation";
 import ImportForm from "./import-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

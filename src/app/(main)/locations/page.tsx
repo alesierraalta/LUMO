@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import LocationsClient from "./client";
@@ -24,7 +24,7 @@ export default async function LocationsPage() {
     include: {
       _count: {
         select: {
-          inventory: true
+          inventoryItems: true
         }
       }
     }
@@ -39,7 +39,7 @@ export default async function LocationsPage() {
     createdAt: loc.createdAt.toISOString(), // Convertir Date a string
     updatedAt: loc.updatedAt.toISOString(), // Convertir Date a string
     _count: {
-      inventory: loc._count.inventory
+      inventoryItems: loc._count.inventoryItems
     }
   }));
 

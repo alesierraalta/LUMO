@@ -1,60 +1,71 @@
+import { hashPassword } from '@/lib/auth-simple';
 import { NextRequest, NextResponse } from 'next/server';
-import { registerUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const registerSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  name: z.string().min(1, 'Name is required'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Validate input
-    const result = registerSchema.safeParse(body);
-    if (!result.success) {
+    const { email, password, name } = registerSchema.parse(body);
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
       return NextResponse.json(
-        { error: 'Invalid input', details: result.error.errors },
+        { error: 'User already exists' },
         { status: 400 }
       );
     }
 
-    const { email, password, firstName, lastName } = result.data;
+    // Hash password
+    const hashedPassword = await hashPassword(password);
 
-    // Register user
-    const authResult = await registerUser(email, password, firstName, lastName);
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: 'USER', // Default role
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
 
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: 400 }
-      );
-    }
-
-    // Create response (don't auto-login, require explicit login)
     return NextResponse.json({
       success: true,
-      user: {
-        id: authResult.user!.id,
-        email: authResult.user!.email,
-        firstName: authResult.user!.firstName,
-        lastName: authResult.user!.lastName,
-        role: authResult.user!.role.name,
-        isEmailVerified: authResult.user!.isEmailVerified,
-      },
-      message: 'Registration successful. Please log in to continue.',
-    }, { status: 201 });
-
+      user,
+    });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Registration failed' },
       { status: 500 }
     );
   }

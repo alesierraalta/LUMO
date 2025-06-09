@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
 import InventoryClientWrapper from "./client-wrapper";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -135,7 +135,7 @@ function CategoriesSection({ categories }: { categories: any[] }) {
               <CardFooter className="border-t p-4 flex justify-between items-center bg-muted/5 relative z-10">
                 <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 bg-background/80 shadow-sm group-hover:bg-background group-hover:shadow-md transition-all duration-300">
                   <PackageOpen className="h-3.5 w-3.5 text-primary/70" />
-                  <span className="text-xs font-medium">{category._count?.inventory || 0} productos</span>
+                  <span className="text-xs font-medium">{category._count?.inventoryItems || 0} productos</span>
                 </Badge>
                 
                 <div className="flex gap-2">
@@ -283,7 +283,7 @@ function LocationsSection({ locations }: { locations: any[] }) {
               <CardFooter className="border-t p-4 flex justify-between items-center bg-muted/5 relative z-10">
                 <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 bg-background/80 shadow-sm group-hover:bg-background group-hover:shadow-md transition-all duration-300">
                   <PackageOpen className="h-3.5 w-3.5 text-primary/70" />
-                  <span className="text-xs font-medium">{location._count?.inventory || 0} productos</span>
+                  <span className="text-xs font-medium">{location._count?.inventoryItems || 0} productos</span>
                 </Badge>
                 
                 <div className="flex gap-2">
@@ -338,10 +338,8 @@ export default async function InventoryPage({
   // Get current user and check permissions
   const user = await getCurrentUser();
   
-  // Check if user has access to inventory
-  const hasInventoryAccess = user ? 
-    (isAdmin(user) || hasPermission(user, 'page', 'inventory')) : 
-    false;
+  // Check if user has access to inventory (all authenticated users can access inventory)
+  const hasInventoryAccess = user ? true : false;
 
   // If no inventory access, return unauthorized
   if (!hasInventoryAccess) {
@@ -357,7 +355,7 @@ export default async function InventoryPage({
   const inventoryItems = await prisma.inventoryItem.findMany({
     include: {
       category: true,
-      locationRelation: true, // Incluir información de ubicación
+      location: true, // Incluir información de ubicación
     },
     orderBy: {
       updatedAt: 'desc',
@@ -375,7 +373,7 @@ export default async function InventoryPage({
     include: {
       _count: {
         select: {
-          inventory: true,
+          inventoryItems: true,
         },
       },
     },
@@ -389,7 +387,7 @@ export default async function InventoryPage({
     include: {
       _count: {
         select: {
-          inventory: true,
+          inventoryItems: true,
         },
       },
     },

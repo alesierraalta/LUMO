@@ -21,33 +21,34 @@ if (!dbUrl) {
 
 console.log(`📊 Current DATABASE_URL: ${dbUrl.substring(0, 20)}...`);
 
-// 2. Ensure the URL is in the correct format for Prisma Accelerate
+// 2. Handle different database types
 let fixedUrl = dbUrl;
-if (!dbUrl.startsWith('prisma://') && !dbUrl.startsWith('prisma+postgres://')) {
-  // Convert postgres:// or postgresql:// to prisma+postgres://
-  if (dbUrl.startsWith('postgresql://')) {
-    fixedUrl = dbUrl.replace('postgresql://', 'prisma+postgres://');
-    console.log(`🔄 Converted postgresql:// to prisma+postgres://`);
-  } else if (dbUrl.startsWith('postgres://')) {
-    fixedUrl = dbUrl.replace('postgres://', 'prisma+postgres://');
-    console.log(`🔄 Converted postgres:// to prisma+postgres://`);
-  } else {
-    console.error('❌ Invalid DATABASE_URL format for Prisma Accelerate');
-    process.exit(1);
-  }
-  
-  // Update the environment variable
-  process.env.DATABASE_URL = fixedUrl;
-  console.log('✅ Updated DATABASE_URL for Prisma Accelerate');
+let connectionType = 'direct';
+
+if (dbUrl.startsWith('file:')) {
+  // SQLite for local development
+  console.log('🗄️ Using SQLite for local development');
+  connectionType = 'sqlite';
+} else if (dbUrl.startsWith('prisma://') || dbUrl.startsWith('prisma+postgres://')) {
+  // Already using Prisma Accelerate
+  console.log('🚀 Using Prisma Accelerate');
+  connectionType = 'prisma-accelerate';
+} else if (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')) {
+  // Direct PostgreSQL connection
+  console.log('🐘 Using direct PostgreSQL connection');
+  connectionType = 'postgresql-direct';
+} else {
+  console.error('❌ Invalid DATABASE_URL format');
+  process.exit(1);
 }
 
 // 3. Ensure prisma-config.json exists and is properly configured
 const configPath = path.join(process.cwd(), 'prisma-config.json');
 let config = {
   databaseUrl: process.env.DATABASE_URL,
-  connectionType: 'prisma-accelerate',
+  connectionType: connectionType,
   timestamp: new Date().toISOString(),
-  fix: 'prisma-p6001-fix-enhanced'
+  fix: 'database-connection-configured'
 };
 
 try {
@@ -56,12 +57,12 @@ try {
     config = { ...config, ...existingConfig };
   }
   
-  // Ensure connectionType is set to prisma-accelerate
-  config.connectionType = 'prisma-accelerate';
+  // Update connectionType based on detected database type
+  config.connectionType = connectionType;
   
   // Write the updated config back
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  console.log('✅ Updated prisma-config.json for Prisma Accelerate');
+  console.log(`✅ Updated prisma-config.json for ${connectionType} connection`);
 } catch (error) {
   console.error('❌ Error updating prisma-config.json:', error.message);
   process.exit(1);
@@ -77,7 +78,7 @@ try {
   process.exit(1);
 }
 
-console.log('✅ Prisma Accelerate configuration verified successfully');
+console.log(`✅ Database configuration verified successfully (${connectionType})`);
 
 // Export the fixed URL for use in other scripts
 module.exports = {

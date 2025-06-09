@@ -1,6 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils";
+
+const prisma = new PrismaClient();
 
 /**
  * Tipo para crear un nuevo producto
@@ -8,16 +10,16 @@ import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils"
 export type CreateProductInput = {
   name: string;
   description?: string;
-  sku: string;
+  sku?: string;
   cost?: number;
-  price: number;
-  margin?: number;
+  price?: number;
   categoryId?: string;
-  imageUrl?: string;
-  // Inventory fields
-  quantity?: number;
-  minStockLevel?: number;
-  location?: string;
+  locationId?: string;
+  currentStock?: number;
+  minLevel?: number;
+  maxLevel?: number;
+  barcode?: string;
+  createdById: string;
 };
 
 /**
@@ -29,14 +31,13 @@ export type UpdateProductInput = {
   sku?: string;
   cost?: number;
   price?: number;
-  margin?: number;
   categoryId?: string | null;
-  imageUrl?: string;
-  active?: boolean;
-  // Inventory fields
-  quantity?: number;
-  minStockLevel?: number;
-  location?: string;
+  locationId?: string | null;
+  isActive?: boolean;
+  currentStock?: number;
+  minLevel?: number;
+  maxLevel?: number;
+  barcode?: string;
 };
 
 /**
@@ -46,23 +47,12 @@ export type SortOrder = "asc" | "desc";
 
 // Validation functions
 function validateSKU(sku: string): boolean {
-  // Remove the regex validation and just make sure it's not empty
   return sku.trim().length > 0;
 }
 
 function validateDecimalPlaces(value: number): boolean {
   const decimals = value.toString().split('.')[1];
   return !decimals || decimals.length <= 2;
-}
-
-function validateImageUrl(url: string | null | undefined): boolean {
-  if (!url) return true;
-  try {
-    new URL(url);
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-  } catch {
-    return false;
-  }
 }
 
 function validateName(name: string): boolean {
@@ -74,63 +64,36 @@ function validateDescription(description: string | undefined): boolean {
   return description.length <= 500;
 }
 
-// Add inventory validation functions
 function validateQuantity(quantity: number | undefined): boolean {
   if (quantity === undefined) return true;
   return Number.isInteger(quantity) && quantity >= 0;
 }
 
-function validateMinStockLevel(level: number | undefined): boolean {
+function validateMinLevel(level: number | undefined): boolean {
   if (level === undefined) return true;
   return Number.isInteger(level) && level >= 0;
-}
-
-function validateLocation(location: string | undefined): boolean {
-  if (!location) return true;
-  return location.length <= 100;
 }
 
 /**
  * Obtiene todos los productos
  */
 export async function getAllProducts(includeInactive = false) {
-  // Use raw SQL to avoid Prisma client validation issues
-  let items;
-  
-  if (includeInactive) {
-    items = await prisma.$queryRaw`
-      SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
-      FROM inventory_items i
-      LEFT JOIN categories c ON i."categoryId" = c.id
-      ORDER BY i."createdAt" DESC
-    `;
-  } else {
-    items = await prisma.$queryRaw`
-      SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
-      FROM inventory_items i
-      LEFT JOIN categories c ON i."categoryId" = c.id
-      WHERE i.active = true
-      ORDER BY i."createdAt" DESC
-    `;
-  }
-
-  // Process the raw items to add the category relationship
-  const processedItems = (items as any[]).map(item => {
-    // Ensure dates are properly formatted
-    const createdAt = item.createdAt ? item.createdAt.toISOString() : null;
-    const updatedAt = item.updatedAt ? item.updatedAt.toISOString() : null;
-    
-    return {
-      ...item,
-      createdAt,
-      updatedAt,
-      category: item.category_id ? {
-        id: item.category_id,
-        name: item.category_name,
-        description: item.category_description
-      } : null
-    };
+  const items = await prisma.inventoryItem.findMany({
+    where: includeInactive ? {} : { isActive: true },
+    include: {
+      category: true,
+      location: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
   });
+
+  // Add calculated margin for each item
+  const processedItems = items.map(item => ({
+    ...item,
+    margin: item.cost > 0 ? ((item.price - item.cost) / item.cost) * 100 : 0,
+  }));
   
   return serializeDecimal(processedItems);
 }
@@ -143,10 +106,19 @@ export async function getProductById(id: string) {
     where: { id },
     include: {
       category: true,
+      location: true,
     },
   });
   
-  return serializeDecimal(product);
+  if (!product) return null;
+
+  // Add calculated margin
+  const productWithMargin = {
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  };
+  
+  return serializeDecimal(productWithMargin);
 }
 
 /**
@@ -156,61 +128,55 @@ export async function getProductsByCategory(categoryId: string) {
   const products = await prisma.inventoryItem.findMany({
     where: {
       categoryId,
-      active: true,
+      isActive: true,
     },
     include: {
       category: true,
+      location: true,
     },
     orderBy: {
       name: 'asc',
     },
   });
+
+  // Add calculated margin for each item
+  const processedProducts = products.map(product => ({
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  }));
   
-  return serializeDecimal(products);
+  return serializeDecimal(processedProducts);
 }
 
 /**
- * Obtiene productos por rango de margen
+ * Obtiene productos por rango de margen calculado
  */
 export async function getProductsByMarginRange(minMargin: number, maxMargin: number, includeInactive = false) {
   const products = await prisma.inventoryItem.findMany({
     where: {
-      margin: {
-        gte: minMargin,
-        lte: maxMargin,
-      },
-      active: includeInactive ? undefined : true,
+      isActive: includeInactive ? undefined : true,
+      cost: { gt: 0 }, // Only include items with cost > 0 for margin calculation
     },
     include: {
       category: true,
-    },
-    orderBy: {
-      margin: "asc",
+      location: true,
     },
   });
+
+  // Filter by calculated margin and add margin field
+  const filteredProducts = products
+    .map(product => ({
+      ...product,
+      margin: ((product.price - product.cost) / product.cost) * 100,
+    }))
+    .filter(product => product.margin >= minMargin && product.margin <= maxMargin)
+    .sort((a, b) => a.margin - b.margin);
   
-  return serializeDecimal(products);
+  return serializeDecimal(filteredProducts);
 }
 
 /**
- * Ordena productos por margen
- */
-export async function sortProductsByMargin(order: SortOrder = "asc", includeInactive = false) {
-  const products = await prisma.inventoryItem.findMany({
-    where: includeInactive ? {} : { active: true },
-    include: {
-      category: true,
-    },
-    orderBy: {
-      margin: order,
-    },
-  });
-  
-  return serializeDecimal(products);
-}
-
-/**
- * Busca productos por nombre, descripción o SKU
+ * Busca productos por nombre, SKU o descripción
  */
 export async function searchProducts(
   query: string, 
@@ -221,319 +187,224 @@ export async function searchProducts(
     sortOrder?: SortOrder;
   }
 ) {
-  const searchTerm = query.trim();
-  const { minMargin, maxMargin, sortBy, sortOrder } = options || {};
-  
-  // Construir la condición WHERE
-  let where: any = {
-    active: true,
-  };
-  
-  // Agregar condiciones de búsqueda por texto si hay un término de búsqueda
-  if (searchTerm) {
-    where.OR = [
-      { name: { contains: searchTerm } },
-      { description: { contains: searchTerm } },
-      { sku: { contains: searchTerm } },
-    ];
-  }
-  
-  // Agregar filtros de margen si se especifican
-  if (minMargin !== undefined || maxMargin !== undefined) {
-    where.margin = {};
-    
-    if (minMargin !== undefined) {
-      where.margin.gte = minMargin;
-    }
-    
-    if (maxMargin !== undefined) {
-      where.margin.lte = maxMargin;
-    }
-  }
-  
-  // Definir el ordenamiento
-  const orderBy: any = {};
-  
-  // Si se especifica un campo de ordenamiento, usarlo
-  if (sortBy) {
-    orderBy[sortBy] = sortOrder || "asc";
-  } else {
-    // Por defecto, ordenar por nombre
-    orderBy.name = "asc";
-  }
+  const searchTerm = query.toLowerCase();
   
   const products = await prisma.inventoryItem.findMany({
-    where,
+    where: {
+      isActive: true,
+      OR: [
+        { name: { contains: searchTerm } },
+        { sku: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { barcode: { contains: searchTerm } },
+      ],
+    },
     include: {
       category: true,
+      location: true,
     },
-    orderBy,
   });
+
+  // Add calculated margin and apply filters
+  let processedProducts = products.map(product => ({
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  }));
+
+  // Apply margin filters if provided
+  if (options?.minMargin !== undefined && options?.maxMargin !== undefined) {
+    processedProducts = processedProducts.filter(
+      product => product.margin >= options.minMargin! && product.margin <= options.maxMargin!
+    );
+  }
+
+  // Apply sorting
+  if (options?.sortBy) {
+    const sortOrder = options.sortOrder || 'asc';
+    processedProducts.sort((a, b) => {
+      const aValue = (a as any)[options.sortBy!];
+      const bValue = (b as any)[options.sortBy!];
+      
+      if (sortOrder === 'desc') {
+        return bValue - aValue;
+      }
+      return aValue - bValue;
+    });
+  }
   
-  return serializeDecimal(products);
+  return serializeDecimal(processedProducts);
 }
 
 /**
  * Crea un nuevo producto
  */
 export async function createProduct(productData: CreateProductInput) {
-  // Validar nombre
+  // Validation
   if (!validateName(productData.name)) {
-    throw new Error('El nombre del producto es requerido y no puede exceder los 100 caracteres');
+    throw new Error("Product name must be between 1 and 100 characters");
   }
-
-  // Validar descripción
+  
   if (productData.description && !validateDescription(productData.description)) {
-    throw new Error('La descripción no puede exceder los 500 caracteres');
+    throw new Error("Product description must be 500 characters or less");
   }
-
-  // Validar formato de SKU
-  if (!validateSKU(productData.sku)) {
-    throw new Error('El SKU es requerido');
+  
+  if (productData.sku && !validateSKU(productData.sku)) {
+    throw new Error("Invalid SKU format");
   }
-
-  // Validar decimales en precio y costo
+  
   if (productData.cost && !validateDecimalPlaces(productData.cost)) {
-    throw new Error('El costo debe tener máximo 2 decimales');
+    throw new Error("Cost can have at most 2 decimal places");
   }
-  if (!validateDecimalPlaces(productData.price)) {
-    throw new Error('El precio debe tener máximo 2 decimales');
+  
+  if (!validateDecimalPlaces(productData.price || 0)) {
+    throw new Error("Price can have at most 2 decimal places");
   }
-
-  // Validar rangos de valores
-  if (productData.cost && productData.cost > 999999.99) {
-    throw new Error('El costo no puede exceder los 999,999.99');
+  
+  if (productData.currentStock && !validateQuantity(productData.currentStock)) {
+    throw new Error("Current stock must be a non-negative integer");
   }
-  if (productData.price > 999999.99) {
-    throw new Error('El precio no puede exceder los 999,999.99');
-  }
-  if (productData.margin && (productData.margin < 0 || productData.margin > 1000)) {
-    throw new Error('El margen debe estar entre 0 y 1000%');
+  
+  if (productData.minLevel && !validateMinLevel(productData.minLevel)) {
+    throw new Error("Minimum level must be a non-negative integer");
   }
 
-  // Validar que el precio sea mayor que el costo
-  if (productData.cost && productData.price <= productData.cost) {
-    throw new Error('El precio de venta debe ser mayor que el costo');
+  // Check for SKU uniqueness if provided
+  if (productData.sku) {
+    const existingSKU = await prisma.inventoryItem.findUnique({
+      where: { sku: productData.sku },
+    });
+    
+    if (existingSKU) {
+      throw new Error("A product with this SKU already exists");
+    }
   }
 
-  // Validar URL de imagen
-  if (productData.imageUrl && !validateImageUrl(productData.imageUrl)) {
-    throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
-  }
-
-  // Validar campos de inventario
-  if (!validateQuantity(productData.quantity)) {
-    throw new Error('La cantidad debe ser un número entero no negativo');
-  }
-  if (!validateMinStockLevel(productData.minStockLevel)) {
-    throw new Error('El nivel mínimo de stock debe ser un número entero no negativo');
-  }
-  if (!validateLocation(productData.location)) {
-    throw new Error('La ubicación no puede exceder los 100 caracteres');
-  }
-
-  // Verificar si el SKU ya existe
-  const existingProduct = await prisma.inventoryItem.findUnique({
-    where: { sku: productData.sku },
-  });
-
-  if (existingProduct) {
-    throw new Error(`El SKU '${productData.sku}' ya está en uso.`);
-  }
-
-  // Calcular el margen si no se proporciona
-  const cost = productData.cost || 0;
-  const price = productData.price;
-  const margin = productData.margin !== undefined ? 
-    productData.margin : 
-    calculateMargin(cost, price);
-
-  // Preparar datos de inventario con valores predeterminados si no se proporcionan
-  const quantity = productData.quantity !== undefined ? productData.quantity : 0;
-  const minStockLevel = productData.minStockLevel !== undefined ? productData.minStockLevel : 5;
-  const location = productData.location;
-
-  // Usar una transacción para asegurar que la creación del producto y su inventario sean atómicas
-  try {
-  // Crear el producto
-    const product = await prisma.$transaction(async (tx) => {
-      const newProduct = await tx.inventoryItem.create({
+  const product = await prisma.inventoryItem.create({
     data: {
       name: productData.name,
       description: productData.description,
       sku: productData.sku,
-      cost,
-      price,
-      margin,
+      barcode: productData.barcode,
+      currentStock: productData.currentStock || 0,
+      minLevel: productData.minLevel || 0,
+      maxLevel: productData.maxLevel,
+      cost: productData.cost || 0,
+      price: productData.price || 0,
       categoryId: productData.categoryId,
-      imageUrl: productData.imageUrl,
-      quantity,
-      minStockLevel,
-      location,
+      locationId: productData.locationId,
+      createdById: productData.createdById,
     },
     include: {
       category: true,
+      location: true,
     },
-      });
-      
-      return newProduct;
   });
 
-  return serializeDecimal(product);
-  } catch (error: any) {
-    // Capturar errores de la transacción
-    console.error('Error al crear el producto:', error);
-    throw new Error(error.message || 'Ha ocurrido un error al crear el producto');
-  }
+  // Add calculated margin
+  const productWithMargin = {
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  };
+  
+  return serializeDecimal(productWithMargin);
 }
 
 /**
  * Actualiza un producto existente
  */
 export async function updateProduct(id: string, productData: UpdateProductInput) {
-  // Validar nombre
+  // Validation
   if (productData.name && !validateName(productData.name)) {
-    throw new Error('El nombre del producto es requerido y no puede exceder los 100 caracteres');
+    throw new Error("Product name must be between 1 and 100 characters");
   }
-
-  // Validar descripción
+  
   if (productData.description && !validateDescription(productData.description)) {
-    throw new Error('La descripción no puede exceder los 500 caracteres');
+    throw new Error("Product description must be 500 characters or less");
   }
-
-  // Validar formato de SKU si se está actualizando
+  
   if (productData.sku && !validateSKU(productData.sku)) {
-    throw new Error('El SKU es requerido');
+    throw new Error("Invalid SKU format");
+  }
+  
+  if (productData.cost && !validateDecimalPlaces(productData.cost)) {
+    throw new Error("Cost can have at most 2 decimal places");
+  }
+  
+  if (productData.price && !validateDecimalPlaces(productData.price)) {
+    throw new Error("Price can have at most 2 decimal places");
+  }
+  
+  if (productData.currentStock && !validateQuantity(productData.currentStock)) {
+    throw new Error("Current stock must be a non-negative integer");
+  }
+  
+  if (productData.minLevel && !validateMinLevel(productData.minLevel)) {
+    throw new Error("Minimum level must be a non-negative integer");
   }
 
-  // Validar decimales en precio y costo
-  if (productData.cost !== undefined && !validateDecimalPlaces(productData.cost)) {
-    throw new Error('El costo debe tener máximo 2 decimales');
-  }
-  if (productData.price !== undefined && !validateDecimalPlaces(productData.price)) {
-    throw new Error('El precio debe tener máximo 2 decimales');
-  }
-
-  // Validar rangos de valores
-  if (productData.cost !== undefined && productData.cost > 999999.99) {
-    throw new Error('El costo no puede exceder los 999,999.99');
-  }
-  if (productData.price !== undefined && productData.price > 999999.99) {
-    throw new Error('El precio no puede exceder los 999,999.99');
-  }
-  if (productData.margin !== undefined && (productData.margin < 0 || productData.margin > 1000)) {
-    throw new Error('El margen debe estar entre 0 y 1000%');
-  }
-
-  // Validar que el precio sea mayor que el costo si ambos están definidos
-  if (productData.price !== undefined && productData.cost !== undefined && productData.price <= productData.cost) {
-    throw new Error('El precio de venta debe ser mayor que el costo');
-  }
-
-  // Validar URL de imagen
-  if (productData.imageUrl && !validateImageUrl(productData.imageUrl)) {
-    throw new Error('La URL de la imagen debe ser válida y terminar en una extensión de imagen válida (.jpg, .jpeg, .png, .gif, .webp)');
-  }
-
-  // Validar campos de inventario
-  if (productData.quantity !== undefined && !validateQuantity(productData.quantity)) {
-    throw new Error('La cantidad debe ser un número entero no negativo');
-  }
-  if (productData.minStockLevel !== undefined && !validateMinStockLevel(productData.minStockLevel)) {
-    throw new Error('El nivel mínimo de stock debe ser un número entero no negativo');
-  }
-  if (productData.location !== undefined && !validateLocation(productData.location)) {
-    throw new Error('La ubicación no puede exceder los 100 caracteres');
-  }
-
-  // Verificar si el producto existe
-  const existingProduct = await prisma.inventoryItem.findUnique({
-    where: { id }
-  });
-
-  if (!existingProduct) {
-    throw new Error(`Producto con ID '${id}' no encontrado.`);
-  }
-
-  // Si se está actualizando el SKU, verificar que no esté en uso
-  if (productData.sku && productData.sku !== existingProduct.sku) {
-    const duplicateSku = await prisma.inventoryItem.findUnique({
-      where: { sku: productData.sku },
-    });
-
-    if (duplicateSku) {
-      throw new Error(`El SKU '${productData.sku}' ya está en uso.`);
-    }
-  }
-
-  // Preparar los datos para actualizar, calculando el margen si se modificó el costo o precio
-  let updateData = { ...productData };
-
-  // Si se actualiza el precio o el costo, recalcular el margen
-  if ((productData.cost !== undefined || productData.price !== undefined) && productData.margin === undefined) {
-    const newCost = productData.cost !== undefined ? productData.cost : Number(existingProduct.cost);
-    const newPrice = productData.price !== undefined ? productData.price : Number(existingProduct.price);
-    updateData.margin = calculateMargin(newCost, newPrice);
-  }
-
-  try {
-    // Actualizar el producto
-    const updatedProduct = await prisma.inventoryItem.update({
-      where: { id },
-      data: updateData,
-      include: {
-        category: true,
+  // Check for SKU uniqueness if updating SKU
+  if (productData.sku) {
+    const existingSKU = await prisma.inventoryItem.findFirst({
+      where: { 
+        sku: productData.sku,
+        id: { not: id }
       },
     });
     
-    return serializeDecimal(updatedProduct);
-  } catch (error: any) {
-    console.error('Error al actualizar el producto:', error);
-    throw new Error(error.message || 'Ha ocurrido un error al actualizar el producto');
-  }
-}
-
-/**
- * Desactiva un producto (soft delete)
- */
-export async function deactivateProduct(id: string) {
-  // Verificar si el producto existe
-  const existingProduct = await prisma.inventoryItem.findUnique({
-    where: { id },
-  });
-
-  if (!existingProduct) {
-    throw new Error(`Producto con ID '${id}' no encontrado.`);
+    if (existingSKU) {
+      throw new Error("A product with this SKU already exists");
+    }
   }
 
   const product = await prisma.inventoryItem.update({
     where: { id },
-    data: { active: false },
+    data: productData,
+    include: {
+      category: true,
+      location: true,
+    },
   });
+
+  // Add calculated margin
+  const productWithMargin = {
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  };
   
-  return serializeDecimal(product);
+  return serializeDecimal(productWithMargin);
 }
 
 /**
- * Elimina permanentemente un producto
+ * Desactiva un producto
  */
-export async function deleteProduct(id: string) {
-  // Verificar si el producto existe
-  const existingProduct = await prisma.inventoryItem.findUnique({
+export async function deactivateProduct(id: string) {
+  const product = await prisma.inventoryItem.update({
     where: { id },
+    data: { isActive: false },
+    include: {
+      category: true,
+      location: true,
+    },
   });
 
-  if (!existingProduct) {
-    throw new Error(`Producto con ID '${id}' no encontrado.`);
-  }
+  // Add calculated margin
+  const productWithMargin = {
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  };
+  
+  return serializeDecimal(productWithMargin);
+}
 
-  // Al eliminar un producto, se eliminarán automáticamente sus registros de inventario relacionados
-  // debido a la restricción onDelete: Cascade
-  const product = await prisma.inventoryItem.delete({
+/**
+ * Elimina un producto
+ */
+export async function deleteProduct(id: string) {
+  await prisma.inventoryItem.delete({
     where: { id },
   });
   
-  return serializeDecimal(product);
+  return { success: true };
 }
 
 /**
@@ -543,134 +414,124 @@ export async function getAllCategories() {
   const categories = await prisma.category.findMany({
     include: {
       _count: {
-        select: { inventory: true },
-      },
+        select: { inventoryItems: true }
+      }
     },
-    orderBy: {
-      name: "asc",
-    },
+    orderBy: { name: 'asc' },
   });
   
-  return categories;
+  return serializeDecimal(categories);
 }
 
 /**
  * Crea una nueva categoría
  */
-export async function createCategory(name: string, description?: string) {
-  return prisma.category.create({
+export async function createCategory(name: string, description?: string, createdById?: string) {
+  if (!createdById) {
+    throw new Error("createdById is required");
+  }
+
+  const category = await prisma.category.create({
     data: {
       name,
-      description,
+      description: description || "",
+      createdById,
     },
   });
+  
+  return serializeDecimal(category);
 }
 
 /**
- * Actualiza una categoría existente
+ * Actualiza una categoría
  */
 export async function updateCategory(id: string, name: string, description?: string) {
-  return prisma.category.update({
+  const category = await prisma.category.update({
     where: { id },
-    data: {
-      name,
-      description,
-    },
+    data: { name, description },
   });
+  
+  return serializeDecimal(category);
 }
 
 /**
  * Elimina una categoría
  */
 export async function deleteCategory(id: string) {
-  return prisma.category.delete({
-    where: { id },
-  });
+  await prisma.category.delete({ where: { id } });
+  return { success: true };
 }
 
+/**
+ * Obtiene productos con stock bajo
+ */
 export async function getProductsWithLowStock() {
-  // Use raw query since we need to compare two fields from the same record
-  const products = await prisma.$queryRaw`
-    SELECT * FROM inventory_items 
-    WHERE quantity <= minStockLevel 
-    AND active = true
-    ORDER BY name ASC
-  `;
+  // Get all active products
+  const products = await prisma.inventoryItem.findMany({
+    where: {
+      isActive: true,
+    },
+    include: {
+      category: true,
+      location: true,
+    },
+    orderBy: { currentStock: 'asc' },
+  });
 
-  // Get category information for each product
-  const productsWithCategories = await Promise.all(
-    (products as any[]).map(async (product) => {
-      const category = product.categoryId ? 
-        await prisma.category.findUnique({ where: { id: product.categoryId } }) : 
-        null;
-      
-      return {
-        ...product,
-        category
-      };
-    })
-  );
-
-  return serializeDecimal(productsWithCategories);
+  // Filter products where currentStock is less than or equal to minLevel and add calculated margin
+  const lowStockProducts = products
+    .filter(product => product.currentStock <= product.minLevel)
+    .map(product => ({
+      ...product,
+      margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+    }));
+  
+  return serializeDecimal(lowStockProducts);
 }
 
+/**
+ * Obtiene productos con parámetros de búsqueda
+ */
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }) {
-  const { page = '1', limit = '12', search, category, minPrice, maxPrice, inStock } = searchParams;
+  const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
+  const category = typeof searchParams.category === 'string' ? searchParams.category : undefined;
+  const location = typeof searchParams.location === 'string' ? searchParams.location : undefined;
+  const includeInactive = searchParams.includeInactive === 'true';
 
-  const where: Prisma.InventoryItemWhereInput = {};
-  const conditions = [];
+  const where: Prisma.InventoryItemWhereInput = {
+    isActive: includeInactive ? undefined : true,
+  };
 
   if (search) {
-    conditions.push({
-      OR: [
-        { name: { contains: search.toString() } },
-        { sku: { contains: search.toString() } }
-      ]
-    });
+    where.OR = [
+      { name: { contains: search } },
+      { sku: { contains: search } },
+      { description: { contains: search } },
+    ];
   }
 
   if (category) {
-    conditions.push({ categoryId: category.toString() });
+    where.categoryId = category;
   }
 
-  if (minPrice) {
-    conditions.push({ price: { gte: parseFloat(minPrice.toString()) } });
+  if (location) {
+    where.locationId = location;
   }
 
-  if (maxPrice) {
-    conditions.push({ price: { lte: parseFloat(maxPrice.toString()) } });
-  }
+  const products = await prisma.inventoryItem.findMany({
+    where,
+    include: {
+      category: true,
+      location: true,
+    },
+    orderBy: { name: 'asc' },
+  });
 
-  if (inStock === 'true') {
-    conditions.push({ quantity: { gt: 0 } });
-  }
+  // Add calculated margin for each item
+  const processedProducts = products.map(product => ({
+    ...product,
+    margin: product.cost > 0 ? ((product.price - product.cost) / product.cost) * 100 : 0,
+  }));
 
-  if (conditions.length > 0) {
-    where.AND = conditions;
-  }
-
-  const [products, total] = await Promise.all([
-    prisma.inventoryItem.findMany({
-      where,
-      include: {
-        category: true
-      },
-      orderBy: {
-        name: 'asc'
-      },
-      skip: (parseInt(page.toString()) - 1) * parseInt(limit.toString()),
-      take: parseInt(limit.toString())
-    }),
-    prisma.inventoryItem.count({ where })
-  ]);
-
-  return {
-    products: serializeDecimal(products),
-    pagination: {
-      total,
-      pages: Math.ceil(total / parseInt(limit.toString())),
-      currentPage: parseInt(page.toString()),
-      perPage: parseInt(limit.toString())
-    }
-  };
+  return serializeDecimal(processedProducts);
 } 

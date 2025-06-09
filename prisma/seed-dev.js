@@ -10,322 +10,252 @@ async function hashPassword(password) {
 async function main() {
   console.log('🌱 Seeding development database...');
 
-  // 1. Crear roles básicos
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'admin' },
-    update: {},
-    create: {
-      name: 'admin',
-      description: 'Administrador con acceso completo'
-    }
-  });
-
-  const userRole = await prisma.role.upsert({
-    where: { name: 'user' },
-    update: {},
-    create: {
-      name: 'user',
-      description: 'Usuario estándar'
-    }
-  });
-
-  const managerRole = await prisma.role.upsert({
-    where: { name: 'manager' },
-    update: {},
-    create: {
-      name: 'manager',
-      description: 'Gerente con acceso a reportes'
-    }
-  });
-
-  // 2. Crear permisos básicos
-  const permissions = [
-    { name: 'dashboard:read', description: 'Ver dashboard', resource: 'dashboard', action: 'read' },
-    { name: 'inventory:read', description: 'Ver inventario', resource: 'inventory', action: 'read' },
-    { name: 'inventory:write', description: 'Modificar inventario', resource: 'inventory', action: 'write' },
-    { name: 'users:read', description: 'Ver usuarios', resource: 'users', action: 'read' },
-    { name: 'users:write', description: 'Modificar usuarios', resource: 'users', action: 'write' },
-    { name: 'reports:read', description: 'Ver reportes', resource: 'reports', action: 'read' },
-    { name: 'settings:read', description: 'Ver configuración', resource: 'settings', action: 'read' },
-    { name: 'settings:write', description: 'Modificar configuración', resource: 'settings', action: 'write' },
-    { name: 'admin:all', description: 'Acceso completo de administrador', resource: 'admin', action: 'all' },
-    // Permisos específicos para páginas (hasPageAccess)
-    { name: 'page:dashboard', description: 'Acceso a página dashboard', resource: 'page', action: 'dashboard' },
-    { name: 'page:inventory', description: 'Acceso a página inventory', resource: 'page', action: 'inventory' },
-    { name: 'page:settings', description: 'Acceso a página settings', resource: 'page', action: 'settings' },
-    { name: 'page:user-management', description: 'Acceso a página user-management', resource: 'page', action: 'user-management' }
-  ];
-
-  const createdPermissions = [];
-  for (const perm of permissions) {
-    const permission = await prisma.permission.upsert({
-      where: { name: perm.name },
-      update: {},
-      create: perm
-    });
-    createdPermissions.push(permission);
-  }
-
-  // 3. Asignar permisos a roles
-  // Admin tiene todos los permisos
-  for (const permission of createdPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRole.id,
-          permissionId: permission.id
-        }
-      },
-      update: {},
-      create: {
-        roleId: adminRole.id,
-        permissionId: permission.id
-      }
-    });
-  }
-
-  // Manager tiene permisos limitados
-  const managerPermissions = createdPermissions.filter(p => 
-    ['dashboard:read', 'inventory:read', 'inventory:write', 'reports:read', 'page:dashboard', 'page:inventory'].includes(p.name)
-  );
-  for (const permission of managerPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: managerRole.id,
-          permissionId: permission.id
-        }
-      },
-      update: {},
-      create: {
-        roleId: managerRole.id,
-        permissionId: permission.id
-      }
-    });
-  }
-
-  // User solo lectura básica
-  const userPermissions = createdPermissions.filter(p => 
-    ['dashboard:read', 'inventory:read', 'page:dashboard', 'page:inventory'].includes(p.name)
-  );
-  for (const permission of userPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: userRole.id,
-          permissionId: permission.id
-        }
-      },
-      update: {},
-      create: {
-        roleId: userRole.id,
-        permissionId: permission.id
-      }
-    });
-  }
-
-  // 4. Crear usuarios de desarrollo
-  const rootAdminUser = await prisma.user.upsert({
-    where: { email: 'alesierraalta@gmail.com' },
-    update: {
-      passwordHash: await hashPassword('admin123'),
-      roleId: adminRole.id,
-      isActive: true,
-      isEmailVerified: true
-    },
-    create: {
-      email: 'alesierraalta@gmail.com',
-      passwordHash: await hashPassword('admin123'),
-      firstName: 'Alejandro',
-      lastName: 'Sierra',
-      roleId: adminRole.id,
-      isActive: true,
-      isEmailVerified: true
-    }
-  });
-
+  // 1. Create development users with different roles
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@lumo.dev' },
-    update: {},
+    update: {
+      password: await hashPassword('admin123'),
+      role: 'ADMIN',
+      isActive: true
+    },
     create: {
       email: 'admin@lumo.dev',
-      passwordHash: await hashPassword('admin123'),
-      firstName: 'Admin',
-      lastName: 'LUMO',
-      roleId: adminRole.id,
-      isActive: true,
-      isEmailVerified: true
+      password: await hashPassword('admin123'),
+      name: 'Admin User',
+      role: 'ADMIN',
+      isActive: true
     }
   });
 
   const managerUser = await prisma.user.upsert({
     where: { email: 'manager@lumo.dev' },
-    update: {},
+    update: {
+      password: await hashPassword('manager123'),
+      role: 'MANAGER',
+      isActive: true
+    },
     create: {
       email: 'manager@lumo.dev',
-      passwordHash: await hashPassword('manager123'),
-      firstName: 'Manager',
-      lastName: 'LUMO',
-      roleId: managerRole.id,
-      isActive: true,
-      isEmailVerified: true
+      password: await hashPassword('manager123'),
+      name: 'Manager User',
+      role: 'MANAGER',
+      isActive: true
     }
   });
 
   const testUser = await prisma.user.upsert({
     where: { email: 'user@lumo.dev' },
-    update: {},
+    update: {
+      password: await hashPassword('user123'),
+      role: 'USER',
+      isActive: true
+    },
     create: {
       email: 'user@lumo.dev',
-      passwordHash: await hashPassword('user123'),
-      firstName: 'Usuario',
-      lastName: 'Prueba',
-      roleId: userRole.id,
-      isActive: true,
-      isEmailVerified: true
+      password: await hashPassword('user123'),
+      name: 'Test User',
+      role: 'USER',
+      isActive: true
     }
   });
 
-  // 5. Crear categorías de ejemplo
+  console.log(`✅ Created users: ${adminUser.email}, ${managerUser.email}, ${testUser.email}`);
+
+  // 2. Create sample categories
   const electronics = await prisma.category.upsert({
-    where: { name: 'Electrónicos' },
+    where: { name: 'Electronics' },
     update: {},
     create: {
-      name: 'Electrónicos',
-      description: 'Dispositivos electrónicos y tecnología'
+      name: 'Electronics',
+      description: 'Electronic devices and gadgets',
+      createdById: adminUser.id
     }
   });
 
   const clothing = await prisma.category.upsert({
-    where: { name: 'Ropa' },
+    where: { name: 'Clothing' },
     update: {},
     create: {
-      name: 'Ropa',
-      description: 'Ropa y accesorios'
+      name: 'Clothing',
+      description: 'Apparel and accessories',
+      createdById: adminUser.id
     }
   });
 
-  const home = await prisma.category.upsert({
-    where: { name: 'Hogar' },
+  const books = await prisma.category.upsert({
+    where: { name: 'Books' },
     update: {},
     create: {
-      name: 'Hogar',
-      description: 'Artículos para el hogar'
+      name: 'Books',
+      description: 'Books and educational materials',
+      createdById: adminUser.id
     }
   });
 
-  // 6. Crear ubicaciones de ejemplo
+  console.log(`✅ Created categories: ${electronics.name}, ${clothing.name}, ${books.name}`);
+
+  // 3. Create sample locations
   const warehouse = await prisma.location.upsert({
-    where: { name: 'Almacén Principal' },
+    where: { name: 'Main Warehouse' },
     update: {},
     create: {
-      name: 'Almacén Principal',
-      description: 'Almacén central de inventario'
+      name: 'Main Warehouse',
+      description: 'Primary storage facility',
+      isActive: true
     }
   });
 
-  const store = await prisma.location.upsert({
-    where: { name: 'Tienda' },
+  const storefront = await prisma.location.upsert({
+    where: { name: 'Storefront' },
     update: {},
     create: {
-      name: 'Tienda',
-      description: 'Área de ventas al público'
+      name: 'Storefront',
+      description: 'Retail store location',
+      isActive: true
     }
   });
 
-  const backroom = await prisma.location.upsert({
-    where: { name: 'Trastienda' },
+  console.log(`✅ Created locations: ${warehouse.name}, ${storefront.name}`);
+
+  // 4. Create sample inventory items
+  const laptop = await prisma.inventoryItem.upsert({
+    where: { sku: 'LAPTOP001' },
     update: {},
     create: {
-      name: 'Trastienda',
-      description: 'Almacén de trastienda'
-    }
-  });
-
-  // 7. Crear productos de ejemplo
-  const products = [
-    {
-      name: 'Laptop Dell XPS 13',
-      description: 'Laptop ultraportátil con procesador Intel i7',
-      sku: 'DELL-XPS13-001',
-      price: 1299.99,
-      cost: 800.00,
-      quantity: 15,
-      minStockLevel: 5,
+      name: 'Dell Laptop i5',
+      description: 'Dell Inspiron laptop with Intel i5 processor',
+      sku: 'LAPTOP001',
+      barcode: '123456789012',
+      currentStock: 10,
+      minLevel: 2,
+      maxLevel: 20,
+      cost: 450.00,
+      price: 699.99,
+      isActive: true,
       categoryId: electronics.id,
-      locationId: warehouse.id
-    },
-    {
-      name: 'iPhone 15 Pro',
-      description: 'Smartphone Apple con cámara profesional',
-      sku: 'APPLE-IP15P-001',
-      price: 999.99,
-      cost: 650.00,
-      quantity: 25,
-      minStockLevel: 10,
-      categoryId: electronics.id,
-      locationId: store.id
-    },
-    {
-      name: 'Camiseta Nike Dri-FIT',
-      description: 'Camiseta deportiva de secado rápido',
-      sku: 'NIKE-DRIFIT-001',
-      price: 29.99,
-      cost: 15.00,
-      quantity: 50,
-      minStockLevel: 20,
+      locationId: warehouse.id,
+      createdById: adminUser.id
+    }
+  });
+
+  const tshirt = await prisma.inventoryItem.upsert({
+    where: { sku: 'TSHIRT001' },
+    update: {},
+    create: {
+      name: 'Basic T-Shirt',
+      description: 'Cotton basic t-shirt in various sizes',
+      sku: 'TSHIRT001',
+      barcode: '234567890123',
+      currentStock: 50,
+      minLevel: 10,
+      maxLevel: 100,
+      cost: 8.00,
+      price: 19.99,
+      isActive: true,
       categoryId: clothing.id,
-      locationId: backroom.id
-    },
-    {
-      name: 'Silla Ergonómica',
-      description: 'Silla de oficina con soporte lumbar',
-      sku: 'CHAIR-ERG-001',
-      price: 199.99,
-      cost: 120.00,
-      quantity: 8,
-      minStockLevel: 3,
-      categoryId: home.id,
-      locationId: warehouse.id
-    },
-    {
-      name: 'Monitor 4K 27"',
-      description: 'Monitor UHD 4K de 27 pulgadas',
-      sku: 'MON-4K27-001',
-      price: 399.99,
-      cost: 250.00,
-      quantity: 12,
-      minStockLevel: 5,
-      categoryId: electronics.id,
-      locationId: warehouse.id
+      locationId: storefront.id,
+      createdById: adminUser.id
     }
-  ];
+  });
 
-  for (const productData of products) {
-    const margin = ((productData.price - productData.cost) / productData.cost * 100);
-    
-    await prisma.inventoryItem.upsert({
-      where: { sku: productData.sku },
-      update: {},
-      create: {
-        ...productData,
-        margin: margin,
-        active: true
+  const book = await prisma.inventoryItem.upsert({
+    where: { sku: 'BOOK001' },
+    update: {},
+    create: {
+      name: 'JavaScript Guide',
+      description: 'Complete guide to modern JavaScript development',
+      sku: 'BOOK001',
+      barcode: '345678901234',
+      currentStock: 25,
+      minLevel: 5,
+      maxLevel: 50,
+      cost: 20.00,
+      price: 39.99,
+      isActive: true,
+      categoryId: books.id,
+      locationId: warehouse.id,
+      createdById: adminUser.id
+    }
+  });
+
+  console.log(`✅ Created inventory items: ${laptop.name}, ${tshirt.name}, ${book.name}`);
+
+  // 5. Create sample stock movements
+  await prisma.stockMovement.create({
+    data: {
+      type: 'IN',
+      quantity: 10,
+      previousStock: 0,
+      newStock: 10,
+      cost: 450.00,
+      reason: 'Initial stock',
+      notes: 'Initial inventory setup',
+      inventoryItemId: laptop.id,
+      locationId: warehouse.id,
+      createdById: adminUser.id
+    }
+  });
+
+  await prisma.stockMovement.create({
+    data: {
+      type: 'IN',
+      quantity: 50,
+      previousStock: 0,
+      newStock: 50,
+      cost: 8.00,
+      reason: 'Initial stock',
+      notes: 'Initial inventory setup',
+      inventoryItemId: tshirt.id,
+      locationId: storefront.id,
+      createdById: adminUser.id
+    }
+  });
+
+  console.log('✅ Created sample stock movements');
+
+  // 6. Create a sample sale
+  const sale = await prisma.sale.create({
+    data: {
+      total: 59.98,
+      tax: 4.80,
+      discount: 0,
+      status: 'COMPLETED',
+      notes: 'Sample sale for testing',
+      createdById: managerUser.id,
+      items: {
+        create: [
+          {
+            quantity: 2,
+            price: 19.99,
+            total: 39.98,
+            inventoryItemId: tshirt.id
+          },
+          {
+            quantity: 1,
+            price: 19.99,
+            total: 19.99,
+            inventoryItemId: book.id
+          }
+        ]
       }
-    });
-  }
+    },
+    include: {
+      items: true
+    }
+  });
 
-  console.log('✅ Development database seeded successfully!');
-  console.log('\n📋 Test Users Created:');
-  console.log('  - alesierraalta@gmail.com / admin123 (Root Admin)');
-  console.log('  - admin@lumo.dev / admin123 (Admin)');
-  console.log('  - manager@lumo.dev / manager123 (Manager)');
-  console.log('  - user@lumo.dev / user123 (User)');
-  console.log('\n📦 Sample Data:');
-  console.log('  - 3 Roles with permissions');
-  console.log('  - 3 Categories');
-  console.log('  - 3 Locations');
-  console.log('  - 5 Sample products');
+  console.log(`✅ Created sample sale with ${sale.items.length} items`);
+
+  console.log('\n🎉 Development database seeded successfully!');
+  console.log('\n👥 Test users created:');
+  console.log('   - admin@lumo.dev / admin123 (ADMIN role)');
+  console.log('   - manager@lumo.dev / manager123 (MANAGER role)');
+  console.log('   - user@lumo.dev / user123 (USER role)');
+  console.log('\n📦 Sample data created:');
+  console.log('   - 3 categories (Electronics, Clothing, Books)');
+  console.log('   - 2 locations (Main Warehouse, Storefront)');
+  console.log('   - 3 inventory items with stock');
+  console.log('   - Stock movements and a sample sale');
 }
 
 main()

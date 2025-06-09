@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import type { Category } from "@/app/categories/columns";
+import type { Category } from "@/app/(main)/categories/columns";
 import { Pencil, Trash, PackageOpen, Tag, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -120,10 +120,10 @@ export function CategoryList({ categories }: CategoryListProps) {
                 href={`/products?category=${category.id}`}
                 className="hover:underline flex items-center"
               >
-                {category._count.inventory > 0 ? (
+                {category._count.inventoryItems > 0 ? (
                   <Badge variant="secondary" className="flex gap-1 items-center">
                     <PackageOpen className="h-3 w-3" />
-                    {category._count.inventory} {category._count.inventory === 1 ? 'product' : 'products'}
+                    {category._count.inventoryItems} {category._count.inventoryItems === 1 ? 'product' : 'products'}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground text-xs">No products</span>
@@ -159,8 +159,8 @@ export function CategoryList({ categories }: CategoryListProps) {
             <AlertDialogDescription>
               This will permanently delete the category
               {categoryToDelete?.name && ` "${categoryToDelete.name}"`}
-              {categoryToDelete?._count.inventory ? 
-                ` and affect ${categoryToDelete._count.inventory} products` : 
+              {categoryToDelete?._count.inventoryItems ? 
+                ` and affect ${categoryToDelete._count.inventoryItems} products` : 
                 ''
               }.
               This action cannot be undone.

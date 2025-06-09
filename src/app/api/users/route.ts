@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
-import { registerUser } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { hashPassword } from '@/lib/auth';
+import bcrypt from 'bcryptjs';
 
 export const runtime = 'nodejs';
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  roleId: z.string().min(1, 'Role is required'),
-  customPermissions: z.object({
-    dashboard: z.boolean().optional(),
-    inventory: z.boolean().optional(),
-    settings: z.boolean().optional(),
-    userManagement: z.boolean().optional(),
-  }).optional(),
+  name: z.string().min(1, 'Name is required'),
+  role: z.enum(['ADMIN', 'MANAGER', 'USER'], {
+    errorMap: () => ({ message: 'Role must be ADMIN, MANAGER, or USER' })
+  }),
 });
 
 export async function POST(request: NextRequest) {
@@ -31,11 +25,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Check authentication and admin privileges
-    const currentUser = await getCurrentUser();
-    
-    if (!currentUser) {
+    const token = getTokenFromRequest(request);
+    if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    const currentUser = await getCurrentUserFromToken(token);
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -58,19 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, firstName, lastName, roleId, customPermissions } = result.data;
-
-    // Check if role exists
-    const role = await prisma.role.findUnique({
-      where: { id: roleId }
-    });
-
-    if (!role) {
-      return NextResponse.json(
-        { error: 'Role not found' },
-        { status: 400 }
-      );
-    }
+    const { email, password, name, role } = result.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -85,83 +74,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password
-    const passwordHash = await hashPassword(password);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
     const user = await prisma.user.create({
       data: {
         email,
-        passwordHash,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        roleId,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
+        password: hashedPassword,
+        name,
+        role,
+        isActive: true,
       },
     });
-
-    // Create custom permissions for this user if provided
-    if (customPermissions && typeof customPermissions === 'object') {
-      const permissionMap: Record<string, string> = {
-        dashboard: 'page:dashboard',
-        inventory: 'page:inventory',
-        settings: 'page:settings',
-        userManagement: 'page:user-management',
-      };
-      
-      // Process each permission key in the customPermissions object
-      const userPermissionsToCreate = [];
-      
-      for (const [key, enabled] of Object.entries(customPermissions)) {
-        if (key in permissionMap) {
-          // Get or create the permission
-          const permissionName = permissionMap[key];
-          const permission = await prisma.permission.findUnique({
-            where: { name: permissionName }
-          });
-          
-          if (permission) {
-            // Add to user permissions
-            userPermissionsToCreate.push({
-              userId: user.id,
-              permissionId: permission.id,
-              granted: Boolean(enabled)
-            });
-          }
-        }
-      }
-      
-      // Create all user permissions in a single transaction
-      if (userPermissionsToCreate.length > 0) {
-        await prisma.userPermission.createMany({
-          data: userPermissionsToCreate
-        });
-      }
-    }
 
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role.name,
-        isEmailVerified: user.isEmailVerified,
+        name: user.name,
+        role: user.role,
+        isActive: user.isActive,
       },
       message: 'User created successfully.',
     }, { status: 201 });
 
   } catch (error: any) {
+    console.error('Create user error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create user' },
       { status: 500 }
@@ -179,11 +118,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Check authentication and admin privileges
-    const currentUser = await getCurrentUser();
-    
-    if (!currentUser) {
+    const token = getTokenFromRequest(request);
+    if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    const currentUser = await getCurrentUserFromToken(token);
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -195,33 +141,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all users with their roles
+    // Get all users
     const users = await prisma.user.findMany({
-      include: {
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
         role: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     });
 
     return NextResponse.json({
       success: true,
-      users: users.map(user => ({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role.name,
-        isActive: user.isActive,
-        isEmailVerified: user.isEmailVerified,
-        lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })),
+      users
     });
 
   } catch (error: any) {
+    console.error('Get users error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch users' },
       { status: 500 }

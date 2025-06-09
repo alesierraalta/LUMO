@@ -38,6 +38,15 @@ if (!dev) {
   } catch (error) {
     console.warn('[SERVER] Runtime Prisma fix failed:', error.message);
   }
+
+  // Ensure admin user exists for production
+  console.log('[SERVER] Ensuring admin user exists...');
+  const ensureAdmin = require('./scripts/ensure-admin');
+  ensureAdmin().then(() => {
+    console.log('[SERVER] Admin user verification completed');
+  }).catch((error) => {
+    console.warn('[SERVER] Admin user creation failed:', error.message);
+  });
 }
 
 // For standalone mode, use the generated server

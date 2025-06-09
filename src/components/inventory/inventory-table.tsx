@@ -78,15 +78,16 @@ type InventoryItem = {
   quantity: number;
   minStockLevel: number;
   lastUpdated: string | Date | null;
-  location?: string;
+  location?: {
+    id: string;
+    name: string;
+    description?: string;
+    isActive?: boolean;
+  };
   imageUrl?: string;
   active: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
-  locationRelation?: {
-    name: string;
-    description?: string;
-  };
   [key: string]: any; // Allow any other properties
 };
 
@@ -182,7 +183,7 @@ export default function InventoryTable({
         item.id.toLowerCase().includes(query) ||
         item.sku.toLowerCase().includes(query) ||
         (item.description && item.description.toLowerCase().includes(query)) ||
-        (item.location && item.location.toLowerCase().includes(query))
+        (item.location && item.location.name.toLowerCase().includes(query))
       );
     }
     
@@ -611,21 +612,15 @@ export default function InventoryTable({
                     <Progress value={stockPercentage} className="h-1 w-[60px]" />
                   </TableCell>
                   <TableCell>
-                    {item.locationRelation ? (
+                    {item.location ? (
                       <div className="flex items-center text-sm">
                         <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
-                        <span>{item.locationRelation.name}</span>
-                        {item.locationRelation.description && (
+                        <span>{item.location.name}</span>
+                        {item.location.description && (
                           <span className="text-muted-foreground text-xs ml-2">
-                            - {item.locationRelation.description}
+                            - {item.location.description}
                           </span>
                         )}
-                      </div>
-                    ) : item.location ? (
-                      <div className="flex items-center text-sm text-amber-600">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        <span>{item.location}</span>
-                        <span className="text-xs ml-2">(legacy)</span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm italic">Sin ubicación</span>

@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, Settings, Users, Package, BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Shield, Settings, Users, Package, BarChart3, Loader2, Save, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Permission {
   id: string;
@@ -15,116 +18,211 @@ interface Permission {
   description: string;
   resource: string;
   action: string;
+  category: string;
 }
 
 interface Role {
   id: string;
   name: string;
   description: string;
-  permissions: Array<{
-    permission: Permission;
-  }>;
+  permissions: Permission[];
 }
 
-interface PagePermission {
-  key: string;
-  name: string;
-  icon: any;
-  description: string;
-  permissionName: string;
-}
-
-const pagePermissions: PagePermission[] = [
-  {
-    key: 'dashboard',
-    name: 'Dashboard',
-    icon: BarChart3,
-    description: 'Access to main dashboard with analytics',
-    permissionName: 'page:dashboard'
-  },
-  {
-    key: 'inventory',
-    name: 'Inventory',
-    icon: Package,
-    description: 'Access to inventory management',
-    permissionName: 'page:inventory'
-  },
-  {
-    key: 'settings',
-    name: 'Settings',
-    icon: Settings,
-    description: 'Access to user settings and preferences',
-    permissionName: 'page:settings'
-  },
-  {
-    key: 'userManagement',
-    name: 'User Management',
-    icon: Users,
-    description: 'Access to user administration (admin only)',
-    permissionName: 'page:user-management'
-  }
+// Definición de permisos disponibles
+const availablePermissions: Omit<Permission, 'id'>[] = [
+  // Dashboard
+  { name: 'dashboard.view', description: 'Ver dashboard', resource: 'dashboard', action: 'view', category: 'page' },
+  
+  // Inventario
+  { name: 'inventory.view', description: 'Ver inventario', resource: 'inventory', action: 'view', category: 'page' },
+  { name: 'inventory.create', description: 'Crear productos', resource: 'inventory', action: 'create', category: 'feature' },
+  { name: 'inventory.edit', description: 'Editar productos', resource: 'inventory', action: 'edit', category: 'feature' },
+  { name: 'inventory.delete', description: 'Eliminar productos', resource: 'inventory', action: 'delete', category: 'feature' },
+  
+  // Ventas
+  { name: 'sales.view', description: 'Ver ventas', resource: 'sales', action: 'view', category: 'page' },
+  { name: 'sales.create', description: 'Crear ventas', resource: 'sales', action: 'create', category: 'feature' },
+  { name: 'sales.edit', description: 'Editar ventas', resource: 'sales', action: 'edit', category: 'feature' },
+  
+  // Ubicaciones
+  { name: 'locations.view', description: 'Ver ubicaciones', resource: 'locations', action: 'view', category: 'page' },
+  { name: 'locations.create', description: 'Crear ubicaciones', resource: 'locations', action: 'create', category: 'feature' },
+  { name: 'locations.edit', description: 'Editar ubicaciones', resource: 'locations', action: 'edit', category: 'feature' },
+  
+  // Categorías
+  { name: 'categories.view', description: 'Ver categorías', resource: 'categories', action: 'view', category: 'page' },
+  { name: 'categories.create', description: 'Crear categorías', resource: 'categories', action: 'create', category: 'feature' },
+  { name: 'categories.edit', description: 'Editar categorías', resource: 'categories', action: 'edit', category: 'feature' },
+  
+  // Usuarios (solo admin)
+  { name: 'users.view', description: 'Ver usuarios', resource: 'users', action: 'view', category: 'admin' },
+  { name: 'users.create', description: 'Crear usuarios', resource: 'users', action: 'create', category: 'admin' },
+  { name: 'users.edit', description: 'Editar usuarios', resource: 'users', action: 'edit', category: 'admin' },
+  { name: 'users.delete', description: 'Eliminar usuarios', resource: 'users', action: 'delete', category: 'admin' },
+  
+  // Permisos (solo admin)
+  { name: 'permissions.view', description: 'Ver permisos', resource: 'permissions', action: 'view', category: 'admin' },
+  { name: 'permissions.manage', description: 'Gestionar permisos', resource: 'permissions', action: 'manage', category: 'admin' },
+  
+  // Configuración
+  { name: 'settings.view', description: 'Ver configuración', resource: 'settings', action: 'view', category: 'page' },
+  { name: 'settings.edit', description: 'Editar configuración', resource: 'settings', action: 'edit', category: 'feature' },
+  
+  // Reportes
+  { name: 'reports.view', description: 'Ver reportes', resource: 'reports', action: 'view', category: 'page' },
+  { name: 'reports.export', description: 'Exportar reportes', resource: 'reports', action: 'export', category: 'feature' }
 ];
 
 export default function RolePermissionsPage() {
+  const { user: currentUser, isLoading: authLoading } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [showCreateRole, setShowCreateRole] = useState(false);
 
   useEffect(() => {
-    loadRoles();
-  }, []);
+    if (!authLoading) {
+      loadUserAndRoles();
+    }
+  }, [authLoading]);
 
-  const loadRoles = async () => {
+  const loadUserAndRoles = async () => {
     try {
-      const response = await fetch('/api/roles?includePermissions=true');
-      if (response.ok) {
-        const data = await response.json();
-        setRoles(data.roles || []);
+      if (!currentUser || currentUser.role !== 'ADMIN') {
+        toast.error('No tienes permisos para acceder a esta sección');
+        return;
+      }
+
+      // Cargar roles desde localStorage o crear roles por defecto
+      const savedRoles = localStorage.getItem('lumo-roles');
+      if (savedRoles) {
+        setRoles(JSON.parse(savedRoles));
       } else {
-        setError('Failed to load roles');
+        // Crear roles por defecto
+        const defaultRoles: Role[] = [
+          {
+            id: 'admin',
+            name: 'ADMIN',
+            description: 'Administrador con acceso completo',
+            permissions: availablePermissions.map((p, index) => ({ ...p, id: `perm-${index}` }))
+          },
+          {
+            id: 'manager',
+            name: 'MANAGER',
+            description: 'Gerente con acceso a inventario y ventas',
+            permissions: availablePermissions
+              .filter(p => !p.category.includes('admin'))
+              .map((p, index) => ({ ...p, id: `perm-${index}` }))
+          },
+          {
+            id: 'user',
+            name: 'USER',
+            description: 'Usuario básico con permisos limitados',
+            permissions: availablePermissions
+              .filter(p => p.action === 'view' && !p.category.includes('admin'))
+              .map((p, index) => ({ ...p, id: `perm-${index}` }))
+          }
+        ];
+        setRoles(defaultRoles);
+        localStorage.setItem('lumo-roles', JSON.stringify(defaultRoles));
       }
     } catch (error) {
-      console.error('Error loading roles:', error);
-      setError('Error loading roles');
+      console.error('Error loading data:', error);
+      toast.error('Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
   };
 
   const hasPermission = (role: Role, permissionName: string): boolean => {
-    return role.permissions.some(rp => rp.permission.name === permissionName);
+    return role.permissions.some(p => p.name === permissionName);
   };
 
-  const togglePermission = async (roleId: string, permissionName: string, hasAccess: boolean) => {
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/roles/permissions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roleId,
-          permissionName,
-          action: hasAccess ? 'remove' : 'add'
-        }),
+  const togglePermission = (roleId: string, permissionName: string) => {
+    setRoles(prevRoles => {
+      const updatedRoles = prevRoles.map(role => {
+        if (role.id === roleId) {
+          const hasPerms = hasPermission(role, permissionName);
+          const permission = availablePermissions.find(p => p.name === permissionName);
+          
+          if (hasPerms) {
+            // Remover permiso
+            return {
+              ...role,
+              permissions: role.permissions.filter(p => p.name !== permissionName)
+            };
+          } else {
+            // Agregar permiso
+            if (permission) {
+              return {
+                ...role,
+                permissions: [...role.permissions, { ...permission, id: `perm-${Date.now()}` }]
+              };
+            }
+          }
+        }
+        return role;
       });
-
-      if (response.ok) {
-        toast.success(`Permission ${hasAccess ? 'removed' : 'granted'} successfully`);
-        loadRoles(); // Reload to get updated data
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Failed to update permission');
-      }
-    } catch (error) {
-      console.error('Error updating permission:', error);
-      toast.error('Error updating permission');
-    } finally {
-      setIsSaving(false);
-    }
+      
+      // Guardar en localStorage
+      localStorage.setItem('lumo-roles', JSON.stringify(updatedRoles));
+      return updatedRoles;
+    });
+    
+    toast.success('Permiso actualizado');
   };
+
+  const createRole = () => {
+    if (!newRoleName.trim()) {
+      toast.error('El nombre del rol es requerido');
+      return;
+    }
+
+    const newRole: Role = {
+      id: `role-${Date.now()}`,
+      name: newRoleName.toUpperCase(),
+      description: newRoleDescription,
+      permissions: []
+    };
+
+    setRoles(prev => {
+      const updated = [...prev, newRole];
+      localStorage.setItem('lumo-roles', JSON.stringify(updated));
+      return updated;
+    });
+
+    setNewRoleName('');
+    setNewRoleDescription('');
+    setShowCreateRole(false);
+    toast.success('Rol creado exitosamente');
+  };
+
+  const deleteRole = (roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    if (role?.name === 'ADMIN') {
+      toast.error('No se puede eliminar el rol de administrador');
+      return;
+    }
+
+    setRoles(prev => {
+      const updated = prev.filter(r => r.id !== roleId);
+      localStorage.setItem('lumo-roles', JSON.stringify(updated));
+      return updated;
+    });
+    
+    toast.success('Rol eliminado');
+  };
+
+  const groupedPermissions = availablePermissions.reduce((acc, permission) => {
+    if (!acc[permission.resource]) {
+      acc[permission.resource] = [];
+    }
+    acc[permission.resource].push(permission);
+    return acc;
+  }, {} as Record<string, typeof availablePermissions>);
 
   if (isLoading) {
     return (
@@ -134,81 +232,137 @@ export default function RolePermissionsPage() {
     );
   }
 
+  if (!currentUser || currentUser.role !== 'ADMIN') {
+    return (
+      <Alert variant="destructive">
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          No tienes permisos para acceder a esta sección. Solo los administradores pueden gestionar roles y permisos.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Shield className="h-6 w-6" />
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Role Permissions</h1>
-          <p className="text-muted-foreground">
-            Manage what pages each role can access
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Shield className="h-6 w-6" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Gestión de Permisos</h1>
+            <p className="text-muted-foreground">
+              Configura qué puede ver y hacer cada rol de usuario
+            </p>
+          </div>
         </div>
+        <Button
+          onClick={() => setShowCreateRole(!showCreateRole)}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Crear Rol
+        </Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {showCreateRole && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Crear Nuevo Rol</CardTitle>
+            <CardDescription>Define un nuevo rol con permisos personalizados</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nombre del Rol</label>
+              <Input
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                placeholder="Ej: SUPERVISOR"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Descripción</label>
+              <Textarea
+                value={newRoleDescription}
+                onChange={(e) => setNewRoleDescription(e.target.value)}
+                placeholder="Describe las responsabilidades de este rol"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={createRole}>Crear Rol</Button>
+              <Button variant="outline" onClick={() => setShowCreateRole(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6">
         {roles.map((role) => (
           <Card key={role.id}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="h-5 w-5" />
-                <span className="capitalize">{role.name}</span>
-              </CardTitle>
-              <CardDescription>
-                {role.description || `Configure page access for ${role.name} role`}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Shield className="h-5 w-5" />
+                    <span>{role.name}</span>
+                  </CardTitle>
+                  <CardDescription>{role.description}</CardDescription>
+                </div>
+                {role.name !== 'ADMIN' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteRole(role.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {pagePermissions.map((pagePermission) => {
-                  const hasAccess = hasPermission(role, pagePermission.permissionName);
-                  const IconComponent = pagePermission.icon;
-                  
-                  return (
-                    <div
-                      key={pagePermission.key}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${hasAccess ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium">
-                            {pagePermission.name}
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            {pagePermission.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {hasAccess ? (
-                          <Eye className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                        <Switch
-                          checked={hasAccess}
-                          onCheckedChange={() => togglePermission(role.id, pagePermission.permissionName, hasAccess)}
-                          disabled={isSaving}
-                        />
-                      </div>
+              <div className="space-y-6">
+                {Object.entries(groupedPermissions).map(([resource, permissions]) => (
+                  <div key={resource} className="space-y-3">
+                    <h4 className="font-medium text-sm uppercase tracking-wide text-muted-foreground">
+                      {resource}
+                    </h4>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {permissions.map((permission) => {
+                        const hasAccess = hasPermission(role, permission.name);
+                        const isDisabled = role.name === 'ADMIN'; // Admin siempre tiene todos los permisos
+                        
+                        return (
+                          <div
+                            key={permission.name}
+                            className={`flex items-center justify-between p-3 border rounded-lg ${
+                              hasAccess ? 'bg-green-50 border-green-200' : 'bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{permission.description}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {permission.action} • {permission.category}
+                              </div>
+                            </div>
+                            <Switch
+                              checked={hasAccess}
+                              onCheckedChange={() => !isDisabled && togglePermission(role.id, permission.name)}
+                              disabled={isDisabled}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
               
-              {role.name === 'admin' && (
+              {role.name === 'ADMIN' && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> Admin role automatically has access to all features including User Management.
+                    <strong>Nota:</strong> El rol de administrador tiene acceso completo y no puede ser modificado.
                   </p>
                 </div>
               )}
@@ -216,6 +370,14 @@ export default function RolePermissionsPage() {
           </Card>
         ))}
       </div>
+
+      <Alert>
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Importante:</strong> Los cambios en permisos se aplicarán inmediatamente. 
+          Los usuarios deberán cerrar sesión e iniciar sesión nuevamente para que los cambios surtan efecto.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 } 

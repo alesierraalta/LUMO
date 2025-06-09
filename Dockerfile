@@ -4,6 +4,9 @@
 # Stage 1: Base Node.js setup
 FROM node:20-slim AS base
 
+# Declare DATABASE_URL as a build argument that can be passed from choreo.yaml
+ARG DATABASE_URL
+
 # Set working directory
 WORKDIR /app
 
@@ -25,6 +28,9 @@ RUN npm ci --only=production --ignore-scripts
 
 # Stage 3: Build stage
 FROM base AS build
+
+# Make DATABASE_URL available as an environment variable for this stage
+ENV DATABASE_URL=$DATABASE_URL
 
 # Install all dependencies (including dev dependencies)
 RUN npm ci --ignore-scripts

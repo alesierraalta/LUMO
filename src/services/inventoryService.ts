@@ -1,9 +1,10 @@
-import { prisma } from '../lib/prisma';
-import { MovementType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { serializeDecimal } from '@/lib/utils';
 import { StockStatus } from '@/lib/inventory-utils';
 import { StockMovementInput } from "@/lib/inventory-utils";
+
+const prisma = new PrismaClient();
 
 /**
  * Obtiene todos los elementos de inventario
@@ -490,56 +491,48 @@ export async function getAllStockMovements(params?: {
  * Obtiene items con stock bajo (por debajo del nivel mínimo)
  */
 export async function getLowStockItems() {
-  // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.$queryRaw`
-    SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
-    FROM inventory_items i
-    LEFT JOIN categories c ON i."categoryId" = c.id
-    WHERE i.quantity <= i."minStockLevel" AND i.quantity > 0
-    ORDER BY i.quantity ASC, i.name ASC
-  `;
-
-  // Process the raw items to add the category relationship
-  const processedItems = (items as any[]).map(item => {
-    return {
-      ...item,
-      category: item.category_id ? {
-        id: item.category_id,
-        name: item.category_name,
-        description: item.category_description
-      } : null
-    };
+  // Get all active products and filter by low stock
+  const items = await prisma.inventoryItem.findMany({
+    where: {
+      isActive: true,
+    },
+    include: {
+      category: true,
+      location: true,
+    },
+    orderBy: [
+      { currentStock: 'asc' },
+      { name: 'asc' }
+    ],
   });
+
+  // Filter products where currentStock is less than or equal to minLevel and greater than 0
+  const lowStockItems = items.filter(item => 
+    item.currentStock <= item.minLevel && item.currentStock > 0
+  );
   
-  return serializeDecimal(processedItems);
+  return serializeDecimal(lowStockItems);
 }
 
 /**
  * Obtiene items sin stock (cantidad = 0)
  */
 export async function getOutOfStockItems() {
-  // Use raw SQL to avoid Prisma client validation issues
-  const items = await prisma.$queryRaw`
-    SELECT i.*, c.name as category_name, c.id as category_id, c.description as category_description
-    FROM inventory_items i
-    LEFT JOIN categories c ON i."categoryId" = c.id
-    WHERE i.quantity = 0
-    ORDER BY i.name ASC
-  `;
-
-  // Process the raw items to add the category relationship
-  const processedItems = (items as any[]).map(item => {
-    return {
-      ...item,
-      category: item.category_id ? {
-        id: item.category_id,
-        name: item.category_name,
-        description: item.category_description
-      } : null
-    };
+  const items = await prisma.inventoryItem.findMany({
+    where: {
+      isActive: true,
+      currentStock: 0,
+    },
+    include: {
+      category: true,
+      location: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
   });
   
-  return serializeDecimal(processedItems);
+  return serializeDecimal(items);
 }
 
 /**

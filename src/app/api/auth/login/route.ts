@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, setAuthCookie } from '@/lib/auth';
+import { authenticateUser, setAuthCookie } from '@/lib/auth-simple';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
                       undefined;
 
     // Authenticate user
-    const authResult = await authenticateUser(email, password, userAgent, ipAddress);
+    const authResult = await authenticateUser(email, password);
 
     if (!authResult.success) {
       // Traducir los mensajes de error para consistencia
@@ -65,10 +65,8 @@ export async function POST(request: NextRequest) {
       user: {
         id: authResult.user!.id,
         email: authResult.user!.email,
-        firstName: authResult.user!.firstName,
-        lastName: authResult.user!.lastName,
-        role: authResult.user!.role.name,
-        isEmailVerified: authResult.user!.isEmailVerified,
+        name: authResult.user!.name,
+        role: authResult.user!.role,
       },
       message: 'Login successful',
       redirectUrl: '/dashboard',

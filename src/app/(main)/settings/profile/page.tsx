@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
 import { Metadata } from "next";
 import { User, ShieldCheck } from "lucide-react";
 import { formatDate } from "@/lib/utils";

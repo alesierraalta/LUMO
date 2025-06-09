@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { adjustStock } from '@/services/inventoryService';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';

@@ -1,33 +1,83 @@
 // Generator configuration for Prisma Client
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["queryCompiler", "driverAdapters"]
   binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
-  output         = "./generated/prisma-client-js"
 }
 
 // Datasource configuration
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  
-  // Enable connection pooling for better performance
-  // This is particularly important for serverless environments
-  directUrl = env("DIRECT_URL") // Optional: For connection pooling
 }
 
-// User model
+// Role model for configurable roles
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) // System roles cannot be deleted
+  isActive    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+// Permission model for granular permissions
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  resource    String   // e.g., 'users', 'inventory', 'sales'
+  action      String   // e.g., 'view', 'create', 'edit', 'delete'
+  category    String   // e.g., 'page', 'feature', 'data'
+  isSystem    Boolean  @default(false) // System permissions cannot be deleted
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@index([resource])
+  @@index([action])
+  @@index([category])
+  @@unique([resource, action])
+}
+
+// Junction table for Role-Permission many-to-many relationship
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// User model (updated to use Role relationship)
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
   name      String?
-  role      String   @default("USER")
+  roleId    String?  // Foreign key to Role
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
+  role              Role?               @relation(fields: [roleId], references: [id])
   inventoryItems    InventoryItem[]
   stockMovements    StockMovement[]
   sales            Sale[]
@@ -35,7 +85,7 @@ model User {
   importSessions   ImportSession[]
 
   @@index([email])
-  @@index([role])
+  @@index([roleId])
 }
 
 // Category model
@@ -43,8 +93,8 @@ model Category {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
 
@@ -61,8 +111,8 @@ model Location {
   name        String   @unique
   description String?
   isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   inventoryItems InventoryItem[]
@@ -85,8 +135,8 @@ model InventoryItem {
   cost           Float    @default(0)
   price          Float    @default(0)
   isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   categoryId     String?
   locationId     String?
   createdById    String
@@ -117,7 +167,7 @@ model StockMovement {
   price           Float?
   reason          String?
   notes           String?
-  createdAt       DateTime      @default(now())
+  createdAt DateTime @default(now())
   inventoryItemId String
   locationId      String?
   createdById     String
@@ -141,8 +191,8 @@ model Sale {
   discount    Float      @default(0)
   status      String     @default("COMPLETED") // COMPLETED, REFUNDED, CANCELLED
   notes       String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   createdById String
   
   // Relations
@@ -183,7 +233,7 @@ model ImportSession {
   errorItems    Int                  @default(0)
   createdById   String
   createdBy     User                 @relation(fields: [createdById], references: [id])
-  createdAt     DateTime             @default(now())
+  createdAt DateTime @default(now())
   completedAt   DateTime?
   details       ImportSessionDetail[]
 
@@ -199,7 +249,7 @@ model ImportSessionDetail {
   message         String?
   data            String?       // JSON data of the row
   importSessionId String
-  createdAt       DateTime      @default(now())
+  createdAt DateTime @default(now())
   
   // Relations
   importSession   ImportSession @relation(fields: [importSessionId], references: [id], onDelete: Cascade)

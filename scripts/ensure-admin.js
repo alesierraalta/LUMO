@@ -16,44 +16,45 @@ const { execSync } = require('child_process');
 // Definición completa de permisos necesarios
 const ALL_PERMISSIONS = [
   // Dashboard
-  { name: 'Ver Dashboard', resource: 'dashboard', action: 'view', description: 'Acceso al panel principal' },
+  { name: 'Ver Dashboard', resource: 'dashboard', action: 'view', category: 'page', description: 'Acceso al panel principal' },
   
   // Inventario
-  { name: 'Ver Inventario', resource: 'inventory', action: 'view', description: 'Ver productos en inventario' },
-  { name: 'Crear Inventario', resource: 'inventory', action: 'create', description: 'Añadir nuevos productos' },
-  { name: 'Editar Inventario', resource: 'inventory', action: 'edit', description: 'Modificar productos existentes' },
-  { name: 'Eliminar Inventario', resource: 'inventory', action: 'delete', description: 'Eliminar productos del inventario' },
+  { name: 'Ver Inventario', resource: 'inventory', action: 'view', category: 'page', description: 'Ver lista de productos' },
+  { name: 'Crear Inventario', resource: 'inventory', action: 'create', category: 'data', description: 'Crear nuevos productos' },
+  { name: 'Editar Inventario', resource: 'inventory', action: 'edit', category: 'data', description: 'Modificar productos existentes' },
+  { name: 'Eliminar Inventario', resource: 'inventory', action: 'delete', category: 'data', description: 'Eliminar productos' },
+  { name: 'Ajustar Stock', resource: 'inventory', action: 'adjust', category: 'data', description: 'Ajustar niveles de stock' },
   
   // Ventas
-  { name: 'Ver Ventas', resource: 'sales', action: 'view', description: 'Ver historial de ventas' },
-  { name: 'Crear Ventas', resource: 'sales', action: 'create', description: 'Registrar nuevas ventas' },
-  { name: 'Editar Ventas', resource: 'sales', action: 'edit', description: 'Modificar ventas existentes' },
+  { name: 'Ver Ventas', resource: 'sales', action: 'view', category: 'page', description: 'Ver historial de ventas' },
+  { name: 'Crear Ventas', resource: 'sales', action: 'create', category: 'data', description: 'Registrar nuevas ventas' },
+  { name: 'Editar Ventas', resource: 'sales', action: 'edit', category: 'data', description: 'Modificar ventas existentes' },
   
   // Ubicaciones
-  { name: 'Ver Ubicaciones', resource: 'locations', action: 'view', description: 'Ver ubicaciones de inventario' },
-  { name: 'Crear Ubicaciones', resource: 'locations', action: 'create', description: 'Añadir nuevas ubicaciones' },
-  { name: 'Editar Ubicaciones', resource: 'locations', action: 'edit', description: 'Modificar ubicaciones existentes' },
+  { name: 'Ver Ubicaciones', resource: 'locations', action: 'view', category: 'page', description: 'Ver lista de ubicaciones' },
+  { name: 'Crear Ubicaciones', resource: 'locations', action: 'create', category: 'data', description: 'Crear nuevas ubicaciones' },
+  { name: 'Editar Ubicaciones', resource: 'locations', action: 'edit', category: 'data', description: 'Modificar ubicaciones existentes' },
   
   // Categorías
-  { name: 'Ver Categorías', resource: 'categories', action: 'view', description: 'Ver categorías de productos' },
-  { name: 'Crear Categorías', resource: 'categories', action: 'create', description: 'Añadir nuevas categorías' },
-  { name: 'Editar Categorías', resource: 'categories', action: 'edit', description: 'Modificar categorías existentes' },
+  { name: 'Ver Categorías', resource: 'categories', action: 'view', category: 'page', description: 'Ver lista de categorías' },
+  { name: 'Crear Categorías', resource: 'categories', action: 'create', category: 'data', description: 'Crear nuevas categorías' },
+  { name: 'Editar Categorías', resource: 'categories', action: 'edit', category: 'data', description: 'Modificar categorías existentes' },
   
   // Usuarios
-  { name: 'Ver Usuarios', resource: 'users', action: 'view', description: 'Ver lista de usuarios' },
-  { name: 'Crear Usuarios', resource: 'users', action: 'create', description: 'Añadir nuevos usuarios' },
-  { name: 'Editar Usuarios', resource: 'users', action: 'edit', description: 'Modificar usuarios existentes' },
+  { name: 'Ver Usuarios', resource: 'users', action: 'view', category: 'page', description: 'Ver lista de usuarios' },
+  { name: 'Crear Usuarios', resource: 'users', action: 'create', category: 'data', description: 'Crear nuevos usuarios' },
+  { name: 'Editar Usuarios', resource: 'users', action: 'edit', category: 'data', description: 'Modificar usuarios existentes' },
   
   // Permisos
-  { name: 'Ver Permisos', resource: 'permissions', action: 'view', description: 'Ver configuración de permisos' },
-  { name: 'Editar Permisos', resource: 'permissions', action: 'edit', description: 'Modificar permisos de roles' },
+  { name: 'Ver Permisos', resource: 'permissions', action: 'view', category: 'page', description: 'Ver sistema de permisos' },
+  { name: 'Editar Permisos', resource: 'permissions', action: 'edit', category: 'data', description: 'Modificar permisos de roles' },
   
   // Configuración
-  { name: 'Ver Configuración', resource: 'settings', action: 'view', description: 'Acceso a configuración del sistema' },
-  { name: 'Editar Configuración', resource: 'settings', action: 'edit', description: 'Modificar configuración del sistema' },
+  { name: 'Ver Configuración', resource: 'settings', action: 'view', category: 'page', description: 'Acceso a configuraciones' },
+  { name: 'Editar Configuración', resource: 'settings', action: 'edit', category: 'data', description: 'Modificar configuraciones' },
   
   // Reportes
-  { name: 'Ver Reportes', resource: 'reports', action: 'view', description: 'Acceso a reportes y análisis' }
+  { name: 'Ver Reportes', resource: 'reports', action: 'view', category: 'page', description: 'Acceso a reportes y analíticas' }
 ];
 
 // Información del entorno
@@ -118,13 +119,16 @@ async function setupAdminWithPermissions() {
         },
         update: {
           name: perm.name,
-          description: perm.description
+          description: perm.description,
+          category: perm.category
         },
         create: {
           name: perm.name,
           resource: perm.resource,
           action: perm.action,
-          description: perm.description
+          description: perm.description,
+          category: perm.category,
+          isSystem: true
         }
       });
       

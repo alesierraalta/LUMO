@@ -86,11 +86,39 @@ async function ensureAdminUser() {
       process.exit(1);
     }
     
+    // Asegurar que el rol ADMIN existe
+    let adminRole;
+    try {
+      console.log('👑 Verificando rol ADMIN...');
+      adminRole = await prisma.role.findUnique({
+        where: { name: 'ADMIN' }
+      });
+      
+      if (!adminRole) {
+        console.log('⚠️ Rol ADMIN no encontrado, creándolo...');
+        adminRole = await prisma.role.create({
+          data: {
+            name: 'ADMIN',
+            description: 'Administrador del sistema con acceso completo',
+            isSystem: true,
+            isActive: true
+          }
+        });
+        console.log('✅ Rol ADMIN creado exitosamente');
+      } else {
+        console.log('✅ Rol ADMIN encontrado:', adminRole.name);
+      }
+    } catch (roleError) {
+      console.error('❌ Error al gestionar rol ADMIN:', roleError.message);
+      process.exit(1);
+    }
+    
     // Buscar usuario administrador
     let adminUser;
     try {
       adminUser = await prisma.user.findUnique({
-        where: { email: 'alesierraalta@gmail.com' }
+        where: { email: 'alesierraalta@gmail.com' },
+        include: { role: true }
       });
     } catch (findError) {
       console.error('❌ Error al buscar usuario administrador:', findError.message);
@@ -108,9 +136,10 @@ async function ensureAdminUser() {
             email: 'alesierraalta@gmail.com',
             name: 'Alejandro Sierra (ROOT)',
             password: passwordHash,
-            role: 'ADMIN',
+            roleId: adminRole.id,
             isActive: true
-          }
+          },
+          include: { role: true }
         });
         
         console.log('✅ Usuario administrador ROOT creado exitosamente:');
@@ -127,16 +156,17 @@ async function ensureAdminUser() {
       
       // Asegurar que el usuario tenga configuración correcta
       try {
-        // Actualizar contraseña para asegurar que funcione
+        // Actualizar contraseña y rol para asegurar que funcione
         const passwordHash = await bcrypt.hash('admin123', 12);
         const updatedUser = await prisma.user.update({
           where: { id: adminUser.id },
           data: { 
             password: passwordHash,
-            role: 'ADMIN',
+            roleId: adminRole.id,
             isActive: true,
             name: 'Alejandro Sierra (ROOT)'
-          }
+          },
+          include: { role: true }
         });
         console.log('✅ Configuración de usuario ROOT actualizada para', updatedUser.email);
         console.log('   - Password actualizada: admin123');

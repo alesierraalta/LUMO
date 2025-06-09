@@ -1,7 +1,7 @@
 {
-  "databaseUrl": "${DATABASE_URL}",
-  "connectionType": "sqlite",
-  "timestamp": "2025-06-09T14:57:28.440Z",
-  "autoConfigured": true,
-  "environment": "development"
+  "databaseUrl": "postgres://user:pass@localhost:5432/test",
+  "connectionType": "postgresql-direct",
+  "timestamp": "2025-06-09T15:48:25.599Z",
+  "fix": "build-time-config",
+  "buildTime": true
 }

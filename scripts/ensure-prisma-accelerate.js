@@ -79,22 +79,58 @@ const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
 if (fs.existsSync(schemaPath)) {
   try {
     let schema = fs.readFileSync(schemaPath, 'utf8');
+    let originalSchema = schema;
     
     if (connectionType === 'sqlite') {
       // Configure for SQLite
       if (!schema.includes('provider = "sqlite"')) {
-        schema = schema.replace(/provider\s*=\s*"postgresql"/, 'provider = "sqlite"');
+        schema = schema.replace(/provider\s*=\s*"postgresql"/g, 'provider = "sqlite"');
         fs.writeFileSync(schemaPath, schema);
         console.log('✅ Schema configured for SQLite');
       } else {
         console.log('ℹ️ Schema already configured for SQLite');
       }
     } else if (connectionType === 'postgresql-direct' || connectionType === 'prisma-accelerate') {
-      // Configure for PostgreSQL
+      // Configure for PostgreSQL - use more precise regex and multiple patterns
       if (!schema.includes('provider = "postgresql"')) {
-        schema = schema.replace(/provider\s*=\s*"sqlite"/, 'provider = "postgresql"');
+        // Try different patterns to ensure we catch the provider line
+        schema = schema.replace(/provider\s*=\s*"sqlite"/g, 'provider = "postgresql"');
+        schema = schema.replace(/provider\s*=\s*'sqlite'/g, 'provider = "postgresql"');
+        
+        // Write the file
         fs.writeFileSync(schemaPath, schema);
-        console.log('✅ Schema configured for PostgreSQL');
+        
+        // Verify the change was applied
+        const verifySchema = fs.readFileSync(schemaPath, 'utf8');
+        if (verifySchema.includes('provider = "postgresql"')) {
+          console.log('✅ Schema configured for PostgreSQL');
+        } else {
+          console.error('❌ Schema update verification failed - still contains SQLite provider');
+          console.error('Original schema preview:', originalSchema.substring(0, 500));
+          console.error('Updated schema preview:', schema.substring(0, 500));
+          console.error('Verified schema preview:', verifySchema.substring(0, 500));
+          
+          // Force write with explicit PostgreSQL configuration
+          const lines = verifySchema.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('provider') && lines[i].includes('sqlite')) {
+              lines[i] = '  provider = "postgresql"';
+              console.log('🔧 Force-replaced line:', lines[i]);
+            }
+          }
+          
+          const forcedSchema = lines.join('\n');
+          fs.writeFileSync(schemaPath, forcedSchema);
+          
+          // Final verification
+          const finalVerify = fs.readFileSync(schemaPath, 'utf8');
+          if (finalVerify.includes('provider = "postgresql"')) {
+            console.log('✅ Schema force-updated successfully for PostgreSQL');
+          } else {
+            console.error('❌ Critical: Unable to update schema.prisma provider');
+            process.exit(1);
+          }
+        }
       } else {
         console.log('ℹ️ Schema already configured for PostgreSQL');
       }

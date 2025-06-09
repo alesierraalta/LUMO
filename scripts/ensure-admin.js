@@ -71,6 +71,22 @@ console.log(`- DATABASE_URL: [Configurada]`);
 console.log(`- JWT_SECRET: ${process.env.JWT_SECRET ? '[Configurado]' : '[NO CONFIGURADO]'}`);
 
 async function setupAdminWithPermissions() {
+  // Verify environment configuration first
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error('❌ DATABASE_URL not configured');
+    process.exit(1);
+  }
+  
+  console.log('🔍 Verificando configuración de base de datos...');
+  if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
+    console.log('✅ PostgreSQL detectado');
+  } else if (dbUrl.startsWith('file:')) {
+    console.log('✅ SQLite detectado');
+  } else {
+    console.log('⚠️ Tipo de base de datos no reconocido:', dbUrl.substring(0, 20));
+  }
+  
   const prisma = new PrismaClient();
   
   try {

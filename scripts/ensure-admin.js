@@ -12,41 +12,21 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
 // Información del entorno
-console.log('🔍 Diagnóstico del entorno:');
-console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
-console.log(`- DATABASE_URL: ${process.env.DATABASE_URL ? '[Configurada]' : '[No configurada]'}`);
+console.log('🔍 Verificando entorno para usuario administrador...');
+
+// Check if DATABASE_URL is available
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL no está configurada');
+  console.error('⚠️ No se puede verificar/crear usuario administrador sin conexión a la base de datos');
+  process.exit(1);
+}
+
+console.log(`- DATABASE_URL: [Configurada]`);
 console.log(`- JWT_SECRET: ${process.env.JWT_SECRET ? '[Configurado]' : '[No configurado]'}`);
-console.log(`- Directorio: ${process.cwd()}`);
 
-// Crear cliente Prisma con más opciones de diagnóstico
+// Crear cliente Prisma con configuración de logging reducida
 const prisma = new PrismaClient({
-  log: [
-    {
-      emit: 'event',
-      level: 'query',
-    },
-    {
-      emit: 'event',
-      level: 'error',
-    },
-    {
-      emit: 'event',
-      level: 'info',
-    },
-    {
-      emit: 'event',
-      level: 'warn',
-    },
-  ],
-});
-
-// Log de consultas para diagnóstico
-prisma.$on('query', (e) => {
-  console.log('🔄 Query: ' + e.query);
-});
-
-prisma.$on('error', (e) => {
-  console.error('❌ Error Prisma: ', e);
+  log: ['error', 'warn'],
 });
 
 async function ensureAdminUser() {
@@ -59,21 +39,18 @@ async function ensureAdminUser() {
       await prisma.$connect();
       console.log('✅ Conexión a la base de datos exitosa');
     } catch (connectionError) {
-      console.error('❌ Error al conectar a la base de datos:', connectionError);
+      console.error('❌ Error al conectar a la base de datos:', connectionError.message);
       process.exit(1);
     }
     
     // Verificar estructura de la base de datos
     try {
-      console.log('🔍 Verificando tablas en la base de datos...');
       const userCount = await prisma.user.count();
-      
-      console.log(`📊 Estadísticas de la base de datos:`);
-      console.log(`- Usuarios: ${userCount}`);
+      console.log(`📊 Usuarios existentes: ${userCount}`);
     } catch (schemaError) {
-      console.error('❌ Error al verificar la estructura de la base de datos:', schemaError);
+      console.error('❌ Error al verificar la estructura de la base de datos:', schemaError.message);
       if (schemaError.message.includes('does not exist')) {
-        console.error('⚠️ Es posible que la base de datos no esté inicializada o no tenga las tablas necesarias.');
+        console.error('⚠️ Las tablas de la base de datos no existen.');
         console.error('⚠️ Ejecuta "npx prisma db push" para crear las tablas.');
       }
       process.exit(1);
@@ -86,7 +63,7 @@ async function ensureAdminUser() {
         where: { email: 'alesierraalta@gmail.com' }
       });
     } catch (findError) {
-      console.error('❌ Error al buscar usuario administrador:', findError);
+      console.error('❌ Error al buscar usuario administrador:', findError.message);
       process.exit(1);
     }
     
@@ -112,7 +89,7 @@ async function ensureAdminUser() {
         console.log('   - Role: ADMIN');
         console.log('   - Status: ACTIVE');
       } catch (createUserError) {
-        console.error('❌ Error al crear usuario administrador:', createUserError);
+        console.error('❌ Error al crear usuario administrador:', createUserError.message);
         process.exit(1);
       }
     } else {
@@ -136,14 +113,14 @@ async function ensureAdminUser() {
         console.log('   - Role: ADMIN');
         console.log('   - Status: ACTIVE');
       } catch (updateError) {
-        console.error('❌ Error al actualizar usuario administrador:', updateError);
+        console.error('❌ Error al actualizar usuario administrador:', updateError.message);
       }
     }
     
     console.log('✅ Verificación de usuario administrador ROOT completada');
     
   } catch (globalError) {
-    console.error('❌ Error global en ensureAdminUser:', globalError);
+    console.error('❌ Error global en ensureAdminUser:', globalError.message);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
@@ -158,7 +135,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 Error fatal:', error);
+      console.error('💥 Error fatal:', error.message);
       process.exit(1);
     });
 }

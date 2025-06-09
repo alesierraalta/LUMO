@@ -1,63 +1,52 @@
 #!/usr/bin/env node
 /**
- * Runtime Environment Check for DATABASE_URL Issues
- * Debug script to help identify environment variable problems
+ * Runtime Environment Check
+ * 
+ * This script validates that all required environment variables are set
+ * before starting the application. This is crucial for Choreo deployment.
  */
-console.log('🔍 Runtime Environment Check...');
-console.log('📋 Checking DATABASE_URL configuration...');
-// Check if DATABASE_URL is set
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error('❌ DATABASE_URL is not set!');
-  console.log('📋 Available environment variables:');
-  Object.keys(process.env)
-    .filter(key => key.includes('DATABASE') || key.includes('DB'))
-    .forEach(key => {
-      console.log(`  ${key}: ${process.env[key] ? 'SET' : 'NOT_SET'}`);
-    });
-  process.exit(1);
-}
-console.log(`✅ DATABASE_URL is set`);
-console.log(`📋 URL pattern: ${databaseUrl.substring(0, 50)}...`);
-// Check URL format
-if (databaseUrl.startsWith('prisma://')) {
-  console.log('✅ Using Prisma Postgres protocol');
-} else if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
-  console.log('✅ Using standard PostgreSQL protocol');
-} else if (databaseUrl.startsWith('file:')) {
-  console.log('✅ Using SQLite file protocol');
-} else {
-  console.warn('⚠️ Unknown database protocol');
-  console.log(`Protocol: ${databaseUrl.split('://')[0]}`);
-}
-// Check other critical environment variables
-const criticalEnvVars = [
+console.log('🔍 Checking runtime environment...');
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'JWT_SECRET'
+];
+const optionalEnvVars = [
   'NODE_ENV',
-  'CHOREO_DEPLOYMENT'];
-console.log('\n📋 Critical environment variables:');
-criticalEnvVars.forEach(varName => {
+  'PORT',
+  'NEXT_PUBLIC_APP_URL'
+];
+let hasErrors = false;
+console.log('📋 Required Environment Variables:');
+requiredEnvVars.forEach(varName => {
   const value = process.env[varName];
-  console.log(`  ${varName}: ${value ? '✅ SET' : '❌ NOT_SET'}`);
-  if (value && varName.includes('KEY')) {
-    console.log(`    Pattern: ${value.substring(0, 15)}...`);
-  } else if (value) {
-    console.log(`    Value: ${value}`);
+  if (!value) {
+    console.error(`❌ ${varName}: Not set`);
+    hasErrors = true;
+  } else {
+    // Show first 20 characters for security
+    const displayValue = varName === 'DATABASE_URL' ? `${value.substring(0, 20)}...` :
+                        varName === 'JWT_SECRET' ? '[Hidden]' : value;
+    console.log(`✅ ${varName}: ${displayValue}`);
   }
 });
-console.log('\n✅ Environment check complete');
-// Test Prisma client creation
-console.log('\n🔧 Testing Prisma client creation...');
-try {
-  const { PrismaClient } = require('@prisma/client');
-  const testClient = new PrismaClient({
-    log: ['error']
-    // Remove datasourceUrl to use schema.prisma configuration
+console.log('\n📋 Optional Environment Variables:');
+optionalEnvVars.forEach(varName => {
+  const value = process.env[varName];
+  if (!value) {
+    console.log(`⚠️  ${varName}: Not set (using default)`);
+  } else {
+    console.log(`✅ ${varName}: ${value}`);
+  }
+});
+if (hasErrors) {
+  console.error('\n❌ Missing required environment variables!');
+  console.error('Make sure the following are set in your Choreo deployment:');
+  requiredEnvVars.forEach(varName => {
+    if (!process.env[varName]) {
+      console.error(`   - ${varName}`);
+    }
   });
-  console.log('✅ Prisma client created successfully');
-  // Clean up
-  testClient.$disconnect().catch(() => {});
-} catch (error) {
-  console.error('❌ Failed to create Prisma client:', error.message);
   process.exit(1);
 }
-console.log('🚀 Runtime environment check passed!');
+console.log('\n✅ All required environment variables are set');
+console.log('🚀 Ready to start application...');

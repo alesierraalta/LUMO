@@ -1,17 +1,15 @@
+#!/usr/bin/env node
+
 /**
- * Script para asegurar que el usuario administrador exista
+ * Script para Asegurar Permisos del Administrador
  * 
- * Uso:
- *   node scripts/ensure-admin.js
- * 
- * Este script verifica si el usuario administrador existe en la base de datos.
- * Si no existe, lo crea con las credenciales por defecto.
- * También asegura que tenga todos los permisos necesarios.
+ * Este script garantiza que:
+ * 1. Todos los permisos necesarios existan en la base de datos
+ * 2. El rol ADMIN tenga TODOS los permisos asignados
+ * 3. El usuario administrador tenga el rol ADMIN correctamente
  */
 
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
-const { execSync } = require('child_process');
 
 // Definición completa de permisos necesarios
 const ALL_PERMISSIONS = [
@@ -28,21 +26,25 @@ const ALL_PERMISSIONS = [
   { name: 'Ver Ventas', resource: 'sales', action: 'view', description: 'Ver historial de ventas' },
   { name: 'Crear Ventas', resource: 'sales', action: 'create', description: 'Registrar nuevas ventas' },
   { name: 'Editar Ventas', resource: 'sales', action: 'edit', description: 'Modificar ventas existentes' },
+  { name: 'Eliminar Ventas', resource: 'sales', action: 'delete', description: 'Eliminar registros de ventas' },
   
   // Ubicaciones
   { name: 'Ver Ubicaciones', resource: 'locations', action: 'view', description: 'Ver ubicaciones de inventario' },
   { name: 'Crear Ubicaciones', resource: 'locations', action: 'create', description: 'Añadir nuevas ubicaciones' },
   { name: 'Editar Ubicaciones', resource: 'locations', action: 'edit', description: 'Modificar ubicaciones existentes' },
+  { name: 'Eliminar Ubicaciones', resource: 'locations', action: 'delete', description: 'Eliminar ubicaciones' },
   
   // Categorías
   { name: 'Ver Categorías', resource: 'categories', action: 'view', description: 'Ver categorías de productos' },
   { name: 'Crear Categorías', resource: 'categories', action: 'create', description: 'Añadir nuevas categorías' },
   { name: 'Editar Categorías', resource: 'categories', action: 'edit', description: 'Modificar categorías existentes' },
+  { name: 'Eliminar Categorías', resource: 'categories', action: 'delete', description: 'Eliminar categorías' },
   
   // Usuarios
   { name: 'Ver Usuarios', resource: 'users', action: 'view', description: 'Ver lista de usuarios' },
   { name: 'Crear Usuarios', resource: 'users', action: 'create', description: 'Añadir nuevos usuarios' },
   { name: 'Editar Usuarios', resource: 'users', action: 'edit', description: 'Modificar usuarios existentes' },
+  { name: 'Eliminar Usuarios', resource: 'users', action: 'delete', description: 'Eliminar usuarios del sistema' },
   
   // Permisos
   { name: 'Ver Permisos', resource: 'permissions', action: 'view', description: 'Ver configuración de permisos' },
@@ -53,59 +55,29 @@ const ALL_PERMISSIONS = [
   { name: 'Editar Configuración', resource: 'settings', action: 'edit', description: 'Modificar configuración del sistema' },
   
   // Reportes
-  { name: 'Ver Reportes', resource: 'reports', action: 'view', description: 'Acceso a reportes y análisis' }
+  { name: 'Ver Reportes', resource: 'reports', action: 'view', description: 'Acceso a reportes y análisis' },
+  { name: 'Exportar Reportes', resource: 'reports', action: 'export', description: 'Exportar reportes' }
 ];
 
-// Información del entorno
-console.log('🔍 Verificando entorno para usuario administrador...');
+async function fixAdminPermissions() {
+  // Check if DATABASE_URL is available
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL no está configurada');
+    console.error('⚠️ No se puede acceder a la base de datos');
+    console.log('💡 Este script debe ejecutarse en el entorno de producción (Choreo)');
+    return;
+  }
 
-// Check if DATABASE_URL is available
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL no está configurada');
-  console.error('⚠️ No se puede verificar/crear usuario administrador sin conexión a la base de datos');
-  process.exit(1);
-}
-
-console.log(`- DATABASE_URL: [Configurada]`);
-console.log(`- JWT_SECRET: ${process.env.JWT_SECRET ? '[Configurado]' : '[NO CONFIGURADO]'}`);
-
-async function setupAdminWithPermissions() {
   const prisma = new PrismaClient();
   
+  console.log('🔧 Reparando Permisos del Administrador\n');
+
   try {
-    console.log('🛡️ Verificando usuario administrador root...');
-    console.log('🔌 Conectando a la base de datos...');
     await prisma.$connect();
-    console.log('✅ Conexión a la base de datos exitosa');
+    console.log('✅ Conectado a la base de datos\n');
 
-    // Verificar estructura de base de datos
-    try {
-      await prisma.user.count();
-    } catch (error) {
-      if (error.message.includes('does not exist')) {
-        console.log('⚠️ Las tablas de la base de datos no existen.');
-        console.log('🔧 Creando esquema de base de datos...');
-        
-        try {
-          execSync('npx prisma db push --force-reset', { 
-            stdio: 'inherit',
-            cwd: process.cwd()
-          });
-          console.log('✅ Esquema de base de datos creado');
-          
-          // Esperar un momento para que la base de datos esté lista
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } catch (pushError) {
-          console.error('❌ Error al crear esquema:', pushError);
-          throw pushError;
-        }
-      } else {
-        throw error;
-      }
-    }
-
-    // 1. CREAR/ACTUALIZAR PERMISOS
-    console.log('\n📝 Configurando sistema de permisos...');
+    // 1. Crear/actualizar todos los permisos
+    console.log('📝 Creando/actualizando permisos...');
     const createdPermissions = [];
     
     for (const perm of ALL_PERMISSIONS) {
@@ -129,12 +101,13 @@ async function setupAdminWithPermissions() {
       });
       
       createdPermissions.push(permission);
+      console.log(`   ✅ ${perm.resource}:${perm.action}`);
     }
     
-    console.log(`✅ Permisos configurados: ${createdPermissions.length}`);
+    console.log(`\n📊 Total de permisos: ${createdPermissions.length}\n`);
 
-    // 2. CREAR/ACTUALIZAR ROL ADMIN
-    console.log('\n🏷️ Configurando rol ADMIN...');
+    // 2. Asegurar que el rol ADMIN existe
+    console.log('🏷️ Verificando rol ADMIN...');
     const adminRole = await prisma.role.upsert({
       where: { name: 'ADMIN' },
       update: {
@@ -148,11 +121,11 @@ async function setupAdminWithPermissions() {
       }
     });
     
-    console.log(`✅ Rol ADMIN configurado: ${adminRole.id}`);
+    console.log(`✅ Rol ADMIN: ${adminRole.id}\n`);
 
-    // 3. ASIGNAR TODOS LOS PERMISOS AL ROL ADMIN
-    console.log('\n🔐 Asignando permisos al rol ADMIN...');
-    let permissionsAssigned = 0;
+    // 3. Asignar TODOS los permisos al rol ADMIN
+    console.log('🔐 Asignando permisos al rol ADMIN...');
+    let assignedCount = 0;
     
     for (const permission of createdPermissions) {
       await prisma.rolePermission.upsert({
@@ -168,55 +141,39 @@ async function setupAdminWithPermissions() {
           permissionId: permission.id
         }
       });
-      permissionsAssigned++;
+      
+      assignedCount++;
     }
     
-    console.log(`✅ Permisos asignados: ${permissionsAssigned}`);
+    console.log(`✅ Permisos asignados al rol ADMIN: ${assignedCount}\n`);
 
-    // 4. VERIFICAR/CREAR USUARIO ADMINISTRADOR
-    console.log('\n👤 Verificando usuario administrador...');
-    
-    const existingAdmin = await prisma.user.findUnique({
+    // 4. Verificar el usuario administrador
+    console.log('👤 Verificando usuario administrador...');
+    const adminUser = await prisma.user.findUnique({
       where: { email: 'alesierraalta@gmail.com' },
       include: { role: true }
     });
 
-    if (existingAdmin) {
-      console.log('✅ Usuario administrador encontrado');
-      
-      // Asegurar que tenga el rol ADMIN correcto
-      if (existingAdmin.roleId !== adminRole.id) {
-        console.log('🔄 Actualizando rol del usuario...');
-        await prisma.user.update({
-          where: { id: existingAdmin.id },
-          data: { roleId: adminRole.id }
-        });
-        console.log('✅ Rol actualizado');
-      }
-      
-    } else {
-      console.log('⚠️ Usuario administrador ROOT no encontrado, creándolo...');
-      const hashedPassword = await bcrypt.hash('admin123', 12);
-      
-      const newAdmin = await prisma.user.create({
-        data: {
-          email: 'alesierraalta@gmail.com',
-          name: 'Alejandro Sierra (ROOT)',
-          password: hashedPassword,
-          roleId: adminRole.id,
-          isActive: true
-        },
-        include: { role: true }
-      });
-      
-      console.log('✅ Usuario administrador ROOT creado exitosamente');
-      console.log(`   - Email: ${newAdmin.email}`);
-      console.log(`   - Rol: ${newAdmin.role.name}`);
+    if (!adminUser) {
+      console.log('❌ Usuario administrador no encontrado');
+      return;
     }
 
-    // 5. VERIFICACIÓN FINAL
-    console.log('\n🔍 Verificación final del sistema...');
-    const finalAdmin = await prisma.user.findUnique({
+    // 5. Asegurar que el usuario tenga el rol ADMIN
+    if (adminUser.roleId !== adminRole.id) {
+      console.log('🔄 Asignando rol ADMIN al usuario...');
+      await prisma.user.update({
+        where: { id: adminUser.id },
+        data: { roleId: adminRole.id }
+      });
+      console.log('✅ Rol ADMIN asignado al usuario\n');
+    } else {
+      console.log('✅ Usuario ya tiene rol ADMIN\n');
+    }
+
+    // 6. Verificación final
+    console.log('🔍 Verificación final...');
+    const finalCheck = await prisma.user.findUnique({
       where: { email: 'alesierraalta@gmail.com' },
       include: {
         role: {
@@ -231,34 +188,31 @@ async function setupAdminWithPermissions() {
       }
     });
 
-    console.log('✅ Estado del usuario administrador:');
-    console.log(`   - Email: ${finalAdmin.email}`);
-    console.log(`   - Rol: ${finalAdmin.role.name}`);
-    console.log(`   - Permisos: ${finalAdmin.role.permissions.length}`);
-    console.log(`   - Activo: ${finalAdmin.isActive ? 'Sí' : 'No'}`);
+    console.log(`✅ Usuario: ${finalCheck.email}`);
+    console.log(`✅ Rol: ${finalCheck.role.name}`);
+    console.log(`✅ Permisos: ${finalCheck.role.permissions.length}`);
+    console.log(`✅ Activo: ${finalCheck.isActive ? 'Sí' : 'No'}`);
 
-    // Verificar permisos críticos para sidebar
+    // 7. Mostrar permisos críticos para sidebar
     const criticalPerms = ['dashboard:view', 'inventory:view', 'users:view', 'settings:view'];
     console.log('\n🎯 Permisos críticos para sidebar:');
     
     criticalPerms.forEach(permKey => {
       const [resource, action] = permKey.split(':');
-      const hasIt = finalAdmin.role.permissions.some(rp => 
+      const hasIt = finalCheck.role.permissions.some(rp => 
         rp.permission.resource === resource && rp.permission.action === action
       );
       console.log(`   ${hasIt ? '✅' : '❌'} ${permKey}`);
     });
 
-    console.log('\n🎉 Sistema de administrador configurado correctamente');
-    console.log('💡 Credenciales: alesierraalta@gmail.com / admin123');
-    console.log('🔐 El usuario tiene acceso completo a todas las funciones');
+    console.log('\n🎉 ¡Reparación de permisos completada!');
+    console.log('💡 El usuario administrador ahora debería ver todas las opciones en el sidebar');
 
   } catch (error) {
-    console.error('❌ Error al configurar usuario administrador:', error);
-    throw error;
+    console.error('❌ Error durante la reparación:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-setupAdminWithPermissions(); 
+fixAdminPermissions(); 

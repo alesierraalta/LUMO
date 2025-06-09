@@ -10,6 +10,7 @@
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { execSync } = require('child_process');
 
 // Información del entorno
 console.log('🔍 Verificando entorno para usuario administrador...');
@@ -44,15 +45,44 @@ async function ensureAdminUser() {
     }
     
     // Verificar estructura de la base de datos
+    let tablesExist = false;
     try {
       const userCount = await prisma.user.count();
       console.log(`📊 Usuarios existentes: ${userCount}`);
+      tablesExist = true;
     } catch (schemaError) {
-      console.error('❌ Error al verificar la estructura de la base de datos:', schemaError.message);
+      console.log('⚠️ Las tablas de la base de datos no existen - creando schema...');
+      
       if (schemaError.message.includes('does not exist')) {
-        console.error('⚠️ Las tablas de la base de datos no existen.');
-        console.error('⚠️ Ejecuta "npx prisma db push" para crear las tablas.');
+        try {
+          console.log('🔧 Ejecutando migración de schema...');
+          execSync('npx prisma db push --force-reset', { 
+            stdio: 'inherit',
+            cwd: process.cwd()
+          });
+          console.log('✅ Schema de base de datos creado exitosamente');
+          tablesExist = true;
+        } catch (migrationError) {
+          console.error('❌ Error al crear schema de base de datos:', migrationError.message);
+          process.exit(1);
+        }
+      } else {
+        console.error('❌ Error desconocido en base de datos:', schemaError.message);
+        process.exit(1);
       }
+    }
+    
+    if (!tablesExist) {
+      console.error('❌ No se pudieron crear las tablas de la base de datos');
+      process.exit(1);
+    }
+    
+    // Verificar conteo de usuarios después de crear schema
+    try {
+      const userCount = await prisma.user.count();
+      console.log(`📊 Usuarios en base de datos: ${userCount}`);
+    } catch (countError) {
+      console.error('❌ Error al contar usuarios:', countError.message);
       process.exit(1);
     }
     

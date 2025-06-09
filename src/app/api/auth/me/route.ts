@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin, isManager } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get current user
+    // Get current user from token
     const user = await getCurrentUserFromToken(token);
 
     if (!user) {
@@ -25,14 +25,6 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    // Crear objeto con permisos de páginas basado en rol
-    const pagePermissions = {
-      dashboard: true, // All authenticated users can access dashboard
-      inventory: true, // All authenticated users can access inventory
-      settings: isManager(user) || isAdmin(user), // Only managers and admins can access settings
-      userManagement: isAdmin(user), // Only admins can access user management
-    };
 
     // Return user information
     return NextResponse.json({
@@ -44,8 +36,7 @@ export async function GET(request: NextRequest) {
         role: user.role,
         isActive: user.isActive,
         createdAt: user.createdAt,
-      },
-      pageAccess: pagePermissions,
+      }
     });
 
   } catch (error) {

@@ -127,23 +127,26 @@ export const getCurrentUserFromToken = async (token: string): Promise<User | nul
       return null;
     }
 
-    // Find user by ID from token
-    const user = await prisma.user.findUnique({
+    // Find user by ID from token with role relationship
+    const userWithRole = await prisma.user.findUnique({
       where: { id: sessionData.userId },
-    });
+      include: {
+        role: true
+      }
+    }) as any;
 
-    if (!user || !user.isActive) {
+    if (!userWithRole || !userWithRole.isActive) {
       return null;
     }
 
     return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      id: userWithRole.id,
+      email: userWithRole.email,
+      name: userWithRole.name,
+      role: userWithRole.role?.name || 'USER', // Get role name from relationship
+      isActive: userWithRole.isActive,
+      createdAt: userWithRole.createdAt,
+      updatedAt: userWithRole.updatedAt,
     };
   } catch (error) {
     console.error('Get current user error:', error);

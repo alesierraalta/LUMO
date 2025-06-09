@@ -66,7 +66,7 @@
     "build": "node scripts/verify-prisma-client.js && next build",
     "build:prod": "npm run mode:prod && npm run build",
     "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
-    "postinstall": "echo 'Running postinstall...' && node scripts/ensure-prisma-client.js && node scripts/ensure-prisma-accelerate.js",
+    "postinstall": "echo 'Running postinstall...' && node scripts/ensure-prisma-client.js",
     "ensure-admin": "node scripts/ensure-admin.js",
     "ensure-prisma-accelerate": "node scripts/ensure-prisma-accelerate.js",
     "start": "node scripts/runtime-env-check.js && node scripts/ensure-prisma-accelerate.js && node scripts/ensure-admin.js && node server.js",

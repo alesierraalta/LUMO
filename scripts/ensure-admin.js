@@ -99,81 +99,25 @@ async function setupAdminWithPermissions() {
   }
   
   console.log('🔍 Verificando configuración de base de datos...');
-  let expectedProvider = 'sqlite';
   if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
     console.log('✅ PostgreSQL detectado');
-    expectedProvider = 'postgresql';
   } else if (dbUrl.startsWith('file:')) {
     console.log('✅ SQLite detectado');
-    expectedProvider = 'sqlite';
   } else {
     console.log('⚠️ Tipo de base de datos no reconocido:', dbUrl.substring(0, 20));
   }
   
-  // Check if schema provider matches database URL
-  const schemaContent = fs.readFileSync(schemaPath, 'utf8');
-  const hasCorrectProvider = schemaContent.includes(`provider = "${expectedProvider}"`);
-  
-  if (!hasCorrectProvider) {
-    console.log(`🔧 Schema provider mismatch - updating to ${expectedProvider}...`);
-    
-    // Update schema provider
-    let updatedSchema = schemaContent;
-    if (expectedProvider === 'postgresql') {
-      updatedSchema = updatedSchema.replace(/provider\s*=\s*"sqlite"/g, 'provider = "postgresql"');
-    } else {
-      updatedSchema = updatedSchema.replace(/provider\s*=\s*"postgresql"/g, 'provider = "sqlite"');
-    }
-    
-    fs.writeFileSync(schemaPath, updatedSchema);
-    console.log(`✅ Schema updated to ${expectedProvider}`);
-    
-    // Regenerate Prisma client
-    console.log('🔄 Regenerating Prisma client...');
-    try {
-      execSync('npx prisma generate', { 
-        stdio: 'inherit',
-        cwd: process.cwd(),
-        timeout: 60000 // 60 second timeout
-      });
-      console.log('✅ Prisma client regenerated');
-      
-      // Small delay to ensure client is ready
-      const waitStart = Date.now();
-      while (Date.now() - waitStart < 1000) {
-        // Wait 1 second
-      }
-    } catch (error) {
-      console.error('❌ Error regenerating Prisma client:', error.message);
-      console.log('⚠️ Continuing with existing client...');
-    }
-  }
-  
-  // Dynamically import PrismaClient after potential regeneration
+  // Import PrismaClient - it should already be correctly generated
   let prisma;
   try {
-    // Clear require cache to ensure fresh import
-    delete require.cache[require.resolve('@prisma/client')];
     const { PrismaClient } = require('@prisma/client');
     prisma = new PrismaClient();
+    console.log('✅ PrismaClient importado correctamente');
   } catch (error) {
     console.error('❌ Error importing PrismaClient:', error.message);
-    console.log('🔄 Attempting one more client generation...');
-    
-    try {
-      execSync('npx prisma generate --force', { 
-        stdio: 'inherit',
-        cwd: process.cwd() 
-      });
-      
-      delete require.cache[require.resolve('@prisma/client')];
-      const { PrismaClient } = require('@prisma/client');
-      prisma = new PrismaClient();
-      console.log('✅ PrismaClient successfully imported after force generation');
-    } catch (finalError) {
-      console.error('❌ Critical: Unable to initialize PrismaClient:', finalError.message);
-      process.exit(1);
-    }
+    console.error('🔧 Esto indica que el cliente Prisma no fue generado correctamente durante el build');
+    console.error('💡 Asegúrate que el schema.prisma tenga el provider correcto antes del build');
+    process.exit(1);
   }
   
   try {

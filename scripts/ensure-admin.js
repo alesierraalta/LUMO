@@ -9,9 +9,10 @@
  * También asegura que tenga todos los permisos necesarios.
  */
 
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 // Definición completa de permisos necesarios
 const ALL_PERMISSIONS = [
@@ -60,11 +61,30 @@ const ALL_PERMISSIONS = [
 // Información del entorno
 console.log('🔍 Verificando entorno para usuario administrador...');
 
-// Check if DATABASE_URL is available
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL no está configurada');
-  console.error('⚠️ No se puede verificar/crear usuario administrador sin conexión a la base de datos');
-  process.exit(1);
+// Add a small delay to ensure schema.prisma changes from ensure-prisma-accelerate.js are synced
+console.log('⏱️ Esperando sincronización de archivos...');
+const start = Date.now();
+while (Date.now() - start < 1000) {
+  // Wait 1 second for file system sync
+}
+
+// Verify schema.prisma configuration before proceeding
+const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+if (fs.existsSync(schemaPath)) {
+  const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+  console.log('📋 Verificando configuración de schema.prisma...');
+  
+  if (schemaContent.includes('provider = "postgresql"')) {
+    console.log('✅ Schema configurado para PostgreSQL');
+  } else if (schemaContent.includes('provider = "sqlite"')) {
+    console.log('✅ Schema configurado para SQLite');
+  } else {
+    console.error('❌ No se pudo determinar el proveedor de la base de datos en schema.prisma');
+    console.error('Contenido del schema (primeras 10 líneas):');
+    console.error(schemaContent.split('\n').slice(0, 10).join('\n'));
+  }
+} else {
+  console.error('❌ No se encontró schema.prisma');
 }
 
 console.log(`- DATABASE_URL: [Configurada]`);
@@ -79,15 +99,82 @@ async function setupAdminWithPermissions() {
   }
   
   console.log('🔍 Verificando configuración de base de datos...');
+  let expectedProvider = 'sqlite';
   if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
     console.log('✅ PostgreSQL detectado');
+    expectedProvider = 'postgresql';
   } else if (dbUrl.startsWith('file:')) {
     console.log('✅ SQLite detectado');
+    expectedProvider = 'sqlite';
   } else {
     console.log('⚠️ Tipo de base de datos no reconocido:', dbUrl.substring(0, 20));
   }
   
-  const prisma = new PrismaClient();
+  // Check if schema provider matches database URL
+  const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+  const hasCorrectProvider = schemaContent.includes(`provider = "${expectedProvider}"`);
+  
+  if (!hasCorrectProvider) {
+    console.log(`🔧 Schema provider mismatch - updating to ${expectedProvider}...`);
+    
+    // Update schema provider
+    let updatedSchema = schemaContent;
+    if (expectedProvider === 'postgresql') {
+      updatedSchema = updatedSchema.replace(/provider\s*=\s*"sqlite"/g, 'provider = "postgresql"');
+    } else {
+      updatedSchema = updatedSchema.replace(/provider\s*=\s*"postgresql"/g, 'provider = "sqlite"');
+    }
+    
+    fs.writeFileSync(schemaPath, updatedSchema);
+    console.log(`✅ Schema updated to ${expectedProvider}`);
+    
+    // Regenerate Prisma client
+    console.log('🔄 Regenerating Prisma client...');
+    try {
+      execSync('npx prisma generate', { 
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        timeout: 60000 // 60 second timeout
+      });
+      console.log('✅ Prisma client regenerated');
+      
+      // Small delay to ensure client is ready
+      const waitStart = Date.now();
+      while (Date.now() - waitStart < 1000) {
+        // Wait 1 second
+      }
+    } catch (error) {
+      console.error('❌ Error regenerating Prisma client:', error.message);
+      console.log('⚠️ Continuing with existing client...');
+    }
+  }
+  
+  // Dynamically import PrismaClient after potential regeneration
+  let prisma;
+  try {
+    // Clear require cache to ensure fresh import
+    delete require.cache[require.resolve('@prisma/client')];
+    const { PrismaClient } = require('@prisma/client');
+    prisma = new PrismaClient();
+  } catch (error) {
+    console.error('❌ Error importing PrismaClient:', error.message);
+    console.log('🔄 Attempting one more client generation...');
+    
+    try {
+      execSync('npx prisma generate --force', { 
+        stdio: 'inherit',
+        cwd: process.cwd() 
+      });
+      
+      delete require.cache[require.resolve('@prisma/client')];
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      console.log('✅ PrismaClient successfully imported after force generation');
+    } catch (finalError) {
+      console.error('❌ Critical: Unable to initialize PrismaClient:', finalError.message);
+      process.exit(1);
+    }
+  }
   
   try {
     console.log('🛡️ Verificando usuario administrador root...');

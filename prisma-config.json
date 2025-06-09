@@ -1,6 +1,7 @@
 {
   "databaseUrl": "${DATABASE_URL}",
   "connectionType": "sqlite",
-  "timestamp": "2025-06-08T15:54:20.276Z",
-  "fix": "prisma-p6001-fix-enhanced"
+  "timestamp": "2025-06-09T14:42:29.983Z",
+  "autoConfigured": true,
+  "environment": "development"
 }

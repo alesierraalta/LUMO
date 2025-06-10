@@ -39,7 +39,12 @@ if (isChoreo && process.env.SUPABASE_URL) {
     db = {
       user: {
         findUnique: async (params: any) => {
-          let query = supabase.from('users').select('*');
+          console.log('🔍 Supabase findUnique called with:', params);
+          
+          let query = supabase.from('users').select(`
+            *,
+            role:roles(*)
+          `);
 
           if (params.where.email) {
             query = query.eq('email', params.where.email);
@@ -48,27 +53,52 @@ if (isChoreo && process.env.SUPABASE_URL) {
             query = query.eq('id', params.where.id);
           }
 
+          console.log('🔍 Executing Supabase query...');
           const { data, error } = await query.single();
+          
           if (error) {
-            console.log('User not found:', error.message);
+            console.log('❌ Supabase error:', error.message);
+            console.log('❌ Full error:', error);
             return null;
           }
           
+          console.log('✅ Supabase data found:', data);
+          
+          // Get role name (handle both direct role_id and joined role)
+          let roleName = 'USER';
+          if (data.role && data.role.name) {
+            roleName = data.role.name;
+          } else if (data.role_id) {
+            // Fallback: fetch role separately if join didn't work
+            const { data: roleData } = await supabase
+              .from('roles')
+              .select('name')
+              .eq('id', data.role_id)
+              .single();
+            roleName = roleData?.name || 'USER';
+          }
+          
           // Convert Supabase response to Prisma-like format
-          return {
+          const result = {
             id: data.id,
             email: data.email,
             name: data.name,
             password: data.password,
-            role: 'USER', // Default role for now, can be enhanced
+            role: roleName,
             isActive: data.is_active,
             createdAt: new Date(data.created_at),
             updatedAt: new Date(data.updated_at)
           };
+          
+          console.log('✅ Converted result:', result);
+          return result;
         },
         
         findMany: async (params: any = {}) => {
-          let query = supabase.from('users').select('*');
+          let query = supabase.from('users').select(`
+            *,
+            role:roles(*)
+          `);
           
           if (params.orderBy) {
             const orderField = params.orderBy.createdAt ? 'created_at' : 'id';
@@ -80,15 +110,22 @@ if (isChoreo && process.env.SUPABASE_URL) {
           if (error) throw error;
           
           // Convert to Prisma format
-          return data.map((user: any) => ({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: 'USER', // Default for now
-            isActive: user.is_active,
-            createdAt: new Date(user.created_at),
-            updatedAt: new Date(user.updated_at)
-          }));
+          return data.map((user: any) => {
+            let roleName = 'USER';
+            if (user.role && user.role.name) {
+              roleName = user.role.name;
+            }
+            
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: roleName,
+              isActive: user.is_active,
+              createdAt: new Date(user.created_at),
+              updatedAt: new Date(user.updated_at)
+            };
+          });
         },
         
         create: async (params: any) => {

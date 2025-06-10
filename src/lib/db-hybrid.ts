@@ -234,7 +234,7 @@ if (isChoreo) {
             const categoriesWithCount = await Promise.all(
               data.map(async (category: any) => {
                 const { count } = await supabase
-                  .from('inventory')
+                  .from('inventory_items')
                   .select('id', { count: 'exact' })
                   .eq('category_id', category.id);
                 
@@ -279,7 +279,7 @@ if (isChoreo) {
 
       inventoryItem: {
         findMany: async (params: any = {}) => {
-          let query = supabase.from('inventory').select(`
+          let query = supabase.from('inventory_items').select(`
             *,
             category:categories(*),
             location:locations(*)
@@ -366,7 +366,7 @@ if (isChoreo) {
         },
 
         findUnique: async (params: any) => {
-          let query = supabase.from('inventory').select(`
+          let query = supabase.from('inventory_items').select(`
             *,
             category:categories(*),
             location:locations(*)
@@ -408,7 +408,7 @@ if (isChoreo) {
         },
 
         count: async (params: any = {}) => {
-          let query = supabase.from('inventory').select('id', { count: 'exact' });
+          let query = supabase.from('inventory_items').select('id', { count: 'exact' });
           
           if (params.where) {
             if (params.where.isActive !== undefined) {
@@ -438,7 +438,7 @@ if (isChoreo) {
           };
 
           const { data, error } = await supabase
-            .from('inventory')
+            .from('inventory_items')
             .insert([insertData])
             .select()
             .single();

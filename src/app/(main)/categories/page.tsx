@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Tag, Filter } from "lucide-react";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import { CategoryList } from "@/components/categories/category-list";
 import { CategorySearch } from "@/components/categories/category-search";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -17,7 +17,7 @@ interface PageProps {
 }
 
 async function getCategories(query?: string) {
-  const categories = await prisma.category.findMany({
+  const categories = await db.category.findMany({
     where: query ? {
       OR: [
         { name: { contains: query } },

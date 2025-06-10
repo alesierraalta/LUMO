@@ -1,5 +1,5 @@
 // Simple permissions utility for checking user permissions
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 /**
  * Check if a user has a specific permission
@@ -14,7 +14,7 @@ export async function checkPermission(userId: string, permissionKey: string): Pr
     // in the database
     
     // Get user with role
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
       include: {
         role: {

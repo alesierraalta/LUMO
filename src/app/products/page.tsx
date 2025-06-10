@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import ProductList from "@/components/products/product-list";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { serializeDecimal } from "@/lib/utils";
@@ -17,7 +17,7 @@ interface PageProps {
 }
 
 async function getProducts(query?: string, categoryId?: string) {
-  const products = await prisma.inventoryItem.findMany({
+  const products = await db.inventoryItem.findMany({
     where: {
       AND: [
         query ? {
@@ -60,7 +60,7 @@ async function getProducts(query?: string, categoryId?: string) {
 }
 
 async function getCategories() {
-  return prisma.category.findMany({
+  return db.category.findMany({
     orderBy: {
       name: 'asc',
     },

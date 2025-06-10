@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
@@ -30,7 +30,7 @@ export async function PUT(
     }
 
     // Check if the user exists
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
@@ -41,7 +41,7 @@ export async function PUT(
     }
 
     // Check if the role exists
-    const role = await prisma.role.findUnique({
+    const role = await db.role.findUnique({
       where: { id: roleId },
     });
     if (!role) {
@@ -52,7 +52,7 @@ export async function PUT(
     }
 
     // Update the user's role
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await db.user.update({
       where: { id: userId },
       data: { roleId },
       include: { role: true },

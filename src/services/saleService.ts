@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { serializeDecimal } from "../lib/utils";
 import type { Prisma } from "@prisma/client";
 
@@ -25,7 +25,7 @@ export type UpdateSaleInput = {
  * Get all sales with their transactions
  */
 export async function getAllSales() {
-  const sales = await prisma.sale.findMany({
+  const sales = await db.sale.findMany({
     include: {
       transactions: {
         include: {
@@ -45,7 +45,7 @@ export async function getAllSales() {
  * Get a single sale by ID
  */
 export async function getSaleById(id: string) {
-  const sale = await prisma.sale.findUnique({
+  const sale = await db.sale.findUnique({
     where: { id },
     include: {
       transactions: {
@@ -66,7 +66,7 @@ export async function createSale(data: CreateSaleInput) {
   // Calculate transaction subtotals and validate stock
   const transactions = await Promise.all(data.transactions.map(async (t) => {
     // Get product to check stock
-    const inventoryItem = await prisma.inventoryItem.findUnique({
+    const inventoryItem = await db.inventoryItem.findUnique({
       where: { id: t.inventoryItemId }
     });
 
@@ -90,7 +90,7 @@ export async function createSale(data: CreateSaleInput) {
   const total = subtotal + tax;
 
   // Create sale and transactions in a transaction
-  const sale = await prisma.$transaction(async (tx) => {
+  const sale = await db.$transaction(async (tx) => {
     // Create the sale
     const newSale = await tx.sale.create({
       data: {
@@ -149,7 +149,7 @@ export async function createSale(data: CreateSaleInput) {
  * Update a sale's status or notes
  */
 export async function updateSale(id: string, data: UpdateSaleInput) {
-  const sale = await prisma.sale.update({
+  const sale = await db.sale.update({
     where: { id },
     data,
     include: {
@@ -168,9 +168,9 @@ export async function updateSale(id: string, data: UpdateSaleInput) {
  * Get sales statistics
  */
 export async function getSalesStats(startDate: Date, endDate: Date) {
-  const stats = await prisma.$transaction([
+  const stats = await db.$transaction([
     // Total sales amount
-    prisma.sale.aggregate({
+    db.sale.aggregate({
       where: {
         date: {
           gte: startDate,
@@ -186,7 +186,7 @@ export async function getSalesStats(startDate: Date, endDate: Date) {
     }),
     
     // Top selling products
-    prisma.saleTransaction.groupBy({
+    db.saleTransaction.groupBy({
       by: ['inventoryItemId'],
       where: {
         sale: {

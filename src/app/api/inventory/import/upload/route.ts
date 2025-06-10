@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { importService } from "@/lib/importService";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { ensureImportDirectories } from "@/lib/server-utils";
 import { logger } from "@/lib/logger";
 import { errorLogger, ErrorCategory, ErrorSeverity, ErrorContext } from "@/lib/logger/error-logger";

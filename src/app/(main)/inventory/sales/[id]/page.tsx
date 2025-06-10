@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth-server";
 import { isAdmin } from "@/lib/auth-simple";
 import Link from "next/link";

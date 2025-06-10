@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { z } from "zod";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 
@@ -23,7 +23,7 @@ export async function GET() {
     }
 
     // Allow all authenticated users to view categories for product assignment
-    const categories = await prisma.category.findMany({
+    const categories = await db.category.findMany({
       orderBy: {
         name: "asc",
       },
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validatedData = CategorySchema.parse(body);
 
-    const category = await prisma.category.create({
+    const category = await db.category.create({
       data: validatedData,
     });
 

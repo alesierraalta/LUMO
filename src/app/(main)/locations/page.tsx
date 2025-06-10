@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import LocationsClient from "./client";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -17,7 +17,7 @@ export default async function LocationsPage() {
   }
 
   // Obtener todas las ubicaciones
-  const locationsData = await prisma.location.findMany({
+  const locationsData = await db.location.findMany({
     orderBy: {
       name: "asc"
     },

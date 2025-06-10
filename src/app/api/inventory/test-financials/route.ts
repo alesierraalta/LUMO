@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { z } from "zod";
 import { serializeDecimal } from "@/lib/utils";
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     console.log("Parsed data:", { price, cost, margin, changeReason, inventoryItemId });
     
     // 1. Get the current inventory item (no transaction)
-    const currentItem = await prisma.inventoryItem.findUnique({
+    const currentItem = await db.inventoryItem.findUnique({
       where: { id: inventoryItemId },
     });
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     
     try {
       // Simple update without transaction
-      const updated = await prisma.inventoryItem.update({
+      const updated = await db.inventoryItem.update({
         where: { id: inventoryItemId },
         data: updateData,
       });
@@ -75,19 +75,19 @@ export async function POST(request: NextRequest) {
         let systemUser = null;
         try {
           // First try to find an existing system user
-          systemUser = await prisma.user.findFirst({
+          systemUser = await db.user.findFirst({
             where: { email: 'sistema@lumo.local' }
           });
           
           // If no system user exists, create one
           if (!systemUser) {
             // First find the viewer role
-            const viewerRole = await prisma.role.findUnique({
+            const viewerRole = await db.role.findUnique({
               where: { name: 'viewer' }
             });
             
             if (viewerRole) {
-              systemUser = await prisma.user.create({
+              systemUser = await db.user.create({
                 data: {
                   clerkId: 'system-user',
                   email: 'sistema@lumo.local',
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         console.log("Creating price history with:", historyData);
         
         // Create price history record separately
-        const priceHistory = await prisma.priceHistory.create({
+        const priceHistory = await db.priceHistory.create({
           data: historyData
         });
         

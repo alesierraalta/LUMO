@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 const ADMIN_EMAIL = "alesierraalta@gmail.com";
 
 export async function GET(request: NextRequest) {
   try {
     // Check if admin role exists
-    const adminRole = await prisma.role.findUnique({
+    const adminRole = await db.role.findUnique({
       where: { name: "admin" }
     });
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find or create a dummy admin user
-    const adminUser = await prisma.user.findFirst({
+    const adminUser = await db.user.findFirst({
       where: { email: ADMIN_EMAIL },
       include: { role: true }
     });
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (adminUser) {
       if (adminUser.role.name !== "admin") {
         // Update to admin role if not already
-        await prisma.user.update({
+        await db.user.update({
           where: { id: adminUser.id },
           data: { roleId: adminRole.id }
         });
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Create new admin user
-      const newAdminUser = await prisma.user.create({
+      const newAdminUser = await db.user.create({
         data: {
           email: ADMIN_EMAIL,
           passwordHash: "placeholder", // This should be properly hashed in production

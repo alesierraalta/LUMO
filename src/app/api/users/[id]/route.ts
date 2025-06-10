@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 
 export async function GET(
@@ -34,7 +34,7 @@ export async function GET(
     const userId = resolvedParams.id;
 
     // Get the user with role information
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
       include: {
         role: {
@@ -125,7 +125,7 @@ export async function PUT(
     const { firstName, lastName, roleId, isActive, password, customPermissions } = body;
 
     // Check if the user exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { id: userId },
     });
 
@@ -138,7 +138,7 @@ export async function PUT(
 
     // Validate role if provided
     if (roleId) {
-      const role = await prisma.role.findUnique({
+      const role = await db.role.findUnique({
         where: { id: roleId },
       });
       if (!role) {
@@ -169,7 +169,7 @@ export async function PUT(
     }
 
     // Update the user
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await db.user.update({
       where: { id: userId },
       data: updateData,
       include: {
@@ -200,7 +200,7 @@ export async function PUT(
       };
       
       // First, remove existing custom permissions
-      await prisma.userPermission.deleteMany({
+      await db.userPermission.deleteMany({
         where: { userId: userId }
       });
       
@@ -211,7 +211,7 @@ export async function PUT(
         if (key in permissionMap) {
           // Get or create the permission
           const permissionName = permissionMap[key];
-          const permission = await prisma.permission.findUnique({
+          const permission = await db.permission.findUnique({
             where: { name: permissionName }
           });
           
@@ -228,7 +228,7 @@ export async function PUT(
       
       // Create all user permissions in a single transaction
       if (userPermissionsToCreate.length > 0) {
-        await prisma.userPermission.createMany({
+        await db.userPermission.createMany({
           data: userPermissionsToCreate
         });
       }
@@ -303,7 +303,7 @@ export async function DELETE(
     }
 
     // Check if the user exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { id: userId },
     });
 
@@ -315,7 +315,7 @@ export async function DELETE(
     }
 
     // Delete related records first
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       // Delete user sessions
       await tx.userSession.deleteMany({
         where: { userId },

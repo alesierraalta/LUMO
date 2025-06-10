@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 // GET /api/locations/[id] - Obtener ubicación específica
 export async function GET(
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const location = await prisma.location.findUnique({
+    const location = await db.location.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -70,7 +70,7 @@ export async function PUT(
     }
 
     // Check if location exists
-    const existingLocation = await prisma.location.findUnique({
+    const existingLocation = await db.location.findUnique({
       where: { id: params.id }
     });
 
@@ -79,7 +79,7 @@ export async function PUT(
     }
 
     // Check if name is already taken by another location
-    const nameConflict = await prisma.location.findFirst({
+    const nameConflict = await db.location.findFirst({
       where: { 
         name: name.trim(),
         id: { not: params.id }
@@ -93,7 +93,7 @@ export async function PUT(
       );
     }
 
-    const location = await prisma.location.update({
+    const location = await db.location.update({
       where: { id: params.id },
       data: {
         name: name.trim(),
@@ -136,7 +136,7 @@ export async function DELETE(
     }
 
     // Check if location exists
-    const existingLocation = await prisma.location.findUnique({
+    const existingLocation = await db.location.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -159,7 +159,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.location.delete({
+    await db.location.delete({
       where: { id: params.id }
     });
 

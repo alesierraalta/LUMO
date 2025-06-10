@@ -10,7 +10,7 @@ import { getAllProducts } from "@/services/productService";
 import { getLowStockItems } from "@/services/inventoryService";
 import { formatDate, getApiBaseUrl } from "@/lib/utils";
 import { ActionLink } from "@/components/ui/action-link";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 interface Product {
   id: string;
@@ -49,8 +49,8 @@ export default async function DashboardPage() {
     ]) as [Product[], any[]];
 
     // Get categories directly from database instead of API call
-    if (prisma) {
-      categories = await prisma.category.findMany({
+    if (db) {
+      categories = await db.category.findMany({
         orderBy: {
           name: "asc",
         },

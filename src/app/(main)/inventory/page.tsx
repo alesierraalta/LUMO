@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryTable from "@/components/inventory/inventory-table";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth-server";
 import InventoryClientWrapper from "./client-wrapper";
@@ -352,7 +352,7 @@ export default async function InventoryPage({
   }
 
   // Fetch all inventory items with their category and location info
-  const inventoryItems = await prisma.inventoryItem.findMany({
+  const inventoryItems = await db.inventoryItem.findMany({
     include: {
       category: true,
       location: true, // Incluir información de ubicación
@@ -366,7 +366,7 @@ export default async function InventoryPage({
   const serializedInventory = safeSerializeInventory(inventoryItems);
 
   // Fetch categories
-  const categories = await prisma.category.findMany({
+  const categories = await db.category.findMany({
     orderBy: {
       name: 'asc',
     },
@@ -380,7 +380,7 @@ export default async function InventoryPage({
   }) || [];
 
   // Fetch locations
-  const locations = await prisma.location.findMany({
+  const locations = await db.location.findMany({
     orderBy: {
       name: 'asc',
     },

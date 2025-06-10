@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { z } from "zod";
 
 const CategoryUpdateSchema = z.object({
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const category = await prisma.category.findUnique({
+    const category = await db.category.findUnique({
       where: { id: resolvedParams.id },
     });
 
@@ -45,7 +45,7 @@ export async function PUT(
     const body = await req.json();
     const validatedData = CategoryUpdateSchema.parse(body);
 
-    const category = await prisma.category.update({
+    const category = await db.category.update({
       where: { id: resolvedParams.id },
       data: validatedData,
     });
@@ -81,7 +81,7 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
-    await prisma.category.delete({
+    await db.category.delete({
       where: { id: resolvedParams.id },
     });
 

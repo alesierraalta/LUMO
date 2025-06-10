@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isAdmin, hasPermission } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { importService } from "@/lib/importService";
 import * as ExcelJS from "exceljs";
 import * as fs from "fs";
@@ -708,13 +708,13 @@ async function ensureImportTablesExist() {
   try {
     // Check if ImportSession table exists
     try {
-      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      await db.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
       return true; // Table exists
     } catch (error) {
       console.log("ImportSession table does not exist, creating required tables...");
       
       // Create ImportSession table
-      await prisma.$executeRawUnsafe(`
+      await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSession" (
           id TEXT PRIMARY KEY,
           "fileName" TEXT NOT NULL,
@@ -733,7 +733,7 @@ async function ensureImportTablesExist() {
       `);
       
       // Create ImportSessionDetail table
-      await prisma.$executeRawUnsafe(`
+      await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSessionDetail" (
           id TEXT PRIMARY KEY,
           "sessionId" TEXT NOT NULL,
@@ -749,7 +749,7 @@ async function ensureImportTablesExist() {
       `);
       
       // Create indexes
-      await prisma.$executeRawUnsafe(`
+      await db.$executeRawUnsafe(`
         CREATE INDEX IF NOT EXISTS "ImportSession_createdById_idx" ON "ImportSession"("createdById");
         CREATE INDEX IF NOT EXISTS "ImportSession_createdAt_idx" ON "ImportSession"("createdAt");
         CREATE INDEX IF NOT EXISTS "ImportSessionDetail_sessionId_idx" ON "ImportSessionDetail"("sessionId");

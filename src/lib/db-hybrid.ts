@@ -211,6 +211,118 @@ if (isChoreo && process.env.SUPABASE_URL) {
         }
       },
       
+      category: {
+        findMany: async (params: any = {}) => {
+          let query = supabase.from('categories').select('*');
+          
+          if (params.orderBy) {
+            if (params.orderBy.name) {
+              query = query.order('name', { 
+                ascending: params.orderBy.name === 'asc' 
+              });
+            }
+          }
+          
+          // Add count of inventory items if included
+          if (params.include && params.include._count) {
+            // For now, return categories without count
+            // TODO: Implement proper count aggregation
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          // Convert to match Prisma format with _count if needed
+          return data.map((category: any) => ({
+            ...category,
+            _count: params.include?._count ? { inventoryItems: 0 } : undefined
+          }));
+        },
+
+        findUnique: async (params: any) => {
+          let query = supabase.from('categories').select('*');
+
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
+          if (params.where.name) {
+            query = query.eq('name', params.where.name);
+          }
+
+          const { data, error } = await query.single();
+          if (error) return null;
+          return data;
+        }
+      },
+
+      inventoryItem: {
+        findMany: async (params: any = {}) => {
+          let query = supabase.from('inventory').select(`
+            *,
+            category:categories(*),
+            location:locations(*)
+          `);
+          
+          if (params.orderBy) {
+            if (params.orderBy.updatedAt) {
+              query = query.order('updated_at', { 
+                ascending: params.orderBy.updatedAt === 'asc' 
+              });
+            }
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          // Convert snake_case to camelCase to match Prisma format
+          return data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            quantity: item.quantity,
+            price: item.price,
+            cost: item.cost,
+            margin: item.margin,
+            sku: item.sku,
+            minStockLevel: item.min_stock_level,
+            location: item.location_name,
+            createdAt: new Date(item.created_at),
+            updatedAt: new Date(item.updated_at),
+            category: item.category,
+            locationRelation: item.location
+          }));
+        }
+      },
+
+      location: {
+        findMany: async (params: any = {}) => {
+          let query = supabase.from('locations').select('*');
+          
+          if (params.orderBy) {
+            if (params.orderBy.name) {
+              query = query.order('name', { 
+                ascending: params.orderBy.name === 'asc' 
+              });
+            }
+          }
+          
+          // Add count of inventory items if included
+          if (params.include && params.include._count) {
+            // For now, return locations without count
+            // TODO: Implement proper count aggregation
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          // Convert to match Prisma format with _count if needed
+          return data.map((location: any) => ({
+            ...location,
+            _count: params.include?._count ? { inventoryItems: 0 } : undefined
+          }));
+        }
+      },
+      
       $connect: async () => {},
       $disconnect: async () => {}
     };

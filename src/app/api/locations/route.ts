@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 // GET /api/locations - Obtener todas las ubicaciones
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const locations = await prisma.location.findMany({
+    const locations = await db.location.findMany({
       where: {
         isActive: true
       },
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar si ya existe una ubicación con ese nombre
-    const existingLocation = await prisma.location.findUnique({
+    const existingLocation = await db.location.findUnique({
       where: { name: name.trim() }
     });
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const location = await prisma.location.create({
+    const location = await db.location.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,

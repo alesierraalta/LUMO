@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
     // Check if ImportSession table exists
     let importSessionExists = false;
     try {
-      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
+      await db.$queryRawUnsafe("SELECT 1 FROM \"ImportSession\" LIMIT 1");
       importSessionExists = true;
     } catch (error) {
       console.log("ImportSession table does not exist, will create it");
@@ -21,7 +21,7 @@ export async function GET() {
     
     if (!importSessionExists) {
       // Create ImportSession table
-      await prisma.$executeRawUnsafe(`
+      await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSession" (
           id TEXT PRIMARY KEY,
           filename TEXT NOT NULL,
@@ -43,7 +43,7 @@ export async function GET() {
     // Check if ImportSessionItem table exists
     let importSessionItemExists = false;
     try {
-      await prisma.$queryRawUnsafe("SELECT 1 FROM \"ImportSessionItem\" LIMIT 1");
+      await db.$queryRawUnsafe("SELECT 1 FROM \"ImportSessionItem\" LIMIT 1");
       importSessionItemExists = true;
     } catch (error) {
       console.log("ImportSessionItem table does not exist, will create it");
@@ -51,7 +51,7 @@ export async function GET() {
     
     if (!importSessionItemExists) {
       // Create ImportSessionItem table
-      await prisma.$executeRawUnsafe(`
+      await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "ImportSessionItem" (
           id TEXT PRIMARY KEY,
           "sessionId" TEXT NOT NULL,
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
         const prisma = new PrismaClient();
         
         // Crear roles básicos
-        const adminRole = await prisma.role.upsert({
+        const adminRole = await db.role.upsert({
           where: { name: 'admin' },
           update: {},
           create: {
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
         });
         
         // Permisos básicos para el rol admin
-        const adminPermission = await prisma.permission.upsert({
+        const adminPermission = await db.permission.upsert({
           where: { name: 'admin:all' },
           update: {},
           create: {
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         });
         
         // Asignar permiso al rol admin
-        await prisma.rolePermission.upsert({
+        await db.rolePermission.upsert({
           where: { 
             roleId_permissionId: {
               roleId: adminRole.id,
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         
         // Crear usuario admin root (SIEMPRE PRESENTE)
         const rootAdminPasswordHash = await bcrypt.hash('admin123', 12);
-        const rootAdminUser = await prisma.user.upsert({
+        const rootAdminUser = await db.user.upsert({
           where: { email: 'alesierraalta@gmail.com' },
           update: {
             // Asegurar que siempre tenga rol de admin
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
           },
         });
         
-        await prisma.$disconnect();
+        await db.$disconnect();
         
         return new Response(JSON.stringify({
           status: 'success',

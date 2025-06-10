@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth-server";
 import { isAdmin } from "@/lib/auth-simple";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import NewSaleForm from "./new-sale-form";
 
 export const metadata: Metadata = {

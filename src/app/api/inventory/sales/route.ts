@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 // Endpoint para obtener todas las ventas
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Obtener ventas con sus detalles
-    const sales = await prisma.sale.findMany({
+    const sales = await db.sale.findMany({
       skip,
       take: limit,
       orderBy: {
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Obtener total para paginación
-    const total = await prisma.sale.count();
+    const total = await db.sale.count();
 
     // Serializar datos para manejar decimales
     const serializedSales = sales.map(sale => ({
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Iniciar transacción para garantizar consistencia
-    return await prisma.$transaction(async (tx) => {
+    return await db.$transaction(async (tx) => {
       // 1. Crear registro de la orden de venta
       const saleOrder = await tx.sale.create({
         data: {

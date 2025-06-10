@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Find the inventory item
-    const item = await prisma.inventoryItem.findUnique({
+    const item = await db.inventoryItem.findUnique({
       where: { id: inventoryItemId }
     });
     
@@ -30,19 +30,19 @@ export async function POST(request: NextRequest) {
     let systemUser = null;
     try {
       // First try to find an existing system user
-      systemUser = await prisma.user.findFirst({
+      systemUser = await db.user.findFirst({
         where: { email: 'sistema@lumo.local' }
       });
       
       // If no system user exists, create one
       if (!systemUser) {
         // First find the viewer role
-        const viewerRole = await prisma.role.findUnique({
+        const viewerRole = await db.role.findUnique({
           where: { name: 'viewer' }
         });
         
         if (viewerRole) {
-          systemUser = await prisma.user.create({
+          systemUser = await db.user.create({
             data: {
               clerkId: 'system-user',
               email: 'sistema@lumo.local',
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create a test price history record without userId
-    const priceHistory = await prisma.priceHistory.create({
+    const priceHistory = await db.priceHistory.create({
       data: {
         inventoryItemId,
         oldPrice: item.price,

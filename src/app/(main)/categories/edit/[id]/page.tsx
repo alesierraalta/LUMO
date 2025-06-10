@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CategoryForm } from "@/components/categories/category-form";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 async function getCategory(id: string) {
-  const category = await prisma.category.findUnique({
+  const category = await db.category.findUnique({
     where: { id },
   });
 

@@ -1,5 +1,5 @@
 // Auth options and utilities for server-side authentication
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 /**
  * A simplified version of getServerSession for use in API routes
@@ -11,7 +11,7 @@ export async function getServerSession() {
     // For now, we'll return a mock session to allow the build to complete
     
     // Get the first admin user as a fallback
-    const adminUser = await prisma.user.findFirst({
+    const adminUser = await db.user.findFirst({
       where: {
         role: {
           name: "admin"

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function POST() {
   try {
@@ -17,12 +17,12 @@ export async function POST() {
     console.log("🔧 Iniciando migración de ubicaciones...");
 
     // 1. Verificar y crear ubicación por defecto si es necesario
-    let defaultLocation = await prisma.location.findFirst({
+    let defaultLocation = await db.location.findFirst({
       where: { name: "Almacén Principal" }
     });
 
     if (!defaultLocation) {
-      defaultLocation = await prisma.location.create({
+      defaultLocation = await db.location.create({
         data: {
           name: "Almacén Principal",
           description: "Ubicación principal del almacén",
@@ -35,7 +35,7 @@ export async function POST() {
     }
 
     // 2. Encontrar productos sin ubicación
-    const productsWithoutLocation = await prisma.inventoryItem.findMany({
+    const productsWithoutLocation = await db.inventoryItem.findMany({
       where: {
         locationId: null,
         active: true
@@ -51,7 +51,7 @@ export async function POST() {
 
     if (productsWithoutLocation.length > 0) {
       // 3. Asignar ubicación por defecto a productos sin ubicación
-      const updateResult = await prisma.inventoryItem.updateMany({
+      const updateResult = await db.inventoryItem.updateMany({
         where: {
           locationId: null,
           active: true

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/auth-options";
 import { checkPermission } from "@/lib/auth/permissions";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 interface MergeGroup {
   name: string;
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         }
 
         // Get the product to keep
-        const productToKeep = await prisma.inventoryItem.findUnique({
+        const productToKeep = await db.inventoryItem.findUnique({
           where: { id: keepProductId }
         });
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         // Process each product to merge
         for (const mergeId of mergeProductIds) {
           // Use a transaction to ensure data integrity
-          await prisma.$transaction(async (tx) => {
+          await db.$transaction(async (tx) => {
             // Get the product to merge
             const productToMerge = await tx.inventoryItem.findUnique({
               where: { id: mergeId }

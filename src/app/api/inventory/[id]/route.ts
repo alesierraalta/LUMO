@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteInventoryItem, getInventoryItemById } from "@/services/inventoryService";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function DELETE(
   _request: NextRequest,

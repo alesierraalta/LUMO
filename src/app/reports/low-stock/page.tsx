@@ -16,7 +16,7 @@ import PrintHeader from "@/components/reports/print-header";
 import { formatCurrency, getApiBaseUrl, serializeDecimal } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import ClientReportActions from "@/components/reports/client-report-actions";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 // Define stock status categories with colors
 const STOCK_CATEGORIES: Record<string, { label: string; color: "default" | "destructive" | "outline" | "secondary" | "success" }> = {
@@ -45,7 +45,7 @@ export default async function LowStockReportsPage() {
     let outOfStockItems = await getOutOfStockItems();
     
     // Direct database query to get total count instead of using getAllProducts
-    const totalProductsCount = await prisma.$queryRaw`
+    const totalProductsCount = await db.$queryRaw`
       SELECT COUNT(*) as count FROM inventory_items
     ` as any[];
     
@@ -54,7 +54,7 @@ export default async function LowStockReportsPage() {
     outOfStockItems = serializeDecimal(outOfStockItems);
     
     // Fetch categories directly using Prisma
-    const categories = await prisma.category.findMany({
+    const categories = await db.category.findMany({
       orderBy: {
         name: "asc",
       },

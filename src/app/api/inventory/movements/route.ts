@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllStockMovements } from "@/services/inventoryService";
 import { ensureValidDate } from "@/lib/utils";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {

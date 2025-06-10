@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { z } from "zod";
 import { serializeDecimal } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
@@ -69,7 +69,7 @@ export async function PATCH(
     }
 
     // Get the current inventory item to compare with new values
-    const currentItem = await prisma.inventoryItem.findUnique({
+    const currentItem = await db.inventoryItem.findUnique({
       where: { id },
     });
 
@@ -96,7 +96,7 @@ export async function PATCH(
         margin: currentItem.margin
       });
       
-      const updatedItem = await prisma.$transaction(async (tx) => {
+      const updatedItem = await db.$transaction(async (tx) => {
         console.log("Transaction started");
         
         // Update the inventory item
@@ -184,7 +184,7 @@ export async function GET(
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const inventoryItem = await prisma.inventoryItem.findUnique({
+    const inventoryItem = await db.inventoryItem.findUnique({
       where: { id: params.id },
       include: {
         priceHistory: {

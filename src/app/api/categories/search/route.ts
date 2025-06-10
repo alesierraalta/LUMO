@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 
 // GET /api/categories/search?q=query - Search categories
 export async function GET(req: Request) {
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const categories = await prisma.category.findMany({
+    const categories = await db.category.findMany({
       where: {
         OR: [
           {

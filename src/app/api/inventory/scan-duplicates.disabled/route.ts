@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "@/lib/auth/auth-options";
 import { checkPermission } from "@/lib/auth/permissions";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function GET() {
   try {
@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     // Get all products with their inventory and category
-    const allProducts = await prisma.inventoryItem.findMany({
+    const allProducts = await db.inventoryItem.findMany({
       include: {
         category: true,
       },

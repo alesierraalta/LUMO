@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const priceHistory = await prisma.priceHistory.findMany({
+    const priceHistory = await db.priceHistory.findMany({
       where: { inventoryItemId: params.id },
       orderBy: { createdAt: 'desc' },
       include: {

@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { adjustStock } from "@/services/inventoryService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -31,7 +31,7 @@ export async function adjustInventoryAction(
     
     // Update min stock level if changed
     if (data.minStockLevel !== currentMinStockLevel) {
-      const updatedItem = await prisma.inventoryItem.update({
+      const updatedItem = await db.inventoryItem.update({
         where: { id: inventoryId },
         data: { 
           minStockLevel: data.minStockLevel,
@@ -43,7 +43,7 @@ export async function adjustInventoryAction(
     
     // Update location if changed
     if (data.location !== currentLocation) {
-      const updatedItem = await prisma.inventoryItem.update({
+      const updatedItem = await db.inventoryItem.update({
         where: { id: inventoryId },
         data: { 
           location: data.location,

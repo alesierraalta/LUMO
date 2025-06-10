@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureValidDate } from "@/lib/utils";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     
     // Fetch price history data safely
     try {
-      const priceHistory = await prisma.priceHistory.findMany({
+      const priceHistory = await db.priceHistory.findMany({
         where,
         include: {
           inventoryItem: {

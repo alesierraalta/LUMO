@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";
 import fs from "fs";
 
 export const runtime = "nodejs";
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     // 1. Database Connection Test
     const dbStartTime = Date.now();
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await db.$queryRaw`SELECT 1`;
       healthCheck.checks.database = {
         status: "healthy",
         responseTime: Date.now() - dbStartTime
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     // 2. ImportSession Table Test
     try {
-      const sessionCount = await prisma.importSession.count();
+      const sessionCount = await db.importSession.count();
       healthCheck.checks.importSessionTable = {
         status: "healthy",
         recordCount: sessionCount,
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     // 3. ImportSessionDetail Table Test
     try {
-      const detailCount = await prisma.importSessionDetail.count();
+      const detailCount = await db.importSessionDetail.count();
       healthCheck.checks.importSessionDetailTable = {
         status: "healthy",
         recordCount: detailCount,
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
   } finally {
     // Ensure Prisma connection is closed
     try {
-      await prisma.$disconnect();
+      await db.$disconnect();
     } catch (disconnectError) {
       // Ignore disconnect errors in health check
     }

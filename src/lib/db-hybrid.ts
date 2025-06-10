@@ -200,17 +200,147 @@ if (isChoreo) {
 
           const { data, error } = await query.single();
           if (error) return null;
-          return data;
+          
+          // Convert to match Prisma format
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            permissions: data.permissions,
+            isSystem: data.is_system,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
         },
         
-        findMany: async () => {
+        findMany: async (params: any = {}) => {
+          let query = supabase.from('roles').select('*');
+          
+          if (params.orderBy) {
+            if (params.orderBy.name) {
+              query = query.order('name', { 
+                ascending: params.orderBy.name === 'asc' 
+              });
+            }
+          } else {
+            query = query.order('name');
+          }
+
+          if (params.where) {
+            if (params.where.isActive !== undefined) {
+              query = query.eq('is_active', params.where.isActive);
+            }
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          // Convert to match Prisma format
+          return data.map((role: any) => ({
+            id: role.id,
+            name: role.name,
+            description: role.description,
+            permissions: role.permissions,
+            isSystem: role.is_system,
+            isActive: role.is_active,
+            createdAt: new Date(role.created_at),
+            updatedAt: new Date(role.updated_at)
+          }));
+        },
+
+        create: async (params: any) => {
+          const insertData = {
+            name: params.data.name,
+            description: params.data.description,
+            permissions: params.data.permissions,
+            is_system: params.data.isSystem || false,
+            is_active: params.data.isActive !== undefined ? params.data.isActive : true
+          };
+
           const { data, error } = await supabase
             .from('roles')
-            .select('*')
-            .order('name');
+            .insert([insertData])
+            .select()
+            .single();
 
           if (error) throw error;
-          return data;
+          
+          // Convert to match Prisma format
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            permissions: data.permissions,
+            isSystem: data.is_system,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
+
+        update: async (params: any) => {
+          const updateData: any = {};
+          
+          if (params.data.name !== undefined) updateData.name = params.data.name;
+          if (params.data.description !== undefined) updateData.description = params.data.description;
+          if (params.data.permissions !== undefined) updateData.permissions = params.data.permissions;
+          if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
+
+          const { data, error } = await supabase
+            .from('roles')
+            .update(updateData)
+            .eq('id', params.where.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          
+          // Convert to match Prisma format
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            permissions: data.permissions,
+            isSystem: data.is_system,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
+
+        delete: async (params: any) => {
+          // Check if role is system role (cannot be deleted)
+          const role = await supabase
+            .from('roles')
+            .select('is_system')
+            .eq('id', params.where.id)
+            .single();
+
+          if (role.data?.is_system) {
+            throw new Error('Cannot delete system roles');
+          }
+
+          const { data, error } = await supabase
+            .from('roles')
+            .delete()
+            .eq('id', params.where.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          
+          // Convert to match Prisma format
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            permissions: data.permissions,
+            isSystem: data.is_system,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
         }
       },
       

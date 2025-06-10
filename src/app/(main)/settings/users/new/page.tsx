@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserPlus, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -12,10 +12,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
+interface Role {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  isActive: boolean;
+}
+
 export default function NewUserPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
   const [error, setError] = useState('');
+  const [roles, setRoles] = useState<Role[]>([]);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -25,6 +35,39 @@ export default function NewUserPage() {
     confirmPassword: '',
     role: '',
   });
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  const loadRoles = async () => {
+    try {
+      const response = await fetch('/api/roles');
+      if (!response.ok) {
+        throw new Error('Error fetching roles');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Filter only active roles
+        const activeRoles = data.roles.filter((role: Role) => role.isActive);
+        setRoles(activeRoles);
+      } else {
+        toast.error('Error al cargar los roles');
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      toast.error('Error al cargar los roles disponibles');
+      // Fallback to basic roles if API fails
+      setRoles([
+        { id: 'admin', name: 'ADMIN', description: 'Administrador', isSystem: true, isActive: true },
+        { id: 'manager', name: 'MANAGER', description: 'Gerente', isSystem: true, isActive: true },
+        { id: 'user', name: 'USER', description: 'Usuario', isSystem: true, isActive: true }
+      ]);
+    } finally {
+      setIsLoadingRoles(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -149,16 +192,30 @@ export default function NewUserPage() {
 
             <div className="space-y-2">
               <Label htmlFor="role">Rol *</Label>
-              <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+              <Select 
+                value={formData.role} 
+                onValueChange={(value) => handleInputChange('role', value)}
+                disabled={isLoadingRoles}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un rol" />
+                  <SelectValue placeholder={isLoadingRoles ? "Cargando roles..." : "Selecciona un rol"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Administrador</SelectItem>
-                  <SelectItem value="MANAGER">Gerente</SelectItem>
-                  <SelectItem value="USER">Usuario</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.name}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{role.name}</span>
+                        <span className="text-xs text-muted-foreground">{role.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {roles.length === 0 && !isLoadingRoles && (
+                <p className="text-sm text-muted-foreground">
+                  No hay roles disponibles. Contacta al administrador.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -186,7 +243,7 @@ export default function NewUserPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={isLoading} className="flex-1">
+              <Button type="submit" disabled={isLoading || isLoadingRoles} className="flex-1">
                 {isLoading ? 'Creando...' : 'Crear Usuario'}
               </Button>
               <Link href="/settings/users">

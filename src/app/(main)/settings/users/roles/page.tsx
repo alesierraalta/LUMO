@@ -25,7 +25,11 @@ interface Role {
   id: string;
   name: string;
   description: string;
-  permissions: Permission[];
+  permissions: string | Permission[]; // Can be JSON string or parsed array
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 // Definición de permisos disponibles
@@ -85,135 +89,196 @@ export default function RolePermissionsPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      loadUserAndRoles();
+      loadRoles();
     }
   }, [authLoading]);
 
-  const loadUserAndRoles = async () => {
+  const loadRoles = async () => {
     try {
       if (!currentUser || currentUser.role !== 'ADMIN') {
         toast.error('No tienes permisos para acceder a esta sección');
         return;
       }
 
-      // Cargar roles desde localStorage o crear roles por defecto
-      const savedRoles = localStorage.getItem('lumo-roles');
-      if (savedRoles) {
-        setRoles(JSON.parse(savedRoles));
+      const response = await fetch('/api/roles');
+      if (!response.ok) {
+        throw new Error('Error fetching roles');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setRoles(data.roles);
       } else {
-        // Crear roles por defecto
-        const defaultRoles: Role[] = [
-          {
-            id: 'admin',
-            name: 'ADMIN',
-            description: 'Administrador con acceso completo',
-            permissions: availablePermissions.map((p, index) => ({ ...p, id: `perm-${index}` }))
-          },
-          {
-            id: 'manager',
-            name: 'MANAGER',
-            description: 'Gerente con acceso a inventario y ventas',
-            permissions: availablePermissions
-              .filter(p => !p.category.includes('admin'))
-              .map((p, index) => ({ ...p, id: `perm-${index}` }))
-          },
-          {
-            id: 'user',
-            name: 'USER',
-            description: 'Usuario básico con permisos limitados',
-            permissions: availablePermissions
-              .filter(p => p.action === 'view' && !p.category.includes('admin'))
-              .map((p, index) => ({ ...p, id: `perm-${index}` }))
-          }
-        ];
-        setRoles(defaultRoles);
-        localStorage.setItem('lumo-roles', JSON.stringify(defaultRoles));
+        toast.error('Error al cargar los roles');
       }
     } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error('Error al cargar los datos');
+      console.error('Error loading roles:', error);
+      toast.error('Error al cargar los roles');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const parsePermissions = (permissions: string | Permission[]): Permission[] => {
+    if (typeof permissions === 'string') {
+      try {
+        return JSON.parse(permissions);
+      } catch {
+        return [];
+      }
+    }
+    return permissions || [];
+  };
+
   const hasPermission = (role: Role, permissionName: string): boolean => {
-    return role.permissions.some(p => p.name === permissionName);
+    const permissions = parsePermissions(role.permissions);
+    return permissions.some(p => p.name === permissionName);
   };
 
-  const togglePermission = (roleId: string, permissionName: string) => {
-    setRoles(prevRoles => {
-      const updatedRoles = prevRoles.map(role => {
-        if (role.id === roleId) {
-          const hasPerms = hasPermission(role, permissionName);
-          const permission = availablePermissions.find(p => p.name === permissionName);
-          
-          if (hasPerms) {
-            // Remover permiso
-            return {
-              ...role,
-              permissions: role.permissions.filter(p => p.name !== permissionName)
-            };
-          } else {
-            // Agregar permiso
-            if (permission) {
-              return {
-                ...role,
-                permissions: [...role.permissions, { ...permission, id: `perm-${Date.now()}` }]
-              };
-            }
-          }
+  const togglePermission = async (roleId: string, permissionName: string) => {
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const role = roles.find(r => r.id === roleId);
+      if (!role) {
+        toast.error('Rol no encontrado');
+        return;
+      }
+
+      if (role.isSystem) {
+        toast.error('No se pueden modificar los roles del sistema');
+        return;
+      }
+
+      const currentPermissions = parsePermissions(role.permissions);
+      const hasPerms = hasPermission(role, permissionName);
+      const permission = availablePermissions.find(p => p.name === permissionName);
+
+      let updatedPermissions: Permission[];
+
+      if (hasPerms) {
+        // Remover permiso
+        updatedPermissions = currentPermissions.filter(p => p.name !== permissionName);
+      } else {
+        // Agregar permiso
+        if (permission) {
+          updatedPermissions = [...currentPermissions, { ...permission, id: `perm-${Date.now()}` }];
+        } else {
+          updatedPermissions = currentPermissions;
         }
-        return role;
+      }
+
+      // Llamar a la API para actualizar
+      const response = await fetch(`/api/roles?id=${roleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          permissions: updatedPermissions
+        }),
       });
-      
-      // Guardar en localStorage
-      localStorage.setItem('lumo-roles', JSON.stringify(updatedRoles));
-      return updatedRoles;
-    });
-    
-    toast.success('Permiso actualizado');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error updating role');
+      }
+
+      // Actualizar estado local
+      setRoles(prevRoles => 
+        prevRoles.map(r => 
+          r.id === roleId 
+            ? { ...r, permissions: JSON.stringify(updatedPermissions) }
+            : r
+        )
+      );
+
+      toast.success('Permiso actualizado');
+    } catch (error: any) {
+      console.error('Error toggling permission:', error);
+      toast.error(error.message || 'Error al actualizar el permiso');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const createRole = () => {
+  const createRole = async () => {
     if (!newRoleName.trim()) {
       toast.error('El nombre del rol es requerido');
       return;
     }
 
-    const newRole: Role = {
-      id: `role-${Date.now()}`,
-      name: newRoleName.toUpperCase(),
-      description: newRoleDescription,
-      permissions: []
-    };
+    if (isSaving) return;
+    setIsSaving(true);
 
-    setRoles(prev => {
-      const updated = [...prev, newRole];
-      localStorage.setItem('lumo-roles', JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      const response = await fetch('/api/roles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newRoleName,
+          description: newRoleDescription,
+          permissions: []
+        }),
+      });
 
-    setNewRoleName('');
-    setNewRoleDescription('');
-    setShowCreateRole(false);
-    toast.success('Rol creado exitosamente');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error creating role');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setRoles(prev => [...prev, data.role]);
+        setNewRoleName('');
+        setNewRoleDescription('');
+        setShowCreateRole(false);
+        toast.success('Rol creado exitosamente');
+      }
+    } catch (error: any) {
+      console.error('Error creating role:', error);
+      toast.error(error.message || 'Error al crear el rol');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const deleteRole = (roleId: string) => {
+  const deleteRole = async (roleId: string) => {
     const role = roles.find(r => r.id === roleId);
-    if (role?.name === 'ADMIN') {
-      toast.error('No se puede eliminar el rol de administrador');
+    if (!role) {
+      toast.error('Rol no encontrado');
       return;
     }
 
-    setRoles(prev => {
-      const updated = prev.filter(r => r.id !== roleId);
-      localStorage.setItem('lumo-roles', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('Rol eliminado');
+    if (role.isSystem) {
+      toast.error('No se puede eliminar un rol del sistema');
+      return;
+    }
+
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(`/api/roles?id=${roleId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error deleting role');
+      }
+
+      setRoles(prev => prev.filter(r => r.id !== roleId));
+      toast.success('Rol eliminado exitosamente');
+    } catch (error: any) {
+      console.error('Error deleting role:', error);
+      toast.error(error.message || 'Error al eliminar el rol');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const groupedPermissions = availablePermissions.reduce((acc, permission) => {

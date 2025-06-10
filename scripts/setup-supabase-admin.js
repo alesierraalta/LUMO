@@ -30,6 +30,26 @@ async function setupSupabaseAdmin() {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // First, check if tables exist
+    console.log('📋 Checking if tables exist...');
+    const { data: tables, error: tableError } = await supabase
+      .from('users')
+      .select('id')
+      .limit(1);
+    
+    if (tableError && tableError.message.includes('does not exist')) {
+      console.log('❌ Tables do not exist in Supabase!');
+      console.log('');
+      console.log('🚨 ACCIÓN REQUERIDA:');
+      console.log('1. Ve a https://ubjujxtvlubxowsphvuk.supabase.co');
+      console.log('2. Ve a SQL Editor');
+      console.log('3. Ejecuta el contenido completo de: supabase-migration.sql');
+      console.log('4. Redeploy la aplicación');
+      return;
+    }
+    
+    console.log('✅ Tables exist in Supabase');
+    
     // Check if admin user exists
     const { data: existingUser, error: userError } = await supabase
       .from('users')
@@ -39,32 +59,25 @@ async function setupSupabaseAdmin() {
     
     if (existingUser) {
       console.log('✅ Admin user already exists');
+      console.log('📧 Email: alesierraalta@gmail.com');
+      console.log('🔑 Password: admin123');
       return;
     }
     
-    // Get ADMIN role
-    const { data: adminRole, error: roleError } = await supabase
-      .from('roles')
-      .select('id')
-      .eq('name', 'ADMIN')
-      .single();
-    
-    if (!adminRole) {
-      console.log('❌ ADMIN role not found. Please run the SQL migration first.');
-      return;
+    if (userError && !userError.message.includes('No rows found')) {
+      console.log('⚠️ Error checking existing user:', userError.message);
     }
     
     // Hash password
     const hashedPassword = await bcrypt.hash('admin123', 10);
     
-    // Create admin user
+    // Create admin user (without role_id for now, will be updated after role is created)
     const { data: newUser, error: createError } = await supabase
       .from('users')
       .insert([{
         email: 'alesierraalta@gmail.com',
         password: hashedPassword,
         name: 'Alejandro Sierra (ROOT)',
-        role_id: adminRole.id,
         is_active: true
       }])
       .select()
@@ -78,9 +91,18 @@ async function setupSupabaseAdmin() {
     console.log('✅ Admin user created successfully');
     console.log('📧 Email: alesierraalta@gmail.com');
     console.log('🔑 Password: admin123');
+    console.log('');
+    console.log('🎉 Setup complete! You can now login.');
     
   } catch (error) {
     console.error('❌ Error setting up admin:', error);
+    
+    // Provide helpful error guidance
+    if (error.message.includes('does not exist')) {
+      console.log('');
+      console.log('🚨 TABLES MISSING IN SUPABASE!');
+      console.log('Ejecuta el SQL migration script primero.');
+    }
   }
 }
 

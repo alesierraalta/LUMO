@@ -107,8 +107,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Special handling for Choreo debug dashboard - never redirect to login
-  if (url === '/choreo-status' || url.startsWith('/choreo-status/')) {
+  // Special handling for debug pages - never redirect to login
+  if (url === '/choreo-status' || url.startsWith('/choreo-status/') || url === '/auth-debug') {
     // Add special debug headers and allow access
     const response = NextResponse.next();
     response.headers.set('X-Choreo-Debug', 'Enabled');
@@ -120,12 +120,38 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for auth token cookie
-  const authToken = request.cookies.get('auth-token')?.value;
+  // Check for auth token
+  const authToken = getTokenFromRequest(request);
   
   // If no auth token and not a public route, redirect to login
   if (!authToken && !url.startsWith('/login')) {
+    console.log(`🔒 Middleware: No auth token found for ${url}, redirecting to login`);
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
+  // If we have a token, let's try a basic validation
+  if (authToken) {
+    try {
+      // Basic token structure check
+      const parts = authToken.split('.');
+      if (parts.length !== 3) {
+        console.log(`🔒 Middleware: Invalid token structure for ${url}, redirecting to login`);
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+      
+      // Check if token is expired (basic check without signature verification)
+      const payload = JSON.parse(base64urlDecode(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        console.log(`🔒 Middleware: Token expired for ${url}, redirecting to login`);
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+      
+      console.log(`✅ Middleware: Valid token found for ${url}, user ID: ${payload.userId}`);
+    } catch (error) {
+      console.log(`🔒 Middleware: Token validation error for ${url}:`, error);
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
   
   return NextResponse.next();

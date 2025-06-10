@@ -1,0 +1,18 @@
+# Local Development Environment Variables
+# Copy this to .env.local for development
+
+# Database - Local SQLite
+DATABASE_URL="file:./dev.db"
+
+# Authentication
+JWT_SECRET=local_development_secret_key
+
+# Environment
+NODE_ENV=development
+
+# Optional: For testing Supabase locally (comment out to use SQLite)
+# SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
+# SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MTIzODQsImV4cCI6MjA2NTA4ODM4NH0.SapRqhZCDJypL1fMCiEChK0ehZRR5CSI1fRgt3Za8r4
+
+# Debug
+DEBUG=false 

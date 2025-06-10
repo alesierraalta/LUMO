@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
-import { prisma } from '@/lib/prisma';
+import db from '@/lib/db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 
@@ -17,7 +17,7 @@ const createUserSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json(
         { error: 'Database not available' },
         { status: 500 }
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const { email, password, name, role } = result.data;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { email }
     });
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json(
         { error: 'Database not available' },
         { status: 500 }
@@ -141,23 +141,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all users
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      }
+    // Get all users with role data handled properly
+    const users = await db.user.findMany({
+      orderBy: { createdAt: 'desc' }
     });
+
+    // Format the response to ensure role is always a string
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: typeof user.role === 'object' ? user.role?.name || 'USER' : user.role || 'USER',
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
 
     return NextResponse.json({
       success: true,
-      users
+      users: formattedUsers
     });
 
   } catch (error: any) {

@@ -12,7 +12,7 @@ type User = {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: any; // Allow both string and object
   isActive: boolean;
   createdAt: string; // Como string desde la API
   updatedAt: string; // Como string desde la API
@@ -43,7 +43,18 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       accessorKey: "role",
       header: "Rol",
       cell: ({ row }: { row: any }) => {
-        const roleName = row.original.role;
+        // Handle both string and object role
+        const roleData = row.original.role;
+        let roleName = '';
+        
+        if (typeof roleData === 'string') {
+          roleName = roleData;
+        } else if (roleData && typeof roleData === 'object') {
+          roleName = roleData.name || roleData.id || 'UNKNOWN';
+        } else {
+          roleName = 'UNKNOWN';
+        }
+        
         const roleColors = {
           ADMIN: "bg-red-100 text-red-800",
           MANAGER: "bg-blue-100 text-blue-800",
@@ -97,13 +108,14 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       header: "Acciones",
       cell: ({ row }: { row: any }) => {
         const user = row.original;
+        const userRole = typeof user.role === 'string' ? user.role : (user.role?.name || 'USER');
         
         return (
           <div className="flex justify-end gap-2">
             {/* Botón de cambiar estado */}
             {onToggleUserStatus && (
               <PermissionButton 
-                requiredPermission="users.edit"
+                permission="users:edit"
                 onClick={() => onToggleUserStatus(user.id, user.isActive)}
                 variant="outline"
                 size="sm"
@@ -123,7 +135,7 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
             )}
             
             {/* Botón de editar */}
-            <PermissionButton requiredPermission="users.edit">
+            <PermissionButton permission="users:edit">
               <Link href={`/settings/users/edit/${user.id}`}>
                 <Button variant="outline" size="sm">
                   <Pencil className="h-4 w-4 mr-1" />
@@ -133,9 +145,9 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
             </PermissionButton>
             
             {/* Botón de eliminar */}
-            {onDeleteUser && user.role !== 'ADMIN' && (
+            {onDeleteUser && userRole !== 'ADMIN' && (
               <PermissionButton 
-                requiredPermission="users.delete"
+                permission="users:delete"
                 onClick={() => onDeleteUser(user.id)}
                 variant="outline"
                 size="sm"

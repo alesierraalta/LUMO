@@ -100,7 +100,7 @@ export default function UsersPage() {
   });
 
   return (
-    <PermissionGuard requiredPermission="users.view">
+    <PermissionGuard permission="users:view">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -110,7 +110,7 @@ export default function UsersPage() {
             </p>
           </div>
           
-          <PermissionButton requiredPermission="users.create">
+          <PermissionButton permission="users:create">
             <Link href="/settings/users/new">
               <Button className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />

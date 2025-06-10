@@ -2,9 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import db from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
 const COOKIE_NAME = 'auth-token';
@@ -65,7 +63,7 @@ export const authenticateUser = async (
 ): Promise<AuthResult> => {
   try {
     // Find user
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email },
     });
 
@@ -87,11 +85,19 @@ export const authenticateUser = async (
       return { success: false, error: 'Invalid email or password' };
     }
 
+    // Extract role name properly
+    let roleName = 'USER';
+    if (typeof user.role === 'string') {
+      roleName = user.role;
+    } else if (user.role && typeof user.role === 'object') {
+      roleName = user.role.name || 'USER';
+    }
+
     // Generate token
     const token = generateToken({ 
       userId: user.id, 
       email: user.email,
-      role: user.role
+      role: roleName
     });
 
     console.log(`[Auth] Successful login for email: ${email}`);
@@ -101,7 +107,7 @@ export const authenticateUser = async (
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
+        role: roleName,
         isActive: user.isActive,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -127,23 +133,28 @@ export const getCurrentUserFromToken = async (token: string): Promise<User | nul
       return null;
     }
 
-    // Find user by ID from token with role relationship
-    const userWithRole = await prisma.user.findUnique({
-      where: { id: sessionData.userId },
-      include: {
-        role: true
-      }
+    // Find user by ID from token
+    const userWithRole = await db.user.findUnique({
+      where: { id: sessionData.userId }
     }) as any;
 
     if (!userWithRole || !userWithRole.isActive) {
       return null;
     }
 
+    // Extract role name properly
+    let roleName = 'USER';
+    if (typeof userWithRole.role === 'string') {
+      roleName = userWithRole.role;
+    } else if (userWithRole.role && typeof userWithRole.role === 'object') {
+      roleName = userWithRole.role.name || 'USER';
+    }
+
     return {
       id: userWithRole.id,
       email: userWithRole.email,
       name: userWithRole.name,
-      role: userWithRole.role?.name || 'USER', // Get role name from relationship
+      role: roleName,
       isActive: userWithRole.isActive,
       createdAt: userWithRole.createdAt,
       updatedAt: userWithRole.updatedAt,

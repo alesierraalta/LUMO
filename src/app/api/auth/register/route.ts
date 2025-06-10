@@ -1,6 +1,6 @@
 import { hashPassword } from '@/lib/auth-simple';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import db from '@/lib/db';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { email, password, name } = registerSchema.parse(body);
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { email },
     });
 
@@ -33,26 +33,28 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
         role: 'USER', // Default role
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-      },
+      }
     });
+
+    // Format response
+    const formattedUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: typeof user.role === 'object' ? user.role?.name || 'USER' : user.role || 'USER',
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+    };
 
     return NextResponse.json({
       success: true,
-      user,
+      user: formattedUser,
     });
   } catch (error) {
     console.error('Registration error:', error);

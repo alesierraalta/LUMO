@@ -1,7 +1,7 @@
 {
   "databaseUrl": "${DATABASE_URL}",
   "connectionType": "sqlite",
-  "timestamp": "2025-06-10T15:58:45.782Z",
+  "timestamp": "2025-06-10T16:12:10.380Z",
   "autoConfigured": true,
   "environment": "development"
 }

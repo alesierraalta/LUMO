@@ -10,9 +10,7 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
-  role: z.enum(['ADMIN', 'MANAGER', 'USER'], {
-    errorMap: () => ({ message: 'Role must be ADMIN, MANAGER, or USER' })
-  }),
+  roleId: z.string().min(1, 'Role ID is required'),
 });
 
 export async function POST(request: NextRequest) {
@@ -59,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name, role } = result.data;
+    const { email, password, name, roleId } = result.data;
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
@@ -73,6 +71,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify role exists and is active
+    const role = await db.role.findFirst({
+      where: { 
+        id: roleId,
+        isActive: true 
+      }
+    });
+
+    if (!role) {
+      return NextResponse.json(
+        { error: 'Invalid role specified' },
+        { status: 400 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -82,9 +95,12 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name,
-        role,
+        roleId,
         isActive: true,
       },
+      include: {
+        role: true
+      }
     });
 
     return NextResponse.json({
@@ -141,17 +157,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all users with role data handled properly
+    // Get all users with their role data
     const users = await db.user.findMany({
+      include: {
+        role: true  // Include role data
+      },
       orderBy: { createdAt: 'desc' }
     });
 
-    // Format the response to ensure role is always a string
+    // Format the response to include complete role information
     const formattedUsers = users.map(user => ({
       id: user.id,
       email: user.email,
       name: user.name,
-      role: typeof user.role === 'object' ? user.role?.name || 'USER' : user.role || 'USER',
+      role: user.role ? {
+        id: user.role.id,
+        name: user.role.name,
+        description: user.role.description,
+        isSystem: user.role.isSystem,
+        isActive: user.role.isActive
+      } : null,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

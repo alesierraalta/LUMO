@@ -12,10 +12,16 @@ type User = {
   id: string;
   email: string;
   name: string;
-  role: any; // Allow both string and object
+  role: {
+    id: string;
+    name: string;
+    description: string;
+    isSystem: boolean;
+    isActive: boolean;
+  } | null;
   isActive: boolean;
-  createdAt: string; // Como string desde la API
-  updatedAt: string; // Como string desde la API
+  createdAt: string;
+  updatedAt: string;
 };
 
 interface UsersTableProps {
@@ -43,30 +49,47 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       accessorKey: "role",
       header: "Rol",
       cell: ({ row }: { row: any }) => {
-        // Handle both string and object role
-        const roleData = row.original.role;
-        let roleName = '';
+        const user = row.original;
+        const role = user.role;
         
-        if (typeof roleData === 'string') {
-          roleName = roleData;
-        } else if (roleData && typeof roleData === 'object') {
-          roleName = roleData.name || roleData.id || 'UNKNOWN';
-        } else {
-          roleName = 'UNKNOWN';
+        if (!role) {
+          return (
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-gray-400" />
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                Sin Rol
+              </span>
+            </div>
+          );
         }
         
         const roleColors = {
           ADMIN: "bg-red-100 text-red-800",
-          MANAGER: "bg-blue-100 text-blue-800",
+          MANAGER: "bg-blue-100 text-blue-800", 
           USER: "bg-gray-100 text-gray-800"
         };
+        
+        // For custom roles, use a purple theme
+        const colorClass = roleColors[role.name as keyof typeof roleColors] || 'bg-purple-100 text-purple-800';
         
         return (
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[roleName as keyof typeof roleColors] || 'bg-gray-100 text-gray-800'}`}>
-              {roleName}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+                {role.name}
+              </span>
+              {role.description && (
+                <span className="text-xs text-muted-foreground max-w-32 truncate">
+                  {role.description}
+                </span>
+              )}
+            </div>
+            {!role.isSystem && (
+              <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded">
+                Custom
+              </span>
+            )}
           </div>
         );
       },
@@ -97,7 +120,6 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       accessorKey: "createdAt",
       header: "Fecha de Creación",
       cell: ({ row }: { row: any }) => {
-        // Convertir string a Date para formatear
         const dateStr = row.original.createdAt;
         const date = new Date(dateStr);
         return formatDate(date);
@@ -108,7 +130,7 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       header: "Acciones",
       cell: ({ row }: { row: any }) => {
         const user = row.original;
-        const userRole = typeof user.role === 'string' ? user.role : (user.role?.name || 'USER');
+        const userRole = user.role?.name || 'USER';
         
         return (
           <div className="flex justify-end gap-2">

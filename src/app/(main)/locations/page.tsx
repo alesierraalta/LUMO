@@ -12,10 +12,6 @@ export default async function LocationsPage() {
     redirect("/login");
   }
 
-  if (!prisma) {
-    throw new Error("Database not available");
-  }
-
   // Obtener todas las ubicaciones
   const locationsData = await db.location.findMany({
     orderBy: {

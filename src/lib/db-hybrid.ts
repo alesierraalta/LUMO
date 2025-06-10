@@ -471,21 +471,62 @@ if (isChoreo) {
               });
             }
           }
-          
-          // Add count of inventory items if included
-          if (params.include && params.include._count) {
-            // For now, return locations without count
-            // TODO: Implement proper count aggregation
-          }
 
           const { data, error } = await query;
           if (error) throw error;
           
-          // Convert to match Prisma format with _count if needed
+          // If _count is requested, we need to get counts for each location
+          if (params.include && params.include._count) {
+            const locationsWithCount = await Promise.all(
+              data.map(async (location: any) => {
+                const { count } = await supabase
+                  .from('inventory_items')
+                  .select('id', { count: 'exact' })
+                  .eq('location_id', location.id);
+                
+                return {
+                  id: location.id,
+                  name: location.name,
+                  description: location.description,
+                  isActive: location.is_active,
+                  createdAt: new Date(location.created_at),
+                  updatedAt: new Date(location.updated_at),
+                  _count: { inventoryItems: count || 0 }
+                };
+              })
+            );
+            return locationsWithCount;
+          }
+          
+          // Convert snake_case to camelCase to match Prisma format
           return data.map((location: any) => ({
-            ...location,
-            _count: params.include?._count ? { inventoryItems: 0 } : undefined
+            id: location.id,
+            name: location.name,
+            description: location.description,
+            isActive: location.is_active,
+            createdAt: new Date(location.created_at),
+            updatedAt: new Date(location.updated_at)
           }));
+        },
+
+        findUnique: async (params: any) => {
+          let query = supabase.from('locations').select('*');
+
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
+
+          const { data, error } = await query.single();
+          if (error) return null;
+          
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
         }
       },
       

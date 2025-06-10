@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { serializeDecimal } from '@/lib/utils';
 import { StockStatus } from '@/lib/inventory-utils';
 import { StockMovementInput } from "@/lib/inventory-utils";
+import db from '@/lib/db';
 
-const prisma = new PrismaClient();
+const prisma = db;
 
 /**
  * Obtiene todos los elementos de inventario

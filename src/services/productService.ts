@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils";
+import db from '@/lib/db';
 
-const prisma = new PrismaClient();
+const prisma = db;
 
 /**
  * Tipo para crear un nuevo producto

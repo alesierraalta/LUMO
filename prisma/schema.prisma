@@ -131,6 +131,7 @@ model InventoryItem {
   barcode        String?
   currentStock   Int      @default(0)
   minLevel       Int      @default(0)
+  minStockLevel  Int      @default(0) @map("min_stock_level")
   maxLevel       Int?
   cost           Float    @default(0)
   price          Float    @default(0)

@@ -23,7 +23,7 @@ export async function GET(
       );
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -37,20 +37,7 @@ export async function GET(
     const user = await db.user.findUnique({
       where: { id: userId },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-        customPermissions: {
-          include: {
-            permission: true,
-          },
-        },
+        role: true
       },
     });
 
@@ -65,16 +52,14 @@ export async function GET(
     const userData = {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      name: user.name,
+      firstName: user.name, // Map name to firstName for compatibility
+      lastName: '',
       roleId: user.roleId,
       role: user.role,
       isActive: user.isActive,
-      isEmailVerified: user.isEmailVerified,
-      lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      customPermissions: user.customPermissions,
     };
 
     return NextResponse.json({
@@ -110,7 +95,7 @@ export async function PUT(
       );
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -152,8 +137,7 @@ export async function PUT(
     // Prepare update data
     const updateData: any = {};
     
-    if (firstName !== undefined) updateData.firstName = firstName;
-    if (lastName !== undefined) updateData.lastName = lastName;
+    if (firstName !== undefined) updateData.name = firstName;
     if (roleId !== undefined) updateData.roleId = roleId;
     if (isActive !== undefined) updateData.isActive = isActive;
     
@@ -165,7 +149,7 @@ export async function PUT(
           { status: 400 }
         );
       }
-      updateData.passwordHash = await hashPassword(password);
+      updateData.password = await hashPassword(password);
     }
 
     // Update the user
@@ -173,81 +157,25 @@ export async function PUT(
       where: { id: userId },
       data: updateData,
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-        customPermissions: {
-          include: {
-            permission: true,
-          },
-        },
+        role: true
       },
     });
 
-    // Handle custom permissions if provided
-    if (customPermissions && typeof customPermissions === 'object') {
-      const permissionMap: Record<string, string> = {
-        dashboard: 'page:dashboard',
-        inventory: 'page:inventory',
-        settings: 'page:settings',
-        userManagement: 'page:user-management',
-      };
-      
-      // First, remove existing custom permissions
-      await db.userPermission.deleteMany({
-        where: { userId: userId }
-      });
-      
-      // Then add new custom permissions
-      const userPermissionsToCreate = [];
-      
-      for (const [key, enabled] of Object.entries(customPermissions)) {
-        if (key in permissionMap) {
-          // Get or create the permission
-          const permissionName = permissionMap[key];
-          const permission = await db.permission.findUnique({
-            where: { name: permissionName }
-          });
-          
-          if (permission) {
-            // Add to user permissions
-            userPermissionsToCreate.push({
-              userId: userId,
-              permissionId: permission.id,
-              granted: Boolean(enabled)
-            });
-          }
-        }
-      }
-      
-      // Create all user permissions in a single transaction
-      if (userPermissionsToCreate.length > 0) {
-        await db.userPermission.createMany({
-          data: userPermissionsToCreate
-        });
-      }
-    }
+    // Note: Custom permissions are simplified for now
+    // They can be implemented later when the schema supports them
 
     // Return updated user data
     const userData = {
       id: updatedUser.id,
       email: updatedUser.email,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
+      name: updatedUser.name,
+      firstName: updatedUser.name,
+      lastName: '',
       roleId: updatedUser.roleId,
       role: updatedUser.role,
       isActive: updatedUser.isActive,
-      isEmailVerified: updatedUser.isEmailVerified,
-      lastLoginAt: updatedUser.lastLoginAt,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
-      customPermissions: updatedUser.customPermissions,
     };
 
     return NextResponse.json({
@@ -284,7 +212,7 @@ export async function DELETE(
       );
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -314,22 +242,9 @@ export async function DELETE(
       );
     }
 
-    // Delete related records first
-    await db.$transaction(async (tx) => {
-      // Delete user sessions
-      await tx.userSession.deleteMany({
-        where: { userId },
-      });
-
-      // Delete custom permissions if they exist
-      // await tx.userPermission.deleteMany({
-      //   where: { userId },
-      // });
-
-      // Delete the user
-      await tx.user.delete({
-        where: { id: userId },
-      });
+    // Delete the user (simplified for current schema)
+    await db.user.delete({
+      where: { id: userId },
     });
 
     return NextResponse.json({

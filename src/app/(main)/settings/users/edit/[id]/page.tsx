@@ -161,9 +161,18 @@ export default function EditUserPage({ params }: PageProps) {
         // Load user
         const userResponse = await fetch(`/api/users/${userId}`);
         if (!userResponse.ok) {
+          if (userResponse.status === 404) {
+            setError('User not found');
+            return;
+          }
           throw new Error('Failed to load user');
         }
         const userData = await userResponse.json();
+        
+        if (!userData.success || !userData.user) {
+          setError('User not found');
+          return;
+        }
         
         // Load roles
         const rolesResponse = await fetch('/api/roles');
@@ -177,7 +186,7 @@ export default function EditUserPage({ params }: PageProps) {
         
         // Set form data
         setFormData({
-          firstName: userData.user.firstName || '',
+          firstName: userData.user.name || userData.user.firstName || '',
           lastName: userData.user.lastName || '',
           roleId: userData.user.roleId,
           isActive: userData.user.isActive,
@@ -344,10 +353,10 @@ export default function EditUserPage({ params }: PageProps) {
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">User not found</h1>
+        <h1 className="text-2xl font-bold mb-4">{error || 'User not found'}</h1>
         <Link href="/settings/users">
           <Button>Back to Users</Button>
         </Link>

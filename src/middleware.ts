@@ -102,7 +102,7 @@ const getTokenFromRequest = (request: NextRequest): string | null => {
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
 
-  // Skip middleware for public static files
+  // Skip middleware for public static files and API routes
   if (url.includes('.') || url.startsWith('/api/')) {
     return NextResponse.next();
   }

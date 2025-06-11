@@ -8,39 +8,32 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [/api/auth/me] Starting authentication check');
     
-    // Log all cookies and headers for debugging
-    const cookies = request.cookies.getAll();
-    const authHeader = request.headers.get('authorization');
-    console.log('🍪 [/api/auth/me] Available cookies:', cookies.map(c => ({ name: c.name, hasValue: !!c.value })));
-    console.log('🔐 [/api/auth/me] Authorization header:', authHeader ? 'Present' : 'Not present');
-    
     // Get token from request
     const token = getTokenFromRequest(request);
-    console.log('🎫 [/api/auth/me] Token extracted:', token ? 'YES' : 'NO');
+    console.log('🔍 [/api/auth/me] Token found:', !!token);
     
     if (!token) {
-      console.log('❌ [/api/auth/me] No authentication token provided');
+      console.log('❌ [/api/auth/me] No token provided');
       return NextResponse.json(
-        { error: 'No authentication token provided' },
+        { success: false, error: 'No authentication token provided' },
         { status: 401 }
       );
     }
 
-    console.log('🔍 [/api/auth/me] Calling getCurrentUserFromToken...');
     // Get current user from token
+    console.log('🔍 [/api/auth/me] Getting user from token...');
     const user = await getCurrentUserFromToken(token);
-    console.log('👤 [/api/auth/me] User found:', user ? 'YES' : 'NO');
-
+    
     if (!user) {
       console.log('❌ [/api/auth/me] Invalid or expired token');
       return NextResponse.json(
-        { error: 'Invalid or expired token' },
+        { success: false, error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
 
-    console.log('✅ [/api/auth/me] Authentication successful for user:', user.id);
-    // Return user information
+    console.log('✅ [/api/auth/me] User authenticated successfully:', user.email);
+    
     return NextResponse.json({
       success: true,
       user: {
@@ -48,15 +41,19 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
+        isActive: user.isActive
       }
     });
 
   } catch (error) {
-    console.error('💥 [/api/auth/me] Get current user error:', error);
+    console.error('❌ [/api/auth/me] Authentication error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false, 
+        error: 'Authentication failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

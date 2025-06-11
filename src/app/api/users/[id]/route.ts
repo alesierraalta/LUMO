@@ -1,22 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-simple";
 import db from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth-simple";
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
+    console.log('🔍 [/api/users/[id]] Starting user fetch...');
+    
+    // Get token from request
+    const token = getTokenFromRequest(request);
+    console.log('🔍 [/api/users/[id]] Token found:', !!token);
+    
+    if (!token) {
+      console.log('❌ [/api/users/[id]] No token provided');
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    if (!isAdmin(currentUser)) {
+    // Get current user from token
+    const currentUser = await getCurrentUserFromToken(token);
+    console.log('🔍 [/api/users/[id]] Current user:', currentUser ? currentUser.email : 'Not found');
+    
+    if (!currentUser) {
+      console.log('❌ [/api/users/[id]] Authentication failed');
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (currentUser.role !== 'ADMIN') {
+      console.log('❌ [/api/users/[id]] User not admin:', currentUser.role);
       return NextResponse.json(
         { error: "Unauthorized: Only admins can view user details" },
         { status: 403 }
@@ -24,6 +47,7 @@ export async function GET(
     }
 
     if (!db) {
+      console.log('❌ [/api/users/[id]] Database not available');
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -32,6 +56,7 @@ export async function GET(
 
     const resolvedParams = await params;
     const userId = resolvedParams.id;
+    console.log('🔍 [/api/users/[id]] Looking for user ID:', userId);
 
     // Get the user with role information
     const user = await db.user.findUnique({
@@ -41,7 +66,10 @@ export async function GET(
       },
     });
 
+    console.log('🔍 [/api/users/[id]] User found:', !!user);
+
     if (!user) {
+      console.log('❌ [/api/users/[id]] User not found:', userId);
       return NextResponse.json(
         { error: `User with ID ${userId} not found` },
         { status: 404 }
@@ -62,12 +90,13 @@ export async function GET(
       updatedAt: user.updatedAt,
     };
 
+    console.log('✅ [/api/users/[id]] User data prepared successfully');
     return NextResponse.json({
       success: true,
       user: userData,
     });
   } catch (error: any) {
-    console.error("Error fetching user:", error);
+    console.error("❌ [/api/users/[id]] Error fetching user:", error);
     return NextResponse.json(
       { error: error.message || "Failed to fetch user" },
       { status: 500 }
@@ -80,15 +109,35 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
+    console.log('🔍 [/api/users/[id]] Starting user update...');
+    
+    // Get token from request
+    const token = getTokenFromRequest(request);
+    console.log('🔍 [/api/users/[id]] Token found:', !!token);
+    
+    if (!token) {
+      console.log('❌ [/api/users/[id]] No token provided');
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    if (!isAdmin(currentUser)) {
+    // Get current user from token
+    const currentUser = await getCurrentUserFromToken(token);
+    console.log('🔍 [/api/users/[id]] Current user:', currentUser ? currentUser.email : 'Not found');
+    
+    if (!currentUser) {
+      console.log('❌ [/api/users/[id]] Authentication failed');
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (currentUser.role !== 'ADMIN') {
+      console.log('❌ [/api/users/[id]] User not admin:', currentUser.role);
       return NextResponse.json(
         { error: "Unauthorized: Only admins can update users" },
         { status: 403 }
@@ -96,6 +145,7 @@ export async function PUT(
     }
 
     if (!db) {
+      console.log('❌ [/api/users/[id]] Database not available');
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -104,10 +154,12 @@ export async function PUT(
 
     const resolvedParams = await params;
     const userId = resolvedParams.id;
+    console.log('🔍 [/api/users/[id]] Updating user ID:', userId);
 
     // Get the request body
     const body = await request.json();
     const { firstName, lastName, roleId, isActive, password, customPermissions } = body;
+    console.log('🔍 [/api/users/[id]] Update data:', { firstName, roleId, isActive, hasPassword: !!password });
 
     // Check if the user exists
     const existingUser = await db.user.findUnique({
@@ -115,6 +167,7 @@ export async function PUT(
     });
 
     if (!existingUser) {
+      console.log('❌ [/api/users/[id]] User not found for update:', userId);
       return NextResponse.json(
         { error: `User with ID ${userId} not found` },
         { status: 404 }
@@ -127,6 +180,7 @@ export async function PUT(
         where: { id: roleId },
       });
       if (!role) {
+        console.log('❌ [/api/users/[id]] Role not found:', roleId);
         return NextResponse.json(
           { error: `Role with ID ${roleId} not found` },
           { status: 404 }
@@ -144,6 +198,7 @@ export async function PUT(
     // Hash password if provided
     if (password) {
       if (password.length < 6) {
+        console.log('❌ [/api/users/[id]] Password too short');
         return NextResponse.json(
           { error: "Password must be at least 6 characters long" },
           { status: 400 }
@@ -152,6 +207,8 @@ export async function PUT(
       updateData.password = await hashPassword(password);
     }
 
+    console.log('🔍 [/api/users/[id]] Executing update...');
+    
     // Update the user
     const updatedUser = await db.user.update({
       where: { id: userId },
@@ -160,9 +217,6 @@ export async function PUT(
         role: true
       },
     });
-
-    // Note: Custom permissions are simplified for now
-    // They can be implemented later when the schema supports them
 
     // Return updated user data
     const userData = {
@@ -178,13 +232,14 @@ export async function PUT(
       updatedAt: updatedUser.updatedAt,
     };
 
+    console.log('✅ [/api/users/[id]] User updated successfully');
     return NextResponse.json({
       success: true,
       message: "User updated successfully",
       user: userData,
     });
   } catch (error: any) {
-    console.error("Error updating user:", error);
+    console.error("❌ [/api/users/[id]] Error updating user:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update user" },
       { status: 500 }
@@ -197,15 +252,35 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
+    console.log('🔍 [/api/users/[id]] Starting user deletion...');
+    
+    // Get token from request
+    const token = getTokenFromRequest(request);
+    console.log('🔍 [/api/users/[id]] Token found:', !!token);
+    
+    if (!token) {
+      console.log('❌ [/api/users/[id]] No token provided');
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    if (!isAdmin(currentUser)) {
+    // Get current user from token
+    const currentUser = await getCurrentUserFromToken(token);
+    console.log('🔍 [/api/users/[id]] Current user:', currentUser ? currentUser.email : 'Not found');
+    
+    if (!currentUser) {
+      console.log('❌ [/api/users/[id]] Authentication failed');
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    if (currentUser.role !== 'ADMIN') {
+      console.log('❌ [/api/users/[id]] User not admin:', currentUser.role);
       return NextResponse.json(
         { error: "Unauthorized: Only admins can delete users" },
         { status: 403 }
@@ -213,6 +288,7 @@ export async function DELETE(
     }
 
     if (!db) {
+      console.log('❌ [/api/users/[id]] Database not available');
       return NextResponse.json(
         { error: "Database not available" },
         { status: 500 }
@@ -221,14 +297,7 @@ export async function DELETE(
 
     const resolvedParams = await params;
     const userId = resolvedParams.id;
-
-    // Prevent self-deletion
-    if (userId === currentUser.id) {
-      return NextResponse.json(
-        { error: "You cannot delete your own account" },
-        { status: 400 }
-      );
-    }
+    console.log('🔍 [/api/users/[id]] Deleting user ID:', userId);
 
     // Check if the user exists
     const existingUser = await db.user.findUnique({
@@ -236,23 +305,36 @@ export async function DELETE(
     });
 
     if (!existingUser) {
+      console.log('❌ [/api/users/[id]] User not found for deletion:', userId);
       return NextResponse.json(
         { error: `User with ID ${userId} not found` },
         { status: 404 }
       );
     }
 
-    // Delete the user (simplified for current schema)
+    // Prevent deletion of the current user
+    if (userId === currentUser.id) {
+      console.log('❌ [/api/users/[id]] Cannot delete self');
+      return NextResponse.json(
+        { error: "Cannot delete your own account" },
+        { status: 400 }
+      );
+    }
+
+    console.log('🔍 [/api/users/[id]] Executing deletion...');
+    
+    // Delete the user
     await db.user.delete({
       where: { id: userId },
     });
 
+    console.log('✅ [/api/users/[id]] User deleted successfully');
     return NextResponse.json({
       success: true,
       message: "User deleted successfully",
     });
   } catch (error: any) {
-    console.error("Error deleting user:", error);
+    console.error("❌ [/api/users/[id]] Error deleting user:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete user" },
       { status: 500 }

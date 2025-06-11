@@ -56,7 +56,7 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
           return (
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-gray-400" />
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
                 Sin Rol
               </span>
             </div>
@@ -64,13 +64,13 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
         }
         
         const roleColors = {
-          ADMIN: "bg-red-100 text-red-800",
-          MANAGER: "bg-blue-100 text-blue-800", 
-          USER: "bg-gray-100 text-gray-800"
+          ADMIN: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300",
+          MANAGER: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300", 
+          USER: "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300"
         };
         
         // For custom roles, use a purple theme
-        const colorClass = roleColors[role.name as keyof typeof roleColors] || 'bg-purple-100 text-purple-800';
+        const colorClass = roleColors[role.name as keyof typeof roleColors] || 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
         
         return (
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
               )}
             </div>
             {!role.isSystem && (
-              <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded">
+              <span className="text-xs bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-300 px-1 rounded">
                 Custom
               </span>
             )}
@@ -190,7 +190,7 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
       <div className="p-8">
         <div className="animate-pulse space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
           ))}
         </div>
       </div>

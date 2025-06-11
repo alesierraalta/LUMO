@@ -131,11 +131,63 @@ if (isChoreo) {
           });
         },
         
+        findFirst: async (params: any) => {
+          let query = supabase.from('users').select(`
+            *,
+            role:roles(*)
+          `);
+
+          if (params.where) {
+            if (params.where.email) {
+              query = query.eq('email', params.where.email);
+            }
+            if (params.where.id) {
+              query = query.eq('id', params.where.id);
+            }
+            if (params.where.role) {
+              query = query.eq('role', params.where.role);
+            }
+            if (params.where.isActive !== undefined) {
+              query = query.eq('is_active', params.where.isActive);
+            }
+          }
+
+          const { data, error } = await query.limit(1);
+          if (error || !data || data.length === 0) return null;
+          
+          const user = data[0];
+          let roleName = 'USER';
+          if (user.role && user.role.name) {
+            roleName = user.role.name;
+          } else if (user.role_id) {
+            // Fallback: fetch role separately if join didn't work
+            const { data: roleData } = await supabase
+              .from('roles')
+              .select('name')
+              .eq('id', user.role_id)
+              .single();
+            roleName = roleData?.name || 'USER';
+          }
+          
+          // Convert Supabase response to Prisma-like format
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            password: user.password,
+            role: roleName,
+            isActive: user.is_active,
+            createdAt: new Date(user.created_at),
+            updatedAt: new Date(user.updated_at)
+          };
+        },
+        
         create: async (params: any) => {
           const userData = {
             email: params.data.email,
             password: params.data.password,
             name: params.data.name,
+            role_id: params.data.roleId,
             is_active: params.data.isActive ?? true
           };
 
@@ -147,16 +199,39 @@ if (isChoreo) {
 
           if (error) throw error;
           
-          // Convert to Prisma format
-          return {
+          let result: any = {
             id: data.id,
             email: data.email,
             name: data.name,
-            role: 'USER',
+            roleId: data.role_id,
             isActive: data.is_active,
             createdAt: new Date(data.created_at),
             updatedAt: new Date(data.updated_at)
           };
+          
+          // If include.role is requested, fetch the role data
+          if (params.include && params.include.role) {
+            const { data: roleData } = await supabase
+              .from('roles')
+              .select('*')
+              .eq('id', data.role_id)
+              .single();
+              
+            if (roleData) {
+              result.role = {
+                id: roleData.id,
+                name: roleData.name,
+                description: roleData.description,
+                permissions: roleData.permissions,
+                isSystem: roleData.is_system,
+                isActive: roleData.is_active,
+                createdAt: new Date(roleData.created_at),
+                updatedAt: new Date(roleData.updated_at)
+              };
+            }
+          }
+          
+          return result;
         },
         
         update: async (params: any) => {
@@ -211,6 +286,38 @@ if (isChoreo) {
             isActive: data.is_active,
             createdAt: new Date(data.created_at),
             updatedAt: new Date(data.updated_at)
+          };
+        },
+        
+        findFirst: async (params: any) => {
+          let query = supabase.from('roles').select('*');
+
+          if (params.where) {
+            if (params.where.id) {
+              query = query.eq('id', params.where.id);
+            }
+            if (params.where.name) {
+              query = query.eq('name', params.where.name);
+            }
+            if (params.where.isActive !== undefined) {
+              query = query.eq('is_active', params.where.isActive);
+            }
+          }
+
+          const { data, error } = await query.limit(1);
+          if (error || !data || data.length === 0) return null;
+          
+          // Convert to match Prisma format
+          const role = data[0];
+          return {
+            id: role.id,
+            name: role.name,
+            description: role.description,
+            permissions: role.permissions,
+            isSystem: role.is_system,
+            isActive: role.is_active,
+            createdAt: new Date(role.created_at),
+            updatedAt: new Date(role.updated_at)
           };
         },
         
@@ -637,6 +744,35 @@ if (isChoreo) {
             createdAt: new Date(location.created_at),
             updatedAt: new Date(location.updated_at)
           }));
+        },
+        
+        findFirst: async (params: any) => {
+          let query = supabase.from('locations').select('*');
+
+          if (params.where) {
+            if (params.where.id) {
+              query = query.eq('id', params.where.id);
+            }
+            if (params.where.name) {
+              query = query.eq('name', params.where.name);
+            }
+            if (params.where.isActive !== undefined) {
+              query = query.eq('is_active', params.where.isActive);
+            }
+          }
+
+          const { data, error } = await query.limit(1);
+          if (error || !data || data.length === 0) return null;
+          
+          const location = data[0];
+          return {
+            id: location.id,
+            name: location.name,
+            description: location.description,
+            isActive: location.is_active,
+            createdAt: new Date(location.created_at),
+            updatedAt: new Date(location.updated_at)
+          };
         },
 
         findUnique: async (params: any) => {

@@ -203,7 +203,7 @@ export function Sidebar() {
         <div className="flex-1 p-4 space-y-2">
           <div className="animate-pulse space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-10 bg-gray-200 rounded-md"></div>
+              <div key={i} className="h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
             ))}
           </div>
         </div>
@@ -243,9 +243,9 @@ export function Sidebar() {
           <div className="text-xs text-muted-foreground mb-2">
             <span className={cn(
               "px-2 py-1 rounded-full text-xs font-medium",
-              currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800" :
-              currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800" :
-              "bg-gray-100 text-gray-800"
+              currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" :
+              currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" :
+              "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300"
             )}>
               {currentUser.role}
             </span>
@@ -279,9 +279,9 @@ export function MobileNav() {
           <div className="text-xs text-muted-foreground">
             <span className={cn(
               "px-2 py-1 rounded-full text-xs font-medium",
-              currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800" :
-              currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800" :
-              "bg-gray-100 text-gray-800"
+              currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" :
+              currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" :
+              "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300"
             )}>
               {currentUser.role}
             </span>
@@ -315,9 +315,9 @@ export function MobileNav() {
                 <div className="text-xs text-muted-foreground">
                   <span className={cn(
                     "px-2 py-1 rounded-full text-xs font-medium",
-                    currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800" :
-                    currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800" :
-                    "bg-gray-100 text-gray-800"
+                    currentUser.role === 'ADMIN' ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" :
+                    currentUser.role === 'MANAGER' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" :
+                    "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300"
                   )}>
                     {currentUser.role}
                   </span>

@@ -108,19 +108,19 @@ const permissionGroups = groupPermissionsByCategory();
 // Obtener color para categoría de permisos
 const getCategoryColor = (category: string) => {
   const colors = {
-    page: 'bg-blue-100 text-blue-800 border-blue-200',
-    feature: 'bg-green-100 text-green-800 border-green-200',
-    admin: 'bg-red-100 text-red-800 border-red-200',
-    data: 'bg-purple-100 text-purple-800 border-purple-200'
+    page: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+    feature: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+    admin: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800',
+    data: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
   };
-  return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
+  return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700';
 };
 
 // Obtener color para tipo de rol
 const getRoleTypeColor = (isSystem: boolean) => {
   return isSystem 
-    ? 'bg-orange-100 text-orange-800 border-orange-200'
-    : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    ? 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
+    : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
 };
 
 export default function RolePermissionsPage() {
@@ -532,7 +532,7 @@ export default function RolePermissionsPage() {
                         </Badge>
                       ))}
                       {permissions.length > 6 && (
-                        <Badge variant="outline" className="bg-gray-100 text-gray-600">
+                        <Badge variant="outline" className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                           +{permissions.length - 6} más
                         </Badge>
                       )}

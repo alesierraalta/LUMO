@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-06-12T11:02:11.801Z",
+  "results": {
+    "passed": 5,
+    "failed": 3,
+    "skipped": 0,
+    "total": 8,
+    "startTime": 1749726131676,
+    "endTime": 1749726131798,
+    "tests": [
+      {
+        "name": "Database Connection",
+        "status": "passed",
+        "duration": 63
+      },
+      {
+        "name": "Database Provider",
+        "status": "passed",
+        "duration": 1
+      },
+      {
+        "name": "User Model Access",
+        "status": "passed",
+        "duration": 34
+      },
+      {
+        "name": "Product Model Access",
+        "status": "failed",
+        "error": "Cannot read properties of undefined (reading 'count')",
+        "duration": 1
+      },
+      {
+        "name": "Category Model Access",
+        "status": "passed",
+        "duration": 2
+      },
+      {
+        "name": "Location Model Access",
+        "status": "passed",
+        "duration": 1
+      },
+      {
+        "name": "Query Performance",
+        "status": "failed",
+        "error": "Cannot read properties of undefined (reading 'findMany')",
+        "duration": 1
+      },
+      {
+        "name": "Schema Integrity",
+        "status": "failed",
+        "error": "Cannot read properties of undefined (reading 'findFirst')",
+        "duration": 1
+      }
+    ],
+    "performance": {
+      "Database Connection": 63,
+      "Database Provider": 1,
+      "User Model Access": 34,
+      "Category Model Access": 2,
+      "Location Model Access": 1
+    }
+  },
+  "config": {
+    "exitOnFailure": false,
+    "verbose": false,
+    "timeout": 5000,
+    "performWriteTests": false,
+    "logPerformance": false
+  }
+}

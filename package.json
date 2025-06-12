@@ -167,7 +167,11 @@
     "perfect:ci": "npm run perfect:validate && npm run test:ci && npm run build",
     "perfect:health": "npm run test:health && npm run perfect:validate",
     "perfect:full": "npm run perfect:health && npm run test:all && npm run build && npm run verify:deployment",
-    "test:user-edit-fix": "node scripts/test-user-edit-fix.js"
+    "test:user-edit-fix": "node scripts/test-user-edit-fix.js",
+    "deploy:user-edit-fix": "node scripts/deploy-user-edit-fix.js",
+    "rollback:user-edit-fix": "node scripts/rollback-user-edit-fix.js",
+    "validate:user-edit-fix": "node scripts/final-validation-checklist.js",
+    "validate:fix-ready": "node scripts/validate-fix-ready.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

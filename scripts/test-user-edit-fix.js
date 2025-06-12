@@ -18,7 +18,7 @@ async function testUserEditFix() {
     console.log('1️⃣ Testing database connection...');
     
     // Import the hybrid database
-    const db = require('../src/lib/db').default;
+    const { default: db } = require('../src/lib/db');
     
     if (!db) {
       throw new Error('Database not available');
@@ -67,9 +67,7 @@ async function testUserEditFix() {
     
     const userWithRole = await db.user.findUnique({
       where: { id: testUserId },
-      include: {
-        role: true
-      }
+      include: { role: true }
     });
     
     if (!userWithRole) {
@@ -136,9 +134,7 @@ async function testUserEditFix() {
       data: {
         name: userWithRole.name + ' (Updated)'
       },
-      include: {
-        role: true
-      }
+      include: { role: true }
     });
     
     if (!updatedUser || !updatedUser.role) {

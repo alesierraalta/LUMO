@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { z } from "zod";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-simple";
 
 // Validation schema for category creation
 const CategorySchema = z.object({
@@ -10,15 +10,20 @@ const CategorySchema = z.object({
 });
 
 // GET /api/categories - List all categories
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
@@ -39,22 +44,27 @@ export async function GET() {
 }
 
 // POST /api/categories - Create a new category
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(req);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isAdmin(user)) {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: "No tienes permisos para crear categorías" },
         { status: 403 }
       );
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
     

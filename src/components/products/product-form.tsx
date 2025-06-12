@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { calculateMargin, calculatePrice, createProductApi, updateProductApi } from "@/lib/client-utils";
+import { locationsApi } from "@/lib/api-client";
 
 // Import Radio Group components
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -134,19 +135,18 @@ export default function ProductForm({
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await fetch("/api/locations");
-        if (response.ok) {
-          const locationsData = await response.json();
+        const response = await locationsApi.getAll();
+        if (response.data) {
           // Filter out migration descriptions and clean up location data
-          const cleanedLocations = locationsData.map((location: Location) => ({
+          const cleanedLocations = response.data.map((location: Location) => ({
             ...location,
             description: location.description?.includes("migrada automáticamente") 
               ? undefined 
               : location.description
           }));
           setLocations(cleanedLocations);
-        } else {
-          console.error("Error fetching locations");
+        } else if (response.error) {
+          console.error("Error fetching locations:", response.error);
         }
       } catch (error) {
         console.error("Error fetching locations:", error);

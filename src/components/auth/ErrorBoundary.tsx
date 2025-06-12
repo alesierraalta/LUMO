@@ -28,8 +28,6 @@ export function AuthErrorBoundary({ children }: ErrorBoundaryProps) {
     // Listen for unhandled auth errors
     const handleError = (event: ErrorEvent) => {
       if (
-        event.error?.message?.includes() ||
-        event.error?.message?.includes() ||
         event.error?.message?.includes("useUser") ||
         event.error?.message?.includes("useAuth") ||
         event.error?.message?.includes("authentication") ||

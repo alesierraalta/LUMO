@@ -18,6 +18,7 @@ import {
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { calculateMargin, calculatePrice } from "@/lib/client-utils"
+import { locationsApi } from "@/lib/api-client"
 import { 
   AlertCircle, 
   Package, 
@@ -135,29 +136,15 @@ function EditProductContent() {
         });
 
         // Fetch locations
-        const fetchLocations = fetch('/api/locations', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }).then(async res => {
-          console.log('Locations fetch response status:', res.status);
-          console.log('Locations fetch response headers:', res.headers.get('content-type'));
+        const fetchLocations = locationsApi.getAll().then(response => {
+          console.log('Locations fetch response:', response);
           
-          if (!res.ok) {
-            const errorText = await res.text();
-            console.error('Locations fetch error response:', errorText);
-            throw new Error(`Failed to fetch locations: ${res.status} - ${errorText}`);
+          if (response.error) {
+            console.error('Locations fetch error:', response.error);
+            throw new Error(response.error);
           }
           
-          const contentType = res.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const responseText = await res.text();
-            console.error('Locations fetch returned non-JSON:', responseText.substring(0, 200));
-            throw new Error('Locations endpoint returned HTML instead of JSON');
-          }
-          
-          return res.json();
+          return response.data || [];
         });
 
         const [productData, categoriesData, locationsData] = await Promise.all([

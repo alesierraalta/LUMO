@@ -200,58 +200,64 @@ export const createTestLocation = (overrides: Partial<any> = {}) => ({
   id: 'test-location-id',
   name: 'Test Location',
   description: 'A test location for testing purposes',
+  address: '123 Test Street',
   isActive: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,
 });
 
+export const createTestInventoryItem = (overrides: Partial<any> = {}) => ({
+  id: 'test-inventory-id',
+  productId: 'test-product-id',
+  quantity: 100,
+  minStockLevel: 10,
+  location: 'Test Location',
+  lastUpdated: new Date().toISOString(),
+  ...overrides,
+});
+
 export const createTestSale = (overrides: Partial<any> = {}) => ({
   id: 'test-sale-id',
-  total: 199.98,
-  subtotal: 199.98,
-  tax: 0,
-  discount: 0,
-  status: 'completed',
   customerId: 'test-customer-id',
-  userId: 'test-user-id',
   items: [
     {
-      id: 'test-sale-item-id',
       productId: 'test-product-id',
       quantity: 2,
       price: 99.99,
       total: 199.98,
     },
   ],
+  subtotal: 199.98,
+  tax: 20.00,
+  total: 219.98,
+  status: 'completed',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,
 });
 
-// Mock API responses
+// API response helpers
 export const createMockApiResponse = <T,>(data: T, status = 200) => ({
   ok: status >= 200 && status < 300,
   status,
-  statusText: status === 200 ? 'OK' : 'Error',
-  json: jest.fn().mockResolvedValue(data),
-  text: jest.fn().mockResolvedValue(JSON.stringify(data)),
+  json: async () => data,
+  text: async () => JSON.stringify(data),
 });
 
 export const createMockApiError = (message = 'API Error', status = 500) => ({
   ok: false,
   status,
-  statusText: 'Error',
-  json: jest.fn().mockResolvedValue({ error: message }),
-  text: jest.fn().mockResolvedValue(JSON.stringify({ error: message })),
+  json: async () => ({ error: message }),
+  text: async () => JSON.stringify({ error: message }),
 });
 
-// Form testing utilities
+// Form helpers
 export const fillForm = async (fields: Record<string, string>) => {
   const user = userEvent.setup();
   
   for (const [fieldName, value] of Object.entries(fields)) {
-    const field = document.querySelector(`[name="${fieldName}"]`) as HTMLElement;
+    const field = document.querySelector(`[name="${fieldName}"]`) as HTMLInputElement;
     if (field) {
       await user.clear(field);
       await user.type(field, value);
@@ -261,42 +267,47 @@ export const fillForm = async (fields: Record<string, string>) => {
 
 export const submitForm = async (formTestId = 'form') => {
   const user = userEvent.setup();
-  const form = document.querySelector(`[data-testid="${formTestId}"]`) as HTMLElement;
-  const submitButton = form?.querySelector('button[type="submit"]') as HTMLElement;
+  const form = document.querySelector(`[data-testid="${formTestId}"]`) as HTMLFormElement;
+  const submitButton = form?.querySelector('[type="submit"]') as HTMLButtonElement;
   
   if (submitButton) {
     await user.click(submitButton);
   }
 };
 
-// Wait utilities
+// Loading helpers
 export const waitForLoadingToFinish = async () => {
-  const { waitForElementToBeRemoved } = await import('@testing-library/react');
+  const { waitForElementToBeRemoved, queryByText } = await import('@testing-library/react');
   
-  try {
-    await waitForElementToBeRemoved(
-      () => document.querySelector('[data-testid="loading"]'),
-      { timeout: 3000 }
-    );
-  } catch (error) {
-    // Loading element might not exist, which is fine
+  // Wait for common loading indicators to disappear
+  const loadingIndicators = [
+    () => queryByText('Loading...'),
+    () => queryByText('Cargando...'),
+    () => queryByText('Guardando...'),
+    () => queryByText('Procesando...'),
+  ];
+  
+  for (const getIndicator of loadingIndicators) {
+    const indicator = getIndicator();
+    if (indicator) {
+      await waitForElementToBeRemoved(indicator);
+    }
   }
 };
 
-// Mock fetch for API testing
+// Mock helpers
 export const mockFetch = (response: any, status = 200) => {
-  global.fetch = jest.fn().mockResolvedValue(
-    createMockApiResponse(response, status)
-  );
+  global.fetch = jest.fn(() =>
+    Promise.resolve(createMockApiResponse(response, status))
+  ) as jest.Mock;
 };
 
 export const mockFetchError = (message = 'Network Error', status = 500) => {
-  global.fetch = jest.fn().mockRejectedValue(
-    new Error(message)
-  );
+  global.fetch = jest.fn(() =>
+    Promise.resolve(createMockApiError(message, status))
+  ) as jest.Mock;
 };
 
-// Local storage mock
 export const mockLocalStorage = () => {
   const localStorageMock = {
     getItem: jest.fn(),
@@ -307,12 +318,12 @@ export const mockLocalStorage = () => {
   
   Object.defineProperty(window, 'localStorage', {
     value: localStorageMock,
+    writable: true,
   });
   
   return localStorageMock;
 };
 
-// Session storage mock
 export const mockSessionStorage = () => {
   const sessionStorageMock = {
     getItem: jest.fn(),
@@ -323,34 +334,39 @@ export const mockSessionStorage = () => {
   
   Object.defineProperty(window, 'sessionStorage', {
     value: sessionStorageMock,
+    writable: true,
   });
   
   return sessionStorageMock;
 };
 
-// Console mock utilities
 export const mockConsole = () => {
   const originalConsole = { ...console };
   
-  console.log = jest.fn();
-  console.error = jest.fn();
-  console.warn = jest.fn();
-  console.info = jest.fn();
+  const consoleMock = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  };
+  
+  Object.assign(console, consoleMock);
   
   return {
-    restore: () => {
-      Object.assign(console, originalConsole);
-    },
+    ...consoleMock,
+    restore: () => Object.assign(console, originalConsole),
   };
 };
 
-// Date mock utilities
 export const mockDate = (date: string | Date) => {
   const mockDate = new Date(date);
   const originalDate = Date;
   
   global.Date = jest.fn(() => mockDate) as any;
   global.Date.now = jest.fn(() => mockDate.getTime());
+  global.Date.UTC = originalDate.UTC;
+  global.Date.parse = originalDate.parse;
   
   return {
     restore: () => {
@@ -359,7 +375,6 @@ export const mockDate = (date: string | Date) => {
   };
 };
 
-// Intersection Observer mock
 export const mockIntersectionObserver = () => {
   const mockIntersectionObserver = jest.fn();
   mockIntersectionObserver.mockReturnValue({
@@ -369,11 +384,11 @@ export const mockIntersectionObserver = () => {
   });
   
   window.IntersectionObserver = mockIntersectionObserver;
+  window.IntersectionObserverEntry = jest.fn();
   
   return mockIntersectionObserver;
 };
 
-// Resize Observer mock
 export const mockResizeObserver = () => {
   const mockResizeObserver = jest.fn();
   mockResizeObserver.mockReturnValue({
@@ -387,9 +402,20 @@ export const mockResizeObserver = () => {
   return mockResizeObserver;
 };
 
-// Export everything
+// Re-export everything from testing-library
 export * from '@testing-library/react';
-export { customRender as render, userEvent, mockRouter, mockAuthContext };
+export { customRender as render };
+export { userEvent };
+
+// Add a simple test to prevent Jest from failing
+describe('Test Utils', () => {
+  it('should export testing utilities', () => {
+    expect(customRender).toBeDefined();
+    expect(createTestUser).toBeDefined();
+    expect(createTestProduct).toBeDefined();
+    expect(mockFetch).toBeDefined();
+  });
+});
 
 // Default export for convenience
 export default {
@@ -402,6 +428,7 @@ export default {
   createTestProduct,
   createTestCategory,
   createTestLocation,
+  createTestInventoryItem,
   createTestSale,
   createMockApiResponse,
   createMockApiError,

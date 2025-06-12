@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createProductApi, ProductData, calculateMargin, calculatePrice } from "@/lib/client-utils"
+import { locationsApi } from "@/lib/api-client"
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
@@ -83,31 +84,18 @@ function AddProductContent() {
 
     async function fetchLocations() {
       try {
-        const response = await fetch('/api/locations', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log('Locations fetch response status:', response.status);
-        console.log('Locations fetch response headers:', response.headers.get('content-type'));
+        const response = await locationsApi.getAll();
+        console.log('Locations fetch response:', response);
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Locations fetch error response:', errorText);
-          throw new Error(`Failed to fetch locations: ${response.status} - ${errorText}`);
+        if (response.error) {
+          console.error('Locations fetch error:', response.error);
+          throw new Error(response.error);
         }
         
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const responseText = await response.text();
-          console.error('Locations fetch returned non-JSON:', responseText.substring(0, 200));
-          throw new Error('Locations endpoint returned HTML instead of JSON');
+        if (response.data) {
+          console.log('Locations data loaded:', response.data);
+          setLocations(response.data);
         }
-        
-        const data = await response.json();
-        console.log('Locations data loaded:', data);
-        setLocations(data);
       } catch (error) {
         console.error('Error fetching locations:', error);
         setError(`Error loading locations: ${error instanceof Error ? error.message : 'Unknown error'}`);

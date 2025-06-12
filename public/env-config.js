@@ -5,7 +5,7 @@
   console.log('[LUMO-CLIENT-ENV] Loading client environment variables...');
   // Public environment variables safe for client-side
   var env = {
-  "NODE_ENV": "test",
+  "NODE_ENV": "production",
   "NEXT_PUBLIC_APP_VERSION": "1.0.0"
 };
   // Set up window.__NEXT_ENV__ for Next.js compatibility

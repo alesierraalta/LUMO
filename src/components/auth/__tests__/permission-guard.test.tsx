@@ -8,7 +8,7 @@
 import React from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { render, createTestUser, createTestAdmin } from '@/test-utils';
+import { render, createTestUser, createTestAdmin } from '../../../test-utils';
 import { PermissionGuard, PermissionButton, usePermissions } from '../permission-guard';
 
 // Mock the auth hook

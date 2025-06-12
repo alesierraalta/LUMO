@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { locationsApi } from "@/lib/api-client";
 
 type Location = {
   id: string;
@@ -81,27 +82,21 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/locations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-        }),
+      const response = await locationsApi.create({
+        name: name.trim(),
+        description: description.trim() || null,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al crear la ubicación");
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const newLocation = await response.json();
-      setLocations(prev => [newLocation, ...prev]);
-      setIsCreateOpen(false);
-      resetForm();
-      toast.success("Ubicación creada exitosamente");
+      if (response.data) {
+        setLocations(prev => [response.data, ...prev]);
+        setIsCreateOpen(false);
+        resetForm();
+        toast.success("Ubicación creada exitosamente");
+      }
     } catch (error) {
       console.error("Error creating location:", error);
       toast.error(error instanceof Error ? error.message : "Error al crear la ubicación");
@@ -125,31 +120,25 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/locations/${editingLocation.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          isActive: true,
-        }),
+      const response = await locationsApi.update(editingLocation.id, {
+        name: name.trim(),
+        description: description.trim() || null,
+        isActive: true,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al actualizar la ubicación");
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const updatedLocation = await response.json();
-      setLocations(prev => 
-        prev.map(loc => loc.id === updatedLocation.id ? updatedLocation : loc)
-      );
-      setIsEditOpen(false);
-      setEditingLocation(null);
-      resetForm();
-      toast.success("Ubicación actualizada exitosamente");
+      if (response.data) {
+        setLocations(prev => 
+          prev.map(loc => loc.id === response.data.id ? response.data : loc)
+        );
+        setIsEditOpen(false);
+        setEditingLocation(null);
+        resetForm();
+        toast.success("Ubicación actualizada exitosamente");
+      }
     } catch (error) {
       console.error("Error updating location:", error);
       toast.error(error instanceof Error ? error.message : "Error al actualizar la ubicación");
@@ -167,13 +156,10 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/locations/${location.id}`, {
-        method: "DELETE",
-      });
+      const response = await locationsApi.delete(location.id);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al eliminar la ubicación");
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       setLocations(prev => prev.filter(loc => loc.id !== location.id));

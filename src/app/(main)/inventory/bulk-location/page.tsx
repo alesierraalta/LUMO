@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MapPin, Package, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { locationsApi } from "@/lib/api-client";
 
 interface Product {
   id: string;
@@ -36,9 +37,9 @@ export default function BulkLocationPage() {
 
   const fetchData = async () => {
     try {
-      const [productsRes, locationsRes] = await Promise.all([
+      const [productsRes, locationsResponse] = await Promise.all([
         fetch('/api/products'),
-        fetch('/api/locations')
+        locationsApi.getAll()
       ]);
 
       if (productsRes.ok) {
@@ -46,9 +47,11 @@ export default function BulkLocationPage() {
         setProducts(productsData.products || []);
       }
 
-      if (locationsRes.ok) {
-        const locationsData = await locationsRes.json();
-        setLocations(locationsData);
+      if (locationsResponse.data) {
+        setLocations(locationsResponse.data);
+      } else if (locationsResponse.error) {
+        console.error('Error fetching locations:', locationsResponse.error);
+        toast.error('Error al cargar las ubicaciones');
       }
     } catch (error) {
       console.error('Error fetching data:', error);

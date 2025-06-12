@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-simple";
 import db from "@/lib/db";
 
 // GET /api/locations/[id] - Obtener ubicación específica
@@ -8,13 +8,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
@@ -49,13 +54,18 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
@@ -125,13 +135,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
     
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 

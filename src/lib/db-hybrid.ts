@@ -67,31 +67,73 @@ if (isChoreo) {
           
           console.log('✅ Supabase data found:', data);
           
-          // Get role name (handle both direct role_id and joined role)
-          let roleName = 'USER';
-          if (data.role && data.role.name) {
-            roleName = data.role.name;
-          } else if (data.role_id) {
-            // Fallback: fetch role separately if join didn't work
-            const { data: roleData } = await supabase
-              .from('roles')
-              .select('name')
-              .eq('id', data.role_id)
-              .single();
-            roleName = roleData?.name || 'USER';
-          }
-          
           // Convert Supabase response to Prisma-like format
-          const result = {
+          const result: any = {
             id: data.id,
             email: data.email,
             name: data.name,
             password: data.password,
-            role: roleName,
+            roleId: data.role_id, // Include the foreign key
             isActive: data.is_active,
             createdAt: new Date(data.created_at),
             updatedAt: new Date(data.updated_at)
           };
+
+          // Handle role inclusion based on include parameter
+          if (params.include && params.include.role) {
+            // Return full role object when include.role is true
+            if (data.role && data.role.id) {
+              result.role = {
+                id: data.role.id,
+                name: data.role.name,
+                description: data.role.description,
+                isSystem: data.role.is_system,
+                isActive: data.role.is_active,
+                createdAt: new Date(data.role.created_at),
+                updatedAt: new Date(data.role.updated_at)
+              };
+            } else if (data.role_id) {
+              // Fallback: fetch role separately if join didn't work
+              console.log('🔄 Fetching role separately for role_id:', data.role_id);
+              const { data: roleData } = await supabase
+                .from('roles')
+                .select('*')
+                .eq('id', data.role_id)
+                .single();
+              
+              if (roleData) {
+                result.role = {
+                  id: roleData.id,
+                  name: roleData.name,
+                  description: roleData.description,
+                  isSystem: roleData.is_system,
+                  isActive: roleData.is_active,
+                  createdAt: new Date(roleData.created_at),
+                  updatedAt: new Date(roleData.updated_at)
+                };
+              } else {
+                console.warn('⚠️ Role not found for role_id:', data.role_id);
+                result.role = null;
+              }
+            } else {
+              result.role = null;
+            }
+          } else {
+            // When include.role is not specified, just include role name for backward compatibility
+            let roleName = 'USER';
+            if (data.role && data.role.name) {
+              roleName = data.role.name;
+            } else if (data.role_id) {
+              // Fallback: fetch role name separately
+              const { data: roleData } = await supabase
+                .from('roles')
+                .select('name')
+                .eq('id', data.role_id)
+                .single();
+              roleName = roleData?.name || 'USER';
+            }
+            result.role = roleName;
+          }
           
           console.log('✅ Converted result:', result);
           return result;
@@ -239,6 +281,7 @@ if (isChoreo) {
           if (params.data.name) updateData.name = params.data.name;
           if (params.data.email) updateData.email = params.data.email;
           if (params.data.password) updateData.password = params.data.password;
+          if (params.data.roleId) updateData.role_id = params.data.roleId;
           if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
 
           const { data, error } = await supabase
@@ -250,15 +293,41 @@ if (isChoreo) {
 
           if (error) throw error;
           
-          return {
+          const result: any = {
             id: data.id,
             email: data.email,
             name: data.name,
-            role: 'USER',
+            roleId: data.role_id,
             isActive: data.is_active,
             createdAt: new Date(data.created_at),
             updatedAt: new Date(data.updated_at)
           };
+
+          // Handle role inclusion based on include parameter
+          if (params.include && params.include.role) {
+            // Fetch the role data
+            const { data: roleData } = await supabase
+              .from('roles')
+              .select('*')
+              .eq('id', data.role_id)
+              .single();
+              
+            if (roleData) {
+              result.role = {
+                id: roleData.id,
+                name: roleData.name,
+                description: roleData.description,
+                isSystem: roleData.is_system,
+                isActive: roleData.is_active,
+                createdAt: new Date(roleData.created_at),
+                updatedAt: new Date(roleData.updated_at)
+              };
+            } else {
+              result.role = null;
+            }
+          }
+          
+          return result;
         }
       },
       

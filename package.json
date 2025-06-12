@@ -166,7 +166,8 @@
     "perfect:choreo": "npm run perfect:validate && npm run test:all && npm run build && echo 'Ready for Choreo deployment!'",
     "perfect:ci": "npm run perfect:validate && npm run test:ci && npm run build",
     "perfect:health": "npm run test:health && npm run perfect:validate",
-    "perfect:full": "npm run perfect:health && npm run test:all && npm run build && npm run verify:deployment"
+    "perfect:full": "npm run perfect:health && npm run test:all && npm run build && npm run verify:deployment",
+    "test:user-edit-fix": "node scripts/test-user-edit-fix.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

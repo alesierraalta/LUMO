@@ -1,0 +1,183 @@
+{
+  "timestamp": "2025-06-12T02:20:32.937Z",
+  "summary": {
+    "total": 30,
+    "passed": 28,
+    "failed": 2,
+    "warnings": 3,
+    "passRate": 93.3
+  },
+  "results": {
+    "passed": [
+      {
+        "test": "Node.js Version",
+        "message": "v24.1.0 (✓ >= 18)",
+        "timestamp": "2025-06-12T02:20:31.693Z"
+      },
+      {
+        "test": "NPM Version",
+        "message": "11.3.0",
+        "timestamp": "2025-06-12T02:20:31.916Z"
+      },
+      {
+        "test": "Dependency: @testing-library/react",
+        "message": "^16.3.0",
+        "timestamp": "2025-06-12T02:20:31.916Z"
+      },
+      {
+        "test": "Dependency: @testing-library/jest-dom",
+        "message": "^6.6.3",
+        "timestamp": "2025-06-12T02:20:31.917Z"
+      },
+      {
+        "test": "Dependency: @testing-library/user-event",
+        "message": "^14.6.1",
+        "timestamp": "2025-06-12T02:20:31.917Z"
+      },
+      {
+        "test": "Dependency: jest",
+        "message": "^29.7.0",
+        "timestamp": "2025-06-12T02:20:31.917Z"
+      },
+      {
+        "test": "Dependency: @playwright/test",
+        "message": "^1.53.0",
+        "timestamp": "2025-06-12T02:20:31.917Z"
+      },
+      {
+        "test": "Dependency: @types/jest",
+        "message": "^29.5.14",
+        "timestamp": "2025-06-12T02:20:31.917Z"
+      },
+      {
+        "test": "Directory: src/__tests__",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Directory: src/__tests__/unit",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Directory: src/__tests__/integration",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Directory: src/__tests__/e2e",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Directory: src/__tests__/performance",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Config: jest.config.js",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Config: jest.config.integration.js",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.918Z"
+      },
+      {
+        "test": "Config: jest.setup.js",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Config: playwright.config.ts",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Config: tsconfig.json",
+        "message": "Exists",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Database Setup",
+        "message": "Test setup file exists",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Playwright Installation",
+        "message": "Installed",
+        "timestamp": "2025-06-12T02:20:31.920Z"
+      },
+      {
+        "test": "Playwright Browsers",
+        "message": "Available",
+        "timestamp": "2025-06-12T02:20:32.933Z"
+      },
+      {
+        "test": "Script: test:unit",
+        "message": "Defined",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Script: test:integration",
+        "message": "Defined",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Script: test:e2e",
+        "message": "Defined",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Script: test:performance",
+        "message": "Defined",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Script: test:all",
+        "message": "Defined",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Disk Access",
+        "message": "Working directory accessible",
+        "timestamp": "2025-06-12T02:20:32.934Z"
+      },
+      {
+        "test": "Write Permissions",
+        "message": "Can write to temp directory",
+        "timestamp": "2025-06-12T02:20:32.935Z"
+      }
+    ],
+    "failed": [
+      {
+        "test": "Env Var: NODE_ENV",
+        "message": "Missing",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Env Var: DATABASE_URL",
+        "message": "Missing",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      }
+    ],
+    "warnings": [
+      {
+        "test": "Env Var: SUPABASE_URL",
+        "message": "Not set (optional)",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Env Var: SUPABASE_ANON_KEY",
+        "message": "Not set (optional)",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      },
+      {
+        "test": "Env Var: NEXTAUTH_SECRET",
+        "message": "Not set (optional)",
+        "timestamp": "2025-06-12T02:20:31.919Z"
+      }
+    ]
+  }
+}

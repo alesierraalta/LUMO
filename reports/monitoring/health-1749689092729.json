@@ -1,0 +1,141 @@
+{
+  "timestamp": "2025-06-12T00:44:51.370Z",
+  "status": "warning",
+  "checks": {
+    "configuration": {
+      "status": "passed",
+      "details": {
+        "jest.config.js": {
+          "exists": true,
+          "size": 2935,
+          "lastModified": "2025-06-12T00:01:31.915Z"
+        },
+        "jest.config.integration.js": {
+          "exists": true,
+          "size": 1633,
+          "lastModified": "2025-06-11T23:30:54.094Z"
+        },
+        "jest.setup.js": {
+          "exists": true,
+          "size": 4409,
+          "lastModified": "2025-06-12T00:01:24.015Z"
+        },
+        "jest.setup.integration.js": {
+          "exists": true,
+          "size": 1225,
+          "lastModified": "2025-06-11T23:30:39.948Z"
+        },
+        "playwright.config.ts": {
+          "exists": true,
+          "size": 3119,
+          "lastModified": "2025-06-11T23:37:57.299Z"
+        },
+        "package.json": {
+          "exists": true,
+          "size": 14300,
+          "lastModified": "2025-06-12T00:43:26.931Z"
+        }
+      },
+      "issues": []
+    },
+    "dependencies": {
+      "status": "failed",
+      "installed": {
+        "@testing-library/react": "^16.3.0",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/user-event": "^14.6.1",
+        "jest": "^29.7.0",
+        "supertest": "^7.1.1"
+      },
+      "missing": [
+        "playwright"
+      ],
+      "outdated": []
+    },
+    "database": {
+      "status": "passed",
+      "connections": {
+        "prisma": {
+          "status": "connected",
+          "type": "SQLite"
+        },
+        "supabase": {
+          "status": "not_configured"
+        }
+      },
+      "issues": []
+    },
+    "testFiles": {
+      "status": "passed",
+      "directories": {
+        "src/__tests__/unit": {
+          "exists": true,
+          "fileCount": 1,
+          "files": [
+            "verification.test.ts"
+          ]
+        },
+        "src/__tests__/integration": {
+          "exists": true,
+          "fileCount": 4,
+          "files": [
+            "auth-api.test.ts",
+            "database-integration.test.ts",
+            "database.test.ts",
+            "schema-verification.test.ts"
+          ]
+        },
+        "src/__tests__/e2e": {
+          "exists": true,
+          "fileCount": 2,
+          "files": [
+            "auth.test.ts",
+            "inventory.test.ts"
+          ]
+        },
+        "src/__tests__/performance": {
+          "exists": true,
+          "fileCount": 2,
+          "files": [
+            "api-performance.test.ts",
+            "database-performance.test.ts"
+          ]
+        }
+      },
+      "totalTests": 9,
+      "issues": []
+    },
+    "performance": {
+      "status": "passed",
+      "benchmarks": {
+        "unitTests": {
+          "time": 1341,
+          "threshold": 5000
+        },
+        "integrationTests": {
+          "time": 2665,
+          "threshold": 10000
+        },
+        "totalTime": 0
+      },
+      "issues": []
+    },
+    "cicd": {
+      "status": "passed",
+      "workflows": {
+        ".github/workflows/ci.yml": {
+          "exists": true
+        }
+      },
+      "issues": []
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "dependencies",
+      "message": "Install missing test dependencies",
+      "action": "npm install playwright"
+    }
+  ]
+}

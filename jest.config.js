@@ -22,6 +22,8 @@ const customJestConfig = {
     '^@/services/(.*)$': '<rootDir>/src/services/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
     '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
+    '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@/test-utils$': '<rootDir>/src/__tests__/utils/test-utils',
     
     // Handle CSS imports (with CSS modules)
     '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
@@ -45,19 +47,42 @@ const customJestConfig = {
     '!src/app/globals.css',
     '!src/app/layout.tsx',
     '!**/node_modules/**',
+    // Exclude specific files that don't need coverage
+    '!src/lib/choreo-*',
+    '!src/lib/prisma-monkey-patch.*',
+    '!src/lib/runtime-p6001-patch.ts',
   ],
   
-  // Coverage thresholds
+  // Enhanced coverage thresholds for comprehensive testing
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
+      branches: 75,
+      functions: 80,
       lines: 80,
       statements: 80,
     },
+    // Specific thresholds for critical components
+    'src/components/auth/**/*.{js,jsx,ts,tsx}': {
+      branches: 80,
+      functions: 85,
+      lines: 85,
+      statements: 85,
+    },
+    'src/components/inventory/**/*.{js,jsx,ts,tsx}': {
+      branches: 75,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    'src/lib/utils.ts': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
   },
   
-  // Test patterns
+  // Test patterns - prioritize unit tests
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
     '<rootDir>/src/**/*.{test,spec}.{js,jsx,ts,tsx}',
@@ -71,6 +96,9 @@ const customJestConfig = {
     '<rootDir>/scripts/',
     '<rootDir>/e2e/',
     '<rootDir>/performance/',
+    '<rootDir>/src/__tests__/integration/',
+    '<rootDir>/src/__tests__/e2e/',
+    '<rootDir>/src/__tests__/performance/',
   ],
   
   // Transform configuration
@@ -78,10 +106,15 @@ const customJestConfig = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
   
+  // Transform node_modules that use ES modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(@supabase|@noble|@paralleldrive|@testing-library)/)',
+  ],
+  
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   
-  // Verbose output
+  // Verbose output for better debugging
   verbose: true,
   
   // Max workers for parallel execution
@@ -92,6 +125,45 @@ const customJestConfig = {
   
   // Restore mocks after each test
   restoreMocks: true,
+  
+  // Enhanced test timeout for complex component tests
+  testTimeout: 10000,
+  
+  // Collect coverage from all files by default
+  collectCoverage: false,
+  
+  // Coverage reporters
+  coverageReporters: [
+    'text',
+    'text-summary',
+    'html',
+    'lcov',
+    'json-summary',
+  ],
+  
+  // Coverage directory
+  coverageDirectory: '<rootDir>/coverage',
+  
+  // Global setup for React Testing Library
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
+    },
+  },
+  
+  // Error handling
+  errorOnDeprecated: true,
+  
+  // Notify mode for watch
+  notify: false,
+  
+  // Watch plugins
+  watchPlugins: [
+    'jest-watch-typeahead/filename',
+    'jest-watch-typeahead/testname',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

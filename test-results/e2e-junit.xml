@@ -1,0 +1,186 @@
+<testsuites id="" name="" tests="73" failures="0" skipped="0" errors="0" time="44.774080000000005">
+<testsuite name="auth.teardown.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="cleanup" tests="1" failures="0" skipped="0" time="0.004" errors="0">
+<testcase name="cleanup auth states" classname="auth.teardown.ts" time="0.004">
+<system-out>
+<![CDATA[✅ Removed user auth file
+✅ Removed admin auth file
+✅ Removed empty auth directory
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="auth.setup.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="setup" tests="2" failures="0" skipped="0" time="1.817" errors="0">
+<testcase name="authenticate as regular user" classname="auth.setup.ts" time="0.911">
+</testcase>
+<testcase name="authenticate as admin user" classname="auth.setup.ts" time="0.906">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="chromium" tests="5" failures="0" skipped="0" time="7.863" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="1.387">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="2.305">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.43">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="1.429">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="1.312">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="chromium" tests="5" failures="0" skipped="0" time="9.106" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="1.374">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="2.838">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="2.846">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="0.999">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="1.049">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="firefox" tests="5" failures="0" skipped="0" time="11.33" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="2.337">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="2.576">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="2.07">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="2.138">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="2.209">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="firefox" tests="5" failures="0" skipped="0" time="13.144" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="1.866">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="4.568">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="3.836">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="1.366">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="1.508">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="webkit" tests="5" failures="0" skipped="0" time="9.721" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="1.576">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="2.082">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.899">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="2.439">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="1.725">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="webkit" tests="5" failures="0" skipped="0" time="10.772" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="1.572">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="3.073">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="2.781">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="1.353">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="1.993">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Mobile Chrome" tests="5" failures="0" skipped="0" time="6.204" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="0.901">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="1.877">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.139">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="1.293">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="0.994">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Mobile Chrome" tests="5" failures="0" skipped="0" time="8.157" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="0.837">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="2.367">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="2.658">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="1.21">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="1.085">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Mobile Safari" tests="5" failures="0" skipped="0" time="8.544" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="1.342">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="2.199">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.242">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="2.439">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="1.322">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Mobile Safari" tests="5" failures="0" skipped="0" time="12.076" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="1.631">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="3.013">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="4.036">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="1.315">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="2.081">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Microsoft Edge" tests="5" failures="0" skipped="0" time="12.701" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="2.387">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="4.147">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.965">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="1.664">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="2.538">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Microsoft Edge" tests="5" failures="0" skipped="0" time="12.912" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="2.53">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="2.807">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="3.575">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="2.049">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="1.951">
+</testcase>
+</testsuite>
+<testsuite name="auth.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Google Chrome" tests="5" failures="0" skipped="0" time="6.01" errors="0">
+<testcase name="Authentication Flow › should load the application homepage" classname="auth.test.ts" time="0.973">
+</testcase>
+<testcase name="Authentication Flow › should be able to navigate to different routes" classname="auth.test.ts" time="1.819">
+</testcase>
+<testcase name="Authentication Flow › should handle 404 pages gracefully" classname="auth.test.ts" time="1.251">
+</testcase>
+<testcase name="Authentication Flow › should respond to basic interactions" classname="auth.test.ts" time="0.829">
+</testcase>
+<testcase name="Authentication Flow › should load login page" classname="auth.test.ts" time="1.138">
+</testcase>
+</testsuite>
+<testsuite name="inventory.test.ts" timestamp="2025-06-12T02:22:26.658Z" hostname="Google Chrome" tests="5" failures="0" skipped="0" time="6.233" errors="0">
+<testcase name="Inventory Management › should redirect to login when accessing protected routes" classname="inventory.test.ts" time="0.751">
+</testcase>
+<testcase name="Inventory Management › should handle inventory route navigation" classname="inventory.test.ts" time="2.382">
+</testcase>
+<testcase name="Inventory Management › should handle product management routes" classname="inventory.test.ts" time="1.495">
+</testcase>
+<testcase name="Inventory Management › should handle dashboard route" classname="inventory.test.ts" time="0.786">
+</testcase>
+<testcase name="Inventory Management › should maintain basic page functionality" classname="inventory.test.ts" time="0.819">
+</testcase>
+</testsuite>
+</testsuites>

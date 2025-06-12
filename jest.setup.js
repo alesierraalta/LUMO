@@ -1,5 +1,9 @@
 // Jest setup file for React Testing Library and global test configuration
 
+// Add TextEncoder/TextDecoder for Node.js environment
+global.TextEncoder = require('util').TextEncoder
+global.TextDecoder = require('util').TextDecoder
+
 // Import jest-dom custom matchers
 import '@testing-library/jest-dom'
 

@@ -1,39 +1,36 @@
 apiVersion: core.choreo.dev/v1alpha1
 kind: Component
 metadata:
-  name: lumo-inventory-dockerfile
+  name: lumo-inventory-optimized
   projectName: ${CHOREO_PROJECT}
-  description: "LUMO Inventory Management System - Dockerfile Build (Buildpack Bypass)"
+  description: "LUMO Inventory Management System - Optimized for Perfect Deployment"
 spec:
   type: Web Application
-  # REMOVED: buildPack to force Dockerfile usage
   runtime:
     type: docker
     dockerfile: ./Dockerfile
   build:
-    # Force Dockerfile build instead of buildpacks
-    dockerfile: ./Dockerfile # Changed for consistency
-    # Build environment variables
+    dockerfile: ./Dockerfile
+    # Optimized build environment
     env:
       NEXT_PUBLIC_DEPLOY_ENV: choreo
       NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       NEXT_TELEMETRY_DISABLED: "1"
-      NODE_OPTIONS: "--max-old-space-size=4096"
+      NODE_OPTIONS: "--max-old-space-size=6144"
       NODE_ENV: production
-      # Database connection for Prisma client generation
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      # Disable caching to prevent corruption
+      # Enhanced build optimization
       DOCKER_BUILDKIT_CACHE: "false"
       BUILDKIT_INLINE_CACHE: "0"
-    # Use simple docker build command
-    command: echo "Using Dockerfile build - no custom build command needed"
+      NEXT_BUILD_OPTIMIZATION: "true"
+    command: echo "Using optimized Dockerfile build"
     retryCount: 3
-    timeoutSeconds: 600
+    timeoutSeconds: 900
     network:
-      connectTimeoutSeconds: 120
+      connectTimeoutSeconds: 180
   deploy:
-    # Simple startup command - deployment scripts are in Dockerfile
+    # Enhanced startup with validation
     command: node server.js
     env:
       NODE_ENV: production
@@ -42,8 +39,12 @@ spec:
       DEPLOY_ENV: choreo
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      # Performance optimization
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      # Health monitoring
+      HEALTH_CHECK_ENABLED: "true"
+      HEALTH_CHECK_INTERVAL: "30000"
     containerPort: 3000
-    # No baseMount needed for Docker builds
   env:
     - name: NODE_ENV
       value: production
@@ -53,45 +54,71 @@ spec:
       value: "0.0.0.0"
     - name: NEXT_PUBLIC_APP_VERSION
       value: ${GITHUB_SHA}
-    # Database Configuration - REQUIRED
+    # Enhanced database configuration
     - name: DATABASE_URL
       valueFrom:
         secretRef:
           name: DATABASE_URL
-    # JWT Secret for custom auth - REQUIRED
+    # JWT Secret for authentication
     - name: JWT_SECRET
       valueFrom:
         secretRef:
           name: JWT_SECRET
+    # Optional Supabase configuration
+    - name: SUPABASE_URL
+      valueFrom:
+        secretRef:
+          name: SUPABASE_URL
+          optional: true
+    - name: SUPABASE_ANON_KEY
+      valueFrom:
+        secretRef:
+          name: SUPABASE_ANON_KEY
+          optional: true
+  # Enhanced resource allocation for perfect performance
   resources:
     cpu:
-      units: 2
+      units: 4
     memory:
-      units: 4Gi
+      units: 8Gi
+  # Optimized scaling configuration
   scaling:
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 80
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  # Enhanced health checks for reliability
   healthCheck:
     readinessProbe:
       httpGet:
         path: /api/health
         port: 3000
-      initialDelaySeconds: 30
-      periodSeconds: 15
-      timeoutSeconds: 10
+      initialDelaySeconds: 45
+      periodSeconds: 10
+      timeoutSeconds: 15
       failureThreshold: 3
+      successThreshold: 2
     livenessProbe:
       httpGet:
         path: /api/health
         port: 3000
-      initialDelaySeconds: 45
-      periodSeconds: 30
-      timeoutSeconds: 10
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      timeoutSeconds: 15
       failureThreshold: 3
+    # Startup probe for initial deployment
+    startupProbe:
+      httpGet:
+        path: /api/health
+        port: 3000
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 15
+      failureThreshold: 10
   expose:
     type: HTTP
     port: 3000
+  # Optimized ignore patterns for faster builds
   ignoreSpec:
     ignore:
       - node_modules
@@ -113,8 +140,11 @@ spec:
       - "**/logs/**"
       - "**/temp/**"
       - "**/tmp/**"
-      # Exclude files that might cause cache issues
       - "**/.cache/**"
       - "**/*.cache"
       - next.config.backup.ts
-      - next.config.simple.js 
+      - next.config.simple.js
+      - "**/*.md"
+      - "**/docs/**"
+      - "**/test-results/**"
+      - "**/playwright-report/**" 

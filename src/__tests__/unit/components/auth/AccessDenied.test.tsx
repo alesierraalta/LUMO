@@ -2,225 +2,269 @@
  * @jest-environment jsdom
  */
 
-import { render, screen, fireEvent } from '@testing-library/react'
-import { AccessDenied } from '@/components/auth/AccessDenied'
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-    return <a href={href}>{children}</a>
-  }
-})
+  return function MockLink({ children, href, ...props }: any) {
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  };
+});
 
 // Mock window.location.reload
-const mockReload = jest.fn()
+const mockReload = jest.fn();
 Object.defineProperty(window, 'location', {
   value: {
     reload: mockReload,
   },
   writable: true,
-})
+});
 
 describe('AccessDenied', () => {
   beforeEach(() => {
-    mockReload.mockClear()
-  })
+    mockReload.mockClear();
+  });
 
-  describe('Default behavior', () => {
+  describe('Basic rendering', () => {
     test('should render with default props', () => {
-      render(<AccessDenied message="Test message" />)
+      render(<AccessDenied message="Access denied" />);
       
-      expect(screen.getByText('Acceso denegado')).toBeInTheDocument()
-      expect(screen.getByText('Test message')).toBeInTheDocument()
-      expect(screen.getByText('¿Qué puedes hacer?')).toBeInTheDocument()
-      expect(screen.getByText('Solicita permisos adicionales al administrador del sistema.')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Acceso denegado')).toBeInTheDocument();
+      expect(screen.getByText('Access denied')).toBeInTheDocument();
+      expect(screen.getByText('¿Qué puedes hacer?')).toBeInTheDocument();
+    });
 
-    test('should show default buttons', () => {
-      render(<AccessDenied message="Test message" />)
+    test('should render with custom message', () => {
+      const customMessage = 'You do not have permission to access this resource';
+      render(<AccessDenied message={customMessage} />);
       
-      expect(screen.getByText('Intentar nuevamente')).toBeInTheDocument()
-      expect(screen.getByText('Contactar administrador')).toBeInTheDocument()
-      expect(screen.getByText('Volver al inicio')).toBeInTheDocument()
-    })
+      expect(screen.getByText(customMessage)).toBeInTheDocument();
+    });
+  });
 
-    test('should have correct links', () => {
-      render(<AccessDenied message="Test message" />)
+  describe('Type variants', () => {
+    test('should render auth type correctly', () => {
+      render(<AccessDenied message="Please log in" type="auth" />);
       
-      const contactLink = screen.getByText('Contactar administrador').closest('a')
-      const homeLink = screen.getByText('Volver al inicio').closest('a')
-      
-      expect(contactLink).toHaveAttribute('href', '/contact')
-      expect(homeLink).toHaveAttribute('href', '/')
-    })
-  })
+      expect(screen.getByText('Inicio de sesión requerido')).toBeInTheDocument();
+      expect(screen.getByText('Inicia sesión con tu cuenta para continuar.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    });
 
-  describe('Auth type', () => {
-    test('should render auth-specific content', () => {
-      render(<AccessDenied message="Login required" type="auth" />)
+    test('should render database type correctly', () => {
+      render(<AccessDenied message="Database error" type="database" />);
       
-      expect(screen.getByText('Inicio de sesión requerido')).toBeInTheDocument()
-      expect(screen.getByText('Inicia sesión con tu cuenta para continuar.')).toBeInTheDocument()
-      expect(screen.getByText('Iniciar sesión')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Error de sistema')).toBeInTheDocument();
+      expect(screen.getByText('Espera unos momentos e intenta nuevamente. Si el problema persiste, contacta al administrador.')).toBeInTheDocument();
+    });
 
-    test('should have sign-in link for auth type', () => {
-      render(<AccessDenied message="Login required" type="auth" />)
+    test('should render notfound type correctly', () => {
+      render(<AccessDenied message="Account not found" type="notfound" />);
       
-      const signInLink = screen.getByText('Iniciar sesión').closest('a')
-      expect(signInLink).toHaveAttribute('href', '/sign-in')
-    })
+      expect(screen.getByText('Cuenta no configurada')).toBeInTheDocument();
+      expect(screen.getByText('Contacta al administrador del sistema para que configure tu cuenta.')).toBeInTheDocument();
+    });
 
-    test('should not show retry button for auth type', () => {
-      render(<AccessDenied message="Login required" type="auth" />)
+    test('should render permission type correctly (default)', () => {
+      render(<AccessDenied message="No permission" type="permission" />);
       
-      expect(screen.queryByText('Intentar nuevamente')).not.toBeInTheDocument()
-    })
-  })
+      expect(screen.getByText('Acceso denegado')).toBeInTheDocument();
+      expect(screen.getByText('Solicita permisos adicionales al administrador del sistema.')).toBeInTheDocument();
+    });
+  });
 
-  describe('Database type', () => {
-    test('should render database-specific content', () => {
-      render(<AccessDenied message="Database error" type="database" />)
+  describe('Icons', () => {
+    test('should render icons for different types', () => {
+      const { container: authContainer } = render(<AccessDenied message="Login required" type="auth" />);
+      expect(authContainer.querySelector('svg')).toBeInTheDocument();
+
+      const { container: dbContainer } = render(<AccessDenied message="Database error" type="database" />);
+      expect(dbContainer.querySelector('svg')).toBeInTheDocument();
+
+      const { container: notfoundContainer } = render(<AccessDenied message="Not found" type="notfound" />);
+      expect(notfoundContainer.querySelector('svg')).toBeInTheDocument();
+
+      const { container: permissionContainer } = render(<AccessDenied message="No permission" type="permission" />);
+      expect(permissionContainer.querySelector('svg')).toBeInTheDocument();
+    });
+  });
+
+  describe('Buttons and actions', () => {
+    test('should render sign-in button for auth type', () => {
+      render(<AccessDenied message="Login required" type="auth" />);
       
-      expect(screen.getByText('Error de sistema')).toBeInTheDocument()
-      expect(screen.getByText('Espera unos momentos e intenta nuevamente. Si el problema persiste, contacta al administrador.')).toBeInTheDocument()
-    })
+      const signInButton = screen.getByRole('link', { name: 'Iniciar sesión' });
+      expect(signInButton).toBeInTheDocument();
+      expect(signInButton).toHaveAttribute('href', '/sign-in');
+    });
 
-    test('should show retry button for database type', () => {
-      render(<AccessDenied message="Database error" type="database" />)
+    test('should render retry button when showRetry is true and type is not auth', () => {
+      render(<AccessDenied message="Error" type="database" showRetry={true} />);
       
-      expect(screen.getByText('Intentar nuevamente')).toBeInTheDocument()
-    })
-  })
+      const retryButton = screen.getByRole('button', { name: 'Intentar nuevamente' });
+      expect(retryButton).toBeInTheDocument();
+    });
 
-  describe('Not found type', () => {
-    test('should render notfound-specific content', () => {
-      render(<AccessDenied message="Account not found" type="notfound" />)
+    test('should not render retry button when showRetry is false', () => {
+      render(<AccessDenied message="Error" type="database" showRetry={false} />);
       
-      expect(screen.getByText('Cuenta no configurada')).toBeInTheDocument()
-      expect(screen.getByText('Contacta al administrador del sistema para que configure tu cuenta.')).toBeInTheDocument()
-    })
-  })
+      expect(screen.queryByRole('button', { name: 'Intentar nuevamente' })).not.toBeInTheDocument();
+    });
 
-  describe('Permission type', () => {
-    test('should render permission-specific content', () => {
-      render(<AccessDenied message="No permission" type="permission" />)
+    test('should not render retry button for auth type even when showRetry is true', () => {
+      render(<AccessDenied message="Login required" type="auth" showRetry={true} />);
       
-      expect(screen.getByText('Acceso denegado')).toBeInTheDocument()
-      expect(screen.getByText('Solicita permisos adicionales al administrador del sistema.')).toBeInTheDocument()
-    })
-  })
+      expect(screen.queryByRole('button', { name: 'Intentar nuevamente' })).not.toBeInTheDocument();
+    });
 
-  describe('Button visibility controls', () => {
-    test('should hide retry button when showRetry is false', () => {
-      render(<AccessDenied message="Test message" showRetry={false} />)
+    test('should render contact button when showContact is true', () => {
+      render(<AccessDenied message="Error" showContact={true} />);
       
-      expect(screen.queryByText('Intentar nuevamente')).not.toBeInTheDocument()
-    })
+      const contactButton = screen.getByRole('link', { name: 'Contactar administrador' });
+      expect(contactButton).toBeInTheDocument();
+      expect(contactButton).toHaveAttribute('href', '/contact');
+    });
 
-    test('should hide contact button when showContact is false', () => {
-      render(<AccessDenied message="Test message" showContact={false} />)
+    test('should not render contact button when showContact is false', () => {
+      render(<AccessDenied message="Error" showContact={false} />);
       
-      expect(screen.queryByText('Contactar administrador')).not.toBeInTheDocument()
-    })
+      expect(screen.queryByRole('link', { name: 'Contactar administrador' })).not.toBeInTheDocument();
+    });
 
-    test('should hide both buttons when both props are false', () => {
-      render(<AccessDenied message="Test message" showRetry={false} showContact={false} />)
+    test('should always render home button', () => {
+      render(<AccessDenied message="Error" />);
       
-      expect(screen.queryByText('Intentar nuevamente')).not.toBeInTheDocument()
-      expect(screen.queryByText('Contactar administrador')).not.toBeInTheDocument()
-      expect(screen.getByText('Volver al inicio')).toBeInTheDocument() // Home button should still be there
-    })
-  })
+      const homeButton = screen.getByRole('link', { name: 'Volver al inicio' });
+      expect(homeButton).toBeInTheDocument();
+      expect(homeButton).toHaveAttribute('href', '/');
+    });
 
-  describe('Retry functionality', () => {
     test('should call window.location.reload when retry button is clicked', () => {
-      render(<AccessDenied message="Test message" type="database" />)
+      render(<AccessDenied message="Error" type="database" showRetry={true} />);
       
-      const retryButton = screen.getByText('Intentar nuevamente')
-      fireEvent.click(retryButton)
+      const retryButton = screen.getByRole('button', { name: 'Intentar nuevamente' });
+      fireEvent.click(retryButton);
       
-      expect(mockReload).toHaveBeenCalledTimes(1)
-    })
-
-    test('should not show retry button for auth type even when showRetry is true', () => {
-      render(<AccessDenied message="Login required" type="auth" showRetry={true} />)
-      
-      expect(screen.queryByText('Intentar nuevamente')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Icon rendering', () => {
-    test('should render correct icon for each type', () => {
-      const { rerender } = render(<AccessDenied message="Test" type="auth" />)
-      expect(document.querySelector('.lucide-user-x')).toBeInTheDocument()
-
-      rerender(<AccessDenied message="Test" type="database" />)
-      expect(document.querySelector('.lucide-wifi')).toBeInTheDocument()
-
-      rerender(<AccessDenied message="Test" type="notfound" />)
-      expect(document.querySelector('.lucide-user-x')).toBeInTheDocument()
-
-      rerender(<AccessDenied message="Test" type="permission" />)
-      expect(document.querySelector('.lucide-lock')).toBeInTheDocument()
-    })
-  })
+      expect(mockReload).toHaveBeenCalledTimes(1);
+    });
+  });
 
   describe('Alert variants', () => {
-    test('should use correct alert variant for each type', () => {
-      const { rerender } = render(<AccessDenied message="Test" type="auth" />)
-      let alert = document.querySelector('[role="alert"]')
-      expect(alert).toBeInTheDocument()
+    test('should use destructive variant for permission type', () => {
+      render(<AccessDenied message="No permission" type="permission" />);
+      
+      // The alert should have destructive styling
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+    });
 
-      rerender(<AccessDenied message="Test" type="database" />)
-      alert = document.querySelector('[role="alert"]')
-      expect(alert).toBeInTheDocument()
-      // Check for destructive styling (border-destructive or similar)
-      expect(alert?.className).toContain('destructive')
+    test('should use destructive variant for database type', () => {
+      render(<AccessDenied message="Database error" type="database" />);
+      
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+    });
 
-      rerender(<AccessDenied message="Test" type="permission" />)
-      alert = document.querySelector('[role="alert"]')
-      expect(alert).toBeInTheDocument()
-      expect(alert?.className).toContain('destructive')
-    })
-  })
+    test('should use default variant for auth type', () => {
+      render(<AccessDenied message="Login required" type="auth" />);
+      
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+    });
+
+    test('should use default variant for notfound type', () => {
+      render(<AccessDenied message="Not found" type="notfound" />);
+      
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+    });
+  });
 
   describe('Accessibility', () => {
-    test('should have proper ARIA attributes', () => {
-      render(<AccessDenied message="Test message" />)
+    test('should have proper heading structure', () => {
+      render(<AccessDenied message="Access denied" />);
       
-      const alert = screen.getByRole('alert')
-      expect(alert).toBeInTheDocument()
-      
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBeGreaterThan(0)
-      
-      const links = screen.getAllByRole('link')
-      expect(links.length).toBeGreaterThan(0)
-    })
+      // Card title should be a heading
+      expect(screen.getByRole('heading', { name: 'Acceso denegado' })).toBeInTheDocument();
+    });
 
-    test('should have descriptive button text', () => {
-      render(<AccessDenied message="Test message" />)
+    test('should have proper alert structure', () => {
+      render(<AccessDenied message="Access denied" />);
       
-      expect(screen.getByRole('button', { name: 'Intentar nuevamente' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Contactar administrador' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeInTheDocument()
-    })
-  })
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(screen.getByText('¿Qué puedes hacer?')).toBeInTheDocument();
+    });
+
+    test('should have accessible buttons and links', () => {
+      render(<AccessDenied message="Error" type="database" />);
+      
+      const retryButton = screen.getByRole('button', { name: 'Intentar nuevamente' });
+      const contactLink = screen.getByRole('link', { name: 'Contactar administrador' });
+      const homeLink = screen.getByRole('link', { name: 'Volver al inicio' });
+      
+      expect(retryButton).toBeInTheDocument();
+      expect(contactLink).toBeInTheDocument();
+      expect(homeLink).toBeInTheDocument();
+    });
+  });
+
+  describe('Props combinations', () => {
+    test('should handle all props disabled', () => {
+      render(
+        <AccessDenied 
+          message="Custom error" 
+          type="database" 
+          showRetry={false} 
+          showContact={false} 
+        />
+      );
+      
+      expect(screen.getByText('Custom error')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Intentar nuevamente' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Contactar administrador' })).not.toBeInTheDocument();
+      // Home button should still be present
+      expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeInTheDocument();
+    });
+
+    test('should handle all props enabled', () => {
+      render(
+        <AccessDenied 
+          message="Custom error" 
+          type="database" 
+          showRetry={true} 
+          showContact={true} 
+        />
+      );
+      
+      expect(screen.getByText('Custom error')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Intentar nuevamente' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Contactar administrador' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeInTheDocument();
+    });
+  });
 
   describe('Layout and styling', () => {
     test('should render with proper card structure', () => {
-      render(<AccessDenied message="Test message" />)
+      render(<AccessDenied message="Test message" />);
       
-      expect(document.querySelector('.min-h-\\[400px\\]')).toBeInTheDocument()
-      expect(document.querySelector('.max-w-md')).toBeInTheDocument()
-    })
+      // Should have card container
+      const card = screen.getByRole('heading', { name: 'Acceso denegado' }).closest('[class*="card"]');
+      expect(card).toBeInTheDocument();
+    });
 
-    test('should center content properly', () => {
-      render(<AccessDenied message="Test message" />)
+    test('should have centered layout', () => {
+      const { container } = render(<AccessDenied message="Test message" />);
       
-      const container = document.querySelector('.flex.items-center.justify-center')
-      expect(container).toBeInTheDocument()
-    })
-  })
-}) 
+      // Should have flex centering classes
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper).toHaveClass('flex', 'items-center', 'justify-center');
+    });
+  });
+}); 

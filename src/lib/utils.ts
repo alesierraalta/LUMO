@@ -48,6 +48,9 @@ export function ensureValidDate(dateInput: any): Date | null {
       const parsedDate = new Date(dateInput);
       if (!isNaN(parsedDate.getTime())) {
         return parsedDate;
+      } else {
+        console.error("Failed to parse date string:", dateInput);
+        return null;
       }
     } catch (error) {
       console.error("Failed to parse date string:", dateInput);

@@ -402,76 +402,98 @@ export default async function InventoryPage({
   const { tab = "inventory" } = await searchParams;
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="container mx-auto py-4 sm:py-6 px-4 sm:px-6 space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between">
-            <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
-            <div className="flex space-x-2">
-              <Link href="/inventory/add" className={buttonVariants({ variant: "default" })}>
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
+              <p className="text-muted-foreground text-sm">
+                Gestiona tu inventario, categorías y ubicaciones de productos
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+              <Link href="/inventory/add" className={buttonVariants({ variant: "default", size: "sm" })}>
+                <Plus className="mr-2 h-4 w-4" /> 
+                <span className="hidden sm:inline">Nuevo Producto</span>
+                <span className="sm:hidden">Nuevo</span>
               </Link>
-              <Link href="/inventory/import" className={buttonVariants({ variant: "outline" })}>
+              <Link href="/inventory/import" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <Upload className="mr-2 h-4 w-4" />
                 Importar
               </Link>
-              <Link href="/inventory/scan-duplicates" className={buttonVariants({ variant: "secondary" })}>
-                Detectar Duplicados
+              <Link href="/inventory/scan-duplicates" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Filter className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Detectar Duplicados</span>
+                <span className="sm:hidden">Duplicados</span>
               </Link>
             </div>
           </div>
-          <p className="text-muted-foreground">
-            Gestiona tu inventario, categorías y ubicaciones de productos
-          </p>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           <Button 
             asChild 
             variant="outline"
-            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+            className="h-auto py-3 px-2 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
           >
-            <Link href="/inventory/movements" className="flex flex-col items-center gap-1 text-center">
-              <BarChart3 className="h-5 w-5" />
-              <span className="text-sm">Ver Movimientos</span>
+            <Link href="/inventory/movements" className="flex flex-col items-center gap-1.5 text-center">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Ver Movimientos</span>
+                <span className="sm:hidden">Movimientos</span>
+              </span>
             </Link>
           </Button>
           <Button 
             asChild 
             variant="outline"
-            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+            className="h-auto py-3 px-2 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
           >
-            <Link href="/inventory/adjust" className="flex flex-col items-center gap-1 text-center">
-              <Filter className="h-5 w-5" />
-              <span className="text-sm">Ajustar Stock</span>
+            <Link href="/inventory/adjust" className="flex flex-col items-center gap-1.5 text-center">
+              <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Ajustar Stock</span>
+                <span className="sm:hidden">Ajustar</span>
+              </span>
             </Link>
           </Button>
           <Button 
             asChild 
             variant="outline"
-            className="h-auto py-3 bg-gradient-to-br from-amber-500/10 to-amber-600/5 hover:from-amber-500/20 hover:to-amber-600/10 transition-all duration-300 hover:shadow-md border-amber-500/30 hover:border-amber-500/40 text-amber-700"
+            className="h-auto py-3 px-2 bg-gradient-to-br from-amber-500/10 to-amber-600/5 hover:from-amber-500/20 hover:to-amber-600/10 transition-all duration-300 hover:shadow-md border-amber-500/30 hover:border-amber-500/40 text-amber-700"
           >
-            <Link href="/inventory/sales/new" className="flex flex-col items-center gap-1 text-center">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="text-sm">Nueva Venta</span>
+            <Link href="/inventory/sales/new" className="flex flex-col items-center gap-1.5 text-center">
+              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Nueva Venta</span>
+                <span className="sm:hidden">Venta</span>
+              </span>
             </Link>
           </Button>
           <Button 
             asChild 
-            className="h-auto py-3 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all hover:shadow-md"
+            className="h-auto py-3 px-2 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all hover:shadow-md"
           >
-            <Link href="/inventory/new" className="flex flex-col items-center gap-1 text-center">
-              <PlusCircle className="h-5 w-5" />
-              <span className="text-sm">Nuevo Producto</span>
+            <Link href="/inventory/new" className="flex flex-col items-center gap-1.5 text-center">
+              <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium text-primary-foreground">
+                <span className="hidden sm:inline">Nuevo Producto</span>
+                <span className="sm:hidden">Nuevo</span>
+              </span>
             </Link>
           </Button>
           <Button 
             asChild 
             variant="outline"
-            className="h-auto py-3 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30"
+            className="h-auto py-3 px-2 bg-gradient-to-br from-background to-muted/50 hover:from-primary/5 hover:to-primary/10 transition-all duration-300 hover:shadow-md border-primary/20 hover:border-primary/30 col-span-2 sm:col-span-1"
           >
-            <Link href="/inventory/import" className="flex flex-col items-center gap-1 text-center">
-              <Upload className="h-5 w-5" />
-              <span className="text-sm">Importar Excel</span>
+            <Link href="/inventory/import" className="flex flex-col items-center gap-1.5 text-center">
+              <Upload className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Importar Excel</span>
+                <span className="sm:hidden">Importar</span>
+              </span>
             </Link>
           </Button>
         </div>

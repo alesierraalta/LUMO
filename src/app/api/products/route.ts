@@ -22,8 +22,8 @@ const ProductSchema = z.object({
   name: z.string().min(1, { message: "El nombre del producto es requerido" }).max(100, { message: "El nombre no puede exceder los 100 caracteres" }),
   description: z.string().optional(),
   sku: z.string().min(1, { message: "El SKU es requerido" }),
-  cost: z.number().default(0),
-  price: z.number().min(0.01, { message: "El precio debe ser mayor que 0" }),
+  cost: z.number().min(0, { message: "El costo no puede ser negativo" }).optional(),
+  price: z.number().min(0, { message: "El precio no puede ser negativo" }).optional(),
   margin: z.number().optional(),
   categoryId: z.string().optional(),
   imageUrl: z.string().optional(),
@@ -156,22 +156,19 @@ export async function POST(request: Request) {
       );
     }
     
-    const cost = validatedData.cost || 0;
+    const cost = validatedData.cost;
     let price = validatedData.price;
     let margin = validatedData.margin;
     
-    // Asegurar que tanto el precio como el margen sean consistentes
-    if (margin !== undefined && margin > 0) {
-      // Si se proporciona margen, recalcular el precio
-      price = calculatePrice(cost, margin);
-    } else if (price !== undefined && price > 0) {
-      // Si no se proporciona margen pero sí precio, calcular el margen
-      margin = calculateMargin(cost, price);
-    } else {
-      // Caso por defecto si no hay información suficiente
-      margin = 0;
-      // El precio debe ser al menos mayor que el costo
-      price = Math.max(price, cost * 1.01);
+    // Calcular valores solo si se proporcionan tanto cost como price
+    if (cost !== undefined && price !== undefined) {
+      if (margin !== undefined && margin > 0) {
+        // Si se proporciona margen, recalcular el precio
+        price = calculatePrice(cost, margin);
+      } else if (price > 0) {
+        // Si no se proporciona margen pero sí precio, calcular el margen
+        margin = calculateMargin(cost, price);
+      }
     }
     
     // Create the inventory item with all product data
@@ -179,8 +176,6 @@ export async function POST(request: Request) {
       name: validatedData.name,
       description: validatedData.description,
       sku: validatedData.sku,
-      cost,
-      price,
       currentStock: validatedData.quantity || 0,
       minStockLevel: validatedData.minStockLevel || 5,
       categoryId: validatedData.categoryId,
@@ -188,7 +183,13 @@ export async function POST(request: Request) {
       createdById: user.id,
     };
 
-    // Only add margin and imageUrl if they are provided and the schema supports them
+    // Only add cost, price, margin and imageUrl if they are provided
+    if (cost !== undefined) {
+      createData.cost = cost;
+    }
+    if (price !== undefined) {
+      createData.price = price;
+    }
     if (margin !== undefined) {
       createData.margin = margin;
     }

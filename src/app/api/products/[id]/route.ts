@@ -115,34 +115,41 @@ export async function PATCH(
     // Prepare update data
     let updateData = { ...validatedData };
     
-    // Get current values for calculations
-    const newCost = updateData.cost !== undefined ? updateData.cost : Number(existingProduct.cost);
-    const newPrice = updateData.price !== undefined ? updateData.price : Number(existingProduct.price);
-    const newMargin = updateData.margin !== undefined ? updateData.margin : Number(existingProduct.margin);
+    // Get current values for calculations (handle null values)
+    const currentCost = existingProduct.cost ? Number(existingProduct.cost) : null;
+    const currentPrice = existingProduct.price ? Number(existingProduct.price) : null;
+    const currentMargin = existingProduct.margin ? Number(existingProduct.margin) : null;
+    
+    const newCost = updateData.cost !== undefined ? updateData.cost : currentCost;
+    const newPrice = updateData.price !== undefined ? updateData.price : currentPrice;
+    const newMargin = updateData.margin !== undefined ? updateData.margin : currentMargin;
     
     // Check if price, cost or margin is changing
-    const isPriceChanging = updateData.price !== undefined && updateData.price !== Number(existingProduct.price);
-    const isCostChanging = updateData.cost !== undefined && updateData.cost !== Number(existingProduct.cost);
-    const isMarginChanging = updateData.margin !== undefined && updateData.margin !== Number(existingProduct.margin);
+    const isPriceChanging = updateData.price !== undefined && updateData.price !== currentPrice;
+    const isCostChanging = updateData.cost !== undefined && updateData.cost !== currentCost;
+    const isMarginChanging = updateData.margin !== undefined && updateData.margin !== currentMargin;
     const isPricingChanged = isPriceChanging || isCostChanging || isMarginChanging;
     
-    // Ensure price and margin are consistent based on which one was updated
-    if (updateData.margin !== undefined && updateData.price === undefined) {
-      // Margin was updated, recalculate price
-      updateData.price = calculatePrice(newCost, newMargin);
-    } else if (updateData.price !== undefined && updateData.margin === undefined) {
-      // Price was updated, recalculate margin
-      updateData.margin = calculateMargin(newCost, newPrice);
-    } else if (updateData.cost !== undefined && updateData.price !== undefined && updateData.margin === undefined) {
-      // Cost and price were updated, recalculate margin
-      updateData.margin = calculateMargin(newCost, newPrice);
-    } else if (updateData.cost !== undefined && updateData.margin !== undefined && updateData.price === undefined) {
-      // Cost and margin were updated, recalculate price
-      updateData.price = calculatePrice(newCost, newMargin);
-    } else if (updateData.cost !== undefined && updateData.price === undefined && updateData.margin === undefined) {
-      // Only cost was updated, maintain margin and recalculate price
-      updateData.margin = Number(existingProduct.margin);
-      updateData.price = calculatePrice(newCost, updateData.margin);
+    // Only calculate relationships if we have the necessary values
+    if (newCost !== null && newPrice !== null) {
+      // Ensure price and margin are consistent based on which one was updated
+      if (updateData.margin !== undefined && updateData.price === undefined) {
+        // Margin was updated, recalculate price
+        updateData.price = calculatePrice(newCost, newMargin || 0);
+      } else if (updateData.price !== undefined && updateData.margin === undefined) {
+        // Price was updated, recalculate margin
+        updateData.margin = calculateMargin(newCost, newPrice);
+      } else if (updateData.cost !== undefined && updateData.price !== undefined && updateData.margin === undefined) {
+        // Cost and price were updated, recalculate margin
+        updateData.margin = calculateMargin(newCost, newPrice);
+      } else if (updateData.cost !== undefined && updateData.margin !== undefined && updateData.price === undefined) {
+        // Cost and margin were updated, recalculate price
+        updateData.price = calculatePrice(newCost, newMargin || 0);
+      } else if (updateData.cost !== undefined && updateData.price === undefined && updateData.margin === undefined && currentMargin !== null) {
+        // Only cost was updated, maintain margin and recalculate price
+        updateData.margin = currentMargin;
+        updateData.price = calculatePrice(newCost, currentMargin);
+      }
     }
     
     // Update the inventory item

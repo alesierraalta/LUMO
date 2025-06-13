@@ -216,7 +216,7 @@ export async function POST(request: Request) {
             email: rootAdminUser.email,
             firstName: rootAdminUser.firstName,
             lastName: rootAdminUser.lastName,
-            role: 'admin'
+            role: 'ADMIN'
           },
           timestamp: new Date().toISOString()
         }), {

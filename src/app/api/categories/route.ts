@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         id: 'dd97c238-6649-4e31-979b-c9ef12959998',
         email: 'alesierraalta@gmail.com',
         name: 'Alejandro Sierra (ROOT)',
-        role: 'admin'
+        role: 'ADMIN'
       };
     }
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         id: 'dd97c238-6649-4e31-979b-c9ef12959998',
         email: 'alesierraalta@gmail.com',
         name: 'Alejandro Sierra (ROOT)',
-        role: 'admin'
+        role: 'ADMIN'
       };
     }
 

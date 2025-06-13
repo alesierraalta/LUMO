@@ -553,7 +553,15 @@ if (isChoreo) {
             return categoriesWithCount;
           }
           
-          return data;
+          // Convert snake_case to camelCase for consistency
+          return data.map((category: any) => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            createdById: category.created_by_id,
+            createdAt: new Date(category.created_at),
+            updatedAt: new Date(category.updated_at)
+          }));
         },
 
         findUnique: async (params: any) => {
@@ -568,18 +576,43 @@ if (isChoreo) {
 
           const { data, error } = await query.single();
           if (error) return null;
-          return data;
+          
+          // Convert snake_case to camelCase for consistency
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            createdById: data.created_by_id,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
         },
 
         create: async (params: any) => {
+          // Map camelCase to snake_case for Supabase
+          const supabaseData = {
+            name: params.data.name,
+            description: params.data.description,
+            created_by_id: params.data.createdById
+          };
+
           const { data, error } = await supabase
             .from('categories')
-            .insert([params.data])
+            .insert([supabaseData])
             .select()
             .single();
 
           if (error) throw error;
-          return data;
+          
+          // Convert back to camelCase for consistency
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            createdById: data.created_by_id,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
         }
       },
 

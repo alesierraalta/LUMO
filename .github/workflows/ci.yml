@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI Pipeline (Main)
 
 on:
   push:
@@ -15,6 +15,7 @@ env:
 
 jobs:
   test:
+    name: 🧪 Tests & Quality Checks
     runs-on: ubuntu-latest
 
     steps:

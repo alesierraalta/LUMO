@@ -1,10 +1,6 @@
 name: Perfect Test Suite - 100% Pass Required
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       skip_tests:
@@ -12,6 +8,9 @@ on:
         required: false
         default: false
         type: boolean
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
 
 env:
   NODE_VERSION: '20'

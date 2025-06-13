@@ -8,6 +8,7 @@ on:
       - 'supabase-migration.sql'
       - 'supabase-schema-fix.sql'
       - 'scripts/choreo-setup.js'
+      - 'src/app/api/products/route.ts'
   pull_request:
     branches: [ main ]
     paths:
@@ -15,6 +16,7 @@ on:
       - 'supabase-migration.sql'
       - 'supabase-schema-fix.sql'
       - 'scripts/choreo-setup.js'
+      - 'src/app/api/products/route.ts'
   workflow_dispatch:
 
 env:

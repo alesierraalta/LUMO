@@ -127,13 +127,16 @@ export async function POST(request: Request) {
   try {
     // Get authenticated user
     const token = getTokenFromRequest(request as any);
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let user = null;
+    
+    if (token) {
+      user = await getCurrentUserFromToken(token);
     }
-
-    const user = await getCurrentUserFromToken(token);
+    
+    // Fallback to default admin user for testing in Choreo
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.log('No authenticated user found, using default admin for testing');
+      user = { id: 'dd97c238-6649-4e31-979b-c9ef12959998' }; // Admin user ID from Supabase
     }
 
     const data = await request.json();

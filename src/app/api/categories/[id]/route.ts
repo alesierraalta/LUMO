@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
+import db from "@/lib/db-hybrid";
 import { z } from "zod";
 
 const CategoryUpdateSchema = z.object({
@@ -81,12 +81,31 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
+    
+    console.log('🗑️ Attempting to delete category:', resolvedParams.id);
+    
+    // Check if category has associated products
+    const productsCount = await db.inventoryItem.count({
+      where: { categoryId: resolvedParams.id }
+    });
+    
+    if (productsCount > 0) {
+      console.log('❌ Cannot delete category with associated products:', productsCount);
+      return NextResponse.json(
+        { error: `Cannot delete category. It has ${productsCount} associated products.` },
+        { status: 400 }
+      );
+    }
+    
     await db.category.delete({
       where: { id: resolvedParams.id },
     });
 
-    return new NextResponse(null, { status: 204 });
+    console.log('✅ Category deleted successfully:', resolvedParams.id);
+    return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {
+    console.error('❌ Error deleting category:', error);
+    
     if ((error as any).code === 'P2025') {
       return NextResponse.json(
         { error: 'Category not found' },
@@ -94,9 +113,8 @@ export async function DELETE(
       );
     }
 
-    console.error('Error deleting category:', error);
     return NextResponse.json(
-      { error: 'Failed to delete category' },
+      { error: 'Failed to delete category', details: (error as any).message },
       { status: 500 }
     );
   }

@@ -85,7 +85,10 @@ export async function POST(req: NextRequest) {
     const validatedData = CategorySchema.parse(body);
 
     const category = await db.category.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        createdById: user.id,
+      },
     });
 
     return NextResponse.json(category, { status: 201 });

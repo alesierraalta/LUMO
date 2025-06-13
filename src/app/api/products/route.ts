@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     }
 
     if (params.inStock) {
-      where.quantity = {
+      where.currentStock = {
         gt: 0,
       };
     }
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
           orderBy = { price: params.sortOrder || 'asc' };
           break;
         case 'stock':
-          orderBy = { quantity: params.sortOrder || 'asc' };
+          orderBy = { currentStock: params.sortOrder || 'asc' };
           break;
         default:
           orderBy = { name: params.sortOrder || 'asc' };

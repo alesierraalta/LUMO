@@ -171,7 +171,9 @@
     "deploy:user-edit-fix": "node scripts/deploy-user-edit-fix.js",
     "rollback:user-edit-fix": "node scripts/rollback-user-edit-fix.js",
     "validate:user-edit-fix": "node scripts/final-validation-checklist.js",
-    "validate:fix-ready": "node scripts/validate-fix-ready.js"
+    "validate:fix-ready": "node scripts/validate-fix-ready.js",
+    "choreo:setup": "node scripts/choreo-setup.js",
+    "choreo:fix-schema": "echo 'Run the SQL script in supabase-schema-fix.sql in your Supabase dashboard'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

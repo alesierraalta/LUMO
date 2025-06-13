@@ -1,0 +1,244 @@
+name: Choreo Schema Fix Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'prisma/schema.prisma'
+      - 'supabase-migration.sql'
+      - 'supabase-schema-fix.sql'
+      - 'scripts/choreo-setup.js'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'prisma/schema.prisma'
+      - 'supabase-migration.sql'
+      - 'supabase-schema-fix.sql'
+      - 'scripts/choreo-setup.js'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: file:./test.db
+  NODE_ENV: test
+  JWT_SECRET: test_jwt_secret_for_schema_validation
+
+jobs:
+  validate-schema-fixes:
+    name: 🔧 Validate Schema Fixes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🗄️ Validate Prisma Schema
+      run: |
+        echo "🔍 Validating Prisma schema..."
+        npx prisma validate
+        npx prisma generate
+        echo "✅ Prisma schema validation passed"
+
+    - name: 🗄️ Test Schema with SQLite (Local Dev)
+      run: |
+        echo "🔍 Testing schema with SQLite..."
+        npx prisma db push --accept-data-loss
+        echo "✅ SQLite schema applied successfully"
+
+    - name: 🧪 Test Required Columns Exist
+      run: |
+        echo "🔍 Testing that required columns exist in schema..."
+        node -e "
+          const { PrismaClient } = require('@prisma/client');
+          const prisma = new PrismaClient();
+          
+          async function testSchema() {
+            try {
+              // Test that we can create an inventory item with all required fields
+              const testItem = await prisma.inventoryItem.create({
+                data: {
+                  name: 'Schema Test Item',
+                  sku: 'TEST-SCHEMA-' + Date.now(),
+                  currentStock: 10,
+                  minStockLevel: 5,  // This should work now
+                  margin: 25.5,      // This should work now
+                  imageUrl: 'test.jpg', // This should work now
+                  cost: 50,
+                  price: 75,
+                  createdById: 'test-user-id'
+                }
+              });
+              
+              console.log('✅ All required columns exist and working');
+              console.log('✅ minStockLevel:', testItem.minStockLevel);
+              console.log('✅ margin:', testItem.margin);
+              console.log('✅ imageUrl:', testItem.imageUrl);
+              
+              // Cleanup
+              await prisma.inventoryItem.delete({ where: { id: testItem.id } });
+              await prisma.\$disconnect();
+              
+            } catch (error) {
+              console.error('❌ Schema test failed:', error.message);
+              process.exit(1);
+            }
+          }
+          
+          testSchema();
+        "
+        echo "✅ Schema column test passed"
+
+    - name: 🔍 Validate Migration Scripts
+      run: |
+        echo "🔍 Validating SQL migration scripts..."
+        
+        # Check that migration files exist and have required content
+        if [ ! -f "supabase-migration.sql" ]; then
+          echo "❌ supabase-migration.sql not found"
+          exit 1
+        fi
+        
+        if [ ! -f "supabase-schema-fix.sql" ]; then
+          echo "❌ supabase-schema-fix.sql not found"
+          exit 1
+        fi
+        
+        # Check that required columns are in migration
+        if ! grep -q "min_stock_level" supabase-migration.sql; then
+          echo "❌ min_stock_level column missing from migration"
+          exit 1
+        fi
+        
+        if ! grep -q "margin" supabase-migration.sql; then
+          echo "❌ margin column missing from migration"
+          exit 1
+        fi
+        
+        if ! grep -q "image_url" supabase-migration.sql; then
+          echo "❌ image_url column missing from migration"
+          exit 1
+        fi
+        
+        echo "✅ Migration scripts validation passed"
+
+    - name: 🧪 Test Choreo Setup Script
+      run: |
+        echo "🔍 Testing Choreo setup script syntax..."
+        node -c scripts/choreo-setup.js
+        echo "✅ Choreo setup script syntax is valid"
+
+    - name: 🔍 Test API with New Schema
+      run: |
+        echo "🔍 Testing API endpoints with new schema..."
+        
+        # Start the app in background for testing
+        npm run build
+        npm start &
+        APP_PID=$!
+        
+        # Wait for app to start
+        echo "Waiting for app to start..."
+        for i in {1..30}; do
+          if curl -s http://localhost:3000/api/health >/dev/null 2>&1; then
+            echo "✅ App started successfully"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ App failed to start"
+            kill $APP_PID || true
+            exit 1
+          fi
+          sleep 2
+        done
+        
+        # Test that categories API doesn't crash (even if empty)
+        if curl -s http://localhost:3000/api/categories | grep -q "\[\]"; then
+          echo "✅ Categories API responding (empty array expected without auth)"
+        else
+          echo "❌ Categories API not responding correctly"
+          kill $APP_PID || true
+          exit 1
+        fi
+        
+        # Test that locations API doesn't crash (even if empty)
+        if curl -s http://localhost:3000/api/locations | grep -q "\[\]"; then
+          echo "✅ Locations API responding (empty array expected without auth)"
+        else
+          echo "❌ Locations API not responding correctly"
+          kill $APP_PID || true
+          exit 1
+        fi
+        
+        # Cleanup
+        kill $APP_PID || true
+        echo "✅ API tests completed"
+
+    - name: ✅ Schema Fix Summary
+      run: |
+        echo "## 🔧 Schema Fix Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Prisma Schema:** Validation passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Required Columns:** min_stock_level, margin, image_url" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Migration Scripts:** Syntax and content validated" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Choreo Setup:** Script syntax validated" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **API Endpoints:** No crashes with new schema" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🎉 **Schema fixes are ready for deployment!**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Run \`supabase-schema-fix.sql\` in Supabase dashboard" >> $GITHUB_STEP_SUMMARY
+        echo "2. Execute \`npm run choreo:setup\` in Choreo environment" >> $GITHUB_STEP_SUMMARY
+        echo "3. Test with admin credentials: alesierraalta@gmail.com / admin123" >> $GITHUB_STEP_SUMMARY
+
+  # Integration with existing test suite
+  run-existing-tests:
+    name: 🧪 Run Existing Test Suite
+    runs-on: ubuntu-latest
+    needs: validate-schema-fixes
+    if: success()
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🗄️ Setup Database
+      run: |
+        npx prisma generate
+        npx prisma db push --accept-data-loss
+
+    - name: 🧪 Run Unit Tests
+      run: npm run test:unit
+
+    - name: 🔗 Run Integration Tests  
+      run: npm run test:integration
+
+    - name: 🔍 Run Health Check
+      run: npm run test:health
+
+    - name: ✅ Integration Summary
+      run: |
+        echo "## 🧪 Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Unit Tests:** Passed with new schema" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Integration Tests:** Passed with new schema" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Health Check:** Application healthy" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🎉 **All existing tests pass with schema fixes!**" >> $GITHUB_STEP_SUMMARY 

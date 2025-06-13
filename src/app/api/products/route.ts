@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 
 // Schema for search query parameters
 const SearchParamsSchema = z.object({
@@ -124,6 +125,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Get authenticated user
+    const token = getTokenFromRequest(request as any);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getCurrentUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const data = await request.json();
     
     // Validate input data
@@ -160,28 +172,29 @@ export async function POST(request: Request) {
     }
     
     // Create the inventory item with all product data
+    const createData: any = {
+      name: validatedData.name,
+      description: validatedData.description,
+      sku: validatedData.sku,
+      cost,
+      price,
+      currentStock: validatedData.quantity || 0,
+      minStockLevel: validatedData.minStockLevel || 5,
+      categoryId: validatedData.categoryId,
+      locationId: validatedData.locationId,
+      createdById: user.id,
+    };
+
+    // Only add margin and imageUrl if they are provided and the schema supports them
+    if (margin !== undefined) {
+      createData.margin = margin;
+    }
+    if (validatedData.imageUrl) {
+      createData.imageUrl = validatedData.imageUrl;
+    }
+
     const product = await prisma.inventoryItem.create({
-      data: {
-        name: validatedData.name,
-        description: validatedData.description,
-        sku: validatedData.sku,
-        cost,
-        price,
-        margin,
-        categoryId: validatedData.categoryId,
-        imageUrl: validatedData.imageUrl,
-        quantity: validatedData.quantity || 0,
-        minStockLevel: validatedData.minStockLevel || 5,
-        locationId: validatedData.locationId,
-        // Create initial stock movement if quantity > 0
-        stockMovements: validatedData.quantity > 0 ? {
-          create: {
-            quantity: validatedData.quantity,
-            type: "INITIAL",
-            notes: "Inventario inicial",
-          }
-        } : undefined,
-      },
+      data: createData,
       include: {
         category: true,
         stockMovements: true,

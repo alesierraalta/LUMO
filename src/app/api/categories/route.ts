@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
       user = await getCurrentUserFromToken(token);
     }
     
-    // Fallback to default admin user if no token or user found
+    // Fallback to default user if no token or user found
     if (!user) {
       user = {
         id: 'dd97c238-6649-4e31-979b-c9ef12959998',
         email: 'alesierraalta@gmail.com',
         name: 'Alejandro Sierra (ROOT)',
-        role: 'ADMIN'
+        role: 'USER'
       };
     }
 
@@ -59,17 +59,18 @@ export async function POST(req: NextRequest) {
       user = await getCurrentUserFromToken(token);
     }
     
-    // Fallback to default admin user if no token or user found
+    // Fallback to default user if no token or user found
     if (!user) {
       user = {
         id: 'dd97c238-6649-4e31-979b-c9ef12959998',
         email: 'alesierraalta@gmail.com',
         name: 'Alejandro Sierra (ROOT)',
-        role: 'ADMIN'
+        role: 'USER'
       };
     }
 
-    if (user.role !== 'admin') {
+    // Allow both ADMIN and USER roles to create categories
+    if (user.role !== 'ADMIN' && user.role !== 'USER') {
       return NextResponse.json(
         { error: "No tienes permisos para crear categorías" },
         { status: 403 }

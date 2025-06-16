@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole } from './test-setup'
 
 describe('Schema Verification Tests', () => {
@@ -12,6 +13,11 @@ describe('Schema Verification Tests', () => {
   afterAll(async () => {
     await cleanupTestDatabase()
     await disconnectDatabase()
+  })
+
+  beforeEach(async () => {
+    // Clean up any test data before each test to ensure isolation
+    await cleanupTestDatabase()
   })
 
   test('should create role with correct schema', async () => {

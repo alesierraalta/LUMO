@@ -53,6 +53,7 @@ async function main() {
       description: 'Permite acceder a la página Dashboard',
       resource: 'page',
       action: 'dashboard',
+      category: 'page',
     },
   });
 
@@ -64,6 +65,7 @@ async function main() {
       description: 'Permite acceder a la página Inventory',
       resource: 'page',
       action: 'inventory',
+      category: 'page',
     },
   });
 
@@ -75,6 +77,7 @@ async function main() {
       description: 'Permite acceder a la página Settings',
       resource: 'page',
       action: 'settings',
+      category: 'page',
     },
   });
 
@@ -86,6 +89,7 @@ async function main() {
       description: 'Permite acceder a la página User Management',
       resource: 'page',
       action: 'user-management',
+      category: 'page',
     },
   });
   
@@ -98,6 +102,7 @@ async function main() {
       description: 'Permite leer datos de inventario',
       resource: 'inventory',
       action: 'read',
+      category: 'data',
     },
   });
   
@@ -109,6 +114,7 @@ async function main() {
       description: 'Permite escribir datos de inventario',
       resource: 'inventory',
       action: 'write',
+      category: 'data',
     },
   });
 
@@ -120,6 +126,7 @@ async function main() {
       description: 'Permite leer datos de ventas',
       resource: 'sales',
       action: 'read',
+      category: 'data',
     },
   });
 
@@ -131,6 +138,7 @@ async function main() {
       description: 'Permite escribir datos de ventas',
       resource: 'sales',
       action: 'write',
+      category: 'data',
     },
   });
 
@@ -142,6 +150,7 @@ async function main() {
       description: 'Permite gestionar usuarios del sistema',
       resource: 'users',
       action: 'manage',
+      category: 'feature',
     },
   });
   

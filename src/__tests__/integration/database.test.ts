@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { 
   db, 
   testUsers, 
@@ -15,6 +15,11 @@ describe('Database Integration Tests', () => {
   afterAll(async () => {
     await cleanupTestDatabase()
     await disconnectDatabase()
+  })
+
+  beforeEach(async () => {
+    // Clean up any test data before each test to ensure isolation
+    await cleanupTestDatabase()
   })
 
   describe('User Management Integration', () => {

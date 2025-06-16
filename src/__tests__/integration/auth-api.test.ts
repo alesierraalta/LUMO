@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { NextRequest } from 'next/server'
-import { disconnectDatabase, cleanupTestDatabase } from './test-setup'
+import { disconnectDatabase, cleanupTestDatabase, setupTestDatabase } from './test-setup'
 
 // Import the actual API route handlers
 import { POST as loginHandler } from '@/app/api/auth/login/route'
@@ -8,9 +8,18 @@ import { GET as meHandler } from '@/app/api/auth/me/route'
 import { POST as registerHandler } from '@/app/api/auth/register/route'
 
 describe('Authentication API Integration Tests', () => {
+  beforeAll(async () => {
+    await setupTestDatabase()
+  })
+
   afterAll(async () => {
     await cleanupTestDatabase()
     await disconnectDatabase()
+  })
+
+  beforeEach(async () => {
+    // Clean up any test data before each test to ensure isolation
+    await cleanupTestDatabase()
   })
 
   describe('POST /api/auth/login', () => {

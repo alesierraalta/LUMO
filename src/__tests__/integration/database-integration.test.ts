@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { 
   db, 
   testUsers, 
@@ -17,6 +17,11 @@ describe('Database Integration Tests', () => {
     await disconnectDatabase()
   })
 
+  beforeEach(async () => {
+    // Clean up any test data before each test to ensure isolation
+    await cleanupTestDatabase()
+  })
+
   describe('User Management Integration', () => {
     it('should create and manage users correctly', async () => {
       const users = await db.user.findMany()
@@ -25,12 +30,25 @@ describe('Database Integration Tests', () => {
     })
 
     it('should create new users', async () => {
+      // First create a role for the user
+      const testRole = {
+        id: `test-role-${Date.now()}`,
+        name: `TEST_ROLE_${Date.now()}`,
+        description: 'Role for user creation test',
+        isSystem: false,
+        isActive: true
+      }
+      
+      const createdRole = await db.role.create(testRole)
+      expect(createdRole).toBeDefined()
+      
+      // Now create user with the created role
       const newUser = {
         id: `test-user-${Date.now()}`,
         email: `testuser${Date.now()}@test.lumo.dev`,
         name: 'Test Integration User',
         password: 'testpassword123',
-        roleId: 'test-role-id',
+        roleId: createdRole.id,
         isActive: true
       }
 
@@ -38,6 +56,7 @@ describe('Database Integration Tests', () => {
       expect(created).toBeDefined()
       expect(created.email).toBe(newUser.email)
       expect(created.name).toBe(newUser.name)
+      expect(created.roleId).toBe(createdRole.id)
     })
   })
 

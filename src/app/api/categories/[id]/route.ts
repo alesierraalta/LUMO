@@ -59,7 +59,7 @@ export async function PUT(
       );
     }
 
-    if ((error as any).code === 'P2025') {
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'P2025') {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
@@ -106,15 +106,16 @@ export async function DELETE(
   } catch (error) {
     console.error('❌ Error deleting category:', error);
     
-    if ((error as any).code === 'P2025') {
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'P2025') {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
       );
     }
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to delete category', details: (error as any).message },
+      { error: 'Failed to delete category', details: errorMessage },
       { status: 500 }
     );
   }

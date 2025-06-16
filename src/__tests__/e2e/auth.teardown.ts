@@ -10,14 +10,14 @@ teardown('cleanup auth states', async () => {
   try {
     await fs.unlink(authFile)
     console.log('✅ Removed user auth file')
-  } catch (error) {
+  } catch (_error) {
     // File might not exist, which is fine
   }
   
   try {
     await fs.unlink(adminAuthFile)
     console.log('✅ Removed admin auth file')
-  } catch (error) {
+  } catch (_error) {
     // File might not exist, which is fine
   }
   
@@ -29,7 +29,7 @@ teardown('cleanup auth states', async () => {
       await fs.rmdir(authDir)
       console.log('✅ Removed empty auth directory')
     }
-  } catch (error) {
+  } catch (_error) {
     // Directory might not exist or might not be empty, which is fine
   }
 }) 

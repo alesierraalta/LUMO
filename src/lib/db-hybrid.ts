@@ -4,6 +4,8 @@
  * - Choreo Production: Supabase ONLY
  */
 
+import { DatabaseOptions } from '../types'
+
 // Environment detection - Choreo ONLY uses Supabase
 const isProduction = process.env.NODE_ENV === 'production';
 const isChoreo = process.env.CHOREO_DEPLOYMENT === 'true' || !!process.env.SUPABASE_URL;
@@ -16,9 +18,98 @@ console.log('🔍 Database Environment:', {
   deployment: isChoreo ? 'CHOREO (Supabase Only)' : 'LOCAL (SQLite)'
 });
 
+// Database client types
+interface DatabaseClient {
+  user: UserOperations
+  role: RoleOperations
+  category: CategoryOperations
+  inventoryItem: InventoryItemOperations
+  stockMovement: StockMovementOperations
+  sale: SaleOperations
+  saleItem: SaleItemOperations
+  location: LocationOperations
+  priceHistory: PriceHistoryOperations
+  importSession: ImportSessionOperations
+  importError: ImportErrorOperations
+}
+
+interface UserOperations {
+  findUnique: (params: DatabaseOptions) => Promise<unknown>
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  findFirst: (params: DatabaseOptions) => Promise<unknown>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+  count: (params?: DatabaseOptions) => Promise<number>
+}
+
+interface RoleOperations {
+  findUnique: (params: DatabaseOptions) => Promise<unknown>
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface CategoryOperations {
+  findUnique: (params: DatabaseOptions) => Promise<unknown>
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+  count: (params?: DatabaseOptions) => Promise<number>
+}
+
+interface InventoryItemOperations {
+  findUnique: (params: DatabaseOptions) => Promise<unknown>
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+  count: (params?: DatabaseOptions) => Promise<number>
+}
+
+interface StockMovementOperations {
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface SaleOperations {
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface SaleItemOperations {
+  createMany: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface LocationOperations {
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  delete: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface PriceHistoryOperations {
+  findMany: (params?: DatabaseOptions) => Promise<unknown[]>
+  create: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface ImportSessionOperations {
+  create: (params: DatabaseOptions) => Promise<unknown>
+  update: (params: DatabaseOptions) => Promise<unknown>
+  findUnique: (params: DatabaseOptions) => Promise<unknown>
+}
+
+interface ImportErrorOperations {
+  createMany: (params: DatabaseOptions) => Promise<unknown>
+}
+
 // Conditional imports and setup
-let db: any;
-let supabase: any = null;
+let db: DatabaseClient;
+let supabase: unknown = null;
 
 if (isChoreo) {
   // CHOREO PRODUCTION: Use Supabase ONLY

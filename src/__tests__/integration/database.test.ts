@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { 
   db, 
-  testUsers, 
   setupTestDatabase, 
   cleanupTestDatabase, 
   disconnectDatabase

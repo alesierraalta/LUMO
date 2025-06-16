@@ -1,10 +1,10 @@
-import { clearAuthCookie, getTokenFromRequest } from '@/lib/auth-simple';
-import { NextRequest, NextResponse } from 'next/server';
+import { clearAuthCookie } from '@/lib/auth-simple';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Clear the auth cookie
     await clearAuthCookie();

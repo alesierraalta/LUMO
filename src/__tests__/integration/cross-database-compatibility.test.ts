@@ -214,8 +214,8 @@ describe('Cross-Database Compatibility Tests', () => {
     it('should handle findMany operations consistently', async () => {
       // Create multiple test roles
       const role1 = await createTestRole({ name: 'QUERY_TEST_1' })
-      const role2 = await createTestRole({ name: 'QUERY_TEST_2' })
-      const role3 = await createTestRole({ name: 'QUERY_TEST_3' })
+      await createTestRole({ name: 'QUERY_TEST_2' })
+      await createTestRole({ name: 'QUERY_TEST_3' })
 
       // Test findMany without filters
       const allRoles = await db.role.findMany()
@@ -357,7 +357,7 @@ describe('Cross-Database Compatibility Tests', () => {
       // Perform a series of operations
       const role = await createTestRole()
       const user = await createTestUser({ roleId: role.id })
-      const category = await createTestCategory({ createdById: user.id })
+      await createTestCategory({ createdById: user.id })
       
       // Query operations
       await db.role.findMany()

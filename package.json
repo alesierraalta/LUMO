@@ -66,7 +66,7 @@
     "prebuild:prod": "npm run optimize:deployment",
     "build": "next build",
     "build:prod": "npm run mode:prod && npm run build",
-    "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && echo 'Post-build scripts completed'",
+    "postbuild": "npm run fix-manifests && npm run copy-static-files && npm run embed-env-vars && node scripts/post-build-directories.js && echo 'Post-build scripts completed'",
     "postinstall": "node scripts/setup-supabase-admin.js",
     "cleanup:obsolete": "node scripts/cleanup-obsolete.js",
     "setup:supabase": "node scripts/setup-supabase-admin.js",

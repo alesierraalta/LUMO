@@ -1,6 +1,6 @@
 import logger from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+
 // Force Node.js runtime for logger functionality
 export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {

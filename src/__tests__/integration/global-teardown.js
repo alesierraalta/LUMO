@@ -1,8 +1,8 @@
 // Global teardown for integration tests
-const { unlinkSync, existsSync } = require('fs')
-const path = require('path')
+import { unlinkSync, existsSync } from 'fs'
+import path from 'path'
 
-module.exports = async () => {
+export default async () => {
   console.log('🧹 Cleaning up integration test environment...')
   
   // Clean up test database file

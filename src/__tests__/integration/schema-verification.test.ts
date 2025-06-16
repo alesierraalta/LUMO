@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
+import { describe, expect, beforeAll, afterAll, beforeEach, test } from '@jest/globals'
 import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole } from './test-setup'
 
 describe('Schema Verification Tests', () => {

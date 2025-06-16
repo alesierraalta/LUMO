@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const params = SearchParamsSchema.parse(Object.fromEntries(searchParams));
 
     // Build where clause
-    const where: any = {
+    const where: Record<string, unknown> = {
       active: true,
     };
 
@@ -56,9 +56,10 @@ export async function GET(request: Request) {
     }
 
     if (params.minPrice || params.maxPrice) {
-      where.price = {};
-      if (params.minPrice) where.price.gte = params.minPrice;
-      if (params.maxPrice) where.price.lte = params.maxPrice;
+      const priceFilter: Record<string, number> = {};
+      if (params.minPrice) priceFilter.gte = params.minPrice;
+      if (params.maxPrice) priceFilter.lte = params.maxPrice;
+      where.price = priceFilter;
     }
 
     if (params.inStock) {
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     // Build order by clause
-    let orderBy: any = { name: 'asc' };
+    let orderBy: Record<string, 'asc' | 'desc'> = { name: 'asc' };
     if (params.sortBy) {
       switch (params.sortBy) {
         case 'price':
@@ -123,10 +124,10 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const token = getTokenFromRequest(request as any);
+    const token = getTokenFromRequest(request);
     let user = null;
     
     if (token) {
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
     }
     
     // Create the inventory item with all product data
-    const createData: any = {
+    const createData: Record<string, unknown> = {
       name: validatedData.name,
       description: validatedData.description,
       sku: validatedData.sku,
@@ -206,19 +207,20 @@ export async function POST(request: Request) {
     });
     
     return NextResponse.json(serializeDecimal(product), { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating product:', error);
     
     // Handle validation errors
-    if (error.name === 'ZodError') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: 'Validation error', errors: error.errors },
         { status: 400 }
       );
     }
     
+    const errorMessage = error instanceof Error ? error.message : 'Error al crear el producto';
     return NextResponse.json(
-      { message: error.message || 'Error al crear el producto' },
+      { message: errorMessage },
       { status: 400 }
     );
   }

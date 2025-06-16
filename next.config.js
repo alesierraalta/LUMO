@@ -155,36 +155,4 @@ const nextConfig = {
   staticPageGenerationTimeout: 300,
 };
 
-// Ensure dict directory exists in the build output
-const fs = require('fs');
-const path = require('path');
-
-// Create missing directories on postbuild
-if (process.env.NODE_ENV === 'production') {
-  const postBuild = () => {
-    try {
-      // Paths that need to exist in the standalone build
-      const requiredPaths = [
-        '.next/standalone/.next/server/app/api/inventory/import/process/dict'
-      ];
-      
-      // Create directories if they don't exist
-      requiredPaths.forEach(dirPath => {
-        const fullPath = path.join(process.cwd(), dirPath);
-        if (!fs.existsSync(fullPath)) {
-          console.log(`Creating missing directory: ${dirPath}`);
-          fs.mkdirSync(fullPath, { recursive: true });
-        }
-      });
-      
-      console.log('✅ Post-build directory creation completed');
-    } catch (error) {
-      console.error('❌ Error in post-build process:', error);
-    }
-  };
-  
-  // Register post-build hook
-  nextConfig.onPostBuild = postBuild;
-}
-
 module.exports = nextConfig; 

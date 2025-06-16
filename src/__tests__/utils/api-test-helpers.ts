@@ -1,11 +1,8 @@
-import { NextRequest } from 'next/server'
-import { headers } from 'next/headers'
-
 // Mock Request and Headers for Node.js test environment
 if (typeof global.Request === 'undefined') {
   global.Request = class MockRequest {
     constructor(public url: string, public init: RequestInit = {}) {}
-  } as any
+  } as unknown as typeof Request
 }
 
 if (typeof global.Headers === 'undefined') {
@@ -43,7 +40,7 @@ if (typeof global.Headers === 'undefined') {
     forEach(callback: (value: string, key: string) => void) {
       this.headers.forEach(callback)
     }
-  } as any
+  } as unknown as typeof Headers
 }
 
 // Mock URL for Node.js test environment if needed
@@ -72,19 +69,19 @@ if (typeof global.URL === 'undefined') {
     }
   }
   
-  global.URLSearchParams = MockURLSearchParams as any
+  global.URLSearchParams = MockURLSearchParams as unknown as typeof URLSearchParams
   
   global.URL = class MockURL {
-    public searchParams: any
+    public searchParams: URLSearchParams
     
-    constructor(public href: string, base?: string) {
-      this.searchParams = new MockURLSearchParams()
+    constructor(public href: string, _base?: string) {
+      this.searchParams = new MockURLSearchParams() as unknown as URLSearchParams
     }
     
     toString() {
       return this.href
     }
-  } as any
+  } as unknown as typeof URL
 }
 
 /**
@@ -93,7 +90,7 @@ if (typeof global.URL === 'undefined') {
 
 export interface ApiTestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  body?: any
+  body?: unknown
   headers?: Record<string, string>
   searchParams?: Record<string, string>
   cookies?: Record<string, string>
@@ -101,7 +98,7 @@ export interface ApiTestOptions {
 
 export interface ApiTestResponse {
   status: number
-  data: any
+  data: unknown
   headers: Headers
   ok: boolean
 }
@@ -109,7 +106,7 @@ export interface ApiTestResponse {
 /**
  * Create a mock NextRequest for testing API routes
  */
-export const createMockRequest = (url: string, options: ApiTestOptions = {}): any => {
+export const createMockRequest = (url: string, options: ApiTestOptions = {}): Record<string, unknown> => {
   // This function is designed to work in test environment
   // Return a mock object that satisfies the NextRequest interface
   const {

@@ -1,7 +1,7 @@
 import { FullConfig } from '@playwright/test'
 import { cleanupTestDatabase, disconnectDatabase } from '../integration/test-setup'
 
-async function globalTeardown(config: FullConfig) {
+async function globalTeardown(_config: FullConfig) {
   console.log('🧹 Starting E2E Test Global Teardown...')
   
   try {

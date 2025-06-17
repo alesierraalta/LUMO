@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { isPublicRoute } from './lib/auth/route-protection';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
+// Supabase configuration
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -22,84 +25,53 @@ const adminRoutes = [
   '/api/auth/sync-all-users',
 ];
 
-// Base64url decode function
-function base64urlDecode(str: string): string {
-  // Add padding if needed
-  str += '='.repeat((4 - str.length % 4) % 4);
-  // Replace URL-safe characters
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  // Decode base64
-  return atob(str);
-}
-
-// Function to verify JWT using Web Crypto API (Edge Runtime compatible)
-const verifyTokenSimple = async (token: string) => {
+// Function to verify Supabase JWT token
+const verifySupabaseToken = async (token: string) => {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
+    // Create a temporary Supabase client with the token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
 
-    const [headerEncoded, payloadEncoded, signatureEncoded] = parts;
+    // Verify the token by getting the user
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     
-    // Decode payload to check expiration
-    const payload = JSON.parse(base64urlDecode(payloadEncoded));
-    
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
+    if (error || !user) {
       return null;
     }
 
-    // For Edge Runtime, we'll do a basic signature verification
-    // Import secret as crypto key
-    const secretKey = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(JWT_SECRET),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    // Create signature data
-    const data = `${headerEncoded}.${payloadEncoded}`;
-    const signature = Uint8Array.from(atob(signatureEncoded.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-
-    // Verify signature
-    const isValid = await crypto.subtle.verify(
-      'HMAC',
-      secretKey,
-      signature,
-      new TextEncoder().encode(data)
-    );
-
-    if (!isValid) {
-      return null;
-    }
-
-    return payload;
+    return {
+      userId: user.id,
+      email: user.email,
+    };
   } catch (error) {
+    console.error('❌ Supabase token verification error:', error);
     return null;
   }
 };
 
 // Function to get token from request
 const getTokenFromRequest = (request: NextRequest): string | null => {
-  // Try cookie first
-  const cookieToken = request.cookies.get('auth-token')?.value;
-  if (cookieToken) return cookieToken;
-
-  // Try Authorization header
+  // Try Authorization header first (standard for Supabase)
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
 
-  return null;
+  // Try cookie as fallback
+  const cookieToken = request.cookies.get('sb-access-token')?.value || 
+                     request.cookies.get('supabase-auth-token')?.value ||
+                     request.cookies.get('auth-token')?.value;
+  
+  return cookieToken || null;
 };
 
 // This middleware runs before each request
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
 
   // Skip middleware for public static files and API routes
@@ -125,31 +97,30 @@ export function middleware(request: NextRequest) {
   
   // If no auth token and not a public route, redirect to login
   if (!authToken && !url.startsWith('/login')) {
-    console.log(`🔒 Middleware: No auth token found for ${url}, redirecting to login`);
+    console.log(`🔒 Middleware: No Supabase auth token found for ${url}, redirecting to login`);
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // If we have a token, let's try a basic validation
+  // If we have a token, verify it with Supabase
   if (authToken) {
     try {
-      // Basic token structure check
-      const parts = authToken.split('.');
-      if (parts.length !== 3) {
-        console.log(`🔒 Middleware: Invalid token structure for ${url}, redirecting to login`);
+      const tokenData = await verifySupabaseToken(authToken);
+      
+      if (!tokenData) {
+        console.log(`🔒 Middleware: Invalid Supabase token for ${url}, redirecting to login`);
         return NextResponse.redirect(new URL('/login', request.url));
       }
       
-      // Check if token is expired (basic check without signature verification)
-      const payload = JSON.parse(base64urlDecode(parts[1]));
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < now) {
-        console.log(`🔒 Middleware: Token expired for ${url}, redirecting to login`);
-        return NextResponse.redirect(new URL('/login', request.url));
-      }
+      console.log(`✅ Middleware: Valid Supabase token found for ${url}, user: ${tokenData.email}`);
       
-      console.log(`✅ Middleware: Valid token found for ${url}, user ID: ${payload.userId}`);
+      // Add user info to headers for downstream use
+      const response = NextResponse.next();
+      response.headers.set('X-User-ID', tokenData.userId);
+      response.headers.set('X-User-Email', tokenData.email || '');
+      
+      return response;
     } catch (error) {
-      console.log(`🔒 Middleware: Token validation error for ${url}:`, error);
+      console.log(`🔒 Middleware: Supabase token verification error for ${url}:`, error);
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }

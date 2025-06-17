@@ -1,85 +1,108 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { getCurrentUser, type User } from '@/lib/auth-client';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { getClientUser, signOut, type User } from '@/lib/supabase-auth';
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  refreshUser: () => Promise<void>;
+  loading: boolean;
+  refetch: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
 interface AuthProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const loadingRef = useRef(false); // Prevent multiple simultaneous calls
-  const cacheRef = useRef<{ user: User | null; timestamp: number } | null>(null);
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+  const [loading, setLoading] = useState(true);
+  
+  // Cache management
+  const lastFetchTime = useRef<number>(0);
+  const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+  const fetchingRef = useRef<boolean>(false);
 
-  const loadUser = useCallback(async () => {
+  const fetchUser = async (forceRefresh = false) => {
     // Prevent multiple simultaneous calls
-    if (loadingRef.current) {
+    if (fetchingRef.current && !forceRefresh) {
       return;
     }
 
-    // Check cache first
-    if (cacheRef.current) {
-      const { user: cachedUser, timestamp } = cacheRef.current;
-      const isExpired = Date.now() - timestamp > CACHE_DURATION;
-      
-      if (!isExpired) {
-        setUser(cachedUser);
-        setIsLoading(false);
-        return;
-      }
+    // Check cache validity (skip if recent fetch and not forcing refresh)
+    const now = Date.now();
+    if (!forceRefresh && now - lastFetchTime.current < cacheExpiry && user !== null) {
+      return;
     }
+
+    fetchingRef.current = true;
+    setLoading(true);
 
     try {
-      loadingRef.current = true;
-      setIsLoading(true);
-      
-      const userData = await getCurrentUser();
-      
-      // Update cache
-      cacheRef.current = {
-        user: userData,
-        timestamp: Date.now()
-      };
+      console.log('🔍 [AuthContext] Fetching user with Supabase JWT...');
+      const userData = await getClientUser();
       
       setUser(userData);
+      lastFetchTime.current = now;
+      
+      if (userData) {
+        console.log('✅ [AuthContext] User authenticated:', userData.email);
+      } else {
+        console.log('❌ [AuthContext] No user found');
+      }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('❌ [AuthContext] Error fetching user:', error);
       setUser(null);
       // Clear cache on error
-      cacheRef.current = null;
+      lastFetchTime.current = 0;
     } finally {
-      setIsLoading(false);
-      loadingRef.current = false;
+      setLoading(false);
+      fetchingRef.current = false;
     }
-  }, []);
+  };
 
-  const refreshUser = useCallback(async () => {
-    // Clear cache and force reload
-    cacheRef.current = null;
-    await loadUser();
-  }, [loadUser]);
+  const refetch = async () => {
+    await fetchUser(true); // Force refresh
+  };
+
+  const logout = async () => {
+    try {
+      setLoading(true);
+      const success = await signOut();
+      
+      if (success) {
+        setUser(null);
+        lastFetchTime.current = 0; // Clear cache
+        console.log('✅ [AuthContext] User logged out successfully');
+      } else {
+        console.error('❌ [AuthContext] Logout failed');
+      }
+    } catch (error) {
+      console.error('❌ [AuthContext] Logout error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    loadUser();
-  }, [loadUser]);
+    fetchUser();
+  }, []);
 
   const value: AuthContextType = {
     user,
-    isLoading,
-    isAuthenticated: !!user,
-    refreshUser,
+    loading,
+    refetch,
+    logout,
   };
 
   return (
@@ -87,12 +110,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuthContext = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
-  }
-  return context;
 }; 

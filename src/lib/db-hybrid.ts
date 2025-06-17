@@ -111,86 +111,86 @@ let db: DatabaseClient;
 let supabase: any = null;
 
 console.log('🔄 Loading Supabase client...');
-
-try {
-  const { createClient } = require('@supabase/supabase-js');
   
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
+    
+    if (!supabaseUrl || !supabaseKey) {
     throw new Error('❌ Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_KEY environment variables.');
-  }
-  
-  supabase = createClient(supabaseUrl, supabaseKey);
-  
+    }
+    
+    supabase = createClient(supabaseUrl, supabaseKey);
+    
   console.log('✅ Supabase client created successfully');
-  
+    
   // Supabase adapter - Complete implementation
-  db = {
-    user: {
-      findUnique: async (params: any) => {
+    db = {
+      user: {
+        findUnique: async (params: any) => {
         console.log('🔍 Supabase user.findUnique called with:', params);
-        
-        let query = supabase.from('users').select(`
-          *,
-          role:roles(*)
-        `);
+          
+          let query = supabase.from('users').select(`
+            *,
+            role:roles(*)
+          `);
 
-        if (params.where.email) {
-          query = query.eq('email', params.where.email);
-        }
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
+          if (params.where.email) {
+            query = query.eq('email', params.where.email);
+          }
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
 
-        const { data, error } = await query.single();
-        
-        if (error) {
-          console.log('❌ Supabase error:', error.message);
-          return null;
-        }
-        
+          const { data, error } = await query.single();
+          
+          if (error) {
+            console.log('❌ Supabase error:', error.message);
+            return null;
+          }
+          
         console.log('✅ Supabase user data found:', data);
-        
+          
         // Convert Supabase response to expected format
-        const result: any = {
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          password: data.password,
+          const result: any = {
+            id: data.id,
+            email: data.email,
+            name: data.name,
+            password: data.password,
           roleId: data.role_id,
-          isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
 
         // Handle role inclusion
         if (params.include && params.include.role && data.role) {
-          result.role = {
-            id: data.role.id,
-            name: data.role.name,
-            description: data.role.description,
-            isSystem: data.role.is_system,
-            isActive: data.role.is_active,
-            createdAt: new Date(data.role.created_at),
-            updatedAt: new Date(data.role.updated_at)
-          };
+              result.role = {
+                id: data.role.id,
+                name: data.role.name,
+                description: data.role.description,
+                isSystem: data.role.is_system,
+                isActive: data.role.is_active,
+                createdAt: new Date(data.role.created_at),
+                updatedAt: new Date(data.role.updated_at)
+              };
         }
         
-        return result;
-      },
-
-      findMany: async (params: any = {}) => {
+          return result;
+        },
+        
+        findMany: async (params: any = {}) => {
         console.log('🔍 Supabase user.findMany called with:', params);
         
-        let query = supabase.from('users').select(`
-          *,
-          role:roles(*)
-        `);
+          let query = supabase.from('users').select(`
+            *,
+            role:roles(*)
+          `);
 
         // Apply where conditions
-        if (params.where) {
+          if (params.where) {
           Object.entries(params.where).forEach(([key, value]) => {
             if (key === 'roleId') {
               query = query.eq('role_id', value);
@@ -249,61 +249,61 @@ try {
       findFirst: async (params: any) => {
         const results = await db.user.findMany({ ...params, take: 1 });
         return results.length > 0 ? results[0] : null;
-      },
-
-      create: async (params: any) => {
+        },
+        
+        create: async (params: any) => {
         console.log('🔍 Supabase user.create called with:', params);
         
-        const userData = {
-          email: params.data.email,
-          name: params.data.name,
+          const userData = {
+            email: params.data.email,
+            name: params.data.name,
           password: params.data.password,
-          role_id: params.data.roleId,
+            role_id: params.data.roleId,
           is_active: params.data.isActive ?? true,
-        };
+          };
 
-        const { data, error } = await supabase
-          .from('users')
+          const { data, error } = await supabase
+            .from('users')
           .insert(userData)
-          .select()
-          .single();
+            .select()
+            .single();
 
         if (error) {
           console.error('❌ Supabase create error:', error);
           throw new Error(`Database error: ${error.message}`);
         }
-
+          
         return {
-          id: data.id,
-          email: data.email,
-          name: data.name,
+            id: data.id,
+            email: data.email,
+            name: data.name,
           password: data.password,
-          roleId: data.role_id,
-          isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-      },
-
-      update: async (params: any) => {
+            roleId: data.role_id,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
+        
+        update: async (params: any) => {
         console.log('🔍 Supabase user.update called with:', params);
         
-        const updateData: any = {};
-        if (params.data.email) updateData.email = params.data.email;
+          const updateData: any = {};
+          if (params.data.email) updateData.email = params.data.email;
         if (params.data.name) updateData.name = params.data.name;
-        if (params.data.password) updateData.password = params.data.password;
-        if (params.data.roleId) updateData.role_id = params.data.roleId;
-        if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
+          if (params.data.password) updateData.password = params.data.password;
+          if (params.data.roleId) updateData.role_id = params.data.roleId;
+          if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
         updateData.updated_at = new Date().toISOString();
 
         let query = supabase.from('users').update(updateData);
 
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
-        if (params.where.email) {
-          query = query.eq('email', params.where.email);
-        }
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
+          if (params.where.email) {
+            query = query.eq('email', params.where.email);
+          }
 
         const { data, error } = await query.select().single();
 
@@ -312,16 +312,16 @@ try {
           throw new Error(`Database error: ${error.message}`);
         }
 
-        return {
-          id: data.id,
-          email: data.email,
-          name: data.name,
+          return {
+            id: data.id,
+            email: data.email,
+            name: data.name,
           password: data.password,
-          roleId: data.role_id,
-          isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
+            roleId: data.role_id,
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
       },
 
       delete: async (params: any) => {
@@ -329,9 +329,9 @@ try {
         
         let query = supabase.from('users').delete();
 
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
+            if (params.where.id) {
+              query = query.eq('id', params.where.id);
+            }
         if (params.where.email) {
           query = query.eq('email', params.where.email);
         }
@@ -375,42 +375,42 @@ try {
     },
 
     role: {
-      findUnique: async (params: any) => {
+        findUnique: async (params: any) => {
         console.log('🔍 Supabase role.findUnique called with:', params);
         
         let query = supabase.from('roles').select('*');
 
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
-        if (params.where.name) {
-          query = query.eq('name', params.where.name);
-        }
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
+          if (params.where.name) {
+            query = query.eq('name', params.where.name);
+          }
 
-        const { data, error } = await query.single();
+          const { data, error } = await query.single();
         
         if (error) {
           console.log('❌ Supabase role error:', error.message);
           return null;
         }
         
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
           isSystem: data.is_system,
           isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-      },
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
 
-      findMany: async (params: any = {}) => {
+        findMany: async (params: any = {}) => {
         console.log('🔍 Supabase role.findMany called with:', params);
         
         let query = supabase.from('roles').select('*');
 
-        if (params.where) {
+          if (params.where) {
           Object.entries(params.where).forEach(([key, value]) => {
             if (key === 'isSystem') {
               query = query.eq('is_system', value);
@@ -422,64 +422,64 @@ try {
           });
         }
 
-        if (params.orderBy) {
+          if (params.orderBy) {
           const orderField = Object.keys(params.orderBy)[0];
           const orderDirection = params.orderBy[orderField];
           const dbField = orderField === 'createdAt' ? 'created_at' : orderField;
           query = query.order(dbField, { ascending: orderDirection === 'asc' });
-        }
+          }
 
-        const { data, error } = await query;
+          const { data, error } = await query;
         
-        if (error) {
+          if (error) {
           console.error('❌ Supabase error:', error);
           throw new Error(`Database error: ${error.message}`);
-        }
-
-        return data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
+          }
+          
+          return data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
           isSystem: item.is_system,
-          isActive: item.is_active,
-          createdAt: new Date(item.created_at),
+            isActive: item.is_active,
+            createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at)
-        }));
-      },
+          }));
+        },
 
-      create: async (params: any) => {
+        create: async (params: any) => {
         console.log('🔍 Supabase role.create called with:', params);
         
         const roleData = {
-          name: params.data.name,
-          description: params.data.description,
+            name: params.data.name,
+            description: params.data.description,
           is_system: params.data.isSystem ?? false,
           is_active: params.data.isActive ?? true,
-        };
+          };
 
-        const { data, error } = await supabase
+          const { data, error } = await supabase
           .from('roles')
           .insert(roleData)
-          .select()
-          .single();
+            .select()
+            .single();
 
         if (error) {
           console.error('❌ Supabase create error:', error);
           throw new Error(`Database error: ${error.message}`);
         }
-
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
+          
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
           isSystem: data.is_system,
-          isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-      },
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
 
-      update: async (params: any) => {
+        update: async (params: any) => {
         console.log('🔍 Supabase role.update called with:', params);
         
         const updateData: any = {};
@@ -491,9 +491,9 @@ try {
 
         let query = supabase.from('roles').update(updateData);
 
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
 
         const { data, error } = await query.select().single();
 
@@ -502,25 +502,25 @@ try {
           throw new Error(`Database error: ${error.message}`);
         }
 
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
           isSystem: data.is_system,
-          isActive: data.is_active,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-      },
+            isActive: data.is_active,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at)
+          };
+        },
 
-      delete: async (params: any) => {
+        delete: async (params: any) => {
         console.log('🔍 Supabase role.delete called with:', params);
         
         let query = supabase.from('roles').delete();
 
-        if (params.where.id) {
-          query = query.eq('id', params.where.id);
-        }
+          if (params.where.id) {
+            query = query.eq('id', params.where.id);
+          }
 
         const { error } = await query;
 
@@ -535,35 +535,35 @@ try {
 
     // Add other operations (category, inventoryItem, etc.) following the same pattern...
     category: {
-      findUnique: async (params: any) => {
+        findUnique: async (params: any) => {
         let query = supabase.from('categories').select('*');
         if (params.where.id) query = query.eq('id', params.where.id);
         if (params.where.name) query = query.eq('name', params.where.name);
-        
-        const { data, error } = await query.single();
-        if (error) return null;
-        
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          createdAt: new Date(data.created_at),
+
+          const { data, error } = await query.single();
+          if (error) return null;
+          
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
           createdById: data.created_by_id
         };
       },
 
-      findMany: async (params: any = {}) => {
+        findMany: async (params: any = {}) => {
         let query = supabase.from('categories').select('*');
-        
-        if (params.where) {
+          
+          if (params.where) {
           Object.entries(params.where).forEach(([key, value]) => {
             const dbKey = key === 'createdById' ? 'created_by_id' : key;
             query = query.eq(dbKey, value);
           });
-        }
+          }
 
-        const { data, error } = await query;
+          const { data, error } = await query;
         if (error) throw new Error(`Database error: ${error.message}`);
 
         return data.map((item: any) => ({
@@ -573,35 +573,35 @@ try {
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
           createdById: item.created_by_id
-        }));
-      },
+          }));
+        },
 
-      create: async (params: any) => {
+        create: async (params: any) => {
         const categoryData = {
-          name: params.data.name,
-          description: params.data.description,
+            name: params.data.name,
+            description: params.data.description,
           created_by_id: params.data.createdById,
-        };
+          };
 
-        const { data, error } = await supabase
+          const { data, error } = await supabase
           .from('categories')
           .insert(categoryData)
-          .select()
-          .single();
+            .select()
+            .single();
 
         if (error) throw new Error(`Database error: ${error.message}`);
-
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          createdAt: new Date(data.created_at),
+          
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
           createdById: data.created_by_id
-        };
-      },
+          };
+        },
 
-      update: async (params: any) => {
+        update: async (params: any) => {
         const updateData: any = {};
         if (params.data.name) updateData.name = params.data.name;
         if (params.data.description !== undefined) updateData.description = params.data.description;
@@ -612,18 +612,18 @@ try {
 
         const { data, error } = await query.select().single();
         if (error) throw new Error(`Database error: ${error.message}`);
-
-        return {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          createdAt: new Date(data.created_at),
+          
+          return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
           createdById: data.created_by_id
-        };
-      },
+          };
+        },
 
-      delete: async (params: any) => {
+        delete: async (params: any) => {
         let query = supabase.from('categories').delete();
         if (params.where.id) query = query.eq('id', params.where.id);
 
@@ -635,8 +635,8 @@ try {
 
       count: async (params: any = {}) => {
         let query = supabase.from('categories').select('*', { count: 'exact', head: true });
-        
-        if (params.where) {
+          
+          if (params.where) {
           Object.entries(params.where).forEach(([key, value]) => {
             const dbKey = key === 'createdById' ? 'created_by_id' : key;
             query = query.eq(dbKey, value);
@@ -659,17 +659,17 @@ try {
       delete: async () => ({ count: 1 }),
       count: async () => 0
     },
-    stockMovement: {
+      stockMovement: {
       findMany: async () => [],
       create: async () => ({})
     },
-    sale: {
+      sale: {
       findMany: async () => [],
       create: async () => ({}),
       update: async () => ({}),
       delete: async () => ({ count: 1 })
     },
-    saleItem: {
+      saleItem: {
       createMany: async () => ({})
     },
     location: {
@@ -682,7 +682,7 @@ try {
       findMany: async () => [],
       create: async () => ({})
     },
-    importSession: {
+      importSession: {
       create: async () => ({}),
       update: async () => ({}),
       findUnique: async () => null
@@ -691,10 +691,10 @@ try {
       createMany: async () => ({})
     }
   };
-
-} catch (error) {
+    
+  } catch (error) {
   console.error('❌ Failed to initialize Supabase client:', error);
   throw new Error('Database initialization failed. Please check your Supabase configuration.');
 }
 
-export { db }; 
+export { db };

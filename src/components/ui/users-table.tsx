@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/utils";
-import { PermissionButton } from "@/components/auth/permission-guard";
+import { PermissionGuard, PermissionButton } from "@/components/auth/permission-guard";
 
 // Define the User type - updated to match API response
 type User = {
@@ -157,14 +157,14 @@ export function UsersTable({ users, isLoading = false, onDeleteUser, onToggleUse
             )}
             
             {/* Botón de editar */}
-            <PermissionButton permission="users:edit">
+            <PermissionGuard permission="users:edit" showAlert={false}>
               <Link href={`/settings/users/edit/${user.id}`}>
                 <Button variant="outline" size="sm">
                   <Pencil className="h-4 w-4 mr-1" />
                   Editar
                 </Button>
               </Link>
-            </PermissionButton>
+            </PermissionGuard>
             
             {/* Botón de eliminar */}
             {onDeleteUser && userRole !== 'ADMIN' && (

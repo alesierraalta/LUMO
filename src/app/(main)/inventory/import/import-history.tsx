@@ -90,15 +90,25 @@ export default function ImportHistory({ userId }: ImportHistoryProps) {
         }
         
         const data = await response.json();
-        setSessions(data.sessions);
-        setFilteredSessions(data.sessions);
+        
+        // Handle the case where the feature is not available
+        if (data.message && data.sessions.length === 0) {
+          console.log("Import history feature not available:", data.message);
+          setSessions([]);
+          setFilteredSessions([]);
+          setLoading(false);
+          return;
+        }
+        
+        setSessions(data.sessions || []);
+        setFilteredSessions(data.sessions || []);
         setLoading(false);
         
       } catch (error) {
         console.error("Error fetching import history:", error);
-        toast.error("Error al cargar el historial", {
-          description: error instanceof Error ? error.message : "No se pudo cargar el historial de importaciones"
-        });
+        // Don't show error toast for feature not available
+        setSessions([]);
+        setFilteredSessions([]);
         setLoading(false);
       }
     };

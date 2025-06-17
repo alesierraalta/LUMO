@@ -221,11 +221,18 @@ function EditProductContent() {
     const categoryValue = formData.get("category") as string
     const locationValue = formData.get("location") as string
     
+    // Helper function to safely parse numbers
+    const safeParseFloat = (value: string | null): number | undefined => {
+      if (!value || value.trim() === "") return undefined;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? undefined : parsed;
+    };
+    
     const productData = {
       name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      price: parseFloat(formData.get("price") as string),
-      margin: parseFloat(formData.get("margin") as string),
+      description: formData.get("description") as string || undefined,
+      price: safeParseFloat(formData.get("price") as string),
+      margin: safeParseFloat(formData.get("margin") as string),
       categoryId: categoryValue && categoryValue !== "uncategorized" ? categoryValue : undefined,
       sku: formData.get("sku") as string || product.sku,
       locationId: locationValue && locationValue !== "uncategorized" ? locationValue : undefined
@@ -250,9 +257,9 @@ function EditProductContent() {
       // If financials were changed, update them separately to record history
       if (financialsChanged) {
         const financialsData = {
-          price: parseFloat(price),
-          cost: parseFloat(cost),
-          margin: parseFloat(margin),
+          price: safeParseFloat(price),
+          cost: safeParseFloat(cost),
+          margin: safeParseFloat(margin),
           changeReason: changeReason || "Updated price/cost"
         };
         

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db-hybrid';
+import { db } from '@/lib/db-supabase';
 import { serializeDecimal } from '@/lib/utils';
 import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 

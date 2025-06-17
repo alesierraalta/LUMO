@@ -1,6 +1,5 @@
-import type { Prisma } from "@prisma/client";
-import { serializeDecimal, calculateMargin, calculatePrice } from "../lib/utils";
-import db from '@/lib/db';
+import { serializeDecimal } from '@/lib/utils';
+import { db } from '@/lib/db-supabase';
 
 const prisma = db;
 

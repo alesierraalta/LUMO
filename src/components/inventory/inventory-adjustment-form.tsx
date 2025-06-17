@@ -32,7 +32,7 @@ const inventoryAdjustmentSchema = z.object({
   location: z.string().optional(),
   notes: z.string().optional(),
   price: z.coerce.number().min(0, { message: "El precio no puede ser negativo" }),
-  cost: z.coerce.number().min(0, { message: "El costo no puede ser negativo" }),
+  cost: z.coerce.number().min(0, { message: "El costo no puede ser negativo" }).optional(),
 });
 
 type InventoryAdjustmentValues = z.infer<typeof inventoryAdjustmentSchema>;

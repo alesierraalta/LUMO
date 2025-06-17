@@ -48,16 +48,18 @@ const productSchema = z.object({
     .refine((val) => {
       const decimals = val.toString().split('.')[1];
       return !decimals || decimals.length <= 2;
-    }, { message: "El costo debe tener máximo 2 decimales" }),
+    }, { message: "El costo debe tener máximo 2 decimales" })
+    .optional(),
   price: z.coerce
     .number()
-    .min(0.01, { message: "El precio debe ser mayor que 0" })
+    .min(0, { message: "El precio no puede ser negativo" })
     .max(999999.99, { message: "El precio no puede exceder los 999,999.99" })
     .refine((val) => {
       const decimals = val.toString().split('.')[1];
       return !decimals || decimals.length <= 2;
-    }, { message: "El precio debe tener máximo 2 decimales" }),
-  margin: z.coerce.number().min(0, { message: "El margen no puede ser negativo" }).max(1000, { message: "El margen no puede exceder el 1000%" }),
+    }, { message: "El precio debe tener máximo 2 decimales" })
+    .optional(),
+  margin: z.coerce.number().min(0, { message: "El margen no puede ser negativo" }).max(1000, { message: "El margen no puede exceder el 1000%" }).optional(),
   categoryId: z.string().optional(),
   imageUrl: z.string().optional(),
   // Inventory fields
@@ -67,9 +69,11 @@ const productSchema = z.object({
   // Price change reason
   changeReason: z.string().optional(),
 }).refine((data) => {
-  const price = data.price as number;
-  const cost = data.cost as number;
-  return price > cost;
+  // Only validate price > cost if both are provided
+  if (data.price !== undefined && data.cost !== undefined && data.price > 0 && data.cost > 0) {
+    return data.price > data.cost;
+  }
+  return true;
 }, {
   message: "El precio de venta debe ser mayor que el costo",
   path: ["price"],
@@ -81,11 +85,6 @@ const productSchema = z.object({
 }, {
   message: "La categoría seleccionada no es válida",
   path: ["categoryId"],
-}).refine((data) => {
-  return !!(data.description || data.imageUrl);
-}, {
-  message: "Debe proporcionar al menos una descripción o una URL de imagen para el producto",
-  path: ["description"],
 });
 
 // Keep the original Zod inference for type safety
@@ -186,9 +185,6 @@ export default function ProductForm({
       name: "",
       description: "",
       sku: "",
-      cost: 0,
-      price: 0,
-      margin: 30, // Default 30% margin
       categoryId: "uncategorized",
       imageUrl: "",
       quantity: 0,
@@ -325,15 +321,15 @@ export default function ProductForm({
       // based on the current pricing mode
       if (pricingMode === "price") {
         // Calculate margin based on price
-        const cost = Number(data.cost);
-        const price = Number(data.price);
+        const cost = Number(data.cost || 0);
+        const price = Number(data.price || 0);
         if (cost > 0 && price > 0) {
           data.margin = calculateMargin(cost, price);
         }
       } else {
         // Calculate price based on margin
-        const cost = Number(data.cost);
-        const margin = Number(data.margin);
+        const cost = Number(data.cost || 0);
+        const margin = Number(data.margin || 0);
         if (cost > 0 && margin !== undefined) {
           data.price = calculatePrice(cost, margin);
         }
@@ -348,13 +344,29 @@ export default function ProductForm({
       data.quantity = Number(data.quantity) || 0;
       data.minStockLevel = Number(data.minStockLevel) || 5;
       
+      // Prepare data for API with required fields guaranteed
+      const apiData: ProductData = {
+        name: data.name || "", // Ensure name is always provided
+        description: data.description,
+        sku: data.sku || "", // Ensure SKU is always provided
+        cost: data.cost,
+        price: data.price,
+        margin: data.margin,
+        categoryId: data.categoryId,
+        imageUrl: data.imageUrl,
+        quantity: data.quantity,
+        minStockLevel: data.minStockLevel,
+        locationId: selectedLocation !== "no-location" ? selectedLocation : undefined,
+        changeReason: data.changeReason,
+      };
+      
       if (initialData) {
         // Update existing product
-        const updatedProduct = await updateProductApi(initialData.id, data);
+        const updatedProduct = await updateProductApi(initialData.id, apiData);
         toast.success("Producto actualizado correctamente");
       } else {
         // Create new product
-        const newProduct = await createProductApi(data);
+        const newProduct = await createProductApi(apiData);
         toast.success("Producto creado correctamente");
       }
       
@@ -441,7 +453,7 @@ export default function ProductForm({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="cost">Costo</Label>
+                <Label htmlFor="cost">Costo (opcional)</Label>
                 <Input
                   id="cost"
                   type="number"
@@ -460,7 +472,7 @@ export default function ProductForm({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="margin">Margen (%)</Label>
+                <Label htmlFor="margin">Margen (%) (opcional)</Label>
                 <Input
                   id="margin"
                   type="number"
@@ -482,7 +494,7 @@ export default function ProductForm({
 
             <div className="grid gap-2">
               <Label htmlFor="price">
-                Precio de Venta {pricingMode === "margin" && "(Calculado automáticamente)"}
+                Precio de Venta (opcional) {pricingMode === "margin" && "(Calculado automáticamente)"}
               </Label>
               <Input
                 id="price"

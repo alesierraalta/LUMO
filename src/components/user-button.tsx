@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, LogOut, LogIn, Settings } from "lucide-react";
@@ -15,40 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarInitial } from "@/components/ui/avatar";
 import { toast } from "sonner";
-
-interface UserData {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role: string;
-}
+import { useAuth } from "@/hooks/use-auth";
 
 export function UserButton() {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading, refreshUser } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -57,7 +27,7 @@ export function UserButton() {
       });
 
       if (response.ok) {
-        setUser(null);
+        await refreshUser(); // Refresh the auth context
         toast.success('Logged out successfully');
         router.push('/login');
         router.refresh();
@@ -70,12 +40,13 @@ export function UserButton() {
     }
   };
 
-  const getUserInitials = (firstName?: string, lastName?: string, email?: string) => {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName[0].toUpperCase();
+  const getUserInitials = (name?: string | null, email?: string) => {
+    if (name) {
+      const nameParts = name.split(' ');
+      if (nameParts.length >= 2) {
+        return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+      }
+      return name[0].toUpperCase();
     }
     if (email) {
       return email[0].toUpperCase();
@@ -83,14 +54,8 @@ export function UserButton() {
     return 'U';
   };
 
-  const getUserDisplayName = (firstName?: string, lastName?: string, email?: string) => {
-    if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
-    }
-    if (firstName) {
-      return firstName;
-    }
-    return email || 'User';
+  const getUserDisplayName = (name?: string | null, email?: string) => {
+    return name || email || 'User';
   };
 
   if (isLoading) {
@@ -117,7 +82,7 @@ export function UserButton() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarInitial>{getUserInitials(user.firstName, user.lastName, user.email)}</AvatarInitial>
+            <AvatarInitial>{getUserInitials(user.name, user.email)}</AvatarInitial>
             <AvatarFallback>
               <User className="h-4 w-4" />
             </AvatarFallback>
@@ -128,7 +93,7 @@ export function UserButton() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {getUserDisplayName(user.firstName, user.lastName, user.email)}
+              {getUserDisplayName(user.name, user.email)}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}

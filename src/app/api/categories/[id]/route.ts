@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db-hybrid";
+import { db } from "@/lib/db-supabase";
 import { z } from "zod";
 
 const CategoryUpdateSchema = z.object({

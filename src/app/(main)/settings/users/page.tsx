@@ -13,7 +13,13 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: {
+    id: string;
+    name: string;
+    description: string;
+    isSystem: boolean;
+    isActive: boolean;
+  } | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -94,7 +100,7 @@ export default function UsersPage() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || user.role?.name === roleFilter;
     
     return matchesSearch && matchesRole;
   });
@@ -110,14 +116,14 @@ export default function UsersPage() {
             </p>
           </div>
           
-          <PermissionButton permission="users:create">
+          <PermissionGuard permission="users:create" showAlert={false}>
             <Link href="/settings/users/new">
               <Button className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Crear Usuario
               </Button>
             </Link>
-          </PermissionButton>
+          </PermissionGuard>
         </div>
 
         {/* Filtros y búsqueda */}
@@ -161,13 +167,13 @@ export default function UsersPage() {
           </div>
           <div className="bg-card rounded-lg border p-4">
             <div className="text-2xl font-bold text-red-600">
-              {users.filter(u => u.role === 'ADMIN').length}
+              {users.filter(u => u.role?.name === 'ADMIN').length}
             </div>
             <div className="text-sm text-muted-foreground">Administradores</div>
           </div>
           <div className="bg-card rounded-lg border p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.role === 'MANAGER').length}
+              {users.filter(u => u.role?.name === 'MANAGER').length}
             </div>
             <div className="text-sm text-muted-foreground">Gerentes</div>
           </div>

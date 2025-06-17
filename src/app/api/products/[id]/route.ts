@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
 import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
-import db from '@/lib/db-hybrid';
+import { db } from '@/lib/db-supabase';
 import { getProductById } from '@/services/productService';
 
 // Product update validation schema

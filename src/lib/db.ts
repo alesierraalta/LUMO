@@ -1,5 +1,5 @@
-// Hybrid Database Client
-// - Local: SQLite + Prisma
-// - Production: Supabase
-export { db as default, supabase, prisma } from './db-hybrid';
+/**
+ * Main database export - now using Supabase only
+ */
+export { db as default, supabase } from './db-supabase';
  

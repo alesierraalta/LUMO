@@ -154,16 +154,29 @@ function AddProductContent() {
     const categoryValue = formData.get("category") as string
     const locationValue = formData.get("location") as string
     
+    // Helper function to safely parse numbers
+    const safeParseFloat = (value: string | null): number | undefined => {
+      if (!value || value.trim() === "") return undefined;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? undefined : parsed;
+    };
+
+    const safeParseInt = (value: string | null, defaultValue: number): number => {
+      if (!value || value.trim() === "") return defaultValue;
+      const parsed = parseInt(value);
+      return isNaN(parsed) ? defaultValue : parsed;
+    };
+    
     const productData: ProductData = {
       name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      price: parseFloat(formData.get("price") as string),
-      cost: parseFloat(formData.get("cost") as string),
-      margin: parseFloat(formData.get("margin") as string),
+      description: formData.get("description") as string || undefined,
+      price: safeParseFloat(formData.get("price") as string),
+      cost: safeParseFloat(formData.get("cost") as string),
+      margin: safeParseFloat(formData.get("margin") as string),
       categoryId: categoryValue && categoryValue !== "uncategorized" ? categoryValue : undefined,
       sku: formData.get("sku") as string,
-      quantity: parseInt(formData.get("quantity") as string) || 0,
-      minStockLevel: parseInt(formData.get("minStockLevel") as string) || 5,
+      quantity: safeParseInt(formData.get("quantity") as string, 0),
+      minStockLevel: safeParseInt(formData.get("minStockLevel") as string, 5),
       locationId: locationValue && locationValue !== "uncategorized" ? locationValue : undefined
     }
 
@@ -281,7 +294,7 @@ function AddProductContent() {
               <div className="space-y-2">
                 <Label htmlFor="cost" className="text-sm font-medium flex items-center space-x-1">
                   <Calculator className="w-4 h-4" />
-                  <span>Costo *</span>
+                  <span>Costo (opcional)</span>
                 </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -295,7 +308,6 @@ function AddProductContent() {
                     className="h-11 pl-10"
                     value={cost}
                     onChange={handleCostChange}
-                    required
                   />
                 </div>
               </div>
@@ -303,7 +315,7 @@ function AddProductContent() {
               <div className="space-y-2">
                 <Label htmlFor="price" className="text-sm font-medium flex items-center space-x-1">
                   <TrendingUp className="w-4 h-4" />
-                  <span>Precio de Venta *</span>
+                  <span>Precio de Venta (opcional)</span>
                 </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -317,7 +329,6 @@ function AddProductContent() {
                     className="h-11 pl-10"
                     value={price}
                     onChange={handlePriceChange}
-                    required
                   />
                 </div>
               </div>
@@ -339,7 +350,6 @@ function AddProductContent() {
                     className="h-11 pr-8"
                     value={margin}
                     onChange={handleMarginChange}
-                    required
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">%</span>
                 </div>

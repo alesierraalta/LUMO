@@ -40,7 +40,7 @@ export interface ProductData {
   description?: string;
   sku: string;
   cost?: number;
-  price: number;
+  price?: number;
   margin?: number;
   categoryId?: string;
   imageUrl?: string;

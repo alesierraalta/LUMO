@@ -25,6 +25,10 @@ const customJestConfig = {
     '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@/test-utils$': '<rootDir>/src/__tests__/utils/test-utils',
     
+    // Mock Supabase modules - CRITICAL for fixing ES6 import issues
+    '^@supabase/supabase-js$': '<rootDir>/src/__mocks__/@supabase/supabase-js.js',
+    '^@supabase/realtime-js$': '<rootDir>/src/__mocks__/@supabase/supabase-js.js',
+    
     // Handle CSS imports (with CSS modules)
     '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
     
@@ -106,7 +110,7 @@ const customJestConfig = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
   
-  // Transform node_modules that use ES modules
+  // Transform node_modules that use ES modules - ENHANCED for Supabase
   transformIgnorePatterns: [
     'node_modules/(?!(@supabase|@noble|@paralleldrive|@testing-library)/)',
   ],

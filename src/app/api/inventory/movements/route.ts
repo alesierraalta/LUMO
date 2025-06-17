@@ -4,6 +4,9 @@ import { ensureValidDate } from "@/lib/utils";
 import db from "@/lib/db";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
 
+// Disable static generation for this API route
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and admin permissions

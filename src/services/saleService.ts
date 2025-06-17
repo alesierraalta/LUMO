@@ -1,6 +1,5 @@
-import db from "@/lib/db";
-import { serializeDecimal } from "../lib/utils";
-import type { Prisma } from "@prisma/client";
+import { serializeDecimal } from '@/lib/utils';
+// Removed Prisma import - using Supabase
 
 type Sale = Prisma.SaleGetPayload<{}>;
 

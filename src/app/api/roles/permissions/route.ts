@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db-hybrid';
+import { db } from '@/lib/db-supabase';
 import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 import { z } from 'zod';
 
@@ -118,6 +118,19 @@ export async function POST(request: NextRequest) {
     console.error('❌ Update role permission error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: (error as any).message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    const permissions = await db.permission?.findMany?.() || [];
+    return NextResponse.json(permissions);
+  } catch (error) {
+    console.error('Error fetching permissions:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch permissions' },
       { status: 500 }
     );
   }

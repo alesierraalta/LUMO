@@ -162,11 +162,11 @@ export async function POST(request: NextRequest) {
     let margin = validatedData.margin;
     
     // Calcular valores solo si se proporcionan tanto cost como price
-    if (cost !== undefined && price !== undefined) {
+    if (cost !== undefined && price !== undefined && cost > 0 && price > 0) {
       if (margin !== undefined && margin > 0) {
         // Si se proporciona margen, recalcular el precio
         price = calculatePrice(cost, margin);
-      } else if (price > 0) {
+      } else {
         // Si no se proporciona margen pero sí precio, calcular el margen
         margin = calculateMargin(cost, price);
       }

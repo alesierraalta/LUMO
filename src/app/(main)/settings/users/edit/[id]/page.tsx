@@ -25,86 +25,138 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Save, Shield, AlertTriangle, Users, Package, BarChart3, Settings } from "lucide-react";
+import { ArrowLeft, Trash2, Save, Shield, AlertTriangle, Users, Package, BarChart3, Settings, Check, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+
+interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  resource: string;
+  action: string;
+  category: string;
+}
 
 interface Role {
   id: string;
   name: string;
   description: string;
+  isSystem: boolean;
+  isActive: boolean;
+  permissions?: string | Permission[];
 }
 
 interface User {
   id: string;
   email: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
   roleId: string;
   role: {
     id: string;
     name: string;
+    description: string;
+    isSystem: boolean;
+    isActive: boolean;
   };
   isActive: boolean;
   isEmailVerified: boolean;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  customPermissions?: Permission[];
 }
 
-interface PagePermission {
-  key: string;
-  name: string;
-  icon: any;
-  description: string;
-  permissionName: string;
-}
-
-const pagePermissions: PagePermission[] = [
-  {
-    key: 'dashboard',
-    name: 'Dashboard',
-    icon: BarChart3,
-    description: 'Access to main dashboard with analytics and overview',
-    permissionName: 'page:dashboard'
-  },
-  {
-    key: 'inventory',
-    name: 'Inventory Management',
-    icon: Package,
-    description: 'Access to inventory, products, categories, and stock control',
-    permissionName: 'page:inventory'
-  },
-  {
-    key: 'settings',
-    name: 'Settings',
-    icon: Settings,
-    description: 'Access to user settings, preferences, and profile management',
-    permissionName: 'page:settings'
-  },
-  {
-    key: 'userManagement',
-    name: 'User Management',
-    icon: Users,
-    description: 'Administrative access to manage users, roles, and permissions',
-    permissionName: 'page:user-management'
-  }
+// Definición de permisos disponibles organizados por categoría
+const availablePermissions: Omit<Permission, 'id'>[] = [
+  // Dashboard
+  { name: 'dashboard.view', description: 'Ver dashboard', resource: 'dashboard', action: 'view', category: 'page' },
+  
+  // Inventario
+  { name: 'inventory.view', description: 'Ver inventario', resource: 'inventory', action: 'view', category: 'page' },
+  { name: 'inventory.create', description: 'Crear productos', resource: 'inventory', action: 'create', category: 'feature' },
+  { name: 'inventory.edit', description: 'Editar productos', resource: 'inventory', action: 'edit', category: 'feature' },
+  { name: 'inventory.delete', description: 'Eliminar productos', resource: 'inventory', action: 'delete', category: 'feature' },
+  { name: 'inventory.import', description: 'Importar inventario', resource: 'inventory', action: 'import', category: 'feature' },
+  { name: 'inventory.export', description: 'Exportar inventario', resource: 'inventory', action: 'export', category: 'feature' },
+  
+  // Ventas
+  { name: 'sales.view', description: 'Ver ventas', resource: 'sales', action: 'view', category: 'page' },
+  { name: 'sales.create', description: 'Crear ventas', resource: 'sales', action: 'create', category: 'feature' },
+  { name: 'sales.edit', description: 'Editar ventas', resource: 'sales', action: 'edit', category: 'feature' },
+  { name: 'sales.refund', description: 'Procesar reembolsos', resource: 'sales', action: 'refund', category: 'feature' },
+  
+  // Ubicaciones
+  { name: 'locations.view', description: 'Ver ubicaciones', resource: 'locations', action: 'view', category: 'page' },
+  { name: 'locations.create', description: 'Crear ubicaciones', resource: 'locations', action: 'create', category: 'feature' },
+  { name: 'locations.edit', description: 'Editar ubicaciones', resource: 'locations', action: 'edit', category: 'feature' },
+  { name: 'locations.delete', description: 'Eliminar ubicaciones', resource: 'locations', action: 'delete', category: 'feature' },
+  
+  // Categorías
+  { name: 'categories.view', description: 'Ver categorías', resource: 'categories', action: 'view', category: 'page' },
+  { name: 'categories.create', description: 'Crear categorías', resource: 'categories', action: 'create', category: 'feature' },
+  { name: 'categories.edit', description: 'Editar categorías', resource: 'categories', action: 'edit', category: 'feature' },
+  { name: 'categories.delete', description: 'Eliminar categorías', resource: 'categories', action: 'delete', category: 'feature' },
+  
+  // Usuarios (solo admin)
+  { name: 'users.view', description: 'Ver usuarios', resource: 'users', action: 'view', category: 'admin' },
+  { name: 'users.create', description: 'Crear usuarios', resource: 'users', action: 'create', category: 'admin' },
+  { name: 'users.edit', description: 'Editar usuarios', resource: 'users', action: 'edit', category: 'admin' },
+  { name: 'users.delete', description: 'Eliminar usuarios', resource: 'users', action: 'delete', category: 'admin' },
+  
+  // Roles y Permisos (solo admin)
+  { name: 'roles.view', description: 'Ver roles', resource: 'roles', action: 'view', category: 'admin' },
+  { name: 'roles.create', description: 'Crear roles', resource: 'roles', action: 'create', category: 'admin' },
+  { name: 'roles.edit', description: 'Editar roles', resource: 'roles', action: 'edit', category: 'admin' },
+  { name: 'roles.delete', description: 'Eliminar roles', resource: 'roles', action: 'delete', category: 'admin' },
+  { name: 'permissions.view', description: 'Ver permisos', resource: 'permissions', action: 'view', category: 'admin' },
+  { name: 'permissions.manage', description: 'Gestionar permisos', resource: 'permissions', action: 'manage', category: 'admin' },
+  
+  // Configuración
+  { name: 'settings.view', description: 'Ver configuración', resource: 'settings', action: 'view', category: 'page' },
+  { name: 'settings.edit', description: 'Editar configuración', resource: 'settings', action: 'edit', category: 'feature' },
+  
+  // Reportes
+  { name: 'reports.view', description: 'Ver reportes', resource: 'reports', action: 'view', category: 'page' },
+  { name: 'reports.export', description: 'Exportar reportes', resource: 'reports', action: 'export', category: 'feature' },
+  { name: 'reports.schedule', description: 'Programar reportes', resource: 'reports', action: 'schedule', category: 'feature' }
 ];
 
-interface CustomPermissions {
-  [key: string]: boolean;
-}
+// Agrupar permisos por categoría
+const groupPermissionsByCategory = () => {
+  const groups: { [key: string]: typeof availablePermissions } = {};
+  availablePermissions.forEach(permission => {
+    if (!groups[permission.category]) {
+      groups[permission.category] = [];
+    }
+    groups[permission.category].push(permission);
+  });
+  return groups;
+};
 
-interface CustomPermission {
-  permission: {
-    id: string;
-    name: string;
-    resource: string;
-    action: string;
+const permissionGroups = groupPermissionsByCategory();
+
+// Obtener color para categoría de permisos
+const getCategoryColor = (category: string) => {
+  const colors = {
+    page: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+    feature: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+    admin: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800',
+    data: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800'
   };
-  granted: boolean;
-}
+  return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700';
+};
+
+// Obtener color para tipo de rol
+const getRoleTypeColor = (isSystem: boolean) => {
+  return isSystem 
+    ? 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
+    : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
+};
 
 interface PageProps {
   params: Promise<{
@@ -121,9 +173,11 @@ export default function EditUserPage({ params }: PageProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [error, setError] = useState('');
+  const [currentTab, setCurrentTab] = useState('basic');
   
   // Form state
   const [formData, setFormData] = useState({
+    name: '',
     firstName: '',
     lastName: '',
     roleId: '',
@@ -132,12 +186,7 @@ export default function EditUserPage({ params }: PageProps) {
 
   // Custom permissions state
   const [useCustomPermissions, setUseCustomPermissions] = useState(false);
-  const [customPermissions, setCustomPermissions] = useState<CustomPermissions>({
-    dashboard: true,
-    inventory: false,
-    settings: true,
-    userManagement: false,
-  });
+  const [customPermissions, setCustomPermissions] = useState<string[]>([]);
 
   const [userId, setUserId] = useState<string>('');
 
@@ -186,7 +235,8 @@ export default function EditUserPage({ params }: PageProps) {
         
         // Set form data
         setFormData({
-          firstName: userData.user.name || userData.user.firstName || '',
+          name: userData.user.name || '',
+          firstName: userData.user.firstName || '',
           lastName: userData.user.lastName || '',
           roleId: userData.user.roleId,
           isActive: userData.user.isActive,
@@ -195,39 +245,20 @@ export default function EditUserPage({ params }: PageProps) {
         // Load user's custom permissions if they exist
         if (userData.user.customPermissions && userData.user.customPermissions.length > 0) {
           setUseCustomPermissions(true);
-          
-          const permissionMap: Record<string, string> = {
-            dashboard: 'page:dashboard',
-            inventory: 'page:inventory',
-            settings: 'page:settings',
-            userManagement: 'page:user-management',
-          };
-          
-          // Create reverse mapping from permission name to key
-          const reverseMap: Record<string, string> = {};
-          Object.entries(permissionMap).forEach(([key, value]) => {
-            reverseMap[value] = key;
-          });
-          
-          // Set permissions based on user's custom permissions
-          const newPermissions = { ...customPermissions };
-          
-          userData.user.customPermissions.forEach((cp: CustomPermission) => {
-            const permKey = reverseMap[cp.permission.name];
-            if (permKey) {
-              newPermissions[permKey] = cp.granted;
-            }
-          });
-          
-          setCustomPermissions(newPermissions);
+          const userPermissionNames = userData.user.customPermissions.map((p: Permission) => p.name);
+          setCustomPermissions(userPermissionNames);
         } else {
-          // Fall back to role-based permissions
-        setDefaultPermissions(userData.user.role.name);
+          // Set default permissions based on role
+          const selectedRole = rolesData.roles.find((role: Role) => role.id === userData.user.roleId);
+          if (selectedRole) {
+            setDefaultPermissionsFromRole(selectedRole);
+          }
         }
-        
+
       } catch (error) {
         console.error('Error loading data:', error);
         setError('Failed to load user data');
+        toast.error('Error al cargar los datos del usuario');
       } finally {
         setIsLoading(false);
       }
@@ -236,106 +267,137 @@ export default function EditUserPage({ params }: PageProps) {
     loadData();
   }, [userId]);
 
-  const setDefaultPermissions = (roleName: string) => {
-    const newPermissions = { ...customPermissions };
-    
-    switch (roleName.toLowerCase()) {
-      case 'admin':
-        newPermissions.dashboard = true;
-        newPermissions.inventory = true;
-        newPermissions.settings = true;
-        newPermissions.userManagement = true;
-        break;
-      case 'user':
-        newPermissions.dashboard = true;
-        newPermissions.inventory = true;
-        newPermissions.settings = true;
-        newPermissions.userManagement = false;
-        break;
-      case 'viewer':
-      case 'operator':
-        newPermissions.dashboard = true;
-        newPermissions.inventory = false;
-        newPermissions.settings = true;
-        newPermissions.userManagement = false;
-        break;
-      default:
-        newPermissions.dashboard = true;
-        newPermissions.inventory = false;
-        newPermissions.settings = true;
-        newPermissions.userManagement = false;
+  const parsePermissions = (permissions: string | Permission[]): Permission[] => {
+    if (typeof permissions === 'string') {
+      try {
+        return JSON.parse(permissions);
+      } catch {
+        return [];
+      }
     }
-    
-    setCustomPermissions(newPermissions);
+    return permissions || [];
+  };
+
+  const getSelectedRole = (): Role | undefined => {
+    return roles.find(role => role.id === formData.roleId);
+  };
+
+  const getRolePermissions = (role: Role): Permission[] => {
+    if (!role.permissions) return [];
+    return parsePermissions(role.permissions);
+  };
+
+  const setDefaultPermissionsFromRole = (role: Role) => {
+    const rolePermissions = getRolePermissions(role);
+    const permissionNames = rolePermissions.map(p => p.name);
+    setCustomPermissions(permissionNames);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleRoleChange = (roleId: string) => {
     setFormData(prev => ({ ...prev, roleId }));
     
-    const selectedRole = roles.find(role => role.id === roleId);
-    if (selectedRole && !useCustomPermissions) {
-      setDefaultPermissions(selectedRole.name);
+    // If not using custom permissions, update permissions based on role
+    if (!useCustomPermissions) {
+      const selectedRole = roles.find(role => role.id === roleId);
+      if (selectedRole) {
+        setDefaultPermissionsFromRole(selectedRole);
+      }
     }
   };
 
-  const handlePermissionToggle = (permission: string) => {
-    setCustomPermissions(prev => ({
-      ...prev,
-      [permission]: !prev[permission]
-    }));
+  const handlePermissionToggle = (permissionName: string) => {
+    setCustomPermissions(prev => {
+      if (prev.includes(permissionName)) {
+        return prev.filter(p => p !== permissionName);
+      } else {
+        return [...prev, permissionName];
+      }
+    });
+  };
+
+  const selectAllPermissionsInCategory = (category: string) => {
+    const categoryPermissions = permissionGroups[category].map(p => p.name);
+    const allSelected = categoryPermissions.every(p => customPermissions.includes(p));
+    
+    if (allSelected) {
+      // Deselect all in category
+      setCustomPermissions(prev => prev.filter(p => !categoryPermissions.includes(p)));
+    } else {
+      // Select all in category
+      setCustomPermissions(prev => {
+        const newPermissions = [...prev];
+        categoryPermissions.forEach(p => {
+          if (!newPermissions.includes(p)) {
+            newPermissions.push(p);
+          }
+        });
+        return newPermissions;
+      });
+    }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    setError('');
-
     try {
-      const payload = {
-        ...formData,
-        customPermissions: useCustomPermissions ? customPermissions : undefined,
+      setIsSaving(true);
+      
+      const updateData: any = {
+        name: formData.name || `${formData.firstName} ${formData.lastName}`.trim(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        roleId: formData.roleId,
+        isActive: formData.isActive,
       };
 
+      // Include custom permissions if enabled
+      if (useCustomPermissions) {
+        updateData.customPermissions = customPermissions;
+      }
+
       const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(updateData),
       });
 
-      if (response.ok) {
-        toast.success('User updated successfully!');
-        router.push('/settings/users');
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to update user');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update user');
       }
+
+      toast.success('Usuario actualizado exitosamente');
+      router.push('/settings/users');
     } catch (error) {
       console.error('Error updating user:', error);
-      setError('Failed to update user');
+      toast.error(error instanceof Error ? error.message : 'Error al actualizar usuario');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    setIsDeleting(true);
-
     try {
+      setIsDeleting(true);
+      
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        toast.success('User deleted successfully');
-        router.push('/settings/users');
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to delete user');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
       }
+
+      toast.success('Usuario eliminado exitosamente');
+      router.push('/settings/users');
     } catch (error) {
       console.error('Error deleting user:', error);
-      setError('Failed to delete user');
+      toast.error(error instanceof Error ? error.message : 'Error al eliminar usuario');
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -344,10 +406,10 @@ export default function EditUserPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading user data...</p>
+      <div className="container mx-auto py-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
         </div>
       </div>
     );
@@ -355,282 +417,375 @@ export default function EditUserPage({ params }: PageProps) {
 
   if (error || !user) {
     return (
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">{error || 'User not found'}</h1>
-        <Link href="/settings/users">
-          <Button>Back to Users</Button>
-        </Link>
+      <div className="container mx-auto py-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {error || 'Usuario no encontrado'}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
+  const selectedRole = getSelectedRole();
+
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Link href="/settings/users">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a Usuarios
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Edit User</h1>
-            <p className="text-muted-foreground">Manage user account, role, and permissions</p>
+            <h1 className="text-3xl font-bold tracking-tight">Editar Usuario</h1>
+            <p className="text-muted-foreground">
+              Modifica la información y permisos del usuario
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="destructive"
             onClick={() => setShowDeleteDialog(true)}
-            className="text-destructive hover:text-destructive"
+            disabled={isSaving || isDeleting}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete User
+            Eliminar
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || isDeleting}
+          >
             <Save className="h-4 w-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
           </Button>
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {/* User Info Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Información del Usuario
+          </CardTitle>
+          <CardDescription>
+            Usuario creado el {formatDate(new Date(user.createdAt))}
+            {user.lastLoginAt && ` • Último acceso: ${formatDate(new Date(user.lastLoginAt))}`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+              <p className="text-sm">{user.email}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground">Rol Actual</Label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={getRoleTypeColor(user.role.isSystem)}>
+                  {user.role.name}
+                </Badge>
+                {user.role.isSystem && (
+                  <Badge variant="outline" className="text-xs">
+                    Sistema
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground">Estado</Label>
+              <Badge variant={user.isActive ? "default" : "secondary"}>
+                {user.isActive ? "Activo" : "Inactivo"}
+              </Badge>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground">Email Verificado</Label>
+              <Badge variant={user.isEmailVerified ? "default" : "destructive"}>
+                {user.isEmailVerified ? "Verificado" : "No Verificado"}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User Information */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
+      {/* Edit Form */}
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="basic">Información Básica</TabsTrigger>
+          <TabsTrigger value="permissions">Permisos y Acceso</TabsTrigger>
+        </TabsList>
+
+        {/* Basic Information Tab */}
+        <TabsContent value="basic" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Edit user details and account status</CardDescription>
+              <CardTitle>Información Personal</CardTitle>
+              <CardDescription>
+                Actualiza la información básica del usuario
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nombre</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                    placeholder="Enter first name"
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    placeholder="Nombre del usuario"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                    placeholder="Enter last name"
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    placeholder="Apellido del usuario"
                   />
                 </div>
               </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
+              
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre Completo</Label>
                 <Input
-                  id="email"
-                  value={user.email}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Email address cannot be changed
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="isActive">Account Active</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Inactive users cannot log in
-                  </p>
-                </div>
-                <Switch
-                  id="isActive"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="Nombre completo del usuario"
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Role & Permissions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Role & Permissions
-              </CardTitle>
-              <CardDescription>
-                Assign role and configure custom permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Role Selection */}
-              <div>
-                <Label htmlFor="role">User Role</Label>
+              <div className="space-y-2">
+                <Label htmlFor="role">Rol</Label>
                 <Select value={formData.roleId} onValueChange={handleRoleChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
                     {roles.map((role) => (
                       <SelectItem key={role.id} value={role.id}>
-                        <div>
-                          <div className="font-medium capitalize">{role.name}</div>
-                          <div className="text-sm text-muted-foreground">{role.description}</div>
+                        <div className="flex items-center gap-2">
+                          <span>{role.name}</span>
+                          <Badge variant="outline" className={getRoleTypeColor(role.isSystem)}>
+                            {role.isSystem ? 'Sistema' : 'Personalizado'}
+                          </Badge>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedRole && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedRole.description}
+                  </p>
+                )}
               </div>
 
-              <Separator />
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isActive"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => handleInputChange('isActive', checked.toString())}
+                />
+                <Label htmlFor="isActive">Usuario activo</Label>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
+        {/* Permissions Tab */}
+        <TabsContent value="permissions" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Configuración de Permisos
+              </CardTitle>
+              <CardDescription>
+                Define los permisos específicos para este usuario
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               {/* Custom Permissions Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="useCustom">Custom Permissions</Label>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <Label className="text-base font-medium">Permisos Personalizados</Label>
                   <p className="text-sm text-muted-foreground">
-                    Override role permissions with custom settings
+                    Habilita para configurar permisos específicos en lugar de usar los del rol
                   </p>
                 </div>
                 <Switch
-                  id="useCustom"
                   checked={useCustomPermissions}
                   onCheckedChange={setUseCustomPermissions}
                 />
               </div>
 
-              {/* Permissions List */}
-              <div className="space-y-4">
-                <h4 className="font-medium">Page Access Permissions</h4>
-                <div className="space-y-3">
-                  {pagePermissions.map((permission) => {
-                    const Icon = permission.icon;
-                    const isEnabled = customPermissions[permission.key];
-                    
-                    return (
-                      <div key={permission.key} className="flex items-start justify-between p-3 border rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Icon className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{permission.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {permission.description}
+              {/* Role Permissions Preview */}
+              {!useCustomPermissions && selectedRole && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    <Label className="text-base font-medium">
+                      Permisos del Rol: {selectedRole.name}
+                    </Label>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Este usuario heredará automáticamente los permisos configurados para el rol "{selectedRole.name}".
+                    </p>
+                    {getRolePermissions(selectedRole).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {getRolePermissions(selectedRole).map((permission) => (
+                          <Badge
+                            key={permission.name}
+                            variant="outline"
+                            className={getCategoryColor(permission.category)}
+                          >
+                            {permission.description}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No hay permisos específicos configurados para este rol.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Permissions Configuration */}
+              {useCustomPermissions && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    <Label className="text-base font-medium">Permisos Específicos</Label>
+                  </div>
+
+                  {Object.entries(permissionGroups).map(([category, permissions]) => (
+                    <div key={category} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={getCategoryColor(category)}>
+                            {category === 'page' && 'Páginas'}
+                            {category === 'feature' && 'Funcionalidades'}
+                            {category === 'admin' && 'Administración'}
+                            {category === 'data' && 'Datos'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {permissions.filter(p => customPermissions.includes(p.name)).length} de {permissions.length} seleccionados
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => selectAllPermissionsInCategory(category)}
+                        >
+                          {permissions.every(p => customPermissions.includes(p.name)) ? (
+                            <>
+                              <X className="h-3 w-3 mr-1" />
+                              Deseleccionar Todo
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3 mr-1" />
+                              Seleccionar Todo
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {permissions.map((permission) => (
+                          <div
+                            key={permission.name}
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                              customPermissions.includes(permission.name)
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                            onClick={() => handlePermissionToggle(permission.name)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                    customPermissions.includes(permission.name)
+                                      ? 'border-primary bg-primary text-primary-foreground'
+                                      : 'border-muted-foreground'
+                                  }`}>
+                                    {customPermissions.includes(permission.name) && (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                  <span className="text-sm font-medium">
+                                    {permission.description}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {permission.resource}.{permission.action}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={() => handlePermissionToggle(permission.key)}
-                          disabled={!useCustomPermissions}
-                        />
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+                  ))}
 
-              {!useCustomPermissions && (
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Role-based Access:</strong> User will inherit permissions from the selected role.
-                    Enable "Custom Permissions" to override role settings.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {useCustomPermissions && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Custom Mode Active:</strong> This user will have the exact permissions configured above,
-                    regardless of their role. Role changes will not affect these permissions.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar Information */}
-        <div className="space-y-6">
-          {/* User Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>User Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <Badge variant={user.isActive ? "default" : "secondary"}>
-                  {user.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Email Verified</span>
-                <Badge variant={user.isEmailVerified ? "default" : "destructive"}>
-                  {user.isEmailVerified ? "Verified" : "Unverified"}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Current Role</span>
-                <p className="text-sm text-muted-foreground capitalize">{user.role.name}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Account Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="text-sm font-medium">Created</span>
-                <p className="text-sm text-muted-foreground">{formatDate(user.createdAt)}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Last Updated</span>
-                <p className="text-sm text-muted-foreground">{formatDate(user.updatedAt)}</p>
-              </div>
-              {user.lastLoginAt && (
-                <div>
-                  <span className="text-sm font-medium">Last Login</span>
-                  <p className="text-sm text-muted-foreground">{formatDate(user.lastLoginAt)}</p>
+                  {/* Permissions Summary */}
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="h-4 w-4" />
+                      <Label className="text-sm font-medium">Resumen de Permisos</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Total de permisos seleccionados: <strong>{customPermissions.length}</strong> de {availablePermissions.length} disponibles
+                    </p>
+                    {customPermissions.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {customPermissions.slice(0, 10).map((permissionName) => {
+                          const permission = availablePermissions.find(p => p.name === permissionName);
+                          return permission ? (
+                            <Badge
+                              key={permissionName}
+                              variant="outline"
+                              className={`text-xs ${getCategoryColor(permission.category)}`}
+                            >
+                              {permission.description}
+                            </Badge>
+                          ) : null;
+                        })}
+                        {customPermissions.length > 10 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{customPermissions.length - 10} más
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Delete User Account
-            </DialogTitle>
+            <DialogTitle>¿Eliminar Usuario?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this user account? This action cannot be undone.
-              <br /><br />
-              <strong>User:</strong> {user.email}
-              <br />
-              <strong>Name:</strong> {`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Not provided'}
+              Esta acción no se puede deshacer. El usuario "{user.name || user.email}" será eliminado permanentemente del sistema.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -639,14 +794,14 @@ export default function EditUserPage({ params }: PageProps) {
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete User'}
+              {isDeleting ? 'Eliminando...' : 'Eliminar Usuario'}
             </Button>
           </DialogFooter>
         </DialogContent>

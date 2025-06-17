@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+// Removed Prisma import - using Supabase
 
 /**
  * Tipo para crear un nuevo producto

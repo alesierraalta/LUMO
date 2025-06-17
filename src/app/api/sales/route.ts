@@ -1,6 +1,6 @@
 import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db-hybrid';
+import { db } from '@/lib/db-supabase';
 import { z } from 'zod';
 
 // Schema for validating sale creation

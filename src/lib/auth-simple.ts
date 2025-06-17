@@ -62,9 +62,10 @@ export const authenticateUser = async (
   password: string
 ): Promise<AuthResult> => {
   try {
-    // Find user
+    // Find user with role relationship
     const user = await db.user.findUnique({
       where: { email },
+      include: { role: true },
     });
 
     if (!user) {
@@ -133,9 +134,10 @@ export const getCurrentUserFromToken = async (token: string): Promise<User | nul
       return null;
     }
 
-    // Find user by ID from token
+    // Find user by ID from token with role relationship
     const userWithRole = await db.user.findUnique({
-      where: { id: sessionData.userId }
+      where: { id: sessionData.userId },
+      include: { role: true },
     }) as any;
 
     if (!userWithRole || !userWithRole.isActive) {

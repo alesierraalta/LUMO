@@ -22,14 +22,14 @@ const ProductSchema = z.object({
   name: z.string().min(1, { message: "El nombre del producto es requerido" }).max(100, { message: "El nombre no puede exceder los 100 caracteres" }),
   description: z.string().optional(),
   sku: z.string().min(1, { message: "El SKU es requerido" }),
-  cost: z.number().min(0, { message: "El costo no puede ser negativo" }).optional(),
-  price: z.number().min(0, { message: "El precio no puede ser negativo" }).optional(),
-  margin: z.number().optional(),
+  cost: z.coerce.number().min(0, { message: "El costo no puede ser negativo" }).nullable().optional(),
+  price: z.coerce.number().min(0, { message: "El precio no puede ser negativo" }).nullable().optional(),
+  margin: z.coerce.number().nullable().optional(),
   categoryId: z.string().optional(),
   imageUrl: z.string().optional(),
   // Inventory fields
-  quantity: z.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
-  minStockLevel: z.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
+  quantity: z.coerce.number().int().min(0, { message: "La cantidad no puede ser negativa" }).default(0),
+  minStockLevel: z.coerce.number().int().min(0, { message: "El nivel mínimo no puede ser negativo" }).default(5),
   locationId: z.string().optional()
 });
 
@@ -157,13 +157,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const cost = validatedData.cost;
-    let price = validatedData.price;
-    let margin = validatedData.margin;
+    const cost = validatedData.cost || null;
+    let price = validatedData.price || null;
+    let margin = validatedData.margin || null;
     
     // Calcular valores solo si se proporcionan tanto cost como price
-    if (cost !== undefined && price !== undefined && cost > 0 && price > 0) {
-      if (margin !== undefined && margin > 0) {
+    if (cost !== null && cost !== undefined && price !== null && price !== undefined && cost > 0 && price > 0) {
+      if (margin !== null && margin !== undefined && margin > 0) {
         // Si se proporciona margen, recalcular el precio
         price = calculatePrice(cost, margin);
       } else {

@@ -1,0 +1,60 @@
+name: 🧪 Tests - Supabase Databases
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        database: [production, development]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install Dependencies
+      run: npm ci
+      
+    - name: 🔧 Setup Environment - Production DB
+      if: matrix.database == 'production'
+      run: |
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }}" >> $GITHUB_ENV
+        echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY_PROD }}" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }}" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_KEY_PROD }}" >> $GITHUB_ENV
+        
+    - name: 🔧 Setup Environment - Development DB
+      if: matrix.database == 'development'
+      run: |
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL_DEV }}" >> $GITHUB_ENV
+        echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY_DEV }}" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL_DEV }}" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_KEY_DEV }}" >> $GITHUB_ENV
+        
+    - name: 🧪 Run Unit Tests
+      run: npm run test:unit
+      
+    - name: 🧪 Run Integration Tests  
+      run: npm run test:integration
+      
+    - name: 📊 Test Summary
+      if: always()
+      run: |
+        echo "✅ Tests completed for ${{ matrix.database }} database"
+        echo "📝 Check the logs above for detailed results" 

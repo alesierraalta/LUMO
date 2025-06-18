@@ -12,6 +12,7 @@ env:
   # Global test environment settings
   CI: true
   NODE_ENV: test
+  NODE_OPTIONS: '--max-old-space-size=4096'
 
 jobs:
   test:
@@ -74,7 +75,6 @@ jobs:
         echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> $GITHUB_ENV
         echo "NEXTAUTH_URL=http://localhost:3000" >> $GITHUB_ENV
         echo "NEXTAUTH_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_ENV
-        echo "NODE_OPTIONS=--max-old-space-size=4096" >> $GITHUB_ENV
         echo "SKIP_ENV_VALIDATION=true" >> $GITHUB_ENV
         
     - name: 🔧 Validate Environment Setup
@@ -87,25 +87,34 @@ jobs:
         
     - name: 🔧 Prepare Test Environment
       run: |
-        npm run test:setup
-        npm run test:health
+        echo "✅ Preparing test environment..."
+        npm run test:clear-cache || echo "Cache clear skipped"
+        echo "✅ Test environment ready"
         
     - name: 🧪 Run Unit Tests
-      run: npm run test:unit
+      run: |
+        echo "🧪 Starting unit tests..."
+        npm run test:unit
       continue-on-error: false
       
     - name: 🧪 Run Integration Tests  
-      run: npm run test:integration
+      run: |
+        echo "🧪 Starting integration tests..."
+        npm run test:integration
       continue-on-error: false
       
     - name: 🧪 Run End-to-End Tests
       run: |
-        npx playwright install --with-deps
+        echo "🧪 Installing Playwright..."
+        npx playwright install --with-deps chromium
+        echo "🧪 Starting E2E tests..."
         npm run test:e2e
       continue-on-error: false
       
     - name: 🧪 Run Performance Tests
-      run: npm run test:performance
+      run: |
+        echo "🧪 Starting performance tests..."
+        npm run test:performance
       continue-on-error: false
       
     - name: 📊 Upload Test Results

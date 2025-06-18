@@ -834,6 +834,8 @@ export const db = {
             query = query.eq('category_id', value);
           } else if (key === 'createdById') {
             query = query.eq('created_by_id', value);
+          } else if (key === 'isActive') {
+            query = query.eq('is_active', value);
           } else {
             query = query.eq(key, value);
           }
@@ -872,6 +874,7 @@ export const db = {
         minStockLevel: item.min_stock_level,
         unitCost: item.unit_cost,
         unitPrice: item.unit_price,
+        isActive: item.is_active,
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
         createdById: item.created_by_id
@@ -991,6 +994,8 @@ export const db = {
             query = query.eq('category_id', value);
           } else if (key === 'createdById') {
             query = query.eq('created_by_id', value);
+          } else if (key === 'isActive') {
+            query = query.eq('is_active', value);
           } else {
             query = query.eq(key, value);
           }

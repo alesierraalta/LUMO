@@ -146,6 +146,8 @@
     "rollback:user-edit-fix": "node scripts/rollback-user-edit-fix.js",
     "validate:user-edit-fix": "node scripts/final-validation-checklist.js",
     "validate:fix-ready": "node scripts/validate-fix-ready.js",
+    "fix:github-actions": "node scripts/fix-github-actions.js",
+    "validate:github-actions": "node scripts/fix-github-actions.js",
     "choreo:setup": "node scripts/choreo-setup.js",
     "choreo:fix-schema": "echo 'Run the SQL script in supabase-schema-fix.sql in your Supabase dashboard'"
   },

@@ -70,7 +70,7 @@
     "test:unit": "jest --testPathPattern=__tests__/unit",
     "test:unit:watch": "jest --testPathPattern=__tests__/unit --watch",
     "test:unit:coverage": "jest --testPathPattern=__tests__/unit --coverage",
-    "test:integration": "jest --config jest.config.integration.js",
+    "test:integration": "jest --config jest.config.integration.js --runInBand",
     "test:integration:watch": "jest --config jest.config.integration.js --watch",
     "test:integration:coverage": "jest --config jest.config.integration.js --coverage",
     "test:e2e": "playwright test",

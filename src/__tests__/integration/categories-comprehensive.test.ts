@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import db from '@/lib/db';
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, db } from '../setup/test-utilities';
 
 describe('Categories - COMPREHENSIVE TESTS', () => {
   let testUserId: string;
@@ -13,77 +13,31 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
   let testCategoryIds: string[] = [];
 
   beforeAll(async () => {
-    // Create a test role first
-    try {
-      const testRole = await db.role.create({
-        data: {
-          name: `Test Role ${Date.now()}`,
-          description: 'Test role for categories integration tests',
-          isSystem: false,
-          isActive: true
-        }
-      });
-      testRoleId = testRole.id;
-    } catch (error) {
-      console.log('Error creating test role:', error);
-      throw error;
-    }
-
-    // Create a test user for category operations
-    try {
-      const testUser = await db.user.create({
-        data: {
-          email: 'test-categories@example.com',
-          password: 'hashedpassword',
-          name: 'Test User',
-          roleId: testRoleId,
-          isActive: true
-        }
-      });
-      testUserId = testUser.id;
-    } catch (error) {
-      // User might already exist, try to find it
-      const existingUser = await db.user.findUnique({
-        where: { email: 'test-categories@example.com' }
-      });
-      if (existingUser) {
-        testUserId = existingUser.id;
-      } else {
-        throw error;
-      }
-    }
+    await setupTestDatabase();
   });
 
   afterAll(async () => {
-    // Clean up test data
-    for (const categoryId of testCategoryIds) {
-      try {
-        await db.category.delete({ where: { id: categoryId } });
-      } catch (error) {
-        console.log('Category already deleted:', categoryId);
-      }
-    }
-    
-    // Clean up test user and role
-    try {
-      if (testUserId) {
-        await db.user.delete({ where: { id: testUserId } });
-      }
-    } catch (error) {
-      console.log('User already deleted');
-    }
-    
-    try {
-      if (testRoleId) {
-        await db.role.delete({ where: { id: testRoleId } });
-      }
-    } catch (error) {
-      console.log('Role already deleted');
-    }
+    await cleanupTestDatabase();
+    await disconnectDatabase();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Clean up before each test to ensure isolation
+    await cleanupTestDatabase();
     testCategoryIds = [];
+    
+    // Create fresh test data for each test
+    const testRole = await createTestRole({
+      name: `Test Role ${Date.now()}`,
+      description: 'Test role for categories integration tests'
+    });
+    testRoleId = testRole.id;
+
+    const testUser = await createTestUser({
+      roleId: testRoleId,
+      email: `test-categories-${Date.now()}@example.com`
+    });
+    testUserId = testUser.id;
   });
 
   describe('1. Category Creation Scenarios', () => {

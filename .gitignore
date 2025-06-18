@@ -44,3 +44,12 @@ next-env.d.ts
 /.clerk/
 configurar-actualizacion-automatica.bat
 auto-update.bat
+
+# Security - Never commit real keys or secrets
+**/choreo-exact-variables.md
+**/real-keys.md
+**/production-keys.md
+**/*-secrets.md
+**/*-keys.md
+.env.production
+.env.secrets

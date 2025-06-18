@@ -3,3 +3,107 @@ description:
 globs:
 alwaysApply: false
 ---
+# LUMO NPM Scripts Guide
+
+## Script Cleanup Philosophy
+The project has been **dramatically simplified** from ~140 scripts to **14 essential scripts** for better maintainability and clarity.
+
+## Essential Scripts Overview
+**File**: [package.json](mdc:package.json)
+
+### 🚀 Development & Production (5 scripts)
+
+#### `npm run dev`
+- **Command**: `next dev`
+- **Purpose**: Development server with hot reload
+- **When**: Daily development work
+- **Port**: http://localhost:3000
+
+#### `npm run build`
+- **Command**: `next build`
+- **Purpose**: Production build optimization
+- **When**: Before deployment or testing production build
+- **Output**: `.next` directory with optimized assets
+
+#### `npm run start`
+- **Command**: `next start`
+- **Purpose**: Production server (requires build first)
+- **When**: Testing production build locally
+
+#### `npm run lint` / `npm run lint:fix`
+- **Commands**: `next lint` / `next lint --fix`
+- **Purpose**: Code quality and style checking
+- **When**: Before commits, CI/CD pipeline
+
+#### `npm run type-check`
+- **Command**: `tsc --noEmit`
+- **Purpose**: TypeScript validation without compilation
+- **When**: Pre-commit hooks, CI/CD validation
+
+### 🧪 Testing Suite (6 scripts)
+
+#### `npm run test`
+- **Command**: `jest`
+- **Purpose**: Unit tests execution
+- **Coverage**: Component and utility testing
+
+#### `npm run test:watch`
+- **Command**: `jest --watch`
+- **Purpose**: Continuous testing during development
+- **When**: TDD workflow, debugging tests
+
+#### `npm run test:coverage`
+- **Command**: `jest --coverage`
+- **Purpose**: Generate test coverage reports
+- **Output**: Coverage reports in `/coverage` directory
+
+#### `npm run test:integration`
+- **Command**: `jest --config jest.config.integration.js --runInBand`
+- **Purpose**: Database and API integration tests
+- **Note**: Runs sequentially to avoid conflicts
+
+#### `npm run test:e2e`
+- **Command**: `playwright test`
+- **Purpose**: End-to-end browser testing
+- **Coverage**: Full user workflow testing
+
+#### `npm run test:all`
+- **Command**: Sequential execution of all test types
+- **Purpose**: Complete test suite for CI/CD
+- **Includes**: Unit + Integration + E2E tests
+
+### ⚙️ Administration (3 scripts)
+
+#### `npm run setup:admin`
+- **Command**: `node scripts/setup-supabase-admin.js`
+- **Purpose**: Initialize Supabase admin configuration
+- **When**: Initial project setup
+
+#### `npm run ensure-single-root`
+- **Command**: `node scripts/ensure-single-root-user.js`
+- **Purpose**: Ensure only one root user per database
+- **Critical**: Maintains `alesierraalta@gmail.com` as single admin
+
+## Removed Scripts Categories
+The following script categories were **removed** for simplification:
+
+### ❌ Removed Categories
+- **Debug scripts** (~30 scripts): Excessive debugging utilities
+- **Choreo-specific scripts** (~40 scripts): Platform-specific deployment scripts
+- **Verification scripts** (~25 scripts): Redundant validation scripts
+- **Optimization scripts** (~20 scripts): Build optimization utilities
+- **Legacy scripts** (~15 scripts): Outdated or duplicate functionality
+
+## Best Practices Applied
+1. **Essential Only**: Keep only scripts used regularly
+2. **Clear Naming**: Descriptive script names
+3. **Logical Grouping**: Development, Testing, Administration
+4. **No Redundancy**: Remove duplicate functionality
+5. **Documentation**: Each script has clear purpose
+
+## Usage Recommendations
+- **Daily Development**: `npm run dev`, `npm run test:watch`
+- **Pre-Commit**: `npm run lint:fix`, `npm run type-check`
+- **CI/CD Pipeline**: `npm run test:all`, `npm run build`
+- **Production Deployment**: `npm run build`, `npm run start`
+- **Initial Setup**: `npm run setup:admin`, `npm run ensure-single-root`

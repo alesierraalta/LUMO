@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   // Essential for Choreo deployment
   output: 'standalone',
@@ -105,12 +107,60 @@ const nextConfig = {
       config.optimization.minimize = true;
     }
     
-    // Improve build performance with caching
+    // Enhanced cache configuration to fix "Serializing big strings" warning
     config.cache = {
       type: 'filesystem',
       compression: 'gzip',
+      // Add cache size limits to prevent large string serialization
+      maxMemoryGenerations: 5,
+      memoryCacheUnaffected: true,
       buildDependencies: {
         config: [__filename],
+      },
+      // Cache directory optimization with absolute path
+      cacheDirectory: path.resolve(process.cwd(), dev ? '.next/cache/webpack' : '.next/cache/webpack-prod'),
+    };
+
+    // Optimize chunk splitting to prevent large strings
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        minSize: 20000,
+        maxSize: 244000, // Prevent chunks larger than ~240KB
+        minChunks: 1,
+        maxAsyncRequests: 30,
+        maxInitialRequests: 30,
+        enforceSizeThreshold: 50000,
+        cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+            maxSize: 244000,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            chunks: 'all',
+            maxSize: 244000,
+          },
+          react: {
+            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+            name: 'react',
+            priority: 10,
+            chunks: 'all',
+            maxSize: 244000,
+          },
+          ui: {
+            test: /[\\/]node_modules[\\/](@radix-ui|lucide-react)[\\/]/,
+            name: 'ui',
+            priority: 5,
+            chunks: 'all',
+            maxSize: 244000,
+          },
+        },
       },
     };
     

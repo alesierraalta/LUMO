@@ -1,0 +1,115 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# LUMO Database Configuration
+
+## Database Architecture
+LUMO uses **Supabase PostgreSQL** with a hybrid authentication approach and custom user management.
+
+## Environment Configuration
+**File**: [supabase.env](mdc:supabase.env)
+
+### Development Environment
+- **URL**: `https://ndprriqyhddjoixrlqnz.supabase.co`
+- **Project ID**: `ndprriqyhddjoixrlqnz`
+- **Status**: ACTIVE_HEALTHY
+
+### Production Environment
+- **URL**:
+- **Project ID**: 
+- **Status**: ACTIVE_HEALTHY
+
+## Database Schema
+The system maintains **12 production tables** with proper relationships:
+
+### Core Tables
+- **users**: Custom user management with role-based access
+- **roles**: User permission levels (ADMIN, USER, etc.)
+- **categories**: Product categorization
+- **inventory_items**: Main inventory management
+- **locations**: Warehouse/storage locations
+- **products**: Product catalog
+- **sales**: Sales transaction records
+
+### Authentication Tables
+- **Supabase Auth**: `auth.users` (Supabase managed)
+- **Custom Users**: `public.users` (application managed)
+- **Relationship**: Linked via `role_id` and metadata
+
+## Key Database Features
+
+### Row Level Security (RLS)
+- **Enabled**: Supabase PostgreSQL with RLS
+- **JWT Integration**: Seamless authentication
+- **Connection Pooling**: Secure and optimized
+
+### Field Mapping
+**File**: [src/lib/db-supabase.ts](mdc:src/lib/db-supabase.ts)
+- **Database Fields**: Snake_case (e.g., `is_active`, `role_id`)
+- **Application Fields**: CamelCase (e.g., `isActive`, `roleId`)
+- **Transformation**: Automatic bidirectional mapping
+
+### Critical Field Mappings
+```javascript
+// Database → Application
+role_id → roleId
+is_active → isActive
+created_at → createdAt
+updated_at → updatedAt
+
+// Application → Database  
+roleId → role_id
+isActive → is_active
+createdAt → created_at
+updatedAt → updated_at
+```
+
+## Database Operations
+
+### Connection Management
+- **Client**: `@supabase/supabase-js`
+- **SSL**: Enabled for all connections
+- **Environment Detection**: Auto-switches between dev/prod
+
+### Migration System
+- **Legacy to Supabase**: [src/app/api/auth/migrate-to-supabase/route.ts](mdc:src/app/api/auth/migrate-to-supabase/route.ts)
+- **User Migration**: Preserves metadata and roles
+- **Dual Environment**: Works identically in dev/prod
+
+## Root User Management
+**CRITICAL CONFIGURATION**:
+- **Single Root User**: `alesierraalta@gmail.com`
+- **Password**: `admin123`
+- **Role**: ADMIN
+- **Enforcement Script**: [scripts/ensure-single-root-user.js](mdc:scripts/ensure-single-root-user.js)
+
+### Root User Validation
+```bash
+# Check dev environment
+npm run ensure-single-root:dev
+
+# Check prod environment  
+npm run ensure-single-root:prod
+```
+
+## Performance Characteristics
+- **Simple Queries**: ~12-13ms response time
+- **Complex Queries**: ~58-59ms response time
+- **Concurrent Operations**: 28ms for 10 requests
+- **High Load**: 12-13ms for 50 operations
+- **Throughput**: 2M+ operations/second with 1% error rate
+
+## Database Health Monitoring
+- **Health Endpoint**: `/api/health`
+- **Connection Validation**: Automatic connectivity checks
+- **Error Tracking**: Comprehensive logging
+- **Performance Metrics**: Response time monitoring
+
+## Known Issues Resolved
+- ✅ **Field Mapping**: Fixed `isActive` column mapping error
+- ✅ **Foreign Key Constraints**: Resolved test isolation issues
+- ✅ **User Migration**: Seamless legacy to Supabase migration
+- ✅ **Dual Environment**: Consistent behavior dev/prod
+

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Shield, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createClientSupabaseClient } from '@/lib/supabase-auth-client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,51 +24,65 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('[Login] Starting login process...');
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include', // Important: Include cookies in the request
+      console.log('[Login] Starting Supabase login process...');
+      const supabase = createClientSupabaseClient();
+      
+      // Authenticate with Supabase
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('[Login] Login successful, redirecting...');
-        console.log('[Login] Response data:', data);
-        toast.success('¡Inicio de sesión exitoso!');
+      if (authError) {
+        console.log('[Login] Supabase auth error:', authError);
         
-        // Use a longer delay and window.location.href for full page reload
-        // This ensures the cookie is properly set before middleware checks
-        setTimeout(() => {
-          console.log('[Login] Redirecting to dashboard...');
-          window.location.href = data.redirectUrl || '/dashboard';
-        }, 1000); // Increased to 1 second
-      } else {
-        console.log('[Login] Login failed:', data.error);
-        // Traducir mensajes de error comunes
-        let errorMessage = data.error || 'Error al iniciar sesión';
-        if (data.error === 'Invalid email or password') {
+        // Traducir mensajes de error de Supabase
+        let errorMessage = authError.message;
+        if (authError.message.includes('Invalid login credentials')) {
           errorMessage = 'Correo electrónico o contraseña incorrectos';
-        } else if (data.error === 'Authentication failed') {
-          errorMessage = 'Autenticación fallida';
-        } else if (data.error === 'Account is disabled') {
-          errorMessage = 'La cuenta está desactivada';
-        } else if (data.error === 'Account is temporarily locked') {
-          errorMessage = 'La cuenta está temporalmente bloqueada';
+        } else if (authError.message.includes('Email not confirmed')) {
+          errorMessage = 'Por favor, confirma tu correo electrónico';
+        } else if (authError.message.includes('Too many requests')) {
+          errorMessage = 'Demasiados intentos. Inténtalo más tarde';
+        } else if (authError.message.includes('User not found')) {
+          errorMessage = 'Usuario no encontrado';
         }
+        
         setError(errorMessage);
-        setIsLoading(false); // Reset loading state on error
+        setIsLoading(false);
+        return;
       }
+
+      if (!data.user) {
+        setError('Error al iniciar sesión');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[Login] Supabase login successful, user ID:', data.user.id);
+      
+      // Verify session is established
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError('No se pudo establecer la sesión');
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('¡Inicio de sesión exitoso!');
+      
+      // Use router.push for proper navigation in Next.js App Router
+      // This ensures the session cookies are properly set before navigation
+      setTimeout(() => {
+        console.log('[Login] Redirecting to dashboard...');
+        window.location.href = '/dashboard';
+      }, 500);
+      
     } catch (error) {
       console.error('[Login] Network error:', error);
       setError('Error de red. Por favor, inténtalo de nuevo.');
-      setIsLoading(false); // Reset loading state on error
+      setIsLoading(false);
     }
-    // Note: Don't reset isLoading on success to prevent form resubmission
   };
 
   return (

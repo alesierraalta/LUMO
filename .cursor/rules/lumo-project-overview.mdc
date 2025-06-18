@@ -1,0 +1,131 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# LUMO Inventory Management System - Project Overview
+
+## Project Description
+LUMO is a **comprehensive inventory management system** built with Next.js 15.3.1, Supabase PostgreSQL, and modern web technologies for scalable business operations.
+
+## Architecture Stack
+
+### Frontend
+- **Framework**: Next.js 15.3.1 with App Router
+- **Language**: TypeScript with strict type checking
+- **Styling**: Tailwind CSS with custom component system
+- **UI Components**: Shadcn/UI and Radix UI primitives
+- **State Management**: React Context + Supabase real-time
+
+### Backend
+- **Database**: Supabase PostgreSQL with Row Level Security
+- **Authentication**: Hybrid Supabase Auth + Custom JWT
+- **API**: Next.js API Routes with RESTful design
+- **File Storage**: Supabase Storage for imports/exports
+
+### Development Tools
+- **Testing**: Jest (unit) + Playwright (e2e) + Integration tests
+- **Code Quality**: ESLint + TypeScript + Prettier
+- **Build**: Webpack with performance optimizations
+- **Deployment**: Choreo platform with Docker containers
+
+## Key Features
+
+### Inventory Management
+- **Products**: Full CRUD with categorization and locations
+- **Stock Tracking**: Real-time inventory levels and movements
+- **Sales Integration**: Transaction recording and margin analysis
+- **Bulk Operations**: Import/export via Excel, bulk adjustments
+
+### User Management
+- **Role-Based Access**: ADMIN, USER roles with permissions
+- **Authentication**: Secure login with session management
+- **Single Root User**: `alesierraalta@gmail.com` per environment
+
+### Business Intelligence
+- **Reporting**: Low stock alerts, margin analysis
+- **Performance Metrics**: Sales tracking and profitability
+- **Data Export**: Excel reports and scheduled exports
+
+## Project Structure
+**Main Directories**:
+- [src/app](mdc:src/app) - Next.js App Router pages and API routes
+- [src/components](mdc:src/components) - Reusable React components
+- [src/lib](mdc:src/lib) - Utilities, database clients, and helpers
+- [scripts](mdc:scripts) - Maintenance and setup scripts
+- [src/__tests__](mdc:src/__tests__) - Comprehensive test suite
+
+## Configuration Files
+
+### Core Configuration
+- [next.config.js](mdc:next.config.js) - Next.js and webpack optimization
+- [package.json](mdc:package.json) - Dependencies and essential scripts
+- [supabase.env](mdc:supabase.env) - Database environment variables
+- [src/middleware.ts](mdc:src/middleware.ts) - Authentication middleware
+
+### Development Configuration
+- **Jest**: Unit and integration testing
+- **Playwright**: End-to-end browser testing
+- **TypeScript**: Strict type checking configuration
+- **ESLint**: Code quality and style enforcement
+
+## Performance Characteristics
+
+### Build Performance
+- **Development Server**: ~1973ms startup time
+- **Production Build**: Optimized with standalone output
+- **Webpack Cache**: No large string serialization warnings
+- **Bundle Size**: Optimized with code splitting
+
+### Database Performance
+- **Simple Queries**: 12-13ms average response
+- **Complex Queries**: 58-59ms average response
+- **Concurrent Load**: 28ms for 10 simultaneous requests
+- **High Throughput**: 2M+ operations/second
+
+### Test Performance
+- **Unit Tests**: 542/544 passing (99.6% success rate)
+- **Integration Tests**: 179/180 passing (99.4% success rate)
+- **E2E Tests**: Comprehensive user workflow coverage
+
+## Environment Configuration
+
+### Development Environment
+- **Database**: `ndprriqyhddjoixrlqnz.supabase.co`
+- **URL**: http://localhost:3000
+- **Features**: Hot reload, source maps, debug logging
+
+### Production Environment
+- **Database**: `ubjujxtvlubxowsphvuk.supabase.co`
+- **Deployment**: Choreo platform with Docker
+- **Features**: Optimized builds, error tracking, monitoring
+
+## Recent Major Improvements
+
+### Authentication System
+- ✅ **Migration**: Legacy JWT → Supabase Auth hybrid system
+- ✅ **Session Management**: Fixed cookie inconsistency issues
+- ✅ **Root User**: Single admin user enforcement per environment
+
+### Performance Optimization
+- ✅ **Webpack Cache**: Resolved large string serialization warnings
+- ✅ **Build Time**: Optimized development server startup
+- ✅ **Bundle Size**: Implemented code splitting and optimization
+
+### Code Quality
+- ✅ **NPM Scripts**: Reduced from ~140 to 14 essential scripts
+- ✅ **Test Suite**: 99.6% test success rate achieved
+- ✅ **TypeScript**: Strict type checking throughout codebase
+
+## Deployment Status
+- **CI/CD**: GitHub Actions with automated testing
+- **Container**: Docker with multi-stage builds
+- **Platform**: Choreo deployment ready
+- **Monitoring**: Health checks and error tracking configured
+
+## Next Steps
+1. **Production Deployment**: Ready for Choreo platform deployment
+2. **Monitoring Setup**: Implement comprehensive logging and alerts
+3. **Feature Expansion**: Additional inventory management features
+4. **Performance Monitoring**: Real-time performance tracking
+

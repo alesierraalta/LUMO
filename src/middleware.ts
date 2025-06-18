@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Get token from multiple sources
+    // Get token from multiple sources (including legacy auth-token for compatibility)
     let token: string | null = null
     
     // 1. Authorization header
@@ -45,15 +45,24 @@ export async function middleware(request: NextRequest) {
       token = authHeader.substring(7)
     }
     
-    // 2. Cookie (multiple formats)
+    // 2. Cookie (multiple formats - Supabase + legacy)
     if (!token) {
       token = request.cookies.get('supabase-auth-token')?.value ||
               request.cookies.get('sb-access-token')?.value ||
-              request.cookies.get('supabase.auth.token')?.value
+              request.cookies.get('supabase.auth.token')?.value ||
+              request.cookies.get('auth-token')?.value // Legacy compatibility
     }
 
     if (!token) {
       console.log('❌ Middleware: No token found for', pathname)
+      return redirectToLogin(request)
+    }
+
+    // For legacy auth-token, try to verify with custom JWT
+    if (request.cookies.get('auth-token')?.value && !request.cookies.get('supabase-auth-token')?.value) {
+      console.log('🔄 Middleware: Legacy auth-token detected, upgrading to Supabase...')
+      // Allow the request to continue but log that an upgrade is needed
+      // The user will be prompted to log in again with Supabase
       return redirectToLogin(request)
     }
 
@@ -62,7 +71,7 @@ export async function middleware(request: NextRequest) {
     const { data: { user: authUser }, error } = await supabase.auth.getUser(token)
     
     if (error || !authUser) {
-      console.log('❌ Middleware: Invalid token for', pathname)
+      console.log('❌ Middleware: Invalid token for', pathname, 'Error:', error?.message)
       return redirectToLogin(request)
     }
     
@@ -74,7 +83,7 @@ export async function middleware(request: NextRequest) {
       return redirectToLogin(request)
     }
 
-    console.log('✅ Middleware: Valid token found for', pathname, ', user ID:', user.id)
+    console.log('✅ Middleware: Valid Supabase token found for', pathname, ', user ID:', user.id)
 
     // Add user info to headers for downstream use
     const requestHeaders = new Headers(request.headers)

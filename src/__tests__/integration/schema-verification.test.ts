@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, beforeAll, afterAll, beforeEach, test } from '@jest/globals'
-import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole } from './test-setup'
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole } from '../setup/test-utilities'
 
 describe('Schema Verification Tests', () => {
   beforeAll(async () => {

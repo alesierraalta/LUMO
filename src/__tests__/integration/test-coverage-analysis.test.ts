@@ -1,5 +1,5 @@
-import { db, setupTestDatabase, cleanupTestDatabase } from './test-setup'
-import { createTestRole, createTestUser, createTestCategory } from './test-setup'
+import { db, setupTestDatabase, cleanupTestDatabase } from '../setup/test-utilities'
+import { createTestRole, createTestUser, createTestCategory } from '../setup/test-utilities'
 
 describe('Test Coverage Analysis', () => {
   beforeAll(async () => {

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
-import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, db } from './test-setup'
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, db } from '../setup/test-utilities'
 
 describe('Error Handling Integration Tests', () => {
   beforeAll(async () => {
@@ -144,8 +144,10 @@ describe('Error Handling Integration Tests', () => {
       // Try to create role without required fields
       try {
         await db.role.create({
-          // Missing required fields like name
-          description: 'Role without name'
+          data: {
+            // Missing required fields like name
+            description: 'Role without name'
+          }
         })
         
         console.warn('Required field validation not enforced for role.name')
@@ -157,8 +159,10 @@ describe('Error Handling Integration Tests', () => {
       // Try to create user without required fields
       try {
         await db.user.create({
-          // Missing required fields like email
-          name: 'User without email'
+          data: {
+            // Missing required fields like email
+            name: 'User without email'
+          }
         })
         
         console.warn('Required field validation not enforced for user.email')
@@ -225,6 +229,17 @@ describe('Error Handling Integration Tests', () => {
       
       // Verify data is still consistent
       const updatedUser = await db.user.findMany({ where: { id: user.id } })
+      console.log('🔍 DEBUG: user.id used for query:', user.id)
+      console.log('🔍 DEBUG: Raw updatedUser data:', JSON.stringify(updatedUser, null, 2))
+      console.log('🔍 DEBUG: updatedUser length:', updatedUser.length)
+      if (updatedUser.length > 0) {
+        console.log('🔍 DEBUG: updatedUser[0] full object:', JSON.stringify(updatedUser[0], null, 2))
+        console.log('🔍 DEBUG: updatedUser[0] keys:', Object.keys(updatedUser[0]))
+        console.log('🔍 DEBUG: updatedUser[0].roleId value:', updatedUser[0].roleId)
+        console.log('🔍 DEBUG: typeof updatedUser[0].roleId:', typeof updatedUser[0].roleId)
+      }
+      console.log('🔍 DEBUG: expected role.id:', role.id)
+      console.log('🔍 DEBUG: expected role.id type:', typeof role.id)
       expect(updatedUser[0]?.roleId).toBe(role.id) // Should still reference original role
     })
   })
@@ -256,6 +271,32 @@ describe('Error Handling Integration Tests', () => {
           }
         }
       }
+    })
+  })
+
+  describe('DEBUG: User Creation and Retrieval', () => {
+    it('should create and retrieve user with roleId correctly', async () => {
+      // Create a role first
+      const role = await createTestRole()
+      console.log('🔍 DEBUG: Created role:', JSON.stringify(role, null, 2))
+      
+      // Create a user with this role
+      const user = await createTestUser({ roleId: role.id })
+      console.log('🔍 DEBUG: Created user:', JSON.stringify(user, null, 2))
+      
+      // Query the user back
+      console.log('🔍 DEBUG: About to retrieve user...');
+      console.log('🔍 DEBUG: Using where condition:', { email: user.email });
+      
+      const retrievedUserData = await db.user.findMany({ where: { email: user.email } });
+      console.log('🔍 DEBUG: Raw retrieved user data:', JSON.stringify(retrievedUserData, null, 2));
+      console.log('🔍 DEBUG: retrievedUser[0] full object:', JSON.stringify(retrievedUserData[0], null, 2));
+      console.log('🔍 DEBUG: retrievedUser[0]?.roleId value:', retrievedUserData[0]?.roleId);
+      console.log('🔍 DEBUG: retrievedUser[0]?.roleId type:', typeof retrievedUserData[0]?.roleId);
+      console.log('🔍 DEBUG: expected role.id:', role.id);
+      console.log('🔍 DEBUG: expected role.id type:', typeof role.id);
+      
+      expect(retrievedUserData[0]?.roleId).toBe(role.id)
     })
   })
 }) 

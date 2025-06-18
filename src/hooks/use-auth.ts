@@ -1,6 +1,9 @@
-'use client';
+/**
+ * Authentication Hook
+ * Re-exports the useAuth hook from AuthContext for backward compatibility
+ */
 
-import { useAuth as useAuthContext } from '@/contexts/auth-context';
+export { useAuth } from '@/contexts/auth-context'
 
-// Re-export the useAuth from context for backward compatibility
-export const useAuth = useAuthContext; 
+// Also export the AuthProvider for convenience
+export { AuthProvider } from '@/contexts/auth-context' 

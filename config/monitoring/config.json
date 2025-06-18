@@ -1,0 +1,41 @@
+{
+  "errorTracking": {
+    "enabled": true,
+    "providers": [
+      "internal",
+      "choreo"
+    ],
+    "retentionDays": 30,
+    "alertThresholds": {
+      "errorRate": 5,
+      "criticalErrors": 1,
+      "responseTime": 5000,
+      "memoryUsage": 90
+    }
+  },
+  "performance": {
+    "enabled": true,
+    "metricsInterval": 60000,
+    "slowQueryThreshold": 1000,
+    "memoryThreshold": 85,
+    "cpuThreshold": 80
+  },
+  "health": {
+    "checkInterval": 30000,
+    "endpoints": [
+      "/api/health",
+      "/api/health-advanced"
+    ],
+    "dependencies": [
+      "supabase",
+      "database",
+      "filesystem"
+    ]
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention": 7,
+    "compression": true
+  }
+}

@@ -7,8 +7,12 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('❌ Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_KEY environment variables.');
+}
 
 console.log('✅ Initializing Supabase client with URL:', supabaseUrl);
 
@@ -30,8 +34,8 @@ export const db = {
 
       const { data, error } = await query.single();
       
-      if (error || !data) {
-        console.log('❌ Supabase error:', error?.message || 'No data found');
+      if (error) {
+        console.log('❌ Supabase error:', error.message);
         return null;
       }
       
@@ -115,10 +119,10 @@ export const db = {
         email: item.email,
         name: item.name,
         password: item.password,
-        roleId: item.roleId || item.role_id, // Handle both transformed and raw data
-        isActive: item.isActive !== undefined ? item.isActive : item.is_active,
-        createdAt: new Date(item.createdAt || item.created_at),
-        updatedAt: new Date(item.updatedAt || item.updated_at),
+        roleId: item.role_id,
+        isActive: item.is_active,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
         role: null // Simplified - no role relation for now
       }));
     },
@@ -245,63 +249,20 @@ export const db = {
     deleteMany: async (params: any = {}) => {
       let query = supabase.from('users').delete();
 
-      // If no parameters are provided, treat as delete all
-      if (!params || Object.keys(params).length === 0) {
-        params = { deleteAll: true };
-      }
-
       // For safety, require at least one condition or an explicit "delete all" flag
       if (!params.where && !params.deleteAll) {
         throw new Error('Database error: No conditions specified');
       }
 
-      // If deleteAll is true, delete all records without conditions
-      if (params.deleteAll) {
-        // Call setDeleteAll for mock compatibility
-        if (typeof (query as any).setDeleteAll === 'function') {
-          (query as any).setDeleteAll();
-        }
-        // Delete all records without any condition
-        // Note: This is intentionally left without conditions as deleteAll is explicit
-      } else if (params.where) {
-        Object.entries(params.where).forEach(([key, value]) => {
-          if (key === 'roleId') {
-            query = query.eq('role_id', value);
-          } else if (key === 'isActive') {
-            query = query.eq('is_active', value);
-          } else {
-            query = query.eq(key, value);
-          }
-        });
-      }
-
-      const { error } = await query;
-      if (error) {
-        console.error('❌ Supabase user.deleteMany error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return { count: 1 }; // Simplified return
-    },
-
-    updateMany: async (params: any = {}) => {
-      const updateData: any = {};
-      if (params.data.email) updateData.email = params.data.email;
-      if (params.data.name) updateData.name = params.data.name;
-      if (params.data.password) updateData.password = params.data.password;
-      if (params.data.roleId !== undefined) updateData.role_id = params.data.roleId;
-      if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
-      updateData.updated_at = new Date().toISOString();
-
-      let query = supabase.from('users').update(updateData);
-
-      // Apply where conditions
       if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'roleId') {
             query = query.eq('role_id', value);
           } else if (key === 'isActive') {
             query = query.eq('is_active', value);
+          } else if (key === 'id' && typeof value === 'object' && value.not) {
+            // Handle { not: value } syntax by using neq (not equal)
+            query = query.neq('id', value.not);
           } else {
             query = query.eq(key, value);
           }
@@ -309,8 +270,9 @@ export const db = {
       }
 
       const { error } = await query;
+
       if (error) {
-        console.error('❌ Supabase user.updateMany error:', error);
+        console.error('❌ Supabase user.deleteMany error:', error);
         throw new Error(`Database error: ${error.message}`);
       }
 
@@ -331,8 +293,8 @@ export const db = {
 
       const { data, error } = await query.single();
       
-      if (error || !data) {
-        console.log('❌ Supabase role error:', error?.message || 'No data found');
+      if (error) {
+        console.log('❌ Supabase role error:', error.message);
         return null;
       }
       
@@ -388,17 +350,12 @@ export const db = {
     },
 
     create: async (params: any) => {
-      const roleData: any = {
+      const roleData = {
         name: params.data.name,
         description: params.data.description,
         is_system: params.data.isSystem ?? false,
         is_active: params.data.isActive ?? true,
       };
-      
-      // Include ID if provided (for testing)
-      if (params.data.id) {
-        roleData.id = params.data.id;
-      }
 
       const { data, error } = await supabase
         .from('roles')
@@ -454,31 +411,6 @@ export const db = {
       };
     },
 
-    count: async (params: any = {}) => {
-      let query = supabase.from('roles').select('*', { count: 'exact', head: true });
-
-      if (params.where) {
-        Object.entries(params.where).forEach(([key, value]) => {
-          if (key === 'isSystem') {
-            query = query.eq('is_system', value);
-          } else if (key === 'isActive') {
-            query = query.eq('is_active', value);
-          } else {
-            query = query.eq(key, value);
-          }
-        });
-      }
-
-      const { count, error } = await query;
-
-      if (error) {
-        console.error('❌ Supabase role count error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return count || 0;
-    },
-
     delete: async (params: any) => {
       let query = supabase.from('roles').delete();
 
@@ -499,39 +431,20 @@ export const db = {
     deleteMany: async (params: any = {}) => {
       let query = supabase.from('roles').delete();
 
-      // If no parameters are provided, treat as delete all
-      if (!params || Object.keys(params).length === 0) {
-        params = { deleteAll: true };
-      }
-
       // For safety, require at least one condition or an explicit "delete all" flag
       if (!params.where && !params.deleteAll) {
         throw new Error('Database error: No conditions specified');
       }
 
-      // If deleteAll is true, delete all records without conditions
-      if (params.deleteAll) {
-        // Call setDeleteAll for mock compatibility
-        if (typeof (query as any).setDeleteAll === 'function') {
-          (query as any).setDeleteAll();
-        }
-        // Delete all records without any condition
-        // Note: This is intentionally left without conditions as deleteAll is explicit
-      } else if (params.where) {
+      if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'isSystem') {
             query = query.eq('is_system', value);
           } else if (key === 'isActive') {
             query = query.eq('is_active', value);
-          } else if (key === 'id' && typeof value === 'object' && value && 'not' in value) {
+          } else if (key === 'id' && typeof value === 'object' && value.not) {
             // Handle { not: value } syntax by using neq (not equal)
-            // For { not: value } syntax, we need to use a different approach
-            // Since Supabase doesn't have direct 'not equal', we'll skip this record
-            // This is a complex case that should be handled differently
-            // TODO: Handle { not: value } syntax - skipped for now due to Supabase client limitations
-          } else if (typeof value === 'object' && value && 'in' in value) {
-            // Handle { in: [...] } syntax using Supabase's in operator
-            query = query.in(key, value.in);
+            query = query.neq('id', value.not);
           } else {
             query = query.eq(key, value);
           }
@@ -577,8 +490,9 @@ export const db = {
         if (params.where.OR) {
           const orConditions = params.where.OR;
           let orQuery = '';
+          const orValues: any[] = [];
           
-          orConditions.forEach((condition: any) => {
+          orConditions.forEach((condition: any, index: number) => {
             if (condition.name?.contains) {
               if (orQuery) orQuery += ',';
               orQuery += `name.ilike.%${condition.name.contains}%`;
@@ -595,14 +509,8 @@ export const db = {
         } else {
           // Handle regular WHERE conditions
           Object.entries(params.where).forEach(([key, value]) => {
-            if (typeof value === 'object' && value && 'contains' in value) {
-              // Handle contains operations
-              const dbKey = key === 'createdById' ? 'created_by_id' : key;
-              query = query.ilike(dbKey, `%${value.contains}%`);
-            } else {
-              const dbKey = key === 'createdById' ? 'created_by_id' : key;
-              query = query.eq(dbKey, value);
-            }
+            const dbKey = key === 'createdById' ? 'created_by_id' : key;
+            query = query.eq(dbKey, value);
           });
         }
       }
@@ -698,9 +606,7 @@ export const db = {
 
     delete: async (params: any) => {
       let query = supabase.from('categories').delete();
-      if (params.where?.id) {
-        query = query.eq('id', params.where.id);
-      }
+      if (params.where.id) query = query.eq('id', params.where.id);
 
       const { error } = await query;
       if (error) throw new Error(`Database error: ${error.message}`);
@@ -712,38 +618,10 @@ export const db = {
       let query = supabase.from('categories').select('*', { count: 'exact', head: true });
       
       if (params.where) {
-        // Handle OR conditions for search
-        if (params.where.OR) {
-          const orConditions = params.where.OR;
-          let orQuery = '';
-          
-          orConditions.forEach((condition: any) => {
-            if (condition.name?.contains) {
-              if (orQuery) orQuery += ',';
-              orQuery += `name.ilike.%${condition.name.contains}%`;
-            }
-            if (condition.description?.contains) {
-              if (orQuery) orQuery += ',';
-              orQuery += `description.ilike.%${condition.description.contains}%`;
-            }
-          });
-          
-          if (orQuery) {
-            query = query.or(orQuery);
-          }
-        } else {
-          // Handle regular WHERE conditions
-          Object.entries(params.where).forEach(([key, value]) => {
-            if (typeof value === 'object' && value && 'contains' in value) {
-              // Handle contains operations
-              const dbKey = key === 'createdById' ? 'created_by_id' : key;
-              query = query.ilike(dbKey, `%${value.contains}%`);
-            } else {
-              const dbKey = key === 'createdById' ? 'created_by_id' : key;
-              query = query.eq(dbKey, value);
-            }
-          });
-        }
+        Object.entries(params.where).forEach(([key, value]) => {
+          const dbKey = key === 'createdById' ? 'created_by_id' : key;
+          query = query.eq(dbKey, value);
+        });
       }
 
       const { count, error } = await query;
@@ -760,24 +638,13 @@ export const db = {
         throw new Error('Database error: No conditions specified');
       }
 
-      // If deleteAll is true, delete all records without conditions
-      if (params.deleteAll) {
-        // Call setDeleteAll for mock compatibility
-        if (typeof (query as any).setDeleteAll === 'function') {
-          (query as any).setDeleteAll();
-        }
-        // Delete all records without any condition
-        // Note: This is intentionally left without conditions as deleteAll is explicit
-      } else if (params.where) {
+      if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'createdById') {
             query = query.eq('created_by_id', value);
-          } else if (key === 'id' && typeof value === 'object' && value && 'not' in value) {
+          } else if (key === 'id' && typeof value === 'object' && value.not) {
             // Handle { not: value } syntax by using neq (not equal)
-            // For { not: value } syntax, we need to use a different approach
-            // Since Supabase doesn't have direct 'not equal', we'll skip this record
-            // This is a complex case that should be handled differently
-            // TODO: Handle { not: value } syntax - skipped for now due to Supabase client limitations
+            query = query.neq('id', value.not);
           } else {
             query = query.eq(key, value);
           }
@@ -794,219 +661,14 @@ export const db = {
     }
   },
 
+  // Placeholder implementations for other operations
   inventoryItem: {
-    findUnique: async (params: any) => {
-      let query = supabase.from('inventory_items').select('*');
-      
-      if (params.where.id) {
-        query = query.eq('id', params.where.id);
-      }
-      if (params.where.sku) {
-        query = query.eq('sku', params.where.sku);
-      }
-      
-      const { data, error } = await query.single();
-      if (error || !data) return null;
-      
-      return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        sku: data.sku,
-        categoryId: data.category_id,
-        currentStock: data.current_stock,
-        minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        createdById: data.created_by_id
-      };
-    },
-
-    findMany: async (params: any = {}) => {
-      let query = supabase.from('inventory_items').select('*');
-      
-      // Handle WHERE conditions
-      if (params.where) {
-        Object.entries(params.where).forEach(([key, value]) => {
-          if (key === 'categoryId') {
-            query = query.eq('category_id', value);
-          } else if (key === 'createdById') {
-            query = query.eq('created_by_id', value);
-          } else {
-            query = query.eq(key, value);
-          }
-        });
-      }
-
-      // Apply ordering
-      if (params.orderBy) {
-        const orderField = Object.keys(params.orderBy)[0];
-        const orderDirection = params.orderBy[orderField];
-        const dbField = orderField === 'createdAt' ? 'created_at' : orderField;
-        query = query.order(dbField, { ascending: orderDirection === 'asc' });
-      }
-
-      // Apply pagination
-      if (params.skip) {
-        query = query.range(params.skip, params.skip + (params.take || 10) - 1);
-      } else if (params.take) {
-        query = query.limit(params.take);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('❌ Supabase inventoryItem.findMany error:', error);
-        return [];
-      }
-
-      return data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        sku: item.sku,
-        categoryId: item.category_id,
-        currentStock: item.current_stock,
-        minStockLevel: item.min_stock_level,
-        unitCost: item.unit_cost,
-        unitPrice: item.unit_price,
-        createdAt: new Date(item.created_at),
-        updatedAt: new Date(item.updated_at),
-        createdById: item.created_by_id
-      }));
-    },
-
-    create: async (params: any) => {
-      const itemData: any = {
-        name: params.data.name,
-        description: params.data.description,
-        sku: params.data.sku,
-        category_id: params.data.categoryId,
-        current_stock: params.data.currentStock || params.data.quantity || 0,
-        min_stock_level: params.data.minStockLevel || 0,
-        unit_cost: params.data.unitCost || 0,
-        unit_price: params.data.unitPrice || 0,
-        created_by_id: params.data.createdById,
-      };
-      
-      // Include ID if provided (for testing)
-      if (params.data.id) {
-        itemData.id = params.data.id;
-      }
-
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .insert(itemData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Supabase inventoryItem.create error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        sku: data.sku,
-        categoryId: data.category_id,
-        currentStock: data.current_stock,
-        minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        createdById: data.created_by_id
-      };
-    },
-
-    update: async (params: any) => {
-      const updateData: any = {};
-      if (params.data.name) updateData.name = params.data.name;
-      if (params.data.description !== undefined) updateData.description = params.data.description;
-      if (params.data.sku) updateData.sku = params.data.sku;
-      if (params.data.categoryId) updateData.category_id = params.data.categoryId;
-      if (params.data.currentStock !== undefined) updateData.current_stock = params.data.currentStock;
-      if (params.data.quantity !== undefined) updateData.current_stock = params.data.quantity;
-      if (params.data.minStockLevel !== undefined) updateData.min_stock_level = params.data.minStockLevel;
-      if (params.data.unitCost !== undefined) updateData.unit_cost = params.data.unitCost;
-      if (params.data.unitPrice !== undefined) updateData.unit_price = params.data.unitPrice;
-      updateData.updated_at = new Date().toISOString();
-
-      let query = supabase.from('inventory_items').update(updateData);
-
-      if (params.where.id) {
-        query = query.eq('id', params.where.id);
-      }
-
-      const { data, error } = await query.select().single();
-
-      if (error) {
-        console.error('❌ Supabase inventoryItem.update error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        sku: data.sku,
-        categoryId: data.category_id,
-        currentStock: data.current_stock,
-        minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        createdById: data.created_by_id
-      };
-    },
-
-    delete: async (params: any) => {
-      let query = supabase.from('inventory_items').delete();
-
-      if (params.where.id) {
-        query = query.eq('id', params.where.id);
-      }
-
-      const { error } = await query;
-
-      if (error) {
-        console.error('❌ Supabase inventoryItem.delete error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return { count: 1 };
-    },
-
-    count: async (params: any = {}) => {
-      let query = supabase.from('inventory_items').select('*', { count: 'exact', head: true });
-
-      if (params.where) {
-        Object.entries(params.where).forEach(([key, value]) => {
-          if (key === 'categoryId') {
-            query = query.eq('category_id', value);
-          } else if (key === 'createdById') {
-            query = query.eq('created_by_id', value);
-          } else {
-            query = query.eq(key, value);
-          }
-        });
-      }
-
-      const { count, error } = await query;
-
-      if (error) {
-        console.error('❌ Supabase inventoryItem.count error:', error);
-        return 0;
-      }
-
-      return count || 0;
-    },
-
+    findUnique: async () => null,
+    findMany: async () => [],
+    create: async () => ({}),
+    update: async () => ({}),
+    delete: async () => ({ count: 1 }),
+    count: async () => 0,
     deleteMany: async (params: any = {}) => {
       let query = supabase.from('inventory_items').delete();
 
@@ -1015,24 +677,13 @@ export const db = {
         throw new Error('Database error: No conditions specified');
       }
 
-      // If deleteAll is true, delete all records without conditions
-      if (params.deleteAll) {
-        // Call setDeleteAll for mock compatibility
-        if (typeof (query as any).setDeleteAll === 'function') {
-          (query as any).setDeleteAll();
-        }
-        // Delete all records without any condition
-        // Note: This is intentionally left without conditions as deleteAll is explicit
-      } else if (params.where) {
+      if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'categoryId') {
             query = query.eq('category_id', value);
-          } else if (key === 'id' && typeof value === 'object' && value && 'not' in value) {
+          } else if (key === 'id' && typeof value === 'object' && value.not) {
             // Handle { not: value } syntax by using neq (not equal)
-            // For { not: value } syntax, we need to use a different approach
-            // Since Supabase doesn't have direct 'not equal', we'll skip this record
-            // This is a complex case that should be handled differently
-            // TODO: Handle { not: value } syntax - skipped for now due to Supabase client limitations
+            query = query.neq('id', value.not);
           } else {
             query = query.eq(key, value);
           }
@@ -1176,63 +827,6 @@ export const db = {
       return count || 0;
     },
 
-    findUnique: async (params: any) => {
-      let query = supabase.from('stock_movements').select(`
-        *,
-        inventory_item:inventory_items(
-          id,
-          name,
-          sku,
-          category:categories(id, name)
-        )
-      `);
-
-      if (params.where.id) {
-        query = query.eq('id', params.where.id);
-      }
-
-      const { data, error } = await query.single();
-      if (error || !data) return null;
-
-      return {
-        id: data.id,
-        inventoryItemId: data.inventory_item_id,
-        type: data.type,
-        quantity: data.quantity,
-        previousQuantity: data.previous_quantity,
-        newQuantity: data.new_quantity,
-        notes: data.notes,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        createdById: data.created_by_id,
-        inventoryItem: data.inventory_item ? {
-          id: data.inventory_item.id,
-          name: data.inventory_item.name,
-          sku: data.inventory_item.sku,
-          category: data.inventory_item.category ? {
-            id: data.inventory_item.category.id,
-            name: data.inventory_item.category.name
-          } : null
-        } : null
-      };
-    },
-
-    delete: async (params: any) => {
-      let query = supabase.from('stock_movements').delete();
-
-      if (params.where.id) {
-        query = query.eq('id', params.where.id);
-      }
-
-      const { error } = await query;
-      if (error) {
-        console.error('❌ Supabase stockMovement.delete error:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      return { count: 1 };
-    },
-
     create: async (params: any) => {
       const movementData = {
         inventory_item_id: params.data.inventoryItemId,
@@ -1277,20 +871,13 @@ export const db = {
         throw new Error('Database error: No conditions specified');
       }
 
-      // If deleteAll is true, delete all records without conditions
-      if (params.deleteAll) {
-        // Call setDeleteAll for mock compatibility
-        if (typeof (query as any).setDeleteAll === 'function') {
-          (query as any).setDeleteAll();
-        }
-        // Delete all records without any condition
-        // Note: This is intentionally left without conditions as deleteAll is explicit
-      } else if (params.where) {
+      if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'inventoryItemId') {
             query = query.eq('inventory_item_id', value);
-          } else if (key === 'type') {
-            query = query.eq('type', value);
+          } else if (key === 'id' && typeof value === 'object' && value.not) {
+            // Handle { not: value } syntax by using neq (not equal)
+            query = query.neq('id', value.not);
           } else {
             query = query.eq(key, value);
           }
@@ -1334,19 +921,6 @@ export const db = {
   },
   importError: {
     createMany: async () => ({})
-  },
-
-  // Utility methods for Prisma compatibility
-  $queryRaw: async (sql: any, ...params: any[]) => {
-    // For test compatibility - return empty array for raw queries
-    console.log('📝 $queryRaw called with:', sql, params);
-    return [];
-  },
-
-  $disconnect: async () => {
-    // For test compatibility - Supabase doesn't need explicit disconnect
-    console.log('🔌 $disconnect called - no action needed for Supabase');
-    return Promise.resolve();
   }
 };
 

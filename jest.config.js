@@ -100,9 +100,9 @@ const customJestConfig = {
     '<rootDir>/scripts/',
     '<rootDir>/e2e/',
     '<rootDir>/performance/',
-    '<rootDir>/src/__tests__/integration/',
     '<rootDir>/src/__tests__/e2e/',
     '<rootDir>/src/__tests__/performance/',
+    '<rootDir>/src/__tests__/setup/',
   ],
   
   // Transform configuration

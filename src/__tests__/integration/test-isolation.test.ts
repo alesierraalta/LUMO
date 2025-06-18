@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
-import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, db } from './test-setup'
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, db } from '../setup/test-utilities'
 
 describe('Test Isolation Verification', () => {
   beforeAll(async () => {

@@ -4,7 +4,7 @@ import {
   setupTestDatabase, 
   cleanupTestDatabase, 
   disconnectDatabase
-} from './test-setup'
+} from '../setup/test-utilities'
 
 describe('Database Integration Tests', () => {
   beforeAll(async () => {
@@ -39,7 +39,7 @@ describe('Database Integration Tests', () => {
         isActive: true
       }
 
-      const created = await db.role.create(newRole)
+      const created = await db.role.create({ data: newRole })
       expect(created).toBeDefined()
       expect(created.name).toBe(newRole.name)
     })

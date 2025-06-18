@@ -325,9 +325,9 @@ describe('Product Form - Optional Fields Tests', () => {
       expect(mockCreateProductApi).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Partial Data Product',
+          sku: 'PART-001',
+          description: 'Partial data test',
           cost: 15.50,
-          price: undefined,
-          margin: undefined,
         })
       );
     });

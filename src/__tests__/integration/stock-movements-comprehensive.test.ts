@@ -3,18 +3,23 @@
  * Tests all user cases for stock movements functionality
  */
 
-import { getAllStockMovements } from '@/services/inventoryService';
-import db from '@/lib/db';
-
-// Mock the database
-jest.mock('@/lib/db', () => ({
-  stockMovement: {
-    findMany: jest.fn(),
-    count: jest.fn(),
-  }
+// Mock the database module first
+jest.mock('@/lib/db-supabase', () => ({
+  db: {
+    stockMovement: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+    }
+  },
+  supabase: {}
 }));
 
-const mockDb = db as jest.Mocked<typeof db>;
+import { getAllStockMovements } from '@/services/inventoryService';
+import { db } from '@/lib/db-supabase';
+
+// Get references to the mocked functions
+const mockFindMany = db.stockMovement.findMany as jest.MockedFunction<typeof db.stockMovement.findMany>;
+const mockCount = db.stockMovement.count as jest.MockedFunction<typeof db.stockMovement.count>;
 
 describe('Stock Movements - Comprehensive User Cases', () => {
   beforeEach(() => {
@@ -24,8 +29,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
   describe('getAllStockMovements - Basic Functionality', () => {
     it('should handle default parameters without errors', async () => {
       // Mock successful response
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       const result = await getAllStockMovements();
 
@@ -40,7 +45,7 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         },
       });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith({
+      expect(mockFindMany).toHaveBeenCalledWith({
         where: {},
         skip: 0,
         take: 50,
@@ -62,12 +67,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         },
       });
 
-      expect(mockDb.stockMovement.count).toHaveBeenCalledWith({ where: {} });
+      expect(mockCount).toHaveBeenCalledWith({ where: {} });
     });
 
     it('should handle pagination correctly', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(150);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(150);
 
       const result = await getAllStockMovements({
         page: 2,
@@ -82,7 +87,7 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         hasPrev: true, // 2 > 1
       });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: 25, // (2 - 1) * 25
           take: 25,
@@ -93,12 +98,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
 
   describe('getAllStockMovements - Filtering', () => {
     it('should filter by movement type', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements({ type: 'STOCK_IN' });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { type: 'STOCK_IN' },
         })
@@ -106,12 +111,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should handle "all" type filter', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements({ type: 'all' });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {},
         })
@@ -119,15 +124,15 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should filter by date range', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
 
       await getAllStockMovements({ startDate, endDate });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             createdAt: {
@@ -140,12 +145,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should filter by search query', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements({ search: 'test product' });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             OR: [
@@ -159,12 +164,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should filter by category', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements({ categoryId: 'cat-123' });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             inventoryItem: {
@@ -178,12 +183,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
 
   describe('getAllStockMovements - Sorting', () => {
     it('should handle different sort options', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements({ sort: 'quantity_asc' });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { quantity: 'asc' },
         })
@@ -191,12 +196,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should default to createdAt_desc sorting', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       await getAllStockMovements();
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { createdAt: 'desc' },
         })
@@ -206,8 +211,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
 
   describe('getAllStockMovements - Complex Scenarios', () => {
     it('should handle multiple filters combined', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
@@ -223,7 +228,7 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         sort: 'createdAt_asc'
       });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith({
+      expect(mockFindMany).toHaveBeenCalledWith({
         where: {
           type: 'STOCK_OUT',
           createdAt: {
@@ -269,8 +274,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         previousQuantity: 5,
         newQuantity: 15,
         notes: 'Test movement',
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
+        createdAt: '2024-01-15T00:00:00.000Z',
+        updatedAt: '2024-01-15T00:00:00.000Z',
         createdById: 'user-123',
         inventoryItem: {
           id: 'item-123',
@@ -283,8 +288,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
         },
       };
 
-      mockDb.stockMovement.findMany.mockResolvedValue([mockMovement]);
-      mockDb.stockMovement.count.mockResolvedValue(1);
+      mockFindMany.mockResolvedValue([mockMovement]);
+      mockCount.mockResolvedValue(1);
 
       const result = await getAllStockMovements();
 
@@ -296,14 +301,14 @@ describe('Stock Movements - Comprehensive User Cases', () => {
   describe('getAllStockMovements - Error Handling', () => {
     it('should handle database errors gracefully', async () => {
       const dbError = new Error('Database connection failed');
-      mockDb.stockMovement.findMany.mockRejectedValue(dbError);
+      mockFindMany.mockRejectedValue(dbError);
 
       await expect(getAllStockMovements()).rejects.toThrow('Database connection failed');
     });
 
     it('should handle count errors gracefully', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockRejectedValue(new Error('Count failed'));
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockRejectedValue(new Error('Count failed'));
 
       await expect(getAllStockMovements()).rejects.toThrow('Count failed');
     });
@@ -311,8 +316,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
 
   describe('getAllStockMovements - Edge Cases', () => {
     it('should handle empty results', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       const result = await getAllStockMovements();
 
@@ -322,8 +327,8 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should handle large datasets', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(10000);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(10000);
 
       const result = await getAllStockMovements({ limit: 100 });
 
@@ -331,13 +336,13 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should handle invalid page numbers', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(100);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(100);
 
-      const result = await getAllStockMovements({ page: 0 });
+      await getAllStockMovements({ page: 0 });
 
       // Should default to page 1
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: -50, // (0 - 1) * 50 - this might need fixing in the actual code
         })
@@ -345,12 +350,12 @@ describe('Stock Movements - Comprehensive User Cases', () => {
     });
 
     it('should handle very large limit values', async () => {
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(50);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(1000);
 
       await getAllStockMovements({ limit: 1000000 });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 1000000,
         })
@@ -359,28 +364,26 @@ describe('Stock Movements - Comprehensive User Cases', () => {
   });
 
   describe('getAllStockMovements - User Experience Cases', () => {
-    it('should handle typical user browsing scenario', async () => {
-      // User opens movements page - default view
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(25);
+    it('should handle user opening movements page first time', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
       const result = await getAllStockMovements();
 
-      expect(result.pagination.hasNext).toBe(false); // 25 items, 50 per page
-      expect(result.pagination.hasPrev).toBe(false); // First page
+      expect(result.movements).toEqual([]);
+      expect(result.pagination.currentPage).toBe(1);
     });
 
     it('should handle user searching for specific movements', async () => {
-      // User searches for "adjustment"
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(5);
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      await getAllStockMovements({ 
-        search: 'adjustment',
-        type: 'ADJUSTMENT'
+      await getAllStockMovements({
+        type: 'ADJUSTMENT',
+        search: 'adjustment'
       });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             type: 'ADJUSTMENT',
@@ -394,21 +397,30 @@ describe('Stock Movements - Comprehensive User Cases', () => {
       );
     });
 
-    it('should handle user filtering by date range', async () => {
-      // User wants to see movements from last month
-      const lastMonth = new Date();
-      lastMonth.setMonth(lastMonth.getMonth() - 1);
-      const now = new Date();
+    it('should handle user navigating through pages', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(200);
 
-      mockDb.stockMovement.findMany.mockResolvedValue([]);
-      mockDb.stockMovement.count.mockResolvedValue(15);
+      const result = await getAllStockMovements({ page: 3 });
+
+      expect(result.pagination.currentPage).toBe(3);
+      expect(result.pagination.hasNext).toBe(true);
+      expect(result.pagination.hasPrev).toBe(true);
+    });
+
+    it('should handle user filtering by date range', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const now = new Date();
+      const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       await getAllStockMovements({
         startDate: lastMonth,
         endDate: now
       });
 
-      expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             createdAt: {

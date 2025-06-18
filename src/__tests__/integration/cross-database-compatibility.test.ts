@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
-import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, testConfig } from './test-setup'
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, createTestRole, createTestUser, createTestCategory, testConfig } from '../setup/test-utilities'
 import { db } from '@/lib/db-supabase'
 
 describe('Cross-Database Compatibility Tests', () => {

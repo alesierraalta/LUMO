@@ -9,9 +9,26 @@ import db from '@/lib/db';
 
 describe('Categories - COMPREHENSIVE TESTS', () => {
   let testUserId: string;
+  let testRoleId: string;
   let testCategoryIds: string[] = [];
 
   beforeAll(async () => {
+    // Create a test role first
+    try {
+      const testRole = await db.role.create({
+        data: {
+          name: `Test Role ${Date.now()}`,
+          description: 'Test role for categories integration tests',
+          isSystem: false,
+          isActive: true
+        }
+      });
+      testRoleId = testRole.id;
+    } catch (error) {
+      console.log('Error creating test role:', error);
+      throw error;
+    }
+
     // Create a test user for category operations
     try {
       const testUser = await db.user.create({
@@ -19,7 +36,7 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
           email: 'test-categories@example.com',
           password: 'hashedpassword',
           name: 'Test User',
-          roleId: 'test-role-id',
+          roleId: testRoleId,
           isActive: true
         }
       });
@@ -46,6 +63,23 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
         console.log('Category already deleted:', categoryId);
       }
     }
+    
+    // Clean up test user and role
+    try {
+      if (testUserId) {
+        await db.user.delete({ where: { id: testUserId } });
+      }
+    } catch (error) {
+      console.log('User already deleted');
+    }
+    
+    try {
+      if (testRoleId) {
+        await db.role.delete({ where: { id: testRoleId } });
+      }
+    } catch (error) {
+      console.log('Role already deleted');
+    }
   });
 
   beforeEach(() => {
@@ -54,31 +88,33 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
   describe('1. Category Creation Scenarios', () => {
     it('should create category with all fields', async () => {
+      const uniqueName = `Electronics-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       const category = await db.category.create({
         data: {
-          name: 'Electronics',
+          name: uniqueName,
           description: 'Electronic devices and accessories',
           createdById: testUserId
         }
       });
 
       expect(category).toBeDefined();
-      expect(category.name).toBe('Electronics');
+      expect(category.name).toBe(uniqueName);
       expect(category.description).toBe('Electronic devices and accessories');
       expect(category.createdById).toBe(testUserId);
       testCategoryIds.push(category.id);
     });
 
     it('should create category with minimal fields', async () => {
+      const uniqueName = `Books-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       const category = await db.category.create({
         data: {
-          name: 'Books',
+          name: uniqueName,
           createdById: testUserId
         }
       });
 
       expect(category).toBeDefined();
-      expect(category.name).toBe('Books');
+      expect(category.name).toBe(uniqueName);
       expect(category.description).toBeUndefined();
       testCategoryIds.push(category.id);
     });
@@ -106,11 +142,12 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
     beforeEach(async () => {
       // Create sample categories for testing
+      const timestamp = Date.now();
       const categories = [
-        { name: 'Furniture', description: 'Home and office furniture' },
-        { name: 'Sports', description: 'Sports equipment and gear' },
-        { name: 'Kitchen', description: 'Kitchen appliances and tools' },
-        { name: 'Garden', description: 'Gardening tools and supplies' }
+        { name: `Furniture-${timestamp}-1`, description: 'Home and office furniture' },
+        { name: `Sports-${timestamp}-2`, description: 'Sports equipment and gear' },
+        { name: `Kitchen-${timestamp}-3`, description: 'Kitchen appliances and tools' },
+        { name: `Garden-${timestamp}-4`, description: 'Gardening tools and supplies' }
       ];
 
       for (const cat of categories) {
@@ -158,6 +195,26 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
     });
 
     it('should find categories with search (OR conditions)', async () => {
+      const timestamp = Date.now();
+      
+      // Create test categories with unique names
+      await db.category.create({
+        data: {
+          name: `Kitchen ${timestamp}`,
+          description: 'Kitchen appliances and tools',
+          createdById: testUserId
+        }
+      });
+
+      await db.category.create({
+        data: {
+          name: `Garden ${timestamp}`,
+          description: 'Garden tools and equipment',
+          createdById: testUserId
+        }
+      });
+
+      // Search for categories
       const categories = await db.category.findMany({
         where: {
           OR: [
@@ -171,8 +228,8 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
       
       // Should find Kitchen (by name) and Garden (by description containing 'tools')
       const foundNames = categories.map(c => c.name);
-      expect(foundNames).toContain('Kitchen');
-      expect(foundNames).toContain('Garden');
+      expect(foundNames).toContain(`Kitchen ${timestamp}`);
+      expect(foundNames).toContain(`Garden ${timestamp}`);
     });
 
     it('should find single category by ID', async () => {
@@ -201,10 +258,12 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
     let inventoryItemIds: string[] = [];
 
     beforeEach(async () => {
-      // Create categories
+      const timestamp = Date.now();
+      
+      // Create categories with unique names
       categoryWithItems = await db.category.create({
         data: {
-          name: 'Electronics Test',
+          name: `Electronics Test ${timestamp}`,
           description: 'Category with inventory items',
           createdById: testUserId
         }
@@ -213,7 +272,7 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
       categoryWithoutItems = await db.category.create({
         data: {
-          name: 'Empty Category',
+          name: `Empty Category ${timestamp}`,
           description: 'Category without inventory items',
           createdById: testUserId
         }
@@ -275,9 +334,9 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
         expect(category._count.inventoryItems).toBeGreaterThanOrEqual(0);
       });
 
-      // Find our test categories
-      const electronicsCategory = categories.find(c => c.name === 'Electronics Test');
-      const emptyCategory = categories.find(c => c.name === 'Empty Category');
+      // Find our test categories by partial name match
+      const electronicsCategory = categories.find(c => c.name.includes('Electronics Test'));
+      const emptyCategory = categories.find(c => c.name.includes('Empty Category'));
 
       if (electronicsCategory) {
         expect(electronicsCategory._count.inventoryItems).toBeGreaterThanOrEqual(0);
@@ -325,12 +384,14 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
   describe('4. Category Search and Filter Scenarios', () => {
     beforeEach(async () => {
-      // Create diverse categories for search testing
+      const uniqueId = Math.random().toString(36).substring(2, 15);
+      
+      // Create diverse categories for search testing with unique names
       const searchCategories = [
-        { name: 'Mobile Phones', description: 'Smartphones and accessories' },
-        { name: 'Laptops', description: 'Portable computers' },
-        { name: 'Tablets', description: 'Tablet computers and accessories' },
-        { name: 'Audio Equipment', description: 'Headphones, speakers, and audio gear' }
+        { name: `Mobile Phones ${uniqueId}`, description: 'Smartphones and accessories' },
+        { name: `Laptops ${uniqueId}`, description: 'Portable computers' },
+        { name: `Tablets ${uniqueId}`, description: 'Tablet computers and accessories' },
+        { name: `Audio Equipment ${uniqueId}`, description: 'Headphones, speakers, and audio gear' }
       ];
 
       for (const cat of searchCategories) {
@@ -345,52 +406,86 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
     });
 
     it('should search by name (contains)', async () => {
+      const uniqueId = Math.random().toString(36).substring(2, 15);
+      
+      // Create test category with unique name
+      const createdCategory = await db.category.create({
+        data: {
+          name: `Unique Mobile Phones ${uniqueId}`,
+          description: 'Smartphones and accessories',
+          createdById: testUserId
+        }
+      });
+      testCategoryIds.push(createdCategory.id);
+
       const categories = await db.category.findMany({
         where: {
-          OR: [
-            { name: { contains: 'Phone' } }
-          ]
+          name: { contains: 'Phone' }
         }
       });
 
       expect(categories.length).toBeGreaterThan(0);
       const foundNames = categories.map(c => c.name);
       expect(foundNames.some(name => name.includes('Phone'))).toBe(true);
+      
+      // Verify our created category is in the results
+      expect(foundNames.some(name => name.includes(uniqueId))).toBe(true);
     });
 
     it('should search by description (contains)', async () => {
+      const uniqueId = Math.random().toString(36).substring(2, 15);
+      
+      // Create unique category to avoid duplicates
+      const createdCategory = await db.category.create({
+        data: {
+          name: `Unique Mobile Device ${uniqueId}`,
+          description: 'Advanced smartphone technology',
+          createdById: testUserId
+        }
+      });
+      testCategoryIds.push(createdCategory.id);
+
       const categories = await db.category.findMany({
         where: {
-          OR: [
-            { description: { contains: 'computers' } }
-          ]
+          description: { contains: 'smartphone' }
         }
       });
 
       expect(categories.length).toBeGreaterThan(0);
+      // Verify our created category is in the results
       const foundDescriptions = categories.map(c => c.description);
-      expect(foundDescriptions.some(desc => desc?.includes('computers'))).toBe(true);
+      expect(foundDescriptions.some(desc => desc && desc.includes('smartphone'))).toBe(true);
     });
 
     it('should search across name and description', async () => {
-      const searchTerm = 'audio';
+      const timestamp = Date.now();
+      
+      // Create unique category to avoid duplicates
+      const createdCategory = await db.category.create({
+        data: {
+          name: `Search Mobile Phones ${timestamp}`,
+          description: 'Latest mobile technology',
+          createdById: testUserId
+        }
+      });
+      testCategoryIds.push(createdCategory.id);
+
       const categories = await db.category.findMany({
         where: {
           OR: [
-            { name: { contains: searchTerm } },
-            { description: { contains: searchTerm } }
+            { name: { contains: 'mobile' } },
+            { description: { contains: 'mobile' } }
           ]
         }
       });
 
       expect(categories.length).toBeGreaterThan(0);
-      
-      // Should find categories with 'audio' in name or description
-      const hasMatch = categories.some(category => 
-        category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        category.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      // Verify our created category is in the results
+      const foundItems = categories.filter(c => 
+        (c.name && c.name.toLowerCase().includes('mobile')) || 
+        (c.description && c.description.toLowerCase().includes('mobile'))
       );
-      expect(hasMatch).toBe(true);
+      expect(foundItems.length).toBeGreaterThan(0);
     });
 
     it('should return empty array for no matches', async () => {
@@ -412,9 +507,11 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
     let updateTestCategory: any;
 
     beforeEach(async () => {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
       updateTestCategory = await db.category.create({
         data: {
-          name: 'Update Test Category',
+          name: `Update Test Category ${timestamp}-${randomId}`,
           description: 'Original description',
           createdById: testUserId
         }
@@ -438,7 +535,7 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
         data: { description: 'Updated description' }
       });
 
-      expect(updated.name).toBe('Update Test Category');
+      expect(updated.name).toBe(updateTestCategory.name);
       expect(updated.description).toBe('Updated description');
     });
 
@@ -487,11 +584,13 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
   describe('7. Category Count Scenarios', () => {
     beforeEach(async () => {
-      // Create a few categories for counting
+      const timestamp = Date.now();
+      
+      // Create a few categories for counting with unique names
       for (let i = 1; i <= 3; i++) {
         const category = await db.category.create({
           data: {
-            name: `Count Test Category ${i}`,
+            name: `Count Test Category ${i} ${timestamp}`,
             createdById: testUserId
           }
         });
@@ -570,6 +669,17 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
 
   describe('9. Real-world Usage Scenarios', () => {
     it('should replicate exact categories page query', async () => {
+      // Create a test category that will match our search
+      const timestamp = Date.now();
+      const createdCategory = await db.category.create({
+        data: {
+          name: `Test Category ${timestamp}`,
+          description: 'This is a test category for search functionality',
+          createdById: testUserId
+        }
+      });
+      testCategoryIds.push(createdCategory.id);
+      
       // This is the EXACT query from the categories page that was failing
       const query = 'test'; // Simulate search query
       
@@ -591,6 +701,11 @@ describe('Categories - COMPREHENSIVE TESTS', () => {
       });
 
       expect(Array.isArray(categories)).toBe(true);
+      expect(categories.length).toBeGreaterThan(0);
+      
+      // Verify our test category is found
+      const foundTestCategory = categories.find(c => c.name.includes('Test Category'));
+      expect(foundTestCategory).toBeDefined();
       
       // This is the exact calculation that was failing
       const totalProducts = categories.reduce((sum, category) => {

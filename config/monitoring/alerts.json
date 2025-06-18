@@ -1,0 +1,83 @@
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "recipients": [
+        "admin@lumo.com",
+        "devops@lumo.com"
+      ],
+      "templates": {
+        "error": "error-alert-template",
+        "warning": "warning-alert-template",
+        "recovery": "recovery-alert-template"
+      }
+    },
+    "slack": {
+      "enabled": false,
+      "channel": "#lumo-alerts",
+      "mentions": [
+        "@devops",
+        "@oncall"
+      ]
+    },
+    "sms": {
+      "enabled": false,
+      "provider": "twilio",
+      "numbers": [
+        "+1234567890"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "name": "critical-error",
+      "condition": "severity = \"critical\"",
+      "channels": [
+        "email",
+        "slack",
+        "sms"
+      ],
+      "cooldown": 300,
+      "escalation": {
+        "enabled": true,
+        "delay": 900,
+        "channels": [
+          "sms"
+        ]
+      }
+    },
+    {
+      "name": "high-error-rate",
+      "condition": "error_rate > 5 AND duration > 300",
+      "channels": [
+        "email",
+        "slack"
+      ],
+      "cooldown": 600
+    },
+    {
+      "name": "database-connection-failure",
+      "condition": "database_status = \"down\"",
+      "channels": [
+        "email",
+        "slack",
+        "sms"
+      ],
+      "cooldown": 60,
+      "priority": "critical"
+    },
+    {
+      "name": "memory-usage-high",
+      "condition": "memory_usage > 90 AND duration > 600",
+      "channels": [
+        "email"
+      ],
+      "cooldown": 1800
+    }
+  ],
+  "maintenance": {
+    "enabled": false,
+    "schedule": [],
+    "suppressAlerts": true
+  }
+}

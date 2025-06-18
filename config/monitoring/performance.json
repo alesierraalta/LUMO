@@ -1,0 +1,53 @@
+{
+  "metrics": {
+    "api": {
+      "endpoints": [
+        "/api/auth/*",
+        "/api/inventory/*",
+        "/api/categories/*",
+        "/api/products/*",
+        "/api/sales/*"
+      ],
+      "thresholds": {
+        "responseTime": 2000,
+        "errorRate": 2,
+        "throughput": 100
+      }
+    },
+    "database": {
+      "connections": {
+        "max": 20,
+        "warning": 15,
+        "critical": 18
+      },
+      "queries": {
+        "slowThreshold": 1000,
+        "verySlowThreshold": 5000
+      }
+    },
+    "system": {
+      "memory": {
+        "warning": 80,
+        "critical": 90
+      },
+      "cpu": {
+        "warning": 70,
+        "critical": 85
+      },
+      "disk": {
+        "warning": 80,
+        "critical": 90
+      }
+    }
+  },
+  "collection": {
+    "interval": 60000,
+    "retention": "7d",
+    "aggregation": [
+      "1m",
+      "5m",
+      "1h",
+      "1d"
+    ]
+  }
+}

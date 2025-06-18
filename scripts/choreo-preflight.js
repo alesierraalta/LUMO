@@ -14,7 +14,7 @@ console.log('📋 Environment: PRODUCTION/CHOREO');
 
 const preflightResults = {
   importDirs: false,
-  prismaGenerate: false,
+  
   databaseConnection: false,
   prismaConfig: false
 };
@@ -123,7 +123,7 @@ function validatePrismaConfig() {
 
     // Test Prisma client creation without datasourceUrl override
     try {
-      const { PrismaClient } = require('@prisma/client');
+      
       const testClient = new PrismaClient({
         log: ['error'],
         // Don't set datasourceUrl to use schema.prisma configuration

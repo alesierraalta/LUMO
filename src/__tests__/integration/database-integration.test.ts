@@ -4,7 +4,7 @@ import {
   setupTestDatabase, 
   cleanupTestDatabase, 
   disconnectDatabase
-} from './test-setup'
+} from '../setup/test-utilities'
 
 describe('Database Integration Tests', () => {
   beforeAll(async () => {
@@ -38,7 +38,7 @@ describe('Database Integration Tests', () => {
         isActive: true
       }
       
-      const createdRole = await db.role.create(testRole)
+      const createdRole = await db.role.create({ data: testRole })
       expect(createdRole).toBeDefined()
       
       // Now create user with the created role
@@ -51,7 +51,7 @@ describe('Database Integration Tests', () => {
         isActive: true
       }
 
-      const created = await db.user.create(newUser)
+      const created = await db.user.create({ data: newUser })
       expect(created).toBeDefined()
       expect(created.email).toBe(newUser.email)
       expect(created.name).toBe(newUser.name)
@@ -69,7 +69,7 @@ describe('Database Integration Tests', () => {
         isActive: true
       }
 
-      const created = await db.role.create(newRole)
+      const created = await db.role.create({ data: newRole })
       expect(created).toBeDefined()
       expect(created.name).toBe(newRole.name)
     })

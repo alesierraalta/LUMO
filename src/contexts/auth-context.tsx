@@ -1,108 +1,193 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { getClientUser, signOut, type User } from '@/lib/supabase-auth';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { 
+  getClientUser, 
+  signOut as clientSignOut,
+  createClientSupabaseClient,
+  User as SupabaseUser
+} from '@/lib/supabase-auth-client';
+
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  isActive: boolean;
+  permissions?: string[];
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   refetch: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+// Cache configuration
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let userCache: { user: User | null; timestamp: number } | null = null;
+let isRefetching = false;
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Cache management
-  const lastFetchTime = useRef<number>(0);
-  const cacheExpiry = 5 * 60 * 1000; // 5 minutes
-  const fetchingRef = useRef<boolean>(false);
 
-  const fetchUser = async (forceRefresh = false) => {
+  const fetchUser = useCallback(async (useCache = true): Promise<User | null> => {
+    // Return cached user if valid and cache is allowed
+    if (useCache && userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
+      return userCache.user;
+    }
+
     // Prevent multiple simultaneous calls
-    if (fetchingRef.current && !forceRefresh) {
-      return;
+    if (isRefetching) {
+      return user;
     }
 
-    // Check cache validity (skip if recent fetch and not forcing refresh)
-    const now = Date.now();
-    if (!forceRefresh && now - lastFetchTime.current < cacheExpiry && user !== null) {
-      return;
-    }
-
-    fetchingRef.current = true;
-    setLoading(true);
+    isRefetching = true;
 
     try {
-      console.log('🔍 [AuthContext] Fetching user with Supabase JWT...');
-      const userData = await getClientUser();
+      // Try to get user from Supabase client
+      const supabaseUser = await getClientUser();
       
-      setUser(userData);
-      lastFetchTime.current = now;
-      
-      if (userData) {
-        console.log('✅ [AuthContext] User authenticated:', userData.email);
-      } else {
-        console.log('❌ [AuthContext] No user found');
+      if (!supabaseUser) {
+        userCache = { user: null, timestamp: Date.now() };
+        return null;
+      }
+
+      // Try to get additional user info from our API
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          const fullUser: User = {
+            id: userData.id || supabaseUser.id,
+            email: userData.email || supabaseUser.email,
+            name: userData.name || supabaseUser.name,
+            role: userData.role || 'USER',
+            isActive: userData.isActive !== undefined ? userData.isActive : supabaseUser.isActive,
+            permissions: userData.permissions || []
+          };
+
+          userCache = { user: fullUser, timestamp: Date.now() };
+          return fullUser;
+        } else {
+          // If API fails, use basic Supabase user info
+          const basicUser: User = {
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            name: supabaseUser.name,
+            role: supabaseUser.role,
+            isActive: supabaseUser.isActive,
+            permissions: []
+          };
+
+          userCache = { user: basicUser, timestamp: Date.now() };
+          return basicUser;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API call failed, using Supabase user data:', apiError);
+        
+        // Fallback to basic Supabase user
+        const basicUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          name: supabaseUser.name,
+          role: supabaseUser.role,
+          isActive: supabaseUser.isActive,
+          permissions: []
+        };
+
+        userCache = { user: basicUser, timestamp: Date.now() };
+        return basicUser;
       }
     } catch (error) {
-      console.error('❌ [AuthContext] Error fetching user:', error);
+      console.error('❌ Error fetching user:', error);
+      userCache = { user: null, timestamp: Date.now() };
+      return null;
+    } finally {
+      isRefetching = false;
+    }
+  }, [user]);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const userData = await fetchUser(false); // Force refresh
+      setUser(userData);
+    } catch (error) {
+      console.error('❌ Error refetching user:', error);
       setUser(null);
-      // Clear cache on error
-      lastFetchTime.current = 0;
     } finally {
       setLoading(false);
-      fetchingRef.current = false;
     }
-  };
+  }, [fetchUser]);
 
-  const refetch = async () => {
-    await fetchUser(true); // Force refresh
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async (): Promise<boolean> => {
     try {
-      setLoading(true);
-      const success = await signOut();
+      const success = await clientSignOut();
       
       if (success) {
         setUser(null);
-        lastFetchTime.current = 0; // Clear cache
-        console.log('✅ [AuthContext] User logged out successfully');
-      } else {
-        console.error('❌ [AuthContext] Logout failed');
+        userCache = null; // Clear cache
       }
+      
+      return success;
     } catch (error) {
-      console.error('❌ [AuthContext] Logout error:', error);
-    } finally {
-      setLoading(false);
+      console.error('❌ Logout error:', error);
+      return false;
     }
-  };
-
-  useEffect(() => {
-    fetchUser();
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const userData = await fetchUser(true);
+        setUser(userData);
+      } catch (error) {
+        console.error('❌ Auth initialization error:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, [fetchUser]);
+
+  // Listen to Supabase auth changes
+  useEffect(() => {
+    const supabase = createClientSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!session?.user) {
+        setUser(null);
+        userCache = null;
+      } else {
+        // Refetch user data when auth state changes
+        await refetch();
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [refetch]);
 
   const value: AuthContextType = {
     user,
     loading,
     refetch,
-    logout,
+    logout
   };
 
   return (
@@ -110,4 +195,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+} 

@@ -9,6 +9,16 @@ const originalConsoleError = console.error
 const originalConsoleWarn = console.warn
 
 beforeEach(() => {
+  // Reset mock database before each test
+  try {
+    const { resetMockDatabase } = require('./src/__mocks__/@supabase/supabase-js.js')
+    if (resetMockDatabase) {
+      resetMockDatabase()
+    }
+  } catch (error) {
+    // Ignore if mock is not available (e.g., in unit tests)
+  }
+  
   // Suppress known console errors during tests
   console.error = jest.fn((message) => {
     if (

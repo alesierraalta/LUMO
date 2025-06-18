@@ -1,5 +1,5 @@
-import { db, setupTestDatabase, cleanupTestDatabase } from './test-setup'
-import { createTestRole, createTestUser, createTestCategory, createTestInventoryItem } from './test-setup'
+import { db, setupTestDatabase, cleanupTestDatabase } from '../setup/test-utilities'
+import { createTestRole, createTestUser, createTestCategory, createTestInventoryItem } from '../setup/test-utilities'
 
 describe('Referential Integrity Operations Tests', () => {
   beforeAll(async () => {

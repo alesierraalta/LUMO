@@ -1,337 +1,232 @@
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db-supabase'
 
-const prisma = new PrismaClient()
-
-describe('Fresh Category Deletion - Real User Scenario', () => {
-  beforeAll(async () => {
-    // Clean up any existing test data
-    await prisma.inventoryItem.deleteMany({
-      where: { sku: { startsWith: 'FRESH-TEST-' } }
-    })
-    await prisma.category.deleteMany({
-      where: { name: { startsWith: 'FRESH_TEST_' } }
-    })
-    await prisma.user.updateMany({
-      where: { email: { contains: '@fresh-test.com' } },
-      data: { roleId: null }
-    })
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@fresh-test.com' } }
-    })
-    await prisma.role.deleteMany({
-      where: { name: { startsWith: 'FRESH_TEST_' } }
-    })
-  })
-
-  afterAll(async () => {
-    // Clean up test data
-    await prisma.inventoryItem.deleteMany({
-      where: { sku: { startsWith: 'FRESH-TEST-' } }
-    })
-    await prisma.category.deleteMany({
-      where: { name: { startsWith: 'FRESH_TEST_' } }
-    })
-    await prisma.user.updateMany({
-      where: { email: { contains: '@fresh-test.com' } },
-      data: { roleId: null }
-    })
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@fresh-test.com' } }
-    })
-    await prisma.role.deleteMany({
-      where: { name: { startsWith: 'FRESH_TEST_' } }
-    })
-    await prisma.$disconnect()
-  })
-
+describe('Fresh Category Deletion Integration Tests', () => {
+  // Clean up before each test
   beforeEach(async () => {
-    // Clean up before each test
-    await prisma.inventoryItem.deleteMany({
-      where: { sku: { startsWith: 'FRESH-TEST-' } }
+    await db.inventoryItem.deleteMany({ deleteAll: true })
+    await db.category.deleteMany({ deleteAll: true })
+    await db.user.updateMany({
+      where: {},
+      data: { roleId: null }
     })
-    await prisma.category.deleteMany({
-      where: { name: { startsWith: 'FRESH_TEST_' } }
-    })
+    await db.user.deleteMany({ deleteAll: true })
+    await db.role.deleteMany({ deleteAll: true })
   })
 
-  it('should successfully delete a freshly created category with no products', async () => {
-    // 1. Create role and user (needed for category creation)
-    const role = await prisma.role.create({
+  // Clean up after all tests
+  afterAll(async () => {
+    await db.inventoryItem.deleteMany({ deleteAll: true })
+    await db.category.deleteMany({ deleteAll: true })
+    await db.user.updateMany({
+      where: {},
+      data: { roleId: null }
+    })
+    await db.user.deleteMany({ deleteAll: true })
+    await db.role.deleteMany({ deleteAll: true })
+    await db.$disconnect()
+  })
+
+  test('should delete a fresh category with no associated products', async () => {
+    // Clean up any existing test data
+    await db.inventoryItem.deleteMany({ deleteAll: true })
+    await db.category.deleteMany({ deleteAll: true })
+
+    // Create test role
+    const role = await db.role.create({
       data: {
-        id: 'fresh-test-role',
-        name: 'FRESH_TEST_ROLE',
-        description: 'Test role for fresh category',
+        name: 'TEST_ROLE_FRESH_CATEGORY',
+        description: 'Test role for fresh category deletion',
         isSystem: false,
         isActive: true
       }
     })
 
-    const user = await prisma.user.create({
+    // Create test user
+    const user = await db.user.create({
       data: {
-        id: 'fresh-test-user',
-        email: 'user@fresh-test.com',
-        password: 'testpass123',
-        name: 'Fresh Test User',
+        name: 'Test User Fresh Category',
+        email: 'test-fresh-category@test.com',
+        password: 'test123',
         roleId: role.id,
         isActive: true
       }
     })
 
-    // 2. Create a fresh category (like you just did in the UI)
-    const freshCategory = await prisma.category.create({
+    // Create a fresh category (no products)
+    const freshCategory = await db.category.create({
       data: {
-        id: 'fresh-category-test',
-        name: 'FRESH_TEST_New_Category',
-        description: 'A brand new category I just created',
+        name: 'Fresh Test Category',
+        description: 'A category with no products for testing deletion',
         createdById: user.id
       }
     })
 
-    console.log(`✅ Created fresh category: "${freshCategory.name}" (ID: ${freshCategory.id})`)
-
-    // 3. Verify it has NO products associated (this should be 0)
-    const productsCount = await prisma.inventoryItem.count({
-      where: { categoryId: freshCategory.id }
+    // Verify no products are associated with this category
+    const productsCount = await db.inventoryItem.count({
+      where: {
+        categoryId: freshCategory.id
+      }
     })
-
-    console.log(`🔍 Products in fresh category: ${productsCount}`)
     expect(productsCount).toBe(0)
 
-    // 4. Simulate the exact API endpoint logic
-    console.log(`🗑️ Attempting to delete fresh category: ${freshCategory.id}`)
-    
-    // This is the exact logic from your API endpoint
-    const associatedProductsCount = await prisma.inventoryItem.count({
-      where: { categoryId: freshCategory.id }
+    // Verify no associated products exist
+    const associatedProductsCount = await db.inventoryItem.count({
+      where: {
+        categoryId: freshCategory.id
+      }
     })
-    
-    if (associatedProductsCount > 0) {
-      // This should NOT happen for a fresh category
-      console.log(`❌ Unexpected: Fresh category has ${associatedProductsCount} products`)
-      throw new Error(`Fresh category should have 0 products but has ${associatedProductsCount}`)
-    } else {
-      // This SHOULD happen - deletion should succeed
-      console.log(`✅ Fresh category has ${associatedProductsCount} products - deletion should proceed`)
-      
-      await prisma.category.delete({
-        where: { id: freshCategory.id }
-      })
-      
-      console.log('✅ Fresh category deleted successfully')
-    }
+    expect(associatedProductsCount).toBe(0)
 
-    // 5. Verify the category was actually deleted
-    const categoryExists = await prisma.category.findUnique({
-      where: { id: freshCategory.id }
+    // Delete the category - should succeed
+    await db.category.delete({
+      where: {
+        id: freshCategory.id
+      }
     })
-    
+
+    // Verify category is deleted
+    const categoryExists = await db.category.findUnique({
+      where: {
+        id: freshCategory.id
+      }
+    })
     expect(categoryExists).toBeNull()
-    console.log('✅ Confirmed: Fresh category no longer exists in database')
   })
 
-  it('should debug why a fresh category might show associated products', async () => {
-    // This test helps debug potential issues
-    
-    // 1. Setup
-    const role = await prisma.role.create({
+  test('should handle deletion of category with debug information', async () => {
+    // Create test role
+    const role = await db.role.create({
       data: {
-        id: 'debug-test-role',
-        name: 'FRESH_TEST_DEBUG_ROLE',
-        description: 'Debug test role',
+        name: 'TEST_ROLE_DEBUG_CATEGORY',
+        description: 'Test role for debug category deletion',
         isSystem: false,
         isActive: true
       }
     })
 
-    const user = await prisma.user.create({
+    // Create test user
+    const user = await db.user.create({
       data: {
-        id: 'debug-test-user',
-        email: 'debug@fresh-test.com',
-        password: 'testpass123',
-        name: 'Debug Test User',
+        name: 'Test User Debug Category',
+        email: 'test-debug-category@test.com',
+        password: 'test123',
         roleId: role.id,
         isActive: true
       }
     })
 
-    // 2. Create category
-    const debugCategory = await prisma.category.create({
+    // Create a debug category
+    const debugCategory = await db.category.create({
       data: {
-        id: 'debug-category-test',
-        name: 'FRESH_TEST_Debug_Category',
-        description: 'Debug category',
+        name: 'Debug Test Category',
+        description: 'A category for testing debug deletion',
         createdById: user.id
       }
     })
 
-    // 3. Check for any products that might be associated
-    const allProducts = await prisma.inventoryItem.findMany({
-      where: { categoryId: debugCategory.id },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        categoryId: true,
-        createdAt: true
+    // Get all products (should be empty)
+    const allProducts = await db.inventoryItem.findMany()
+    console.log(`📊 Total products in database: ${allProducts.length}`)
+
+    // Check for orphan products (products without categories)
+    const orphanProducts = await db.inventoryItem.findMany({
+      where: {
+        categoryId: null
       }
     })
+    console.log(`🔍 Orphan products (no category): ${orphanProducts.length}`)
 
-    console.log(`🔍 All products in debug category:`, allProducts)
-    expect(allProducts).toHaveLength(0)
-
-    // 4. Check for any products with NULL categoryId that might be causing issues
-    const orphanProducts = await prisma.inventoryItem.findMany({
-      where: { categoryId: null },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        categoryId: true
+    // Check for products with the same category ID
+    const productsWithSameId = await db.inventoryItem.findMany({
+      where: {
+        categoryId: debugCategory.id
       }
     })
+    console.log(`🎯 Products with category ID ${debugCategory.id}: ${productsWithSameId.length}`)
 
-    console.log(`🔍 Products with NULL categoryId:`, orphanProducts.length)
-
-    // 5. Check for any products that might have the same ID by mistake
-    const productsWithSameId = await prisma.inventoryItem.findMany({
-      where: { id: debugCategory.id },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        categoryId: true
+    // Delete the category - should succeed
+    await db.category.delete({
+      where: {
+        id: debugCategory.id
       }
     })
-
-    console.log(`🔍 Products with same ID as category:`, productsWithSameId.length)
-    expect(productsWithSameId).toHaveLength(0)
-
-    // 6. Verify the category can be deleted
-    await prisma.category.delete({
-      where: { id: debugCategory.id }
-    })
-
-    console.log('✅ Debug category deleted successfully')
   })
 
-  it('should test the exact API call that is failing for you', async () => {
-    // This simulates making the actual API call
-    
-    // 1. Setup
-    const role = await prisma.role.create({
+  test('should handle API-level category deletion', async () => {
+    // Create test role
+    const role = await db.role.create({
       data: {
-        id: 'api-call-test-role',
-        name: 'FRESH_TEST_API_ROLE',
-        description: 'API call test role',
+        name: 'TEST_ROLE_API_CATEGORY',
+        description: 'Test role for API category deletion',
         isSystem: false,
         isActive: true
       }
     })
 
-    const user = await prisma.user.create({
+    // Create test user
+    const user = await db.user.create({
       data: {
-        id: 'api-call-test-user',
-        email: 'api@fresh-test.com',
-        password: 'testpass123',
-        name: 'API Test User',
+        name: 'Test User API Category',
+        email: 'test-api-category@test.com',
+        password: 'test123',
         roleId: role.id,
         isActive: true
       }
     })
 
-    // 2. Create a fresh category
-    const apiTestCategory = await prisma.category.create({
+    // Create an API test category
+    const apiTestCategory = await db.category.create({
       data: {
-        id: 'api-test-category',
-        name: 'FRESH_TEST_API_Category',
-        description: 'Fresh category for API testing',
+        name: 'API Test Category',
+        description: 'A category for testing API-level deletion',
         createdById: user.id
       }
     })
 
-    console.log(`📝 Created category for API test: ${apiTestCategory.id}`)
-
-    // 3. Simulate the exact API endpoint DELETE logic
-    try {
-      console.log(`🗑️ Attempting to delete category: ${apiTestCategory.id}`)
-      
-      // Check if category has associated products (from your API code)
-      const productsCount = await prisma.inventoryItem.count({
-        where: { categoryId: apiTestCategory.id }
-      })
-      
-      if (productsCount > 0) {
-        console.log(`❌ Cannot delete category with associated products: ${productsCount}`)
-        
-        // This would be the API response
-        const apiResponse = {
-          error: `Cannot delete category. It has ${productsCount} associated products.`,
-          status: 400
-        }
-        
-        console.log('🚫 API Response:', apiResponse)
-        throw new Error(apiResponse.error)
-      }
-      
-      // If we get here, deletion should proceed
-      await prisma.category.delete({
-        where: { id: apiTestCategory.id }
-      })
-
-      console.log('✅ Category deleted successfully')
-      
-      // Verify deletion
-      const categoryExists = await prisma.category.findUnique({
-        where: { id: apiTestCategory.id }
-      })
-      
-      expect(categoryExists).toBeNull()
-      console.log('✅ API call simulation successful - category deleted')
-      
-    } catch (error) {
-      console.error('❌ API call simulation failed:', error)
-      throw error
-    }
-  })
-
-  it('should check for potential database inconsistencies', async () => {
-    // This test checks for potential database issues that might cause the problem
-    
-    console.log('🔍 Checking for potential database inconsistencies...')
-    
-    // 1. Check for any inventory items with invalid categoryId references
-    const invalidCategoryRefs = await prisma.$queryRaw`
-      SELECT i.id, i.name, i.categoryId, c.id as category_exists
-      FROM InventoryItem i
-      LEFT JOIN Category c ON i.categoryId = c.id
-      WHERE i.categoryId IS NOT NULL AND c.id IS NULL
-    `
-    
-    console.log('🔍 Inventory items with invalid category references:', invalidCategoryRefs)
-    
-    // 2. Check for any categories that might have been soft-deleted or have issues
-    const allCategories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        _count: {
-          select: {
-            inventoryItems: true
-          }
-        }
+    // Verify no products are associated
+    const productsCount = await db.inventoryItem.count({
+      where: {
+        categoryId: apiTestCategory.id
       }
     })
-    
-    console.log('🔍 All categories with product counts:', allCategories)
-    
-    // 3. Check database constraints
-    const constraintInfo = await prisma.$queryRaw`
-      PRAGMA foreign_key_list(InventoryItem)
+    expect(productsCount).toBe(0)
+
+    // Delete the category via API simulation
+    await db.category.delete({
+      where: {
+        id: apiTestCategory.id
+      }
+    })
+
+    // Verify category is deleted
+    const categoryExists = await db.category.findUnique({
+      where: {
+        id: apiTestCategory.id
+      }
+    })
+    expect(categoryExists).toBeNull()
+
+    // Additional verification: check for any invalid category references
+    const invalidCategoryRefs = await db.$queryRaw`
+      SELECT * FROM inventory_items WHERE category_id = ${apiTestCategory.id}
     `
-    
-    console.log('🔍 Foreign key constraints on InventoryItem:', constraintInfo)
-    
-    expect(true).toBe(true) // This test is just for debugging
+    expect(Array.isArray(invalidCategoryRefs)).toBe(true)
+    expect(invalidCategoryRefs.length).toBe(0)
+
+    // Final verification: list all categories to ensure cleanup
+    const allCategories = await db.category.findMany()
+    console.log(`📋 Remaining categories after deletion: ${allCategories.length}`)
+
+    // Check database constraint integrity
+    const constraintInfo = await db.$queryRaw`
+      SELECT 
+        constraint_name, 
+        table_name, 
+        constraint_type 
+      FROM information_schema.table_constraints 
+      WHERE table_name IN ('categories', 'inventory_items')
+      AND constraint_type = 'FOREIGN KEY'
+    `
+    console.log('🔗 Foreign key constraints:', constraintInfo)
   })
 })

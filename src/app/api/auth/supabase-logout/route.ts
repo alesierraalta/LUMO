@@ -1,30 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signOut } from '@/lib/supabase-auth';
+import { clearAuthCookies } from '@/lib/supabase-auth-server';
 
 export async function POST(request: NextRequest) {
   try {
-    // Sign out from Supabase
-    const success = await signOut();
+    // Clear auth cookies
+    const success = await clearAuthCookies();
 
     if (!success) {
       return NextResponse.json(
-        { error: 'Logout failed' },
+        { error: 'Failed to clear auth cookies' },
         { status: 500 }
       );
     }
 
-    // Create response
-    const response = NextResponse.json({
-      success: true,
-      message: 'Logout successful'
-    });
-
-    // Clear the JWT cookies
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
-    response.cookies.delete('auth-token'); // Clear old cookie too
-
-    return response;
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('❌ Supabase logout error:', error);
     return NextResponse.json(

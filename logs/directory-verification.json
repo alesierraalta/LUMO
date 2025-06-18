@@ -1,49 +1,37 @@
 {
-  "timestamp": "2025-06-06T13:47:27.145Z",
+  "timestamp": "2025-06-18T11:05:32.400Z",
   "environment": {
-    "production": true,
+    "production": false,
     "platform": "win32",
     "nodeVersion": "v24.1.0"
   },
   "diskSpace": {
     "success": true,
-    "freeSpaceMB": 883458
+    "freeSpaceMB": 870223
   },
   "directories": {
     "success": true,
     "created": [
       "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\server\\app\\api\\inventory\\import\\process\\dict",
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\.next\\server\\app\\api\\inventory\\import\\process\\dict",
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\node_modules\\server-only",
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\tmp"
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\node_modules\\.prisma\\client",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\scripts",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\node_modules\\server-only"
     ],
     "failed": [],
     "permissionsFailed": [],
     "alreadyExisted": [
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\node_modules\\.prisma\\client",
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\scripts",
-      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\logs"
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\.next\\standalone\\.next\\server\\app\\api\\inventory\\import\\process\\dict",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\logs",
+      "C:\\Users\\alesierraalta\\Documents\\Projects\\lumo\\LUMO\\tmp"
     ]
   },
   "scripts": {
     "success": true,
-    "copied": [
-      "fix-import-session-postgres.js",
-      "fix-import-session-sqlite.js",
-      "run-import-session-migration.js",
-      "import-session-preflight.js",
-      "verify-import-schema.js",
-      "choreo-preflight.js",
-      "verify-deployment.js",
-      "ensure-import-dirs.js",
-      "audit-import-session-migrations.js"
-    ],
-    "failed": [],
-    "notFound": [],
-    "permissionsFailed": []
+    "skipped": true
   },
   "serverOnlyModule": {
-    "success": true
+    "success": true,
+    "skipped": true
   },
   "success": true
 }

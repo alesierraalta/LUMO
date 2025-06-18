@@ -28,7 +28,7 @@ const nextConfig = {
   },
   
   // Prisma configuration and other Node.js modules for server-side only
-  serverExternalPackages: ['@prisma/client', 'child_process', 'fs', 'path', 'os'],
+  serverExternalPackages: ['child_process', 'fs', 'path', 'os'],
   
   // Enable compression for better performance
   compress: true,

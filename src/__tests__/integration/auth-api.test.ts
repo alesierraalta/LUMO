@@ -1,6 +1,47 @@
+/**
+ * @jest-environment node
+ */
+
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { NextRequest } from 'next/server'
-import { disconnectDatabase, cleanupTestDatabase, setupTestDatabase } from './test-setup'
+import { disconnectDatabase, cleanupTestDatabase, setupTestDatabase } from '../setup/test-utilities'
+
+// Mock the Next.js Request object for Node.js environment
+if (!global.Request) {
+  global.Request = class MockRequest {
+    url: string
+    method: string
+    headers: Map<string, string>
+    body: any
+    
+    constructor(input: string, init?: any) {
+      this.url = input
+      this.method = init?.method || 'GET'
+      this.headers = new Map(Object.entries(init?.headers || {}))
+      this.body = init?.body
+    }
+    
+    // Add other required Request properties as stubs
+    cache = 'default' as RequestCache
+    credentials = 'same-origin' as RequestCredentials
+    destination = '' as RequestDestination
+    integrity = ''
+    keepalive = false
+    mode = 'cors' as RequestMode
+    redirect = 'follow' as RequestRedirect
+    referrer = ''
+    referrerPolicy = '' as ReferrerPolicy
+    signal = new AbortController().signal
+    
+    // Required methods
+    clone() { return this }
+    arrayBuffer() { return Promise.resolve(new ArrayBuffer(0)) }
+    blob() { return Promise.resolve(new Blob()) }
+    formData() { return Promise.resolve(new FormData()) }
+    json() { return Promise.resolve(JSON.parse(this.body || '{}')) }
+    text() { return Promise.resolve(this.body || '') }
+  } as any
+}
 
 // Import the actual API route handlers
 import { POST as loginHandler } from '@/app/api/auth/login/route'

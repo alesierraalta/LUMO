@@ -124,9 +124,10 @@ const nextConfig = {
   // Webpack optimization for production deployment
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     
-    // Load polyfill early in webpack compilation
+    // Load polyfill early in webpack compilation - FIXED: Prevent recursion
+    const originalEntry = config.entry;
     config.entry = async () => {
-      const entries = await config.entry();
+      const entries = await originalEntry();
       
       // Inject polyfill into all entry points
       if (entries['main.js']) {

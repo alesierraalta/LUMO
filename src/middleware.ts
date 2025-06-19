@@ -1,5 +1,8 @@
+// Load Supabase polyfill for Next.js 15.3.1 compatibility
+import './lib/supabase-polyfill.js'
+
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerUser, createServerSupabaseClient } from '@/lib/supabase-auth-server'
+import { createServerClient } from '@supabase/ssr'
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -36,65 +39,53 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Get token from multiple sources (including legacy auth-token for compatibility)
-    let token: string | null = null
+    console.log('🔍 Middleware: Processing', pathname);
     
-    // 1. Authorization header
-    const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.substring(7)
-    }
+    // FIXED: Create proper Supabase client for middleware
+    let response = NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    })
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value)
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+
+    // FIXED: Get session using proper Supabase client
+    const { data: { session }, error } = await supabase.auth.getSession()
     
-    // 2. Cookie (multiple formats - Supabase + legacy)
-    if (!token) {
-      token = request.cookies.get('supabase-auth-token')?.value ||
-              request.cookies.get('sb-access-token')?.value ||
-              request.cookies.get('supabase.auth.token')?.value ||
-              request.cookies.get('auth-token')?.value // Legacy compatibility
-    }
+    console.log('🔍 Middleware: Supabase session check:');
+    console.log('  - Error:', error?.message || 'none');
+    console.log('  - Session exists:', !!session);
+    console.log('  - User exists:', !!session?.user);
 
-    if (!token) {
-      console.log('❌ Middleware: No token found for', pathname)
-      return redirectToLogin(request)
-    }
+    if (session?.user) {
+      console.log('✅ Middleware: Valid Supabase session found for', pathname);
+      console.log('  - User:', session.user.email);
 
-    // For legacy auth-token, try to verify with custom JWT
-    if (request.cookies.get('auth-token')?.value && !request.cookies.get('supabase-auth-token')?.value) {
-      console.log('🔄 Middleware: Legacy auth-token detected, upgrading to Supabase...')
-      // Allow the request to continue but log that an upgrade is needed
-      // The user will be prompted to log in again with Supabase
-      return redirectToLogin(request)
-    }
-
-    // Verify token with Supabase
-    const supabase = await createServerSupabaseClient()
-    const { data: { user: authUser }, error } = await supabase.auth.getUser(token)
-    
-    if (error || !authUser) {
-      console.log('❌ Middleware: Invalid token for', pathname, 'Error:', error?.message)
-      return redirectToLogin(request)
-    }
-    
-    // Get full user profile
-    const user = await getServerUser()
-    
-    if (!user) {
-      console.log('❌ Middleware: User profile not found for', pathname)
-      return redirectToLogin(request)
-    }
-
-    console.log('✅ Middleware: Valid Supabase token found for', pathname, ', user ID:', user.id)
-
-    // Add user info to headers for downstream use
+      // Add user info to headers for downstream use
     const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', user.id)
-    requestHeaders.set('x-user-email', user.email || '')
+      requestHeaders.set('x-user-id', session.user.id)
+      requestHeaders.set('x-user-email', session.user.email || '')
     
     // Check admin routes
     if (adminRoutes.some(route => pathname.startsWith(route))) {
-      // For admin routes, we might need additional role checking
-      // For now, just allow authenticated users
-      console.log('🔑 Middleware: Admin route accessed by', user.email)
+        console.log('🔑 Middleware: Admin route accessed');
     }
 
     return NextResponse.next({
@@ -102,6 +93,19 @@ export async function middleware(request: NextRequest) {
         headers: requestHeaders,
       },
     })
+    }
+
+    // FALLBACK: Try legacy JWT system
+    console.log('⚠️ Middleware: No Supabase session, trying legacy auth...');
+    
+    const authToken = request.cookies.get('auth-token')?.value;
+    if (authToken && authToken.length > 20) {
+      console.log('✅ Middleware: Valid legacy token found for', pathname);
+      return NextResponse.next()
+    }
+
+    console.log('❌ Middleware: No valid authentication found for', pathname);
+      return redirectToLogin(request)
 
   } catch (error) {
     console.error('❌ Middleware error:', error)
@@ -110,6 +114,7 @@ export async function middleware(request: NextRequest) {
 }
 
 function redirectToLogin(request: NextRequest) {
+  console.log('🔄 Middleware: Redirecting to login from', request.nextUrl.pathname);
   const url = request.nextUrl.clone()
   url.pathname = '/login'
   url.searchParams.set('redirect', request.nextUrl.pathname)

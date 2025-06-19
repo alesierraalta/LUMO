@@ -4,7 +4,11 @@
  * - Simplified implementation without Prisma dependencies
  */
 
-import { createClient } from '@supabase/supabase-js'
+// CRITICAL FIX: Import polyfill first to resolve exports issue
+import './supabase-polyfill.js'
+// FIXED: Use require for better CommonJS compatibility
+const { createClient } = require('@supabase/supabase-js')
+import { logger } from './logger/index'
 
 // Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -12,7 +16,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 console.log('✅ Initializing Supabase client with URL:', supabaseUrl);
 
-// Create Supabase client
+// Create Supabase client - FIXED: Direct initialization
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Database operations interface
@@ -870,10 +874,10 @@ export const db = {
         description: item.description,
         sku: item.sku,
         categoryId: item.category_id,
-        currentStock: item.current_stock,
+        currentStock: item.quantity,
         minStockLevel: item.min_stock_level,
-        unitCost: item.unit_cost,
-        unitPrice: item.unit_price,
+        unitCost: item.cost,
+        unitPrice: item.price,
         isActive: item.is_active,
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
@@ -887,10 +891,10 @@ export const db = {
         description: params.data.description,
         sku: params.data.sku,
         category_id: params.data.categoryId,
-        current_stock: params.data.currentStock || params.data.quantity || 0,
+        quantity: params.data.currentStock || params.data.quantity || 0,
         min_stock_level: params.data.minStockLevel || 0,
-        unit_cost: params.data.unitCost || 0,
-        unit_price: params.data.unitPrice || 0,
+        cost: params.data.unitCost || 0,
+        price: params.data.unitPrice || 0,
         created_by_id: params.data.createdById,
       };
       
@@ -916,10 +920,10 @@ export const db = {
         description: data.description,
         sku: data.sku,
         categoryId: data.category_id,
-        currentStock: data.current_stock,
+        currentStock: data.quantity,
         minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
+        unitCost: data.cost,
+        unitPrice: data.price,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
@@ -932,11 +936,11 @@ export const db = {
       if (params.data.description !== undefined) updateData.description = params.data.description;
       if (params.data.sku) updateData.sku = params.data.sku;
       if (params.data.categoryId) updateData.category_id = params.data.categoryId;
-      if (params.data.currentStock !== undefined) updateData.current_stock = params.data.currentStock;
-      if (params.data.quantity !== undefined) updateData.current_stock = params.data.quantity;
+      if (params.data.currentStock !== undefined) updateData.quantity = params.data.currentStock;
+      if (params.data.quantity !== undefined) updateData.quantity = params.data.quantity;
       if (params.data.minStockLevel !== undefined) updateData.min_stock_level = params.data.minStockLevel;
-      if (params.data.unitCost !== undefined) updateData.unit_cost = params.data.unitCost;
-      if (params.data.unitPrice !== undefined) updateData.unit_price = params.data.unitPrice;
+      if (params.data.unitCost !== undefined) updateData.cost = params.data.unitCost;
+      if (params.data.unitPrice !== undefined) updateData.price = params.data.unitPrice;
       updateData.updated_at = new Date().toISOString();
 
       let query = supabase.from('inventory_items').update(updateData);
@@ -958,10 +962,10 @@ export const db = {
         description: data.description,
         sku: data.sku,
         categoryId: data.category_id,
-        currentStock: data.current_stock,
+        currentStock: data.quantity,
         minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
+        unitCost: data.cost,
+        unitPrice: data.price,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id

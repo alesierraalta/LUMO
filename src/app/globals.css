@@ -1,6 +1,19 @@
 @import "tailwindcss";
 /* @import "tw-animate-css"; */
 
+/* CRITICAL: Prevent double scroll bars - ensure only main container scrolls */
+html, body {
+  overflow: hidden !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure main layout works correctly */
+#__next {
+  height: 100vh !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

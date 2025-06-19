@@ -338,7 +338,18 @@ export default async function InventoryPage({
   // Get current user and check permissions
   const user = await getCurrentUser();
   
-  
+  // Check if user has access to inventory (all authenticated users can access inventory)
+  const hasInventoryAccess = user ? true : false;
+
+  // If no inventory access, return unauthorized
+  if (!hasInventoryAccess) {
+    return (
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
+        <p>No tienes permisos para acceder a esta página.</p>
+      </div>
+    );
+  }
 
   // Fetch all inventory items with their category and location info
   const inventoryItems = await db.inventoryItem.findMany({
@@ -347,7 +358,7 @@ export default async function InventoryPage({
       location: true, // Incluir información de ubicación
     },
     orderBy: {
-      updated_at: 'desc',
+      updatedAt: 'desc',
     },
   }) || [];
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
+import { createClient } from '@supabase/supabase-js';
 import db from '@/lib/db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -13,6 +14,56 @@ const createUserSchema = z.object({
   roleId: z.string().min(1, 'Role ID is required'),
 });
 
+// Helper function to get current user from either Supabase or legacy JWT
+async function getCurrentUser(request: NextRequest) {
+  // Try Supabase authentication first
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    
+    try {
+      // Initialize Supabase client
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      // Verify the token with Supabase
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (!error && user) {
+        // Get user data from our database
+        const dbUser = await db.user.findUnique({
+          where: { email: user.email },
+          include: { role: true }
+        });
+        
+        if (dbUser && dbUser.isActive) {
+          return {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            role: dbUser.role?.name || 'USER',
+            isActive: dbUser.isActive,
+            createdAt: dbUser.createdAt,
+            updatedAt: dbUser.updatedAt,
+          };
+        }
+      }
+    } catch (supabaseError) {
+      console.log('Supabase auth failed, trying legacy JWT...');
+    }
+  }
+  
+  // Fallback to legacy JWT authentication
+  const token = getTokenFromRequest(request);
+  if (token) {
+    return await getCurrentUserFromToken(token);
+  }
+  
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!db) {
@@ -23,18 +74,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check authentication and admin privileges
-    const token = getTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
+    const currentUser = await getCurrentUser(request);
     if (!currentUser) {
       return NextResponse.json(
-        { error: 'Invalid or expired token' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
@@ -134,18 +177,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Check authentication and admin privileges
-    const token = getTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
+    const currentUser = await getCurrentUser(request);
     if (!currentUser) {
       return NextResponse.json(
-        { error: 'Invalid or expired token' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }

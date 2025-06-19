@@ -5,7 +5,8 @@
  * - Server and client compatible
  */
 
-import { createClient } from '@supabase/supabase-js'
+// CRITICAL FIX: Import polyfill first to resolve exports issue
+import './supabase-polyfill.js'
 import { cookies } from 'next/headers'
 
 // Supabase configuration
@@ -15,6 +16,9 @@ const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KE
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('❌ Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_KEY environment variables.')
 }
+
+// FIXED: Use require for better CommonJS compatibility
+const { createClient } = require('@supabase/supabase-js')
 
 // Server-side Supabase client with cookie support
 export const createServerSupabaseClient = async () => {

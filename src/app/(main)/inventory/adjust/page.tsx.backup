@@ -46,7 +46,19 @@ export default async function AdjustInventoryPage() {
   // Verificar permisos
   const user = await getCurrentUser();
   
-  
+  // Check if user has access to inventory
+  const hasInventoryAccess = user ? 
+    (isAdmin(user) || hasPermission(user, 'page', 'inventory')) : 
+    false;
+
+  if (!hasInventoryAccess) {
+    return (
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
+        <p>No tienes permisos para acceder a esta página.</p>
+      </div>
+    );
+  }
 
   // Obtener productos disponibles
   const products = await getInventoryProducts();

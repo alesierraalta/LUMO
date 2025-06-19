@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner"
+import { AuthProvider } from "@/contexts/auth-context";
 
 // Disable static generation for all pages
 export const dynamic = 'force-dynamic';
@@ -25,10 +26,12 @@ export default function RootLayout({
         }}
       >
         <ThemeProvider defaultTheme="system">
-          <div className="relative flex min-h-screen flex-col">
-            {children}
-            <Toaster />
-          </div>
+          <AuthProvider>
+            <div className="relative flex min-h-screen flex-col">
+              {children}
+              <Toaster />
+            </div>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -342,7 +342,7 @@ function EditProductContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Breadcrumb
         items={[
           { title: "Inventario", href: "/inventory" },

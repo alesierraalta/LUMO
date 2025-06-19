@@ -1,3 +1,9 @@
+/* Prevent double scroll bars - ensure only main container scrolls */
+html, body {
+  overflow: hidden;
+  height: 100vh;
+}
+
 @media print {
   /* Hide non-printable elements */
   .print-hidden,
@@ -10,6 +16,7 @@
     background: white;
     font-size: 12pt;
     color: black;
+    overflow: visible !important; /* Allow overflow for printing */
   }
   
   /* Full-width layout for print view */

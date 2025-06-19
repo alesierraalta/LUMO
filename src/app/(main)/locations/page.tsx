@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export default async function LocationsPage() {
   const user = await getCurrentUser();
+  console.log('🔍 LocationsPage: getCurrentUser result:', user ? 'USER_FOUND' : 'NULL');
 
   if (!user) {
     redirect("/login");
@@ -35,7 +36,7 @@ export default async function LocationsPage() {
     createdAt: loc.createdAt.toISOString(), // Convertir Date a string
     updatedAt: loc.updatedAt.toISOString(), // Convertir Date a string
     _count: {
-      inventoryItems: loc._count.inventoryItems
+      inventory: loc._count.inventoryItems
     }
   }));
 

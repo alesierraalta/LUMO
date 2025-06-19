@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +10,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Shield, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClientSupabaseClient } from '@/lib/supabase-auth-client';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { refetch } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +29,7 @@ export default function LoginPage() {
 
     try {
       console.log('[Login] Starting Supabase login process...');
-      const supabase = createClientSupabaseClient();
+      const supabase = getSupabaseClient();
       
       // Authenticate with Supabase
       const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -71,12 +75,13 @@ export default function LoginPage() {
 
       toast.success('¡Inicio de sesión exitoso!');
       
-      // Use router.push for proper navigation in Next.js App Router
-      // This ensures the session cookies are properly set before navigation
-      setTimeout(() => {
-        console.log('[Login] Redirecting to dashboard...');
-        window.location.href = '/dashboard';
-      }, 500);
+      // Force auth context to refetch user data
+      console.log('[Login] Forcing auth context refresh...');
+      await refetch();
+      
+      // Use Next.js router for proper navigation
+      console.log('[Login] Redirecting to dashboard...');
+      router.push('/dashboard');
       
     } catch (error) {
       console.error('[Login] Network error:', error);

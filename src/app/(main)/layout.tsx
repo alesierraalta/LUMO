@@ -18,14 +18,14 @@ export default function MainLayout({
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card flex-shrink-0">
             <MobileNav />
             <div className="ml-auto flex items-center space-x-4">
               <UserButton />
               <ModeToggle />
             </div>
           </div>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-background">
             {children}
           </main>
         </div>

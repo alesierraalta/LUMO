@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UsersTable } from '@/components/ui/users-table';
 import { PermissionGuard, PermissionButton } from '@/components/auth/permission-guard';
+import { supabaseApiClient } from '@/lib/supabase-api-client';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -37,11 +38,11 @@ export default function UsersPage() {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('/api/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
+      const response = await supabaseApiClient.get('/api/users');
+      if (response.data) {
+        setUsers(response.data.users || []);
       } else {
+        console.error('API Error:', response.error);
         toast.error('Error al cargar usuarios');
       }
     } catch (error) {
@@ -58,14 +59,13 @@ export default function UsersPage() {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
+      const response = await supabaseApiClient.delete(`/api/users/${userId}`);
+      
+      if (response.data) {
         toast.success('Usuario eliminado exitosamente');
         loadUsers(); // Recargar la lista
       } else {
+        console.error('Delete Error:', response.error);
         toast.error('Error al eliminar usuario');
       }
     } catch (error) {
@@ -76,18 +76,15 @@ export default function UsersPage() {
 
   const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isActive: !isActive }),
+      const response = await supabaseApiClient.patch(`/api/users/${userId}`, {
+        isActive: !isActive
       });
 
-      if (response.ok) {
+      if (response.data) {
         toast.success(isActive ? 'Usuario desactivado' : 'Usuario activado');
         loadUsers(); // Recargar la lista
       } else {
+        console.error('Toggle Status Error:', response.error);
         toast.error('Error al cambiar estado del usuario');
       }
     } catch (error) {

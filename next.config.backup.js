@@ -59,20 +59,12 @@ const nextConfig = {
     config.externals = config.externals || [];
     
     if (isServer) {
-      // CRITICAL FIX: Prevent "self is not defined" by properly externalizing client-only packages
+      // Fix "self is not defined" error by excluding client-side only packages
       config.externals.push({
         'webworker-threads': 'commonjs webworker-threads',
         'natural': 'commonjs natural',
-        '@supabase/realtime-js': 'commonjs @supabase/realtime-js',
-        'ws': 'commonjs ws',
-        'eventsource': 'commonjs eventsource'
+        '@supabase/realtime-js': 'commonjs @supabase/realtime-js'
       });
-      
-      // CRITICAL FIX: Add specific module resolution for problematic Supabase modules
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@supabase/realtime-js$': path.resolve(__dirname, 'src/lib/realtime-fallback.js')
-      };
     }
     
     // CRITICAL FIX: Add fallbacks for Node.js modules in browser
@@ -104,15 +96,9 @@ const nextConfig = {
     // CRITICAL FIX: Define globals to prevent "self is not defined" errors
     config.plugins.push(
       new webpack.DefinePlugin({
-        'typeof self': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
+        'typeof self': JSON.stringify('undefined'),
         'typeof window': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
-        'typeof global': JSON.stringify('object'),
-        'process.browser': !isServer,
-        // CRITICAL: Define self as global for server builds
-        ...(isServer && {
-          'self': 'global',
-          'self.webpackChunk_N_E': '(global.webpackChunk_N_E = global.webpackChunk_N_E || [])'
-        })
+        'typeof global': JSON.stringify('object')
       })
     );
     

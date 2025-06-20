@@ -1,5 +1,6 @@
 /**
- * Main database export - now using Supabase only
+ * Main database export - using minimal Supabase client for build safety
  */
-export { db as default, supabase } from './db-supabase';
+export { db as default } from './db-supabase';
+export { supabase } from './supabase-minimal';
  

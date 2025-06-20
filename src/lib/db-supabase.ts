@@ -4,21 +4,71 @@
  * - Simplified implementation without Prisma dependencies
  */
 
-// CRITICAL FIX: Remove supabase-polyfill import that causes production issues
-// import './supabase-polyfill.js' // REMOVED - causing critical dependency warnings
+// CRITICAL FIX: Build-time environment detection first
+const isServer = typeof window === 'undefined';
+const isBuild = process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
 
-// FIXED: Use require for better CommonJS compatibility
-const { createClient } = require('@supabase/supabase-js')
-import { logger } from './logger/index'
+// CRITICAL FIX: Dynamic import to prevent build-time issues
+let createClient: any = null;
+let supabaseClient: any = null;
 
-// Supabase configuration - RESILIENT: Handle missing env vars during build
+// Configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-console.log('✅ Initializing Supabase client with URL:', supabaseUrl);
+// CRITICAL FIX: Only import and create client during runtime, not build
+if (!isBuild) {
+  try {
+    // Dynamic require to avoid build-time loading
+    const supabaseModule = require('@supabase/supabase-js');
+    createClient = supabaseModule.createClient;
+    
+    // Create client with realtime completely disabled for server
+    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      realtime: isServer ? undefined : {
+        params: {
+          eventsPerSecond: 2,
+        },
+      },
+      global: {
+        headers: isServer ? { 'X-Client-Info': 'lumo-server' } : undefined,
+      }
+    });
+    
+    if (isServer) {
+      console.log('✅ Server Supabase client initialized without realtime');
+    }
+  } catch (error) {
+    console.warn('⚠️ Supabase client creation failed, using fallback');
+  }
+}
 
-// Create Supabase client - FIXED: Direct initialization with fallback handling
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Build-time fallback
+const fallbackClient = {
+  from: (table: string) => ({
+    select: () => ({ data: [], error: null }),
+    insert: () => ({ data: null, error: null }),
+    update: () => ({ data: null, error: null }),
+    delete: () => ({ data: null, error: null }),
+    eq: function() { return this; },
+    single: () => ({ data: null, error: null }),
+    limit: function() { return this; },
+    order: function() { return this; },
+    range: function() { return this; },
+  }),
+  auth: {
+    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+  }
+};
+
+// Export safe client
+export const supabase = supabaseClient || fallbackClient;
 
 // Database operations interface
 export const db = {

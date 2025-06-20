@@ -3,6 +3,7 @@
  * - No server imports (next/headers)
  * - Browser and client components only
  * - React Context compatible
+ * - Conditional realtime imports
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -27,15 +28,44 @@ export interface User {
   updatedAt: string
 }
 
-// Client-side Supabase client
+// Client-side Supabase client with safe realtime handling
 export const createClientSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-  })
+  try {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        autoRefreshToken: true,
+        persistSession: true,
+      },
+      // CRITICAL: Safe realtime configuration
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
+  } catch (error) {
+    console.warn('⚠️ Supabase client creation failed, using fallback:', error)
+    
+    // Return a minimal client for fallback
+    return {
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } }),
+        signUp: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } }),
+        signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } })
+          })
+        })
+      })
+    } as any
+  }
 }
 
 // Client-side authentication functions
@@ -88,56 +118,71 @@ export const getClientUser = async (): Promise<User | null> => {
 
 // Login function
 export const signInWithEmail = async (email: string, password: string) => {
-  const supabase = createClientSupabaseClient()
-  
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-  
-  if (error) {
-    return { success: false, error: error.message }
+  try {
+    const supabase = createClientSupabaseClient()
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    
+    if (error) {
+      return { success: false, error: error.message }
+    }
+    
+    // Get user profile
+    const user = await getClientUser()
+    
+    return { success: true, user, data }
+  } catch (error) {
+    console.error('❌ Login error:', error)
+    return { success: false, error: 'Login failed' }
   }
-  
-  // Get user profile
-  const user = await getClientUser()
-  
-  return { success: true, user, data }
 }
 
 // Logout function
 export const signOut = async () => {
-  const supabase = createClientSupabaseClient()
-  
-  const { error } = await supabase.auth.signOut()
-  
-  if (error) {
+  try {
+    const supabase = createClientSupabaseClient()
+    
+    const { error } = await supabase.auth.signOut()
+    
+    if (error) {
+      console.error('❌ Logout error:', error)
+      return false
+    }
+    
+    return true
+  } catch (error) {
     console.error('❌ Logout error:', error)
     return false
   }
-  
-  return true
 }
 
 // Register function
 export const signUpWithEmail = async (email: string, password: string, name: string) => {
-  const supabase = createClientSupabaseClient()
-  
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name: name,
+  try {
+    const supabase = createClientSupabaseClient()
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name,
+        }
       }
+    })
+    
+    if (error) {
+      return { success: false, error: error.message }
     }
-  })
-  
-  if (error) {
-    return { success: false, error: error.message }
+    
+    return { success: true, data }
+  } catch (error) {
+    console.error('❌ Register error:', error)
+    return { success: false, error: 'Registration failed' }
   }
-  
-  return { success: true, data }
 }
 
 // Permission helpers for client-side

@@ -24,6 +24,15 @@ if (process.env.NODE_ENV === 'production') {
  * Next.js 15 standalone server for production deployment
  */
 
+// CRITICAL FIX: Apply runtime module patches BEFORE any other imports
+console.log('🔧 Applying runtime module patches...');
+try {
+  require('./src/lib/runtime-module-patcher');
+  console.log('✅ Runtime module patcher loaded successfully');
+} catch (error) {
+  console.warn('⚠️ Runtime module patcher failed to load:', error.message);
+}
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
@@ -34,78 +43,53 @@ const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '8080', 10);
 
 console.log('🚀 Starting LUMO Inventory Management Server...');
-console.log(`📍 Environment: ${process.env.NODE_ENV || 'production'}`);
-console.log(`🌐 Hostname: ${hostname}`);
-console.log(`🔌 Port: ${port}`);
+console.log('📍 Environment:', dev ? 'development' : 'production');
+console.log('🌐 Hostname:', hostname);
+console.log('🔌 Port:', port);
 
-// Create Next.js app instance
-const app = next({ 
-  dev, 
-  hostname, 
-  port,
-  // Use current directory for standalone build
-  dir: process.cwd()
-});
+console.log('⏳ Preparing Next.js application...');
+
+// CRITICAL FIX: Enhanced error handling for Next.js app initialization
+let app;
+try {
+  app = next({ dev, hostname, port });
+  console.log('✅ Next.js app instance created');
+} catch (error) {
+  console.error('❌ Failed to create Next.js app:', error);
+  process.exit(1);
+}
 
 const handle = app.getRequestHandler();
 
-async function startServer() {
-  try {
-    console.log('⏳ Preparing Next.js application...');
-    await app.prepare();
-    
-    console.log('🔧 Creating HTTP server...');
-    const server = createServer(async (req, res) => {
-      try {
-        // Parse the URL
-        const parsedUrl = parse(req.url, true);
-        
-        // Handle the request
-        await handle(req, res, parsedUrl);
-      } catch (err) {
-        console.error('❌ Error handling request:', err);
-        res.statusCode = 500;
-        res.end('Internal Server Error');
-      }
-    });
-    
-    // Error handling for server
-    server.on('error', (err) => {
-      console.error('❌ Server error:', err);
+app.prepare().then(() => {
+  console.log('🔧 Creating HTTP server...');
+  
+  createServer(async (req, res) => {
+    try {
+      const parsedUrl = parse(req.url, true);
+      await handle(req, res, parsedUrl);
+    } catch (err) {
+      console.error('❌ Error handling request:', err);
+      res.statusCode = 500;
+      res.end('Internal Server Error');
+    }
+  })
+  .listen(port, (err) => {
+    if (err) {
+      console.error('❌ Server failed to start:', err);
       process.exit(1);
-    });
+    }
     
-    // Graceful shutdown handling
-    process.on('SIGTERM', () => {
-      console.log('📡 SIGTERM received, shutting down gracefully...');
-      server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-      });
-    });
-    
-    process.on('SIGINT', () => {
-      console.log('📡 SIGINT received, shutting down gracefully...');
-      server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-      });
-    });
-    
-    // Start listening
-    server.listen(port, hostname, () => {
-      console.log('🎉 LUMO Server successfully started!');
-      console.log(`🌐 Server running at http://${hostname}:${port}`);
-      console.log('📊 Health check: /api/health');
-      console.log('🏠 Dashboard: /dashboard');
-      console.log('✅ Ready for Choreo deployment');
-    });
-    
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-}
+    console.log('🎉 LUMO Server successfully started!');
+    console.log(`🌐 Server running at http://${hostname}:${port}`);
+    console.log('📊 Health check: /api/health');
+    console.log('🏠 Dashboard: /dashboard');
+    console.log('✅ Ready for Choreo deployment');
+  });
+}).catch((ex) => {
+  console.error('❌ Failed to start server:', ex);
+  process.exit(1);
+});
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -119,11 +103,5 @@ process.on('unhandledRejection', (reason, promise) => {
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Start the server
-startServer().catch((error) => {
-  console.error('❌ Failed to start application:', error);
   process.exit(1);
 });

@@ -6,6 +6,19 @@
  * by providing missing functions and proper module resolution.
  */
 
+// IMMEDIATE POLYFILL: Apply critical polyfills before any other code runs
+if (typeof global !== 'undefined') {
+  // CRITICAL FIX: self polyfill for server-side rendering - IMMEDIATE
+  if (!global.self) {
+    global.self = global;
+  }
+  
+  // window polyfill for server-side rendering - IMMEDIATE
+  if (!global.window) {
+    global.window = global;
+  }
+}
+
 // Ultra-safe Edge Runtime detection using only environment variables
 const detectEdgeRuntime = () => {
   // Primary check: NEXT_RUNTIME environment variable
@@ -189,6 +202,18 @@ if (isEdgeRuntime) {
       } catch (error) {
         console.log(`[Supabase Polyfill] ⚠️ Crypto polyfill not available`);
       }
+    }
+
+    // CRITICAL FIX: self polyfill for server-side rendering
+    if (!global.self) {
+      global.self = global;
+      console.log(`[Supabase Polyfill] 🌐 self polyfill installed (self = global)`);
+    }
+
+    // window polyfill for server-side rendering
+    if (!global.window) {
+      global.window = global;
+      console.log(`[Supabase Polyfill] 🪟 window polyfill installed (window = global)`);
     }
   }
 

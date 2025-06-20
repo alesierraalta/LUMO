@@ -147,6 +147,9 @@ const nextConfig = {
         // Define globals for polyfill compatibility
         '__SUPABASE_POLYFILL_LOADED__': true,
         '__NEXT_EDGE_RUNTIME__': isServer ? false : true,
+        // CRITICAL FIX: Define self and window for server-side rendering
+        'self': isServer ? 'global' : 'self',
+        'window': isServer ? 'global' : 'window',
       })
     );
 
@@ -333,10 +336,17 @@ const nextConfig = {
     return config;
   },
 
+  // CRITICAL FIX: Skip static generation during build to avoid 'self is not defined' error
+  output: 'standalone',
+  trailingSlash: false,
+  skipTrailingSlashRedirect: true,
+  
   // Experimental features - ONLY include supported options
   experimental: {
     // Bundle optimization for performance
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+    // CRITICAL: Skip static optimization to avoid self is not defined error
+    skipMiddlewareUrlNormalize: true,
     // Enable CSS chunking for better performance
     cssChunking: true,
   },

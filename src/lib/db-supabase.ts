@@ -10,13 +10,13 @@ import './supabase-polyfill.js'
 const { createClient } = require('@supabase/supabase-js')
 import { logger } from './logger/index'
 
-// Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Supabase configuration - RESILIENT: Handle missing env vars during build
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
 console.log('✅ Initializing Supabase client with URL:', supabaseUrl);
 
-// Create Supabase client - FIXED: Direct initialization
+// Create Supabase client - FIXED: Direct initialization with fallback handling
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Database operations interface

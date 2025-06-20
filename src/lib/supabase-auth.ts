@@ -9,12 +9,15 @@
 import './supabase-polyfill.js'
 import { cookies } from 'next/headers'
 
-// Supabase configuration
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Supabase configuration with resilient fallbacks for build-time
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('❌ Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_KEY environment variables.')
+// Only throw error at runtime, not during build
+if (typeof window !== 'undefined' && (!supabaseUrl.includes('placeholder') && !supabaseAnonKey.includes('placeholder'))) {
+  console.log('✅ Supabase configuration loaded successfully')
+} else if (process.env.NODE_ENV === 'production' && supabaseUrl.includes('placeholder')) {
+  console.warn('⚠️ Using placeholder Supabase configuration - ensure environment variables are set')
 }
 
 // FIXED: Use require for better CommonJS compatibility

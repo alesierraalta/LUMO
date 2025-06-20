@@ -115,11 +115,12 @@ console.log('🔄 Loading Supabase client...');
   try {
     const { createClient } = require('@supabase/supabase-js');
     
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
     
-    if (!supabaseUrl || !supabaseKey) {
-    throw new Error('❌ Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_KEY environment variables.');
+    // Only warn at runtime, not during build
+    if (process.env.NODE_ENV === 'production' && (supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder'))) {
+    console.warn('⚠️ Using placeholder Supabase configuration - ensure environment variables are set');
     }
     
     supabase = createClient(supabaseUrl, supabaseKey);

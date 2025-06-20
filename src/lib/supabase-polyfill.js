@@ -22,7 +22,21 @@ if (typeof global !== 'undefined') {
   
   // Additional browser globals that might be needed
   if (!global.document) {
-    global.document = {};
+    global.document = {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      getElementsByClassName: () => [],
+      getElementsByTagName: () => [],
+      createElement: () => ({ 
+        setAttribute: () => {}, 
+        appendChild: () => {},
+        style: {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {} }
+      }),
+      head: { appendChild: () => {} },
+      body: { appendChild: () => {} }
+    };
     console.log(`[Supabase Polyfill] 🔧 IMMEDIATE document polyfill installed`);
   }
   

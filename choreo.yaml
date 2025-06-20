@@ -36,10 +36,10 @@ spec:
       connectTimeoutSeconds: 180
   deploy:
     # Enhanced startup with validation
-    command: node server.js
+    command: node scripts/choreo-runtime-setup.js && node .next/standalone/server.js
     env:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 8080
       NEXT_PUBLIC_APP_VERSION: 1.0.0
       DEPLOY_ENV: choreo
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -54,12 +54,12 @@ spec:
       # Health monitoring
       HEALTH_CHECK_ENABLED: "true"
       HEALTH_CHECK_INTERVAL: "30000"
-    containerPort: 3000
+    containerPort: 8080
   env:
     - name: NODE_ENV
       value: production
     - name: PORT
-      value: "3000"
+      value: "8080"
     - name: HOSTNAME
       value: "0.0.0.0"
     - name: NEXT_PUBLIC_APP_VERSION
@@ -108,7 +108,7 @@ spec:
     readinessProbe:
       httpGet:
         path: /api/health
-        port: 3000
+        port: 8080
       initialDelaySeconds: 45
       periodSeconds: 10
       timeoutSeconds: 15
@@ -117,7 +117,7 @@ spec:
     livenessProbe:
       httpGet:
         path: /api/health
-        port: 3000
+        port: 8080
       initialDelaySeconds: 60
       periodSeconds: 20
       timeoutSeconds: 15
@@ -126,14 +126,14 @@ spec:
     startupProbe:
       httpGet:
         path: /api/health
-        port: 3000
+        port: 8080
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 15
       failureThreshold: 10
   expose:
     type: HTTP
-    port: 3000
+    port: 8080
   # Optimized ignore patterns for faster builds
   ignoreSpec:
     ignore:

@@ -19,7 +19,10 @@ const publicRoutes = [
   '/api/health',
   '/favicon.ico',
   '/_next',
-  '/api/clerk-proxy'
+  '/api/clerk-proxy',
+  '/api/test-simple',
+  '/api/env-config',
+  '/api/debug-auth'
 ]
 
 // Admin-only routes

@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  return NextResponse.json({
-    status: 'working',
-    message: 'Simple API endpoint is functional',
-    timestamp: new Date().toISOString(),
-    server_info: {
-      environment: process.env.NODE_ENV,
-      hostname: process.env.HOSTNAME || 'unknown',
-      database_url_configured: !!process.env.DATABASE_URL
-    }
-  });
+  try {
+    return NextResponse.json({
+      status: 'success',
+      message: 'LUMO Server is running correctly!',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'unknown',
+      port: process.env.PORT || 'unknown',
+      version: '1.0.0'
+    });
+  } catch (error) {
+    return NextResponse.json({
+      status: 'error',
+      message: 'Server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
 }
 
 export async function POST() {

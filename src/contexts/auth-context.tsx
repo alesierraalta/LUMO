@@ -1,10 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { 
-  signOut as clientSignOut
-} from '@/lib/supabase-auth-client';
-import { getSupabaseClient } from '@/lib/supabase-singleton';
 
 interface User {
   id: string;
@@ -52,6 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🔍 Fetching user data...');
 
     try {
+      // CRITICAL FIX: Use dynamic import to prevent SSR issues
+      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
+      
       // Use singleton Supabase client
       const supabase = getSupabaseClient();
       
@@ -68,38 +67,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Get additional user info from database via Supabase client
       try {
-        const supabase = getSupabaseClient();
-        
-                 // Query user data directly from database (search by email since IDs might not match)
-         const { data: userData, error: userError } = await supabase
-           .from('users')
-           .select(`
-             id,
-             email,
-             name,
-             is_active,
-             role_id,
-             roles (
-               id,
-               name
-             )
-           `)
-           .eq('email', session.user.email)
-           .single();
+        // Query user data directly from database (search by email since IDs might not match)
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            is_active,
+            role_id,
+            roles (
+              id,
+              name
+            )
+          `)
+          .eq('email', session.user.email)
+          .single();
           
-                 if (!userError && userData) {
-            const fullUser: User = {
-             id: userData.id,
-             email: userData.email,
-             name: userData.name,
-             role: (userData.roles as any)?.name || 'USER',
-             isActive: userData.is_active,
-             permissions: [] // Will be populated from role-based permissions later
-            };
+        if (!userError && userData) {
+          const fullUser: User = {
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            role: (userData.roles as any)?.name || 'USER',
+            isActive: userData.is_active,
+            permissions: [] // Will be populated from role-based permissions later
+          };
 
           console.log('✅ Full user data from database:', fullUser.email, 'Role:', fullUser.role);
-            userCache = { user: fullUser, timestamp: Date.now() };
-            return fullUser;
+          userCache = { user: fullUser, timestamp: Date.now() };
+          return fullUser;
         } else {
           console.warn('⚠️ Database query failed:', userError?.message);
         }
@@ -143,11 +140,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchUser]);
 
   const logout = useCallback(async (): Promise<boolean> => {
     try {
-      const success = await clientSignOut();
+      // CRITICAL FIX: Use dynamic import to prevent SSR issues
+      const { signOut } = await import('@/lib/supabase-auth-client');
+      const success = await signOut();
       
       if (success) {
         setUser(null);
@@ -190,45 +189,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [fetchUser]);
 
-  // Listen to Supabase auth changes - FIXED: Only react to specific events
+  // Listen to Supabase auth changes - FIXED: Only react to specific events with dynamic import
   useEffect(() => {
-    const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔔 Auth state change:', event, session?.user?.email || 'No user');
-      
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        console.log('👋 User signed out, clearing state');
-        setUser(null);
-        userCache = null;
-        setLoading(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('👤 User signed in/token refreshed, refetching data');
-        // CRITICAL FIX: Call fetchUser directly instead of refetch to avoid circular dependency
-        const userData = await fetchUser(false);
-        setUser(userData);
+    let subscription: any = null;
+    
+    const setupAuthListener = async () => {
+      try {
+        // CRITICAL FIX: Use dynamic import to prevent SSR issues
+        const { getSupabaseClient } = await import('@/lib/supabase-singleton');
+        const supabase = getSupabaseClient();
+        
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('🔔 Auth state change:', event, session?.user?.email || 'No user');
+          
+          // Only react to specific auth events to prevent infinite loops
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log('🔄 Refreshing user data due to auth change');
+            const userData = await fetchUser(false); // Force refresh on auth changes
+            setUser(userData);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('👋 User signed out');
+            setUser(null);
+            userCache = null; // Clear cache
+          }
+        });
+        
+        subscription = data.subscription;
+      } catch (error) {
+        console.error('❌ Error setting up auth listener:', error);
       }
-      // CRITICAL: Ignore INITIAL_SESSION and other events to prevent loops
-    });
-
-    return () => {
-      subscription?.unsubscribe();
     };
-  }, []); // CRITICAL FIX: Empty dependency array
 
-  const value: AuthContextType = {
+    setupAuthListener();
+    
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [fetchUser]);
+
+  const value = {
     user,
     loading,
     refetch,
-    logout
+    logout,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

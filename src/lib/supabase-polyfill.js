@@ -34,6 +34,8 @@ if (typeof global !== 'undefined') {
         style: {},
         classList: { add: () => {}, remove: () => {}, toggle: () => {} }
       }),
+      createTextNode: () => ({ nodeValue: '', textContent: '' }),
+      createDocumentFragment: () => ({ appendChild: () => {} }),
       head: { appendChild: () => {} },
       body: { appendChild: () => {} }
     };

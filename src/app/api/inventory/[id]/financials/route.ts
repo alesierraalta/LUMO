@@ -171,8 +171,10 @@ export async function PATCH(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
   try {
     const user = await getCurrentUser();
     
@@ -185,7 +187,7 @@ export async function GET(
     }
 
     const inventoryItem = await db.inventoryItem.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         priceHistory: {
           orderBy: { createdAt: 'desc' },

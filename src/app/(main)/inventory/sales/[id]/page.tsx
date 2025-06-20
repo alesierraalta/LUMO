@@ -44,52 +44,14 @@ export const metadata: Metadata = {
 // Obtener los datos de la venta
 async function getSaleDetails(id: string) {
   try {
-    const sale = await prisma?.sale.findUnique({
-      where: { id },
-      include: {
-        transactions: {
-          include: {
-            inventoryItem: {
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                price: true,
-                category: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
+    // Use the correct database method
+    const sales = await db.sale.findMany();
+    const sale = sales.find((s: any) => s.id === id);
 
     if (!sale) return null;
 
-    // Serializar los datos
-    return {
-      ...sale,
-      total: Number(sale.total),
-      subtotal: Number(sale.subtotal),
-      tax: Number(sale.tax),
-      transactions: sale.transactions.map(t => ({
-        ...t,
-        unitPrice: Number(t.unitPrice),
-        subtotal: Number(t.subtotal)
-      }))
-    };
+    // Return the sale data
+    return sale;
   } catch (error) {
     console.error("Error al obtener los detalles de la venta:", error);
     return null;
@@ -132,8 +94,10 @@ function getSaleStatusBadge(status: string) {
 export default async function SaleDetailPage({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }> 
 }) {
+  // Await params in Next.js 15
+  const { id } = await params;
   // Verificar permisos
   const user = await getCurrentUser();
   const isUserAdmin = user ? isAdmin(user) : false;
@@ -148,7 +112,7 @@ export default async function SaleDetailPage({
   }
 
   // Obtener los detalles de la venta
-  const sale = await getSaleDetails(params.id);
+  const sale = await getSaleDetails(id);
 
   // Si no se encuentra la venta, mostrar 404
   if (!sale) {
@@ -170,7 +134,7 @@ export default async function SaleDetailPage({
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-3xl font-bold">Orden de Venta #{params.id.slice(-8)}</h1>
+            <h1 className="text-3xl font-bold">Orden de Venta #{id.slice(-8)}</h1>
             {getSaleStatusBadge(sale.status)}
           </div>
           <p className="text-muted-foreground mt-1">

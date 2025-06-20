@@ -11,11 +11,29 @@ if (typeof global !== 'undefined') {
   // CRITICAL FIX: self polyfill for server-side rendering - IMMEDIATE
   if (!global.self) {
     global.self = global;
+    console.log(`[Supabase Polyfill] 🔧 IMMEDIATE self polyfill installed`);
   }
   
   // window polyfill for server-side rendering - IMMEDIATE
   if (!global.window) {
     global.window = global;
+    console.log(`[Supabase Polyfill] 🔧 IMMEDIATE window polyfill installed`);
+  }
+  
+  // Additional browser globals that might be needed
+  if (!global.document) {
+    global.document = {};
+    console.log(`[Supabase Polyfill] 🔧 IMMEDIATE document polyfill installed`);
+  }
+  
+  if (!global.navigator) {
+    global.navigator = {};
+    console.log(`[Supabase Polyfill] 🔧 IMMEDIATE navigator polyfill installed`);
+  }
+  
+  if (!global.location) {
+    global.location = {};
+    console.log(`[Supabase Polyfill] 🔧 IMMEDIATE location polyfill installed`);
   }
 }
 

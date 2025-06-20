@@ -33,44 +33,18 @@ export const metadata: Metadata = {
 // Obtener las ventas con paginación
 async function getSales(page = 1, limit = 20) {
   try {
-    const sales = await prisma?.sale.findMany({
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: {
-        date: 'desc'
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        transactions: {
-          select: {
-            id: true,
-            quantity: true
-          }
-        }
-      }
-    });
-
-    const totalSales = await prisma?.sale.count();
+    // Use the correct database method
+    const allSales = await db.sale.findMany();
+    const sales = allSales.slice((page - 1) * limit, page * limit);
+    const totalSales = allSales.length;
 
     return {
-      sales: sales?.map(sale => ({
-        ...sale,
-        total: Number(sale.total),
-        subtotal: Number(sale.subtotal),
-        tax: Number(sale.tax)
-      })) || [],
+      sales: sales || [],
       pagination: {
-        total: totalSales || 0,
+        total: totalSales,
         page,
         limit,
-        totalPages: Math.ceil((totalSales || 0) / limit)
+        totalPages: Math.ceil(totalSales / limit)
       }
     };
   } catch (error) {
@@ -123,8 +97,11 @@ function getSaleStatusBadge(status: string) {
 export default async function SalesPage({
   searchParams
 }: {
-  searchParams: { page?: string }
+  searchParams: Promise<{ page?: string }>
 }) {
+  // Await searchParams in Next.js 15
+  const { page: pageParam } = await searchParams;
+  
   // Verificar permisos
   const user = await getCurrentUser();
   const isUserAdmin = user ? isAdmin(user) : false;
@@ -133,7 +110,7 @@ export default async function SalesPage({
     redirect("/inventory");
   }
 
-  const page = searchParams.page ? parseInt(searchParams.page) : 1;
+  const page = pageParam ? parseInt(pageParam) : 1;
   const { sales, pagination } = await getSales(page);
 
   return (

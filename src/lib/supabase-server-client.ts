@@ -5,7 +5,7 @@
  * - No browser-specific imports
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { getCustomSupabaseClient } from './supabase-custom-client'
 
 // Server-side Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
@@ -15,24 +15,31 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('⚠️ Missing Supabase server configuration. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.')
 }
 
-// Create server-only Supabase client without realtime
+// Create server-only Supabase client using our custom implementation
 export const createServerSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    // CRITICAL: Disable realtime to prevent module resolution errors
-    realtime: {
-      params: {
-        eventsPerSecond: 0,
+  try {
+    return getCustomSupabaseClient()
+  } catch (error) {
+    console.warn('⚠️ Custom Supabase server client creation failed:', error)
+    
+    // Return a minimal client for fallback
+    return {
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } }),
+        signOut: () => Promise.resolve({ error: null }),
+        setSession: () => {},
       },
-    },
-    // Disable global settings that might cause SSR issues
-    global: {
-      headers: {},
-    },
-  })
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } })
+          })
+        })
+      })
+    } as any
+  }
 }
 
 // Server-side user interface

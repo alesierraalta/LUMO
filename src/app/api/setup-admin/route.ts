@@ -14,10 +14,10 @@ export async function POST() {
       });
     }
 
-    const { createClient } = require('@supabase/supabase-js');
+    const { getCustomSupabaseClient } = require('@/lib/supabase-custom-client');
     const bcrypt = require('bcryptjs');
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getCustomSupabaseClient();
     
     // Step 1: Check if admin role exists, create if not
     console.log('🔍 Checking for ADMIN role...');

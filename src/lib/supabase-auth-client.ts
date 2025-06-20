@@ -6,7 +6,7 @@
  * - Conditional realtime imports
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { getCustomSupabaseClient } from './supabase-custom-client'
 
 // Supabase configuration - RESILIENT: Handle missing env vars during build
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
@@ -28,24 +28,12 @@ export interface User {
   updatedAt: string
 }
 
-// Client-side Supabase client with safe realtime handling
+// Client-side Supabase client using our custom implementation
 export const createClientSupabaseClient = () => {
   try {
-    return createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-        autoRefreshToken: true,
-        persistSession: true,
-      },
-      // CRITICAL: Safe realtime configuration
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
-    })
+    return getCustomSupabaseClient()
   } catch (error) {
-    console.warn('⚠️ Supabase client creation failed, using fallback:', error)
+    console.warn('⚠️ Custom Supabase client creation failed, using fallback:', error)
     
     // Return a minimal client for fallback
     return {

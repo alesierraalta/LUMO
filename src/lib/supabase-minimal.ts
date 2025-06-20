@@ -3,8 +3,7 @@
  * Avoids realtime module that causes "self is not defined" errors
  */
 
-// CRITICAL FIX: Only import the core Supabase client without realtime
-import { SupabaseClient } from '@supabase/supabase-js'
+// CRITICAL FIX: Only import our custom client without realtime
 
 // Build-time environment detection
 const isServer = typeof window === 'undefined';
@@ -15,30 +14,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
 // CRITICAL FIX: Create minimal client without realtime functionality
-let supabaseClient: SupabaseClient | null = null;
+let supabaseClient: any = null;
 
 try {
   // Only create client if not in build phase
   if (!isBuild) {
     // Dynamic import to avoid build-time issues
-    const { createClient } = require('@supabase/supabase-js');
-    
-    supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false, // Disable session persistence
-        autoRefreshToken: false, // Disable auto-refresh
-        detectSessionInUrl: false, // Disable URL session detection
-      },
-      realtime: {
-        // Disable realtime completely
-        params: {
-          eventsPerSecond: 0,
-        },
-      },
-      global: {
-        headers: {},
-      }
-    });
+    const { getCustomSupabaseClient } = require('./supabase-custom-client');
+    supabaseClient = getCustomSupabaseClient();
   }
 } catch (error) {
   console.warn('⚠️ Supabase client creation failed during build, using fallback');

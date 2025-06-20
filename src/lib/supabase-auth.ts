@@ -21,43 +21,18 @@ if (typeof window !== 'undefined' && (!supabaseUrl.includes('placeholder') && !s
 }
 
 // FIXED: Use require for better CommonJS compatibility
-const { createClient } = require('@supabase/supabase-js')
+const { getCustomSupabaseClient } = require('./supabase-custom-client')
 
 // Server-side Supabase client with cookie support
 export const createServerSupabaseClient = async () => {
   const cookieStore = await cookies()
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storage: {
-        getItem: (key: string) => {
-          return cookieStore.get(key)?.value
-        },
-        setItem: (key: string, value: string) => {
-          cookieStore.set(key, value, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 days
-          })
-        },
-        removeItem: (key: string) => {
-          cookieStore.delete(key)
-        },
-      },
-    },
-  })
+  return getCustomSupabaseClient()
 }
 
 // Client-side Supabase client
 export const createClientSupabaseClient = () => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-  })
+  return getCustomSupabaseClient()
 }
 
 // User interface matching your current structure

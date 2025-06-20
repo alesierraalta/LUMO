@@ -20,11 +20,8 @@ export async function GET() {
     }
 
     // Test Supabase connection
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_KEY
-    );
+    const { getCustomSupabaseClient } = require('@/lib/supabase-custom-client');
+          const supabase = getCustomSupabaseClient();
 
     // Test 1: Check if tables exist
     console.log('🔍 Checking if tables exist...');

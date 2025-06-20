@@ -27,26 +27,8 @@ let supabaseServerClient: any = null;
 try {
   // Only create client if not in build phase
   if (!isBuild) {
-    const { createClient } = require('@supabase/supabase-js');
-    
-    supabaseServerClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-      // CRITICAL: Completely disable realtime to prevent "self is not defined"
-      realtime: {
-        params: {
-          eventsPerSecond: 0,
-        },
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'lumo-server-client',
-        },
-      },
-    });
+    const { getCustomSupabaseClient } = require('./supabase-custom-client');
+    supabaseServerClient = getCustomSupabaseClient();
   }
 } catch (error) {
   console.warn('⚠️ Server Supabase client creation failed during build, using fallback');

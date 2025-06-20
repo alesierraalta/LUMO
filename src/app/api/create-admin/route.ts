@@ -1,137 +1,73 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { getCustomSupabaseClient } from '@/lib/supabase-custom-client';
 
-async function createAdminUser() {
-  console.log('🔧 Manual admin setup requested...');
-  
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({
-      success: false,
-      error: 'Missing Supabase configuration'
-    });
-  }
+export async function POST(request: NextRequest) {
+  try {
+    const { email, password, name } = await request.json();
 
-  const { createClient } = require('@supabase/supabase-js');
-  const bcrypt = require('bcryptjs');
-  
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  
-  // Step 1: Get ADMIN role ID
-  console.log('🔍 Getting ADMIN role...');
-  const { data: adminRole, error: roleError } = await supabase
-    .from('roles')
-    .select('*')
-    .eq('name', 'ADMIN')
-    .single();
-  
-  if (!adminRole) {
-    return NextResponse.json({
-      success: false,
-      error: 'ADMIN role not found in database. Execute the SQL migration script first.'
-    });
-  }
-  
-  // Step 2: Check if admin user exists
-  console.log('🔍 Checking for admin user...');
-  const { data: existingUser, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', 'alesierraalta@gmail.com')
-    .single();
-  
-  if (existingUser) {
-    // Update existing user with admin role
-    console.log('🔧 Updating existing user with admin role...');
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('users')
-      .update({ 
-        role_id: adminRole.id,
-        is_active: true
-      })
-      .eq('email', 'alesierraalta@gmail.com')
-      .select()
-      .single();
-    
-    if (updateError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to update user',
-        details: updateError.message
-      });
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
     }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Admin user updated successfully',
-      user: {
-        email: 'alesierraalta@gmail.com',
-        role: 'ADMIN',
-        note: 'Password unchanged: admin123'
+
+    // Use our custom Supabase client
+    const supabase = getCustomSupabaseClient();
+
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 409 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user in auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name || email.split('@')[0]
+        }
       }
     });
-  }
-  
-  // Step 3: Create new admin user
-  console.log('🔧 Creating admin user...');
-  const hashedPassword = await bcrypt.hash('admin123', 10);
-  
-  const { data: newUser, error: createError } = await supabase
-    .from('users')
-    .insert([{
-      email: 'alesierraalta@gmail.com',
-      password: hashedPassword,
-      name: 'Alejandro Sierra (ROOT)',
-      role_id: adminRole.id,
-      is_active: true
-    }])
-    .select()
-    .single();
-  
-  if (createError) {
-    console.error('❌ Error creating admin user:', createError);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create admin user',
-      details: createError.message
-    });
-  }
-  
-  console.log('✅ Admin user created successfully');
-  return NextResponse.json({
-    success: true,
-    message: 'Admin user created successfully',
-    user: {
-      email: 'alesierraalta@gmail.com',
-      password: 'admin123',
-      role: 'ADMIN'
+
+    if (authError) {
+      console.error('Auth creation error:', authError);
+      return NextResponse.json(
+        { error: authError.message },
+        { status: 400 }
+      );
     }
-  });
-}
 
-export async function POST() {
-  try {
-    return await createAdminUser();
-  } catch (error: any) {
-    console.error('❌ Setup admin error:', error);
     return NextResponse.json({
-      success: false,
-      error: error.message,
-      stack: error.stack
+      message: 'Admin user created successfully',
+      user: {
+        id: authData.user?.id,
+        email: authData.user?.email,
+        name: name || email.split('@')[0]
+      }
     });
+
+  } catch (error) {
+    console.error('Create admin error:', error);
+    return NextResponse.json(
+      { error: 'Failed to create admin user' },
+      { status: 500 }
+    );
   }
 }
 
-export async function GET() {
-  try {
-    return await createAdminUser();
-  } catch (error: any) {
-    console.error('❌ Setup admin error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message,
-      stack: error.stack
-    });
-  }
-} 
+ 

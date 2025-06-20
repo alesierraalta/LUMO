@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // CRITICAL FIX: Use dynamic import to prevent SSR issues
       const { getSupabaseClient } = await import('@/lib/supabase-singleton');
       
-      // Use singleton Supabase client
+      // Use our custom Supabase client (no realtime dependencies)
       const supabase = getSupabaseClient();
       
       // Get current session

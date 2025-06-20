@@ -113,7 +113,7 @@ let supabase: any = null;
 console.log('🔄 Loading Supabase client...');
   
   try {
-    const { createClient } = require('@supabase/supabase-js');
+    const { getCustomSupabaseClient } = require('./supabase-custom-client');
     
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
   const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
@@ -123,7 +123,7 @@ console.log('🔄 Loading Supabase client...');
     console.warn('⚠️ Using placeholder Supabase configuration - ensure environment variables are set');
     }
     
-    supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = getCustomSupabaseClient();
     
   console.log('✅ Supabase client created successfully');
     

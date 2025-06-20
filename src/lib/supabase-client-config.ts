@@ -1,4 +1,9 @@
-import { createBrowserClient } from '@supabase/ssr'
+/**
+ * Client-side Supabase configuration using custom client
+ * No realtime dependencies - safe for Choreo deployment
+ */
+
+import { getCustomSupabaseClient } from './supabase-custom-client'
 
 // Centralized Supabase client configuration
 export const supabaseConfig = {
@@ -6,44 +11,29 @@ export const supabaseConfig = {
   anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key',
 }
 
-// Create browser client with proper cookie configuration
-export function createSupabaseBrowser() {
-  return createBrowserClient(
-    supabaseConfig.url,
-    supabaseConfig.anonKey,
-    {
-      cookies: {
-        getAll() {
-          return document.cookie
-            .split(';')
-            .map(cookie => cookie.trim().split('='))
-            .filter(([name]) => name)
-            .map(([name, value]) => ({ name, value: decodeURIComponent(value || '') }))
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const cookieOptions = {
-              path: '/',
-              maxAge: 60 * 60 * 24 * 7, // 7 days
-              sameSite: 'lax' as const,
-              secure: process.env.NODE_ENV === 'production',
-              ...options
-            }
-            
-            let cookieString = `${name}=${encodeURIComponent(value)}`
-            
-            if (cookieOptions.path) cookieString += `; Path=${cookieOptions.path}`
-            if (cookieOptions.maxAge) cookieString += `; Max-Age=${cookieOptions.maxAge}`
-            if (cookieOptions.sameSite) cookieString += `; SameSite=${cookieOptions.sameSite}`
-            if (cookieOptions.secure) cookieString += `; Secure`
-            if (cookieOptions.httpOnly) cookieString += `; HttpOnly`
-            
-            document.cookie = cookieString
-            
-            console.log('🍪 Supabase: Setting cookie:', name, 'with options:', cookieOptions)
-          })
-        },
+// Client-side Supabase client using our custom implementation
+export const createBrowserClient = () => {
+  try {
+    return getCustomSupabaseClient()
+  } catch (error) {
+    console.warn('⚠️ Custom Supabase browser client creation failed:', error)
+    
+    // Return a minimal client for fallback
+    return {
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } }),
+        signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       },
-    }
-  )
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: { message: 'Client unavailable' } })
+          })
+        })
+      })
+    } as any
+  }
 } 

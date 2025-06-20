@@ -20,8 +20,8 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-ke
 if (!isBuild) {
   try {
     // Dynamic require to avoid build-time loading
-    const supabaseModule = require('@supabase/supabase-js');
-    createClient = supabaseModule.createClient;
+          const { getCustomSupabaseClient } = require('./supabase-custom-client');
+      createClient = getCustomSupabaseClient;
     
     // Create client with realtime completely disabled for server
     supabaseClient = createClient(supabaseUrl, supabaseKey, {

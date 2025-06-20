@@ -5,8 +5,8 @@
  * - Server and client compatible
  */
 
-// CRITICAL FIX: Import polyfill first to resolve exports issue
-import './supabase-polyfill.js'
+// CRITICAL FIX: Remove supabase-polyfill import that causes production issues
+// import './supabase-polyfill.js' // REMOVED - causing critical dependency warnings
 import { cookies } from 'next/headers'
 
 // Supabase configuration with resilient fallbacks for build-time

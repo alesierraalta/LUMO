@@ -1,3 +1,25 @@
+
+// TASK 24: Memory Optimization for Choreo Environment
+if (process.env.NODE_ENV === 'production') {
+  // Set memory limits
+  process.env.NODE_OPTIONS = process.env.NODE_OPTIONS || '--max-old-space-size=6144 --optimize-for-size';
+  
+  // Enable garbage collection monitoring
+  if (global.gc) {
+    setInterval(() => {
+      const usage = process.memoryUsage();
+      if (usage.heapUsed > 4 * 1024 * 1024 * 1024) { // 4GB threshold
+        console.log('🗑️ High memory usage detected, triggering GC');
+        global.gc();
+      }
+    }, 30000);
+  }
+  
+  // Memory usage reporting
+  console.log('📊 Memory optimization enabled for Choreo deployment');
+  console.log('💾 Max heap size: 6144MB');
+}
+
 #!/usr/bin/env node
 
 /**

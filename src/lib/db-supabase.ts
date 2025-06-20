@@ -4,8 +4,9 @@
  * - Simplified implementation without Prisma dependencies
  */
 
-// CRITICAL FIX: Import polyfill first to resolve exports issue
-import './supabase-polyfill.js'
+// CRITICAL FIX: Remove supabase-polyfill import that causes production issues
+// import './supabase-polyfill.js' // REMOVED - causing critical dependency warnings
+
 // FIXED: Use require for better CommonJS compatibility
 const { createClient } = require('@supabase/supabase-js')
 import { logger } from './logger/index'

@@ -19,7 +19,11 @@ function createRequiredDirectories() {
       '.next/standalone/.next/server/app/api/inventory/import/process/dict',
       '.next/standalone/.next/static/css',
       '.next/standalone/.next/static/chunks',
-      '.next/standalone/public'
+      '.next/standalone/public',
+      // Additional Choreo-specific paths
+      '.next/server/app/api/inventory/import/process/dict',
+      'temp/import',
+      'uploads/import'
     ];
     
     let created = 0;

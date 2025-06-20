@@ -6,15 +6,39 @@ import * as ExcelJS from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
-import natural from "natural";
+// CRITICAL FIX: Conditional import of natural to prevent build failures
+let natural: any;
+let tokenizer: any;
+let stemmer: any;
+let tfidf: any;
+
+try {
+  if (typeof window === 'undefined') {
+    // Only import on server-side to prevent "self is not defined" errors
+    natural = require("natural");
+    tokenizer = new natural.WordTokenizer();
+    stemmer = natural.PorterStemmer;
+    tfidf = new natural.TfIdf();
+  }
+} catch (error) {
+  console.warn('Natural package not available, using fallback NLP functions');
+  // Fallback implementations for when natural is not available
+  tokenizer = {
+    tokenize: (text: string) => text.toLowerCase().split(/\s+/)
+  };
+  stemmer = {
+    stem: (word: string) => word.toLowerCase()
+  };
+  tfidf = {
+    addDocument: () => {},
+    tfidfs: () => [],
+    documents: []
+  };
+}
+
 import os from 'os';
 
 export const runtime = "nodejs";
-
-// Initialize NLP tools
-const tokenizer = new natural.WordTokenizer();
-const stemmer = natural.PorterStemmer;
-const tfidf = new natural.TfIdf();
 
 // Schema for request validation
 const processRequestSchema = z.object({

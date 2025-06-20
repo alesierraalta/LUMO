@@ -29,7 +29,10 @@
     "monitor:memory": "node scripts/monitor-memory.js",
     "validate:stability": "node scripts/validate-stability.js",
     "start:recovery": "node scripts/crash-recovery.js",
-    "test:stability": "node scripts/validate-server-stability.js"
+    "test:stability": "node scripts/validate-server-stability.js",
+    "build:test": "node scripts/test-build.js",
+    "build:clean": "rimraf .next && npm run build",
+    "build:choreo": "NODE_ENV=production npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

@@ -22,7 +22,8 @@ const publicRoutes = [
   '/api/clerk-proxy',
   '/api/test-simple',
   '/api/env-config',
-  '/api/debug-auth'
+  '/api/debug-auth',
+  '/api/debug-choreo'
 ]
 
 // Admin-only routes

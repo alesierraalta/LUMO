@@ -7,7 +7,7 @@
     "dev:fixed": "cross-env NODE_OPTIONS=\"--max-old-space-size=6144 --no-deprecation\" next dev",
     "dev:clean": "npm run clean:cache && npm run dev:fixed",
     "build": "next build && node scripts/post-build-directories.js",
-    "start": "node scripts/choreo-runtime-setup.js && node .next/standalone/server.js",
+    "start": "node scripts/choreo-runtime-setup.js && node server.js",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
@@ -21,7 +21,9 @@
     "setup:dev": "node scripts/setup-dev-environment.js",
     "ensure-single-root": "node scripts/ensure-single-root-user.js",
     "clean:cache": "rimraf .next && rimraf node_modules/.cache",
-    "debug:polyfill": "node -e \"require('./src/lib/supabase-polyfill.js'); console.log('Polyfill loaded successfully');\""
+    "debug:polyfill": "node -e \"require('./src/lib/supabase-polyfill.js'); console.log('Polyfill loaded successfully');\"",
+    "test:custom-server": "node scripts/test-custom-server.js",
+    "deploy:choreo": "node scripts/commit-and-push.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

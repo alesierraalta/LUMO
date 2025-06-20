@@ -36,7 +36,7 @@ spec:
       connectTimeoutSeconds: 180
   deploy:
     # Enhanced startup with validation
-    command: node scripts/choreo-runtime-setup.js && node .next/standalone/server.js
+    command: node scripts/choreo-runtime-setup.js && node server.js
     env:
       NODE_ENV: production
       PORT: 8080

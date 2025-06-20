@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseServer } from '@/lib/supabase-server-only';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Configuración de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [/api/auth/supabase-me] Starting Supabase authentication check');
     
-    // Crear cliente de Supabase
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = supabaseServer;
     
-    // Obtener el token de autorización
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,9 +20,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7);
     
-    // Verificar el token con Supabase
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
@@ -41,7 +34,6 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [/api/auth/supabase-me] Supabase user authenticated:', user.email);
 
-    // Obtener información adicional del usuario desde la tabla personalizada
     let userRole = 'USER';
     let userName = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
     let isActive = true;

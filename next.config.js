@@ -28,7 +28,7 @@ const nextConfig = {
   },
   
   // CRITICAL FIX: Comprehensive webpack configuration for Choreo deployment
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev, isServer, isEdgeRuntime }) => {
     // Production optimizations
     if (!dev) {
       config.cache = {
@@ -113,6 +113,73 @@ const nextConfig = {
           'self': 'global',
           'self.webpackChunk_N_E': '(global.webpackChunk_N_E = global.webpackChunk_N_E || [])'
         })
+      })
+    );
+    
+    // CRITICAL FIX: Enhanced webpack configuration for Supabase and build optimization
+    config.plugins = config.plugins || [];
+    
+    // CRITICAL FIX: Enhanced externalization for server builds
+    if (isServer) {
+      // Externalize problematic client-only packages for server builds
+      config.externals = config.externals || [];
+      config.externals.push(
+        '@supabase/realtime-js',
+        'ws',
+        'bufferutil',
+        'utf-8-validate'
+      );
+    }
+
+    // CRITICAL FIX: Enhanced Edge Runtime compatibility
+    if (config.target === 'webworker' || isEdgeRuntime) {
+      console.log('🔧 Webpack: Configuring for Edge Runtime');
+      
+      // Externalize modules that don't work in Edge Runtime
+      config.externals = config.externals || [];
+      config.externals.push(
+        '@supabase/realtime-js',
+        'ws',
+        'bufferutil', 
+        'utf-8-validate',
+        'encoding'
+      );
+
+      // CRITICAL FIX: Provide fallbacks for Edge Runtime
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'ws': false,
+        'bufferutil': false,
+        'utf-8-validate': false,
+        'encoding': false,
+        '@supabase/realtime-js': path.resolve(__dirname, 'src/lib/realtime-fallback.js')
+      };
+    }
+
+    // CRITICAL FIX: Enhanced module resolution with better alias handling
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      // Provide safe fallbacks for problematic Supabase modules
+      '@supabase/realtime-js': path.resolve(__dirname, 'src/lib/realtime-fallback.js'),
+      'ws': false,
+      'bufferutil': false,
+      'utf-8-validate': false,
+    };
+
+    // CRITICAL FIX: Enhanced global definitions for server environments
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'global.self': JSON.stringify({}),
+        'global.window': JSON.stringify({}),
+        'global.document': JSON.stringify({}),
+        'global.navigator': JSON.stringify({}),
+        'global.location': JSON.stringify({}),
+        // CRITICAL FIX: Provide safe WebSocket fallback
+        'global.WebSocket': JSON.stringify(null),
+        'global.EventSource': JSON.stringify(null),
+        // CRITICAL FIX: Handle process safely
+        'process.browser': JSON.stringify(!isServer),
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
       })
     );
     

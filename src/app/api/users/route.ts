@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseServer } from '@/lib/supabase-server-only';
 import db from '@/lib/db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -23,10 +23,7 @@ async function getCurrentUser(request: NextRequest) {
     
     try {
       // Initialize Supabase client
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+              const supabase = supabaseServer;
       
       // Verify the token with Supabase
       const { data: { user }, error } = await supabase.auth.getUser(token);

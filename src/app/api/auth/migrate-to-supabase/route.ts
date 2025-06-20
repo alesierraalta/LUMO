@@ -1,5 +1,5 @@
+import { supabaseServer } from '@/lib/supabase-server-only';
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 // Configuración directa de Supabase para migración
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -17,12 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Cliente Supabase con permisos de admin
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
+    const supabase = supabaseServer
 
     // Verificar si el usuario existe en la tabla custom users
     const { data: existingUsers, error: userQueryError } = await supabase
@@ -127,12 +122,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Cliente Supabase con permisos de admin
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
+    const supabase = supabaseServer
     
     // Verificar en tabla users custom
     const { data: customUsers, error: customError } = await supabase

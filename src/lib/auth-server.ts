@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { getCurrentUserFromToken } from './auth-simple';
-import { createSupabaseServer } from './supabase-server';
+import { supabaseServer } from './supabase-server-only';
 
 const COOKIE_NAME = 'auth-token';
 const SESSION_DURATION = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -18,9 +18,9 @@ export const getCurrentUser = async (): Promise<any> => {
     const allCookies = cookieStore.getAll();
     console.log('🔍 getCurrentUser: Available cookies:', allCookies.map(c => c.name).join(', '));
     
-    // FIXED: Use optimized Supabase server client
-    const supabase = await createSupabaseServer();
-    console.log('🔍 getCurrentUser: Created optimized Supabase server client');
+    // CRITICAL FIX: Use server-safe Supabase client
+    const supabase = supabaseServer;
+    console.log('🔍 getCurrentUser: Using server-safe Supabase client');
 
     // Get the current session
     const { data: { session }, error } = await supabase.auth.getSession();

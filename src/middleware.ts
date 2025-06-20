@@ -1,5 +1,4 @@
-// CRITICAL FIX: Remove problematic supabase-polyfill import that causes compilation warnings
-// import './lib/supabase-polyfill.js' // REMOVED - causing critical dependency warnings
+// CRITICAL FIX: Clean middleware without problematic imports
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'

@@ -1,4 +1,3 @@
-
 // TASK 24: Memory Optimization for Choreo Environment
 if (process.env.NODE_ENV === 'production') {
   // Set memory limits
@@ -20,94 +19,111 @@ if (process.env.NODE_ENV === 'production') {
   console.log('💾 Max heap size: 6144MB');
 }
 
-#!/usr/bin/env node
-
 /**
- * Custom Next.js Server for Choreo Deployment
- * Handles routing and ensures all requests are properly served
+ * CHOREO DEPLOYMENT SERVER
+ * Next.js 15 standalone server for production deployment
  */
 
-const { createServer } = require('http')
-const { parse } = require('url')
-const next = require('next')
+const { createServer } = require('http');
+const { parse } = require('url');
+const next = require('next');
 
-// Load environment variables
-const dev = process.env.NODE_ENV !== 'production'
-const hostname = process.env.HOSTNAME || '0.0.0.0'
-const port = parseInt(process.env.PORT, 10) || 8080
+// Environment configuration
+const dev = process.env.NODE_ENV !== 'production';
+const hostname = process.env.HOSTNAME || 'localhost';
+const port = parseInt(process.env.PORT || '8080', 10);
 
-console.log('🚀 [Custom Server] Starting LUMO server...')
-console.log(`📍 Environment: ${process.env.NODE_ENV}`)
-console.log(`🌐 Hostname: ${hostname}`)
-console.log(`🔌 Port: ${port}`)
+console.log('🚀 Starting LUMO Inventory Management Server...');
+console.log(`📍 Environment: ${process.env.NODE_ENV || 'production'}`);
+console.log(`🌐 Hostname: ${hostname}`);
+console.log(`🔌 Port: ${port}`);
 
-// Create Next.js app
+// Create Next.js app instance
 const app = next({ 
   dev, 
   hostname, 
   port,
-  // Use standalone build in production
-  dir: dev ? '.' : '.next/standalone'
-})
+  // Use current directory for standalone build
+  dir: process.cwd()
+});
 
-const handle = app.getRequestHandler()
+const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
-  createServer(async (req, res) => {
-    try {
-      const parsedUrl = parse(req.url, true)
-      const { pathname, query } = parsedUrl
-
-      console.log(`📥 [${new Date().toISOString()}] ${req.method} ${pathname}`)
-
-      // Handle health check specifically
-      if (pathname === '/api/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          status: 'healthy',
-          timestamp: new Date().toISOString(),
-          server: 'custom-next-server',
-          port: port,
-          environment: process.env.NODE_ENV
-        }))
-        return
+async function startServer() {
+  try {
+    console.log('⏳ Preparing Next.js application...');
+    await app.prepare();
+    
+    console.log('🔧 Creating HTTP server...');
+    const server = createServer(async (req, res) => {
+      try {
+        // Parse the URL
+        const parsedUrl = parse(req.url, true);
+        
+        // Handle the request
+        await handle(req, res, parsedUrl);
+      } catch (err) {
+        console.error('❌ Error handling request:', err);
+        res.statusCode = 500;
+        res.end('Internal Server Error');
       }
+    });
+    
+    // Error handling for server
+    server.on('error', (err) => {
+      console.error('❌ Server error:', err);
+      process.exit(1);
+    });
+    
+    // Graceful shutdown handling
+    process.on('SIGTERM', () => {
+      console.log('📡 SIGTERM received, shutting down gracefully...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+    
+    process.on('SIGINT', () => {
+      console.log('📡 SIGINT received, shutting down gracefully...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+    
+    // Start listening
+    server.listen(port, hostname, () => {
+      console.log('🎉 LUMO Server successfully started!');
+      console.log(`🌐 Server running at http://${hostname}:${port}`);
+      console.log('📊 Health check: /api/health');
+      console.log('🏠 Dashboard: /dashboard');
+      console.log('✅ Ready for Choreo deployment');
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
-      // Handle test endpoint specifically  
-      if (pathname === '/api/test-simple') {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          status: 'success',
-          message: 'LUMO Server is running correctly!',
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV || 'unknown',
-          port: port,
-          version: '1.0.0',
-          server: 'custom-next-server'
-        }))
-        return
-      }
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit on unhandled rejections in production
+  if (dev) {
+    process.exit(1);
+  }
+});
 
-      // Handle root path
-      if (pathname === '/') {
-        console.log('🏠 [Custom Server] Serving root path')
-      }
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
 
-      // Let Next.js handle all other requests
-      await handle(req, res, parsedUrl)
-    } catch (err) {
-      console.error('❌ [Custom Server] Error handling request:', err)
-      res.statusCode = 500
-      res.end('Internal Server Error')
-    }
-  })
-  .once('error', (err) => {
-    console.error('❌ [Custom Server] Server error:', err)
-    process.exit(1)
-  })
-  .listen(port, hostname, () => {
-    console.log(`✅ [Custom Server] Ready on http://${hostname}:${port}`)
-    console.log(`🎯 [Custom Server] Health check: http://${hostname}:${port}/api/health`)
-    console.log(`🧪 [Custom Server] Test endpoint: http://${hostname}:${port}/api/test-simple`)
-  })
-})
+// Start the server
+startServer().catch((error) => {
+  console.error('❌ Failed to start application:', error);
+  process.exit(1);
+});

@@ -1,0 +1,151 @@
+{
+  "timestamp": "2025-06-20T12:32:19.873Z",
+  "deploymentReady": false,
+  "summary": {
+    "totalTests": 23,
+    "passed": 16,
+    "failed": 3,
+    "warnings": 4,
+    "successRate": 70
+  },
+  "tests": [
+    {
+      "test": "Next.js Config",
+      "status": "PASS",
+      "message": "Clean configuration without invalid options",
+      "critical": true
+    },
+    {
+      "test": "Webpack Externals",
+      "status": "PASS",
+      "message": "Problematic dependencies properly externalized",
+      "critical": true
+    },
+    {
+      "test": "CORS Headers",
+      "status": "PASS",
+      "message": "Choreo domain properly configured",
+      "critical": true
+    },
+    {
+      "test": "Build Script",
+      "status": "PASS",
+      "message": "Build script properly configured",
+      "critical": true
+    },
+    {
+      "test": "Choreo Build Script",
+      "status": "PASS",
+      "message": "Choreo-specific build script available",
+      "critical": true
+    },
+    {
+      "test": "Natural Import",
+      "status": "PASS",
+      "message": "Conditional natural import properly implemented",
+      "critical": true
+    },
+    {
+      "test": "Natural Fallbacks",
+      "status": "WARN",
+      "message": "No fallback implementations found",
+      "critical": false
+    },
+    {
+      "test": "Build Process",
+      "status": "FAIL",
+      "message": "Build process error: spawn npm ENOENT",
+      "critical": true
+    },
+    {
+      "test": "Build Directory",
+      "status": "PASS",
+      "message": ".next directory exists",
+      "critical": true
+    },
+    {
+      "test": "Standalone Output",
+      "status": "FAIL",
+      "message": "Standalone build output not generated",
+      "critical": true
+    },
+    {
+      "test": "Static Files",
+      "status": "PASS",
+      "message": "Static files directory exists",
+      "critical": true
+    },
+    {
+      "test": "Environment File (.env)",
+      "status": "PASS",
+      "message": ".env exists",
+      "critical": true
+    },
+    {
+      "test": "Environment File (.env.local)",
+      "status": "PASS",
+      "message": ".env.local exists",
+      "critical": true
+    },
+    {
+      "test": "Environment File (.env.production)",
+      "status": "PASS",
+      "message": ".env.production exists",
+      "critical": true
+    },
+    {
+      "test": "Environment Variable (SUPABASE_URL)",
+      "status": "WARN",
+      "message": "SUPABASE_URL not found in local env (should be in Choreo secrets)",
+      "critical": false
+    },
+    {
+      "test": "Environment Variable (SUPABASE_ANON_KEY)",
+      "status": "WARN",
+      "message": "SUPABASE_ANON_KEY not found in local env (should be in Choreo secrets)",
+      "critical": false
+    },
+    {
+      "test": "Environment Variable (JWT_SECRET)",
+      "status": "WARN",
+      "message": "JWT_SECRET not found in local env (should be in Choreo secrets)",
+      "critical": false
+    },
+    {
+      "test": "Critical File (src/middleware.ts)",
+      "status": "PASS",
+      "message": "src/middleware.ts exists",
+      "critical": true
+    },
+    {
+      "test": "Middleware Polyfill",
+      "status": "FAIL",
+      "message": "Problematic supabase-polyfill import still present",
+      "critical": true
+    },
+    {
+      "test": "Critical File (src/app/layout.tsx)",
+      "status": "PASS",
+      "message": "src/app/layout.tsx exists",
+      "critical": true
+    },
+    {
+      "test": "Critical File (src/lib/db-supabase.ts)",
+      "status": "PASS",
+      "message": "src/lib/db-supabase.ts exists",
+      "critical": true
+    },
+    {
+      "test": "Critical File (src/contexts/auth-context.tsx)",
+      "status": "PASS",
+      "message": "src/contexts/auth-context.tsx exists",
+      "critical": true
+    },
+    {
+      "test": "Critical File (src/app/api/health/route.ts)",
+      "status": "PASS",
+      "message": "src/app/api/health/route.ts exists",
+      "critical": true
+    }
+  ]
+}

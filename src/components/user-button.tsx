@@ -17,26 +17,61 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
 export function UserButton() {
-  const { user, isLoading, refreshUser } = useAuth();
+  const { user, loading, refetch } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
+      // Mostrar loading inmediatamente
+      toast.loading('Cerrando sesión...');
+
+      // Intentar logout por API primero
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.ok) {
-        await refreshUser(); // Refresh the auth context
-        toast.success('Logged out successfully');
+        // Limpiar localStorage también
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('supabase.auth.token');
+          localStorage.removeItem('auth-user');
+          localStorage.clear(); // Limpiar todo por seguridad
+        }
+        
+        await refetch(); // Refresh the auth context
+        toast.dismiss();
+        toast.success('Sesión cerrada exitosamente');
+        
+        // Redireccionar y refrescar
         router.push('/login');
-        router.refresh();
+        setTimeout(() => {
+          window.location.href = '/login'; // Fallback para asegurar redirección
+        }, 100);
       } else {
-        toast.error('Failed to logout');
+        throw new Error('API logout failed');
       }
     } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Failed to logout');
+      console.error('❌ Error en logout por API, usando fallback:', error);
+      
+      // Fallback: limpiar todo localmente y redireccionar
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Limpiar cookies manualmente
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      }
+      
+      toast.dismiss();
+      toast.success('Sesión cerrada (modo local)');
+      
+      // Forzar redirección
+      window.location.href = '/login';
     }
   };
 
@@ -58,7 +93,7 @@ export function UserButton() {
     return name || email || 'User';
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Button variant="ghost" size="sm" disabled>
         <User className="h-4 w-4" />

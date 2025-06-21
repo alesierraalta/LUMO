@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name,
             is_active,
             role_id,
-            roles (
+            roles!role_id (
               id,
               name
             )
@@ -85,6 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single();
           
         if (!userError && userData) {
+          console.log('🔍 Raw database user data:', userData);
+          
           const fullUser: User = {
             id: userData.id,
             email: userData.email,
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             permissions: [] // Will be populated from role-based permissions later
           };
 
-          console.log('✅ Full user data from database:', fullUser.email, 'Role:', fullUser.role);
+          console.log('✅ Full user data from database:', fullUser.email, 'Role:', fullUser.role, 'IsActive:', fullUser.isActive);
           userCache = { user: fullUser, timestamp: Date.now() };
           return fullUser;
         } else {

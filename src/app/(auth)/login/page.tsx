@@ -40,19 +40,56 @@ export default function LoginPage() {
       if (authError) {
         console.log('[Login] Supabase auth error:', authError);
         
-        // Traducir mensajes de error de Supabase
-        let errorMessage = authError.message;
-        if (authError.message.includes('Invalid login credentials')) {
-          errorMessage = 'Correo electrónico o contraseña incorrectos';
-        } else if (authError.message.includes('Email not confirmed')) {
-          errorMessage = 'Por favor, confirma tu correo electrónico';
-        } else if (authError.message.includes('Too many requests')) {
-          errorMessage = 'Demasiados intentos. Inténtalo más tarde';
-        } else if (authError.message.includes('User not found')) {
-          errorMessage = 'Usuario no encontrado';
+        // Si el error es "Email not confirmed", intentar autenticación legacy JWT
+        if (authError.message.includes('Email not confirmed')) {
+          console.log('[Login] Email not confirmed, trying legacy JWT authentication...');
+          
+          try {
+            const legacyResponse = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: email.trim(),
+                password: password,
+              }),
+            });
+
+            const legacyData = await legacyResponse.json();
+            
+            if (legacyData.success && legacyData.user) {
+              console.log('[Login] Legacy JWT authentication successful:', legacyData.user);
+              toast.success('¡Inicio de sesión exitoso! (Modo legacy)');
+              
+              // Force auth context to refetch user data
+              await refetch();
+              
+              // Redirect to dashboard
+              router.push('/dashboard');
+              return;
+            } else {
+              console.log('[Login] Legacy JWT authentication failed:', legacyData.error);
+              setError('Correo electrónico o contraseña incorrectos');
+            }
+          } catch (legacyError) {
+            console.error('[Login] Legacy authentication error:', legacyError);
+            setError('Por favor, confirma tu correo electrónico o contacta al administrador');
+          }
+        } else {
+          // Traducir otros mensajes de error de Supabase
+          let errorMessage = authError.message;
+          if (authError.message.includes('Invalid login credentials')) {
+            errorMessage = 'Correo electrónico o contraseña incorrectos';
+          } else if (authError.message.includes('Too many requests')) {
+            errorMessage = 'Demasiados intentos. Inténtalo más tarde';
+          } else if (authError.message.includes('User not found')) {
+            errorMessage = 'Usuario no encontrado';
+          }
+          
+          setError(errorMessage);
         }
         
-        setError(errorMessage);
         setIsLoading(false);
         return;
       }

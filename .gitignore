@@ -53,3 +53,5 @@ auto-update.bat
 **/*-keys.md
 .env.production
 .env.secrets
+confirm-email-prod.bat
+fix-root-prod.bat

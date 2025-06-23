@@ -52,6 +52,14 @@ GET /dashboard 200 in 1237ms
 
 **RESULTADO**: ✅ **PERFECTO** - Sistema funcionando con SOLO SUPABASE, sin errores
 
+## 🚨 NUEVO PROBLEMA CRÍTICO IDENTIFICADO (2025-01-22 04:00)
+
+### ❌ **CHOREO PRODUCTION DEPLOYMENT TIMEOUT**
+- **Error**: "context marked done while waiting for workload reach > 0 replicas: context deadline exceeded"
+- **URL Afectada**: https://lumoapp.choreoapps.dev  
+- **Estado**: Dev environment funcionando ✅ | Production environment failing ❌
+- **Diagnóstico**: Timeout en health checks y startup de contenedores
+
 ## 📋 TASK LIST
 
 ### **FASE 1: ANÁLISIS Y PREPARACIÓN** ✅ COMPLETADA
@@ -89,6 +97,16 @@ GET /dashboard 200 in 1237ms
 - [ ] **22. Verificar producción** — Deploy y testing
 - [ ] **23. Monitoreo** — Logs y métricas
 
+### **FASE 7: CHOREO PRODUCTION DEPLOYMENT FIX** 🚨 CRÍTICA
+- [x] **24. Diagnosticar problema de timeout** — scripts/diagnose-choreo-production.js — ✅ 2025-01-22 04:15
+- [x] **25. Crear configuración optimizada** — choreo-optimized.yaml con timeouts reducidos — ✅ 2025-01-22 04:16
+- [x] **26. Crear Dockerfile optimizado** — Dockerfile-optimized para startup rápido — ✅ 2025-01-22 04:17
+- [x] **27. Crear health endpoint mejorado** — route-enhanced.ts con mejor rendimiento — ✅ 2025-01-22 04:18
+- [ ] **28. Aplicar configuración optimizada** — Reemplazar choreo.yaml y Dockerfile actuales
+- [ ] **29. Desplegar a Choreo production** — Commit y push para trigger deployment
+- [ ] **30. Verificar deployment exitoso** — Confirmar que https://lumoapp.choreoapps.dev responde
+- [ ] **31. Monitorear estabilidad** — Verificar logs y performance post-deployment
+
 ## 🎉 RESULTADOS EXITOSOS
 
 ### ✅ MIGRACIÓN 100% EXITOSA:
@@ -119,18 +137,26 @@ GET /dashboard 200 in 1237ms
 - ❌ **Errores de módulo eliminados** - Sin "Module not found: Can't resolve './auth-simple'"
 - ✅ **Solo Supabase** - Autenticación unificada y funcional
 
+### ✅ CHOREO DEPLOYMENT OPTIMIZATION READY:
+- **Diagnóstico completado**: Timeout en health checks identificado
+- **Configuración optimizada**: choreo-optimized.yaml con timeouts reducidos (20s readiness, 30s liveness)
+- **Dockerfile optimizado**: Startup rápido con 2048MB memoria, health checks 15s
+- **Health endpoint mejorado**: Respuesta más rápida sin dependencias externas
+- **Scripts de deployment**: Automatización completa para aplicar cambios
+
 ## 🚀 ESTADO ACTUAL
 
 **MIGRACIÓN CORE**: ✅ **100% COMPLETADA**  
 **SERVIDOR**: ✅ **FUNCIONANDO PERFECTAMENTE**
 **SISTEMA**: ✅ **SOLO SUPABASE** (Objetivo cumplido)
+**PRODUCTION DEPLOYMENT**: 🚨 **REQUIERE FIX INMEDIATO** (Fase 7 en progreso)
 
 ### 📍 PARA USAR EL SISTEMA:
 1. **Navegar a**: http://localhost:3000/login
 2. **Usar credenciales Supabase**: alesierraalta@gmail.com
 3. **El sistema usa SOLO Supabase** - Sin fallbacks, sin JWT, sin Clerk
 
-### 🔧 TAREAS OPCIONALES RESTANTES:
-Las Fases 5-6 son **opcionales** para optimización adicional. El sistema ya funciona completamente con **SOLO SUPABASE** como solicitado.
+### 🔧 PRÓXIMOS PASOS CRÍTICOS:
+**PRIORIDAD ALTA**: Completar Fase 7 (Tasks 28-31) para resolver el deployment timeout en producción
 
-**¿Quieres continuar con las optimizaciones opcionales o el sistema está listo para usar?** 
+**¿Quieres continuar con el fix del deployment de producción (Fase 7)?** 

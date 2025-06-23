@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-06-23T18:10:09.490Z",
+  "tests": {
+    "connectivity": {
+      "success": false,
+      "error": "timeout"
+    },
+    "health": {
+      "success": false,
+      "error": "timeout"
+    },
+    "load": {
+      "successful": 0,
+      "failed": 5,
+      "results": [
+        {
+          "success": false,
+          "error": "timeout"
+        },
+        {
+          "success": false,
+          "error": "timeout"
+        },
+        {
+          "success": false,
+          "error": "timeout"
+        },
+        {
+          "success": false,
+          "error": "timeout"
+        },
+        {
+          "success": false,
+          "error": "timeout"
+        }
+      ]
+    },
+    "dns": {
+      "success": true,
+      "addresses": [
+        {
+          "address": "20.22.170.144",
+          "family": 4
+        }
+      ]
+    }
+  }
+}

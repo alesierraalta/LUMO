@@ -3,7 +3,7 @@ kind: Component
 metadata:
   name: lumo-inventory-optimized
   projectName: ${CHOREO_PROJECT}
-  description: "LUMO Inventory Management System - Production Timeout Fix"
+  description: "LUMO Inventory Management System - Optimized for Perfect Deployment"
 spec:
   type: Web Application
   runtime:
@@ -11,13 +11,13 @@ spec:
     dockerfile: ./Dockerfile
   build:
     dockerfile: ./Dockerfile
-    # Optimized build environment with reduced timeouts
+    # Optimized build environment
     env:
       NEXT_PUBLIC_DEPLOY_ENV: choreo
       NEXT_PUBLIC_API_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       APP_URL: https://lumo-1615540597-6c8cb9466f-w76w6-choreo.apps.cloudmobility.io
       NEXT_TELEMETRY_DISABLED: "1"
-      NODE_OPTIONS: "--max-old-space-size=4096"
+      NODE_OPTIONS: "--max-old-space-size=6144"
       NODE_ENV: production
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       # Supabase configuration for build time
@@ -25,16 +25,17 @@ spec:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      # Build optimization
+      # Enhanced build optimization
       DOCKER_BUILDKIT_CACHE: "false"
       BUILDKIT_INLINE_CACHE: "0"
+      NEXT_BUILD_OPTIMIZATION: "true"
     command: echo "Using optimized Dockerfile build"
-    retryCount: 2
-    timeoutSeconds: 600
+    retryCount: 3
+    timeoutSeconds: 900
     network:
-      connectTimeoutSeconds: 120
+      connectTimeoutSeconds: 180
   deploy:
-    # Faster startup command
+    # Direct startup (no validation script)
     command: node server.js
     env:
       NODE_ENV: production
@@ -48,11 +49,11 @@ spec:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      # Reduced memory for faster startup
-      NODE_OPTIONS: "--max-old-space-size=2048"
-      # Health monitoring with faster intervals
+      # Performance optimization
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      # Health monitoring
       HEALTH_CHECK_ENABLED: "true"
-      HEALTH_CHECK_INTERVAL: "15000"
+      HEALTH_CHECK_INTERVAL: "30000"
     containerPort: 8080
   env:
     - name: NODE_ENV
@@ -63,7 +64,7 @@ spec:
       value: "0.0.0.0"
     - name: NEXT_PUBLIC_APP_VERSION
       value: ${GITHUB_SHA}
-    # Database configuration
+    # Enhanced database configuration
     - name: DATABASE_URL
       valueFrom:
         secretRef:
@@ -90,60 +91,65 @@ spec:
       valueFrom:
         secretRef:
           name: NEXT_PUBLIC_SUPABASE_ANON_KEY
-  # Reduced resource allocation for faster startup
+  # Enhanced resource allocation for perfect performance
   resources:
     cpu:
-      units: 2
+      units: 4
     memory:
-      units: 4Gi
-  # Conservative scaling to ensure stability
+      units: 8Gi
+  # Optimized scaling configuration
   scaling:
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 60
-    targetMemoryUtilizationPercentage: 70
-  # CRITICAL: Optimized health checks for faster startup
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  # Enhanced health checks for reliability
   healthCheck:
     readinessProbe:
       httpGet:
         path: /api/health
         port: 8080
-      initialDelaySeconds: 20  # Reduced from 45
-      periodSeconds: 5         # Reduced from 10
-      timeoutSeconds: 10       # Reduced from 15
-      failureThreshold: 5      # Increased tolerance
-      successThreshold: 1      # Reduced from 2
+      initialDelaySeconds: 45
+      periodSeconds: 10
+      timeoutSeconds: 15
+      failureThreshold: 3
+      successThreshold: 2
     livenessProbe:
       httpGet:
         path: /api/health
         port: 8080
-      initialDelaySeconds: 30  # Reduced from 60
-      periodSeconds: 15        # Reduced from 20
-      timeoutSeconds: 10       # Reduced from 15
-      failureThreshold: 5      # Increased tolerance
-    # Optimized startup probe for initial deployment
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      timeoutSeconds: 15
+      failureThreshold: 3
+    # Startup probe for initial deployment
     startupProbe:
       httpGet:
         path: /api/health
         port: 8080
-      initialDelaySeconds: 10  # Reduced from 30
-      periodSeconds: 5         # Reduced from 10
-      timeoutSeconds: 10       # Reduced from 15
-      failureThreshold: 20     # Increased from 10 for more startup time
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 15
+      failureThreshold: 10
   expose:
     type: HTTP
     port: 8080
-  # Optimized ignore patterns
+  # Optimized ignore patterns for faster builds
   ignoreSpec:
     ignore:
       - node_modules
       - .git
       - .github
       - .next
-      - .env*
+      - .env
+      - .env.local
+      - .env.development
+      - .env.production
       - README.md
-      - "**/*.test.*"
-      - "**/*.spec.*"
+      - "**/*.test.js"
+      - "**/*.test.ts"
+      - "**/*.spec.js"
+      - "**/*.spec.ts"
       - "**/__tests__/**"
       - "**/__mocks__/**"
       - "**/coverage/**"
@@ -152,7 +158,9 @@ spec:
       - "**/tmp/**"
       - "**/.cache/**"
       - "**/*.cache"
+      - next.config.backup.ts
+      - next.config.simple.js
       - "**/*.md"
       - "**/docs/**"
       - "**/test-results/**"
-      - "**/playwright-report/**"
+      - "**/playwright-report/**" 

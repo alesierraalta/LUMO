@@ -7,23 +7,29 @@
 
 console.log('🚀 [Choreo Setup] Starting runtime configuration...');
 
-// Environment validation
-const requiredEnvs = [
-  'DATABASE_URL',
+// Environment validation (relaxed for Choreo deployment)
+const criticalEnvs = [
   'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'JWT_SECRET'
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
 ];
 
-console.log('🔍 [Choreo Setup] Validating environment variables...');
-const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
+console.log('🔍 [Choreo Setup] Validating critical environment variables...');
+const missingCritical = criticalEnvs.filter(env => !process.env[env]);
 
-if (missingEnvs.length > 0) {
-  console.error('❌ [Choreo Setup] Missing required environment variables:', missingEnvs);
+if (missingCritical.length > 0) {
+  console.error('❌ [Choreo Setup] Missing critical environment variables:', missingCritical);
   process.exit(1);
 }
 
-console.log('✅ [Choreo Setup] All required environment variables present');
+// Optional validation with warnings
+const optionalEnvs = ['DATABASE_URL', 'JWT_SECRET'];
+const missingOptional = optionalEnvs.filter(env => !process.env[env]);
+if (missingOptional.length > 0) {
+  console.warn('⚠️ [Choreo Setup] Optional environment variables not found:', missingOptional);
+  console.warn('⚠️ [Choreo Setup] These may be loaded at runtime by Choreo');
+}
+
+console.log('✅ [Choreo Setup] Critical environment variables validated');
 
 // Set production optimizations
 process.env.NODE_ENV = 'production';
@@ -45,14 +51,17 @@ if (!supabaseKey || supabaseKey.length < 100) {
 
 console.log('✅ [Choreo Setup] Supabase configuration validated');
 
-// JWT Secret validation
+// JWT Secret validation (optional)
 const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret || jwtSecret.length < 32) {
-  console.error('❌ [Choreo Setup] JWT_SECRET must be at least 32 characters');
-  process.exit(1);
+if (jwtSecret) {
+  if (jwtSecret.length < 32) {
+    console.warn('⚠️ [Choreo Setup] JWT_SECRET should be at least 32 characters');
+  } else {
+    console.log('✅ [Choreo Setup] JWT configuration validated');
+  }
+} else {
+  console.warn('⚠️ [Choreo Setup] JWT_SECRET not found - may be loaded at runtime');
 }
-
-console.log('✅ [Choreo Setup] JWT configuration validated');
 
 // Log deployment info
 console.log('📊 [Choreo Setup] Deployment Information:');

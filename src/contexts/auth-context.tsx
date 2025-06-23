@@ -20,53 +20,99 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cache configuration
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Cache for user data to prevent excessive API calls
 let userCache: { user: User | null; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 let isRefetching = false;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Enhanced fetchUser function that supports both Supabase Auth and JWT
   const fetchUser = useCallback(async (useCache = true): Promise<User | null> => {
-    console.log('🔍 fetchUser called with useCache:', useCache);
-    
-    // Return cached user if valid and cache is allowed
-    if (useCache && userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
-      console.log('🔄 Using cached user data');
+    // Prevent multiple simultaneous fetches
+    if (isRefetching) {
+      console.log('🔄 Fetch already in progress, waiting...');
+      return user;
+    }
+
+    // Check cache first
+    if (useCache && userCache && (Date.now() - userCache.timestamp) < CACHE_DURATION) {
+      console.log('📄 Using cached user data');
       return userCache.user;
     }
 
-    // Prevent multiple simultaneous calls
-    if (isRefetching) {
-      console.log('⏳ Already fetching user, skipping duplicate call');
-      return userCache?.user || null;
-    }
-
     isRefetching = true;
-    console.log('🔍 Fetching user data...');
 
     try {
-      // CRITICAL FIX: Use dynamic import to prevent SSR issues
-      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
-      
-      // Use our custom Supabase client (no realtime dependencies)
-      const supabase = getSupabaseClient();
-      
-      // Get current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session?.user) {
-        console.log('❌ No valid session found');
-        userCache = { user: null, timestamp: Date.now() };
-        return null;
+      console.log('🔍 Fetching user data...');
+
+      // Method 1: Try JWT authentication first (for Choreo compatibility)
+      try {
+        console.log('🎯 Attempting JWT authentication...');
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            console.log('✅ JWT authentication successful:', data.user.email);
+            
+            const jwtUser: User = {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name,
+              role: data.user.role,
+              isActive: data.user.isActive,
+              permissions: data.user.permissions || []
+            };
+
+            // CRITICAL CHOREO FIX: Admin fallback for root user
+            if (data.user.email === 'alesierraalta@gmail.com') {
+              console.log('🔑 JWT CHOREO FIX: Applied admin role for root user');
+              jwtUser.role = 'ADMIN';
+              jwtUser.isActive = true;
+              jwtUser.permissions = ['read', 'write', 'delete', 'admin'];
+            }
+
+            userCache = { user: jwtUser, timestamp: Date.now() };
+            return jwtUser;
+          }
+        } else {
+          console.log('ℹ️ JWT authentication not available, trying Supabase Auth...');
+        }
+      } catch (jwtError) {
+        console.log('ℹ️ JWT authentication failed, trying Supabase Auth:', jwtError);
       }
 
-      console.log('✅ Valid session found for:', session.user.email);
-
-      // Get additional user info from database via Supabase client
+      // Method 2: Fallback to Supabase Auth (for local development)
       try {
+        console.log('🔍 Attempting Supabase authentication...');
+        const { getSupabaseClient } = await import('@/lib/supabase-singleton');
+        const supabase = getSupabaseClient();
+
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.warn('⚠️ Session error:', sessionError.message);
+          userCache = { user: null, timestamp: Date.now() };
+          return null;
+        }
+
+        if (!session?.user) {
+          console.log('ℹ️ No active session');
+          userCache = { user: null, timestamp: Date.now() };
+          return null;
+        }
+
+        console.log('✅ Active session found:', session.user.email);
+
         // Query user data directly from database (search by email since IDs might not match)
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -96,29 +142,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             permissions: [] // Will be populated from role-based permissions later
           };
 
+          // CRITICAL CHOREO FIX: Admin fallback for root user
+          if (session.user.email === 'alesierraalta@gmail.com') {
+            console.log('🔑 SUPABASE CHOREO FIX: Applied admin role for root user');
+            fullUser.role = 'ADMIN';
+            fullUser.isActive = true;
+            fullUser.permissions = ['read', 'write', 'delete', 'admin'];
+          }
+
           console.log('✅ Full user data from database:', fullUser.email, 'Role:', fullUser.role, 'IsActive:', fullUser.isActive);
           userCache = { user: fullUser, timestamp: Date.now() };
           return fullUser;
         } else {
           console.warn('⚠️ Database query failed:', userError?.message);
         }
-      } catch (dbError) {
-        console.warn('⚠️ Database query failed:', dbError);
+
+        // Fallback to basic session user info with CRITICAL admin fix
+        const basicUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: session.user.user_metadata?.role || 'USER',
+          isActive: true,
+          permissions: []
+        };
+
+        // CRITICAL CHOREO FIX: Admin fallback for root user
+        if (session.user.email === 'alesierraalta@gmail.com') {
+          console.log('🔑 SUPABASE FALLBACK: Applied admin role for root user');
+          basicUser.role = 'ADMIN';
+          basicUser.isActive = true;
+          basicUser.permissions = ['read', 'write', 'delete', 'admin'];
+        }
+
+        console.log('⚠️ Using fallback user data:', basicUser.email);
+        userCache = { user: basicUser, timestamp: Date.now() };
+        return basicUser;
+
+      } catch (supabaseError) {
+        console.warn('⚠️ Supabase authentication failed:', supabaseError);
       }
 
-      // Fallback to basic session user info
-      const basicUser: User = {
-        id: session.user.id,
-        email: session.user.email || '',
-        name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-        role: session.user.user_metadata?.role || 'USER',
-        isActive: true,
-        permissions: []
-      };
-
-      console.log('⚠️ Using fallback user data:', basicUser.email);
-      userCache = { user: basicUser, timestamp: Date.now() };
-      return basicUser;
+      // No authentication method worked
+      console.log('❌ No authentication method succeeded');
+      userCache = { user: null, timestamp: Date.now() };
+      return null;
 
     } catch (error) {
       console.error('❌ Error fetching user:', error);
@@ -146,7 +214,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async (): Promise<boolean> => {
     try {
-      // CRITICAL FIX: Use dynamic import to prevent SSR issues
+      // Try JWT logout first
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          console.log('✅ JWT logout successful');
+          setUser(null);
+          userCache = null; // Clear cache
+          return true;
+        }
+      } catch (jwtLogoutError) {
+        console.log('ℹ️ JWT logout not available, trying Supabase logout');
+      }
+
+      // Fallback to Supabase logout
       const { signOut } = await import('@/lib/supabase-auth-client');
       const success = await signOut();
       

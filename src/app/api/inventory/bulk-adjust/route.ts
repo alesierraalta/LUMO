@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db-supabase';
 import { adjustStock } from '@/services/inventoryService';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-server';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

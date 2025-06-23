@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { generateToken } from '@/lib/auth-simple';
+// JWT token generation removed - using Supabase only
 import bcrypt from 'bcryptjs';
 
 export const runtime = 'nodejs';
@@ -79,31 +79,17 @@ export async function POST(request: NextRequest) {
         });
         console.log('✅ [ROOT-ACCESS] Usuario ROOT creado exitosamente');
         
-        // Generar token para el nuevo usuario
-        const token = generateToken({
-          userId: newRootUser.id,
-          email: newRootUser.email,
-          role: 'ADMIN'
-        });
-
+        // Return success without JWT tokens - use Supabase authentication
         const response = NextResponse.json({
           success: true,
-          message: 'Usuario ROOT creado y autenticado',
+          message: 'Usuario ROOT creado - use Supabase login',
           user: {
             id: newRootUser.id,
             email: newRootUser.email,
             name: newRootUser.name,
             role: 'ADMIN'
-          }
-        });
-
-        // Establecer cookie de autenticación
-        response.cookies.set('auth-token', token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60, // 7 días
-          path: '/'
+          },
+          note: 'Use /api/auth/supabase-login for authentication'
         });
 
         return response;
@@ -148,31 +134,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [ROOT-ACCESS] Autenticación exitosa - Rol: ${roleName}`);
     
-    // Generar token
-    const token = generateToken({
-      userId: rootUser.id,
-      email: rootUser.email,
-      role: roleName
-    });
-
+    // Return success without JWT tokens - use Supabase authentication
     const response = NextResponse.json({
       success: true,
-      message: 'Acceso ROOT verificado exitosamente',
+      message: 'Acceso ROOT verificado - use Supabase login',
       user: {
         id: rootUser.id,
         email: rootUser.email,
         name: rootUser.name,
         role: roleName
-      }
-    });
-
-    // Establecer cookie de autenticación
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 días
-      path: '/'
+      },
+      note: 'Use /api/auth/supabase-login for authentication'
     });
 
     return response;

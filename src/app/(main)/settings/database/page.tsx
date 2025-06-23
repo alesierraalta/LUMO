@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-simple";
+import { isAdmin } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import DatabaseStatsClient from "./database-stats-client";

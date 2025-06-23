@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { z } from "zod";
-import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-simple";
+import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-server";
 
 // Validation schema for category creation
 const CategorySchema = z.object({

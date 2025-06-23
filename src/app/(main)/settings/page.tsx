@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarginSettings } from "@/components/margin-settings";
 import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-simple";
+import { isAdmin } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {

@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
-import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 
 // Schema for search query parameters
 const SearchParamsSchema = z.object({

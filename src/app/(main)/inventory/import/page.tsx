@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-simple";
+import { isAdmin } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import ImportForm from "./import-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

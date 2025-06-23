@@ -1,86 +1,50 @@
+/**
+ * Supabase-Only User Verification Endpoint
+ * NO JWT, NO LEGACY FALLBACKS - ONLY SUPABASE
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase-server-only';
+import { getCurrentUser } from '@/lib/auth-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 [/api/auth/supabase-me] Starting Supabase authentication check');
+    console.log('🔍 [Supabase Me] Starting Supabase-only user verification...');
     
-    const supabase = supabaseServer;
+    // Get current user using Supabase-only authentication
+    const user = await getCurrentUser();
     
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ [/api/auth/supabase-me] No Bearer token provided');
+    if (!user) {
+      console.log('❌ [Supabase Me] No valid Supabase session found');
       return NextResponse.json(
-        { success: false, error: 'No authentication token provided' },
+        { success: false, error: 'No authentication found' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.log('❌ [/api/auth/supabase-me] Invalid Supabase token:', authError?.message || 'Auth session missing!');
-      return NextResponse.json(
-        { success: false, error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    console.log('✅ [/api/auth/supabase-me] Supabase user authenticated:', user.email);
-
-    let userRole = 'USER';
-    let userName = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
-    let isActive = true;
-
-    try {
-      const { data: dbUser, error: dbError } = await supabase
-        .from('users')
-        .select(`
-          name, 
-          is_active, 
-          roles!inner(name)
-        `)
-        .eq('email', user.email)
-        .single();
-
-      if (!dbError && dbUser) {
-        userName = dbUser.name || userName;
-        isActive = dbUser.is_active;
-        userRole = (dbUser.roles as any)?.name || 'USER';
-      }
-    } catch (dbError) {
-      console.warn('⚠️ [/api/auth/supabase-me] Could not fetch user from database:', dbError);
-    }
-
-    const responseUser = {
-      id: user.id,
-      email: user.email,
-      name: userName,
-      role: userRole,
-      isActive: isActive,
-      permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
-    };
-
-    console.log('✅ [/api/auth/supabase-me] User data compiled:', responseUser.email, 'Role:', responseUser.role);
+    console.log(`✅ [Supabase Me] User verified: ${user.email} with role: ${user.role}`);
     
     return NextResponse.json({
       success: true,
-      user: responseUser
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isActive: user.isActive,
+        permissions: user.permissions
+      }
     });
 
   } catch (error) {
-    console.error('❌ [/api/auth/supabase-me] Authentication error:', error);
+    console.error('❌ [Supabase Me] Unexpected error:', error);
     
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Authentication failed',
+        error: 'User verification failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

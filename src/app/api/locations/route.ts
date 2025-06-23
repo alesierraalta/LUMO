@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-simple";
+import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-server";
 import db from "@/lib/db";
 
 // GET /api/locations - Obtener todas las ubicaciones

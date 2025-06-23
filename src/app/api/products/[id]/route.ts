@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { calculateMargin, calculatePrice, serializeDecimal } from '@/lib/utils';
-import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 import { db } from '@/lib/db-supabase';
 import { getProductById } from '@/services/productService';
 

@@ -30,22 +30,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // Enhanced fetchUser function that supports both Supabase Auth and JWT
-  const fetchUser = useCallback(async (useCache: boolean = true): Promise<User | null> => {
-    if (useCache && userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
-      return userCache.user;
+  const fetchUser = useCallback(async (useCache = true): Promise<User | null> => {
+    // Prevent multiple simultaneous fetches
+    if (isRefetching) {
+      console.log('🔄 Fetch already in progress, waiting...');
+      return user;
     }
 
-    if (isRefetching) {
-      return new Promise((resolve) => {
-        const checkRefetch = () => {
-          if (!isRefetching) {
-            resolve(userCache?.user || null);
-          } else {
-            setTimeout(checkRefetch, 50);
-          }
-        };
-        checkRefetch();
-      });
+    // Check cache first
+    if (useCache && userCache && (Date.now() - userCache.timestamp) < CACHE_DURATION) {
+      console.log('📄 Using cached user data');
+      return userCache.user;
     }
 
     isRefetching = true;
@@ -53,9 +48,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔍 Fetching user data...');
 
-      // SUPABASE-ONLY AUTHENTICATION (No JWT fallbacks)
+      // Method 1: Try JWT authentication first (for Choreo compatibility)
       try {
-        console.log('🔍 Attempting Supabase-only authentication...');
+        console.log('🎯 Attempting JWT authentication...');
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            console.log('✅ JWT authentication successful:', data.user.email);
+            
+            const jwtUser: User = {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name,
+              role: data.user.role,
+              isActive: data.user.isActive,
+              permissions: data.user.permissions || []
+            };
+
+            // CRITICAL CHOREO FIX: Admin fallback for root user
+            if (data.user.email === 'alesierraalta@gmail.com') {
+              console.log('🔑 JWT CHOREO FIX: Applied admin role for root user');
+              jwtUser.role = 'ADMIN';
+              jwtUser.isActive = true;
+              jwtUser.permissions = ['read', 'write', 'delete', 'admin'];
+            }
+
+            userCache = { user: jwtUser, timestamp: Date.now() };
+            return jwtUser;
+          }
+        } else {
+          console.log('ℹ️ JWT authentication not available, trying Supabase Auth...');
+        }
+      } catch (jwtError) {
+        console.log('ℹ️ JWT authentication failed, trying Supabase Auth:', jwtError);
+      }
+
+      // Method 2: Fallback to Supabase Auth (for local development)
+      try {
+        console.log('🔍 Attempting Supabase authentication...');
         const { getSupabaseClient } = await import('@/lib/supabase-singleton');
         const supabase = getSupabaseClient();
 
@@ -68,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!session?.user) {
-          console.log('ℹ️ No active Supabase session');
+          console.log('ℹ️ No active session');
           userCache = { user: null, timestamp: Date.now() };
           return null;
         }
@@ -146,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // No authentication method worked
-      console.log('❌ Supabase authentication failed - NO FALLBACKS');
+      console.log('❌ No authentication method succeeded');
       userCache = { user: null, timestamp: Date.now() };
       return null;
 
@@ -176,21 +214,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('🔍 Attempting Supabase-only logout...');
-      
-      // SUPABASE-ONLY LOGOUT (No JWT fallbacks)
+      // Try JWT logout first
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          console.log('✅ JWT logout successful');
+          setUser(null);
+          userCache = null; // Clear cache
+          return true;
+        }
+      } catch (jwtLogoutError) {
+        console.log('ℹ️ JWT logout not available, trying Supabase logout');
+      }
+
+      // Fallback to Supabase logout
       const { signOut } = await import('@/lib/supabase-auth-client');
       const success = await signOut();
       
       if (success) {
-        console.log('✅ Supabase logout successful');
         setUser(null);
         userCache = null; // Clear cache
-        return true;
-      } else {
-        console.warn('⚠️ Supabase logout failed');
-        return false;
       }
+      
+      return success;
     } catch (error) {
       console.error('❌ Logout error:', error);
       return false;

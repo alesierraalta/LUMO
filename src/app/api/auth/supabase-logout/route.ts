@@ -1,23 +1,44 @@
+/**
+ * Supabase-Only Logout Endpoint
+ * NO JWT, NO LEGACY FALLBACKS - ONLY SUPABASE
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { clearAuthCookies } from '@/lib/supabase-auth-server';
+import { supabaseServer } from '@/lib/supabase-server-only';
 
 export async function POST(request: NextRequest) {
   try {
-    // Clear auth cookies
-    const success = await clearAuthCookies();
+    console.log('🔍 [Supabase Logout] Starting Supabase-only logout...');
+    
+    // Use Supabase authentication
+    const supabase = supabaseServer;
+    
+    const { error } = await supabase.auth.signOut();
 
-    if (!success) {
+    if (error) {
+      console.log(`❌ [Supabase Logout] Logout failed: ${error.message}`);
       return NextResponse.json(
-        { error: 'Failed to clear auth cookies' },
+        { success: false, error: 'Logout failed' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    console.log('✅ [Supabase Logout] Logout successful');
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Supabase logout successful'
+    });
+
   } catch (error) {
-    console.error('❌ Supabase logout error:', error);
+    console.error('❌ [Supabase Logout] Unexpected error:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false, 
+        error: 'Logout failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

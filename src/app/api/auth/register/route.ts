@@ -1,4 +1,4 @@
-import { hashPassword } from '@/lib/auth-simple';
+import { hashPassword } from '@/lib/auth-server';
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { z } from 'zod';

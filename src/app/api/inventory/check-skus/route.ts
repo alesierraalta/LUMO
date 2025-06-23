@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db-supabase';
-import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
   try {

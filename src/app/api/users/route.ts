@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-server';
 import { supabaseServer } from '@/lib/supabase-server-only';
 import db from '@/lib/db';
 import { z } from 'zod';

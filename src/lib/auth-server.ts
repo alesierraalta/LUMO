@@ -1,16 +1,27 @@
+/**
+ * Supabase-Only Server Authentication
+ * NO JWT, NO LEGACY FALLBACKS - ONLY SUPABASE
+ */
+
 import { cookies } from 'next/headers';
-import { getCurrentUserFromToken } from './auth-simple';
+import { NextRequest } from 'next/server';
 import { supabaseServer } from './supabase-server-only';
 
-const COOKIE_NAME = 'auth-token';
-const SESSION_DURATION = 7 * 24 * 60 * 60; // 7 days in seconds
+// Simple password hashing (though Supabase handles this internally)
+export const hashPassword = async (password: string): Promise<string> => {
+  // For Supabase-only auth, we don't need to hash passwords manually
+  // Supabase handles this internally with signUp/signInWithPassword
+  // This function exists only for compatibility with existing code
+  console.log('⚠️ hashPassword: Using Supabase auth - password hashing handled internally');
+  return password; // Return as-is since Supabase handles hashing
+};
 
-// Get current user from Supabase server-side
+// Get current user from Supabase ONLY
 export const getCurrentUser = async (): Promise<any> => {
-  console.log('🔍 getCurrentUser: Starting authentication check...');
+  console.log('🔍 getCurrentUser: Starting Supabase-only authentication check...');
   
   try {
-    // Try Supabase authentication first
+    // Use ONLY Supabase authentication
     const cookieStore = await cookies();
     console.log('🔍 getCurrentUser: Got cookie store');
     
@@ -18,23 +29,23 @@ export const getCurrentUser = async (): Promise<any> => {
     const allCookies = cookieStore.getAll();
     console.log('🔍 getCurrentUser: Available cookies:', allCookies.map(c => c.name).join(', '));
     
-    // CRITICAL FIX: Use server-safe Supabase client
+    // Use server-safe Supabase client
     const supabase = supabaseServer;
-    console.log('🔍 getCurrentUser: Using server-safe Supabase client');
+    console.log('🔍 getCurrentUser: Using Supabase-only client');
 
-    // Get the current session
+    // Get the current session from Supabase
     const { data: { session }, error } = await supabase.auth.getSession();
-    console.log('🔍 getCurrentUser: Session check result:');
+    console.log('🔍 getCurrentUser: Supabase session check result:');
     console.log('  - Error:', error?.message || 'none');
     console.log('  - Session exists:', !!session);
     console.log('  - User exists:', !!session?.user);
     
     if (!error && session?.user) {
-      console.log('✅ getCurrentUser: Valid session found');
+      console.log('✅ getCurrentUser: Valid Supabase session found');
       console.log('  - User ID:', session.user.id);
       console.log('  - Email:', session.user.email);
       
-      // Get additional user data directly from database (no internal fetch)
+      // Get additional user data from database
       let userRole = 'USER';
       let userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User';
       let isActive = true;
@@ -83,49 +94,113 @@ export const getCurrentUser = async (): Promise<any> => {
         permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
       };
 
-      console.log('✅ getCurrentUser: Returning user object:', JSON.stringify(user, null, 2));
+      console.log('✅ getCurrentUser: Returning Supabase user object:', JSON.stringify(user, null, 2));
       return user;
     }
 
-    console.log('⚠️ getCurrentUser: No Supabase session, trying legacy JWT...');
-    
-    // Fallback to legacy JWT system
-    const authToken = cookieStore.get(COOKIE_NAME)?.value;
-    if (authToken) {
-      console.log('🔍 getCurrentUser: Found legacy auth token, checking...');
-      const legacyUser = await getCurrentUserFromToken(authToken);
-      if (legacyUser) {
-        console.log('✅ getCurrentUser: Legacy user found:', JSON.stringify(legacyUser, null, 2));
-        return legacyUser;
-      } else {
-        console.log('❌ getCurrentUser: Legacy token invalid');
-      }
-    } else {
-      console.log('❌ getCurrentUser: No legacy auth token found');
-    }
-
-    console.log('❌ getCurrentUser: No valid authentication found, returning null');
+    console.log('❌ getCurrentUser: No Supabase session found - NO FALLBACKS');
     return null;
   } catch (error) {
-    console.error('❌ getCurrentUser: Error occurred:', error);
+    console.error('❌ getCurrentUser: Supabase error occurred:', error);
     console.error('❌ getCurrentUser: Stack trace:', error.stack);
     return null;
   }
 };
 
-// Set auth cookie (legacy support)
-export const setAuthCookie = async (token: string): Promise<void> => {
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: SESSION_DURATION,
-  });
+// REPLACEMENT for getCurrentUserFromToken - now uses Supabase Bearer token
+export const getCurrentUserFromToken = async (token: string): Promise<any> => {
+  console.log('🔍 getCurrentUserFromToken: Using Supabase token authentication...');
+  
+  try {
+    const supabase = supabaseServer;
+    
+    // Use the provided token to get user from Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      console.log('❌ getCurrentUserFromToken: Invalid Supabase token');
+      return null;
+    }
+
+    // Get additional user data from database
+    let userRole = 'USER';
+    let userName = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+    let isActive = true;
+
+    try {
+      const { data: dbUser, error: dbError } = await supabase
+        .from('users')
+        .select(`
+          name, 
+          is_active, 
+          roles!inner(name)
+        `)
+        .eq('email', user.email)
+        .single();
+
+      if (!dbError && dbUser) {
+        userName = dbUser.name || userName;
+        isActive = dbUser.is_active;
+        userRole = (dbUser.roles as any)?.name || 'USER';
+      } else {
+        // For alesierraalta@gmail.com, default to ADMIN role
+        if (user.email === 'alesierraalta@gmail.com') {
+          userRole = 'ADMIN';
+        }
+      }
+    } catch (dbError) {
+      // For alesierraalta@gmail.com, default to ADMIN role
+      if (user.email === 'alesierraalta@gmail.com') {
+        userRole = 'ADMIN';
+      }
+    }
+
+    const userObj = {
+      id: user.id,
+      email: user.email,
+      name: userName,
+      role: userRole,
+      isActive: isActive,
+      permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
+    };
+
+    console.log('✅ getCurrentUserFromToken: Returning Supabase user:', JSON.stringify(userObj, null, 2));
+    return userObj;
+  } catch (error) {
+    console.error('❌ getCurrentUserFromToken: Error:', error);
+    return null;
+  }
 };
 
-// Clear auth cookie (legacy support)
-export const clearAuthCookie = async (): Promise<void> => {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+// REPLACEMENT for getTokenFromRequest - now gets Supabase Bearer token
+export const getTokenFromRequest = (request: NextRequest): string | null => {
+  // Get Bearer token from Authorization header (Supabase standard)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  // No more JWT cookie fallback - ONLY Supabase Bearer tokens
+  console.log('⚠️ getTokenFromRequest: No Supabase Bearer token found');
+  return null;
+};
+
+// Helper functions for Supabase-only auth
+export const isAdmin = (user: any): boolean => {
+  return user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+};
+
+export const isManager = (user: any): boolean => {
+  return user?.role === 'MANAGER' || isAdmin(user);
+};
+
+// Clear Supabase auth (no more JWT cookies)
+export const clearAuth = async (): Promise<void> => {
+  try {
+    const supabase = supabaseServer;
+    await supabase.auth.signOut();
+    console.log('✅ Supabase auth cleared');
+  } catch (error) {
+    console.error('❌ Error clearing Supabase auth:', error);
+  }
 }; 

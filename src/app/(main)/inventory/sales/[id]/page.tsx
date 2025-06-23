@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import db from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-simple";
+import { isAdmin } from "@/lib/auth-server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 

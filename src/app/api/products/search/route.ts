@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db-supabase';
 import { serializeDecimal } from '@/lib/utils';
-import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-simple';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {

@@ -102,10 +102,13 @@ GET /dashboard 200 in 1237ms
 - [x] **25. Crear configuración optimizada** — choreo-optimized.yaml con timeouts reducidos — ✅ 2025-01-22 04:16
 - [x] **26. Crear Dockerfile optimizado** — Dockerfile-optimized para startup rápido — ✅ 2025-01-22 04:17
 - [x] **27. Crear health endpoint mejorado** — route-enhanced.ts con mejor rendimiento — ✅ 2025-01-22 04:18
-- [ ] **28. Aplicar configuración optimizada** — Reemplazar choreo.yaml y Dockerfile actuales
-- [ ] **29. Desplegar a Choreo production** — Commit y push para trigger deployment
-- [ ] **30. Verificar deployment exitoso** — Confirmar que https://lumoapp.choreoapps.dev responde
-- [ ] **31. Monitorear estabilidad** — Verificar logs y performance post-deployment
+- [x] **28. Aplicar configuración optimizada** — Reemplazar choreo.yaml y Dockerfile actuales — ✅ 2025-01-22 04:25
+- [x] **29. Desplegar a Choreo production** — Commit y push para trigger deployment — ✅ 2025-01-22 04:30
+- [x] **30. Identificar problema de build** — Logs mostraron missing .next directory — ✅ 2025-01-22 04:45
+- [x] **31. Corregir Dockerfile** — Fixed npm ci --only=production issue — ✅ 2025-01-22 04:50
+- [x] **32. Redesplegar con fix** — Commit e4ff169 pushed successfully — ✅ 2025-01-22 04:55
+- [ ] **33. Verificar deployment exitoso** — Confirmar que https://lumoapp.choreoapps.dev responde — 🔄 EN PROGRESO
+- [ ] **34. Monitorear estabilidad** — Verificar logs y performance post-deployment — 🔄 MONITOR ACTIVO
 
 ## 🎉 RESULTADOS EXITOSOS
 

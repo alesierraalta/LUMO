@@ -34,7 +34,10 @@
     "test:stability": "node scripts/validate-server-stability.js",
     "build:test": "node scripts/test-build.js",
     "build:clean": "rimraf .next && npm run build",
-    "build:choreo": "NODE_ENV=production npm run build"
+    "build:choreo": "NODE_ENV=production npm run build",
+    "build:safe": "next build",
+    "start:safe": "node server.js",
+    "deploy:simple": "echo \"Using simplified deployment\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

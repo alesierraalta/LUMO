@@ -1,43 +1,80 @@
-version: 1.0
-build:
-  buildpacks:
-    - name: nodejs
-  env:
-    - name: NODE_ENV
-      value: production
-    - name: PORT
-      value: "8080"
-deploy:
-  resources:
-    cpu: 1.0
-    memory: 1Gi
-  env:
-    - name: NODE_ENV
-      value: production
-    - name: PORT
-      value: "8080"
-  docker:
-    context: .
-    buildArgs:
+apiVersion: core.choreo.dev/v1alpha1
+kind: Component
+metadata:
+  name: lumo-inventory-simple
+  description: "LUMO Inventory - Simplified Build Configuration"
+spec:
+  type: Web Application
+  runtime:
+    type: docker
+  build:
+    # Minimal build configuration
+    env:
       NODE_ENV: production
-  health:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max-old-space-size=2048"
+    # Remove complex build commands that might trigger status updates
+    timeoutSeconds: 900
+  deploy:
+    command: node server.js
+    env:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    containerPort: 8080
+  # Minimal environment variables
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: "8080"
+    - name: DATABASE_URL
+      valueFrom:
+        secretRef:
+          name: DATABASE_URL
+    - name: JWT_SECRET
+      valueFrom:
+        secretRef:
+          name: JWT_SECRET
+    - name: NEXT_PUBLIC_SUPABASE_URL
+      valueFrom:
+        secretRef:
+          name: NEXT_PUBLIC_SUPABASE_URL
+    - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
+      valueFrom:
+        secretRef:
+          name: NEXT_PUBLIC_SUPABASE_ANON_KEY
+  # Conservative resource allocation
+  resources:
+    cpu:
+      units: 2
+    memory:
+      units: 4Gi
+  # Simple scaling
+  scaling:
+    minReplicas: 1
+    maxReplicas: 2
+  # Basic health checks
+  healthCheck:
     readinessProbe:
       httpGet:
         path: /api/health
         port: 8080
       initialDelaySeconds: 30
-      periodSeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
     livenessProbe:
       httpGet:
         path: /api/health
         port: 8080
-      initialDelaySeconds: 30
-      periodSeconds: 10
-  startup:
-    shell: /bin/sh
-    command: |-
-      echo "Starting with CSS-specific fix server..."
-      # Run minimal fix first to ensure directory structure
-      node minimal-fix.js
-      # Use dedicated CSS fix server with runtime patching
-      node -r ./runtime-fix.js css-fix-server.js 
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+  expose:
+    type: HTTP
+    port: 8080 

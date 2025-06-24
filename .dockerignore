@@ -1,0 +1,22 @@
+# Reduce build context to avoid network timeouts
+node_modules
+.git
+.github
+.next
+*.log
+*.md
+docs/
+test-results/
+playwright-report/
+coverage/
+.env*
+!.env.choreo
+*.test.*
+*.spec.*
+__tests__/
+__mocks__/
+temp/
+tmp/
+uploads/
+logs/
+reports/

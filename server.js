@@ -49,21 +49,67 @@ console.log('🌐 Hostname:', hostname);
 console.log('🔌 Port:', port);
 
 // CRITICAL FIX: Check if we're running in standalone mode
-const standaloneServerPath = path.join(__dirname, '.next', 'standalone', 'server.js');
-const hasStandaloneServer = fs.existsSync(standaloneServerPath);
+// In Docker, the standalone build is copied to root directory
+const standaloneServerPath = path.join(__dirname, 'server.js');
+const nextBuildIdPath = path.join(__dirname, '.next', 'BUILD_ID');
+const hasStandaloneServer = fs.existsSync(nextBuildIdPath) && fs.existsSync(path.join(__dirname, '.next'));
+
+console.log('🔍 Checking for standalone build...');
+console.log('📁 Current directory:', __dirname);
+console.log('📁 Looking for .next/BUILD_ID:', nextBuildIdPath);
+console.log('📁 BUILD_ID exists:', fs.existsSync(nextBuildIdPath));
+console.log('📁 .next directory exists:', fs.existsSync(path.join(__dirname, '.next')));
 
 if (!dev && hasStandaloneServer) {
   console.log('⚡ Detected standalone build - using optimized Next.js server');
-  console.log('📁 Standalone server path:', standaloneServerPath);
+  console.log('📁 Using current directory as standalone server');
   
   // Set required environment variables for standalone server
   process.env.HOSTNAME = hostname;
   process.env.PORT = port.toString();
   
   try {
-    // Load and run the standalone server
-    require(standaloneServerPath);
-    console.log('🎉 Standalone server started successfully!');
+    // For standalone builds, the server.js in the root is the Next.js server
+    // We need to run it directly without requiring it again
+    console.log('🎉 Standalone server environment detected!');
+    console.log('🔄 Starting Next.js standalone server...');
+    
+    // Use Next.js standalone server logic
+    const { createServer } = require('http');
+    const NextServer = require('next/dist/server/next-server').default;
+    
+    const server = new NextServer({
+      hostname,
+      port,
+      dir: __dirname,
+      dev: false,
+      conf: require('./.next/required-server-files.json').config || {}
+    });
+    
+    const requestHandler = server.getRequestHandler();
+    
+    createServer(async (req, res) => {
+      try {
+        await requestHandler(req, res);
+      } catch (err) {
+        console.error('❌ Error handling request:', err);
+        res.statusCode = 500;
+        res.end('Internal Server Error');
+      }
+    }).listen(port, hostname, (err) => {
+      if (err) {
+        console.error('❌ Standalone server failed to start:', err);
+        console.log('🔄 Falling back to custom server...');
+        startCustomServer();
+      } else {
+        console.log('🎉 LUMO Standalone Server successfully started!');
+        console.log(`🌐 Server running at http://${hostname}:${port}`);
+        console.log('📊 Health check: /api/health');
+        console.log('🏠 Dashboard: /dashboard');
+        console.log('✅ Ready for Choreo deployment');
+      }
+    });
+    
   } catch (error) {
     console.error('❌ Failed to start standalone server:', error);
     console.log('🔄 Falling back to custom server...');

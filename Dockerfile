@@ -70,9 +70,13 @@ COPY --from=builder --chown=nextjs:nodejs /workspace/.next/static ./.next/static
 # Copy public files
 COPY --from=builder --chown=nextjs:nodejs /workspace/public ./public
 
-# CRITICAL FIX: Copy our custom scripts for Choreo runtime setup
+# CRITICAL FIX: Copy our custom scripts for Choreo runtime setup and rename our custom server
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-runtime-setup.js ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/ 2>/dev/null || echo "Runtime patcher not found, skipping"
+COPY --from=builder --chown=nextjs:nodejs /workspace/server.js ./custom-server.js
+
+# CRITICAL FIX: Create a startup script that runs our setup then the standalone server
+RUN echo '#!/bin/sh\necho "🚀 Starting LUMO with Choreo runtime setup..."\nnode scripts/choreo-runtime-setup.js\necho "✅ Runtime setup complete, starting Next.js server..."\nexec node server.js' > start.sh && chmod +x start.sh
 
 # CRITICAL FIX: Final verification in runtime container
 RUN echo "🔍 Final verification in runtime container..." && \
@@ -91,5 +95,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
-# CRITICAL FIX: Use the Next.js standalone server directly with our runtime setup
-CMD ["sh", "-c", "echo '🚀 Starting from /workspace' && pwd && ls -la && node scripts/choreo-runtime-setup.js && node server.js"]
+# CRITICAL FIX: Use the startup script that combines our setup with standalone server
+CMD ["./start.sh"]

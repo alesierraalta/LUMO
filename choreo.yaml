@@ -16,7 +16,7 @@ spec:
     # Remove complex build commands that might trigger status updates
     timeoutSeconds: 900
   deploy:
-    command: node server.js
+    command: ./start.sh
     env:
       NODE_ENV: production
       PORT: 8080

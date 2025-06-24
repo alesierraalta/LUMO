@@ -35,9 +35,14 @@
     "build:test": "node scripts/test-build.js",
     "build:clean": "rimraf .next && npm run build",
     "build:choreo": "NODE_ENV=production npm run build",
+<<<<<<< HEAD
     "build:safe": "next build",
     "start:safe": "node server.js",
     "deploy:simple": "echo \"Using simplified deployment\""
+=======
+    "test:choreo-build": "node scripts/test-choreo-build.js",
+    "test:docker-build": "node scripts/test-docker-build.js"
+>>>>>>> 644de3f9d833787ba22850cbe2b17eb7307b3b1d
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

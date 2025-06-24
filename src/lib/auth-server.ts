@@ -20,6 +20,12 @@ export const hashPassword = async (password: string): Promise<string> => {
 export const getCurrentUser = async (): Promise<any> => {
   console.log('🔍 getCurrentUser: Starting Supabase-only authentication check...');
   
+  // CRITICAL FIX: Handle build-time execution
+  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    console.log('⚠️ getCurrentUser: Build-time execution detected, returning null');
+    return null;
+  }
+  
   try {
     // Use ONLY Supabase authentication
     const cookieStore = await cookies();
@@ -103,6 +109,13 @@ export const getCurrentUser = async (): Promise<any> => {
   } catch (error) {
     console.error('❌ getCurrentUser: Supabase error occurred:', error);
     console.error('❌ getCurrentUser: Stack trace:', error.stack);
+    
+    // CRITICAL FIX: Handle build-time errors gracefully
+    if (process.env.NODE_ENV === 'production' && error.message?.includes('cookies')) {
+      console.log('⚠️ getCurrentUser: Build-time cookie error, returning null');
+      return null;
+    }
+    
     return null;
   }
 };

@@ -28,6 +28,7 @@ RUN npm run build
 
 # Verify build was created (debugging step)
 RUN ls -la .next/ || echo "ERROR: .next directory not found after build"
+RUN ls -la .next/standalone/ || echo "ERROR: .next/standalone directory not found after build"
 
 # Production image with minimal size
 FROM base AS runner
@@ -45,14 +46,23 @@ RUN apk add --no-cache curl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy the standalone build - CRITICAL: Copy entire .next directory first
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# CRITICAL FIX: Copy standalone build files in correct order
+# Copy the standalone server files first (this includes server.js and all dependencies)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+
+# Copy the static assets to the correct location within standalone structure
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy public files
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# CRITICAL FIX: Copy our custom scripts for Choreo runtime setup
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/choreo-runtime-setup.js ./scripts/
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/runtime-module-patcher.js ./src/lib/ 2>/dev/null || echo "Runtime patcher not found, skipping"
 
 # Verify files are in place (debugging step)
 RUN ls -la .next/ || echo "ERROR: .next directory missing in runner stage"
+RUN ls -la server.js || echo "ERROR: server.js missing in runner stage"
 
 # Set proper permissions
 USER nextjs
@@ -64,5 +74,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
-# Start the application
-CMD ["node", "server.js"] 
+# CRITICAL FIX: Use the Next.js standalone server directly with our runtime setup
+CMD ["sh", "-c", "node scripts/choreo-runtime-setup.js && node server.js"] 

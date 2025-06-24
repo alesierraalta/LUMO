@@ -35,7 +35,8 @@
     "build:test": "node scripts/test-build.js",
     "build:clean": "rimraf .next && npm run build",
     "build:choreo": "NODE_ENV=production npm run build",
-    "test:choreo-build": "node scripts/test-choreo-build.js"
+    "test:choreo-build": "node scripts/test-choreo-build.js",
+    "test:docker-build": "node scripts/test-docker-build.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

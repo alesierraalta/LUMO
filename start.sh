@@ -2,6 +2,12 @@
 
 echo "🚀 [Choreo Start] Initializing LUMO application..."
 
+# DEBUG: Check environment variables before anything else
+echo "🔍 [Choreo Start] DEBUG - Environment Variables:"
+echo "   - NEXT_PUBLIC_SUPABASE_URL length: ${#NEXT_PUBLIC_SUPABASE_URL}"
+echo "   - NEXT_PUBLIC_SUPABASE_ANON_KEY length: ${#NEXT_PUBLIC_SUPABASE_ANON_KEY}"
+echo "   - NEXT_PUBLIC_SUPABASE_ANON_KEY preview: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:0:20}..."
+
 # Step 1: Environment Detection and Configuration
 echo "🔍 [Choreo Start] Detecting and configuring environment..."
 cd /workspace

@@ -48,6 +48,10 @@ if (envConfig.environment === 'production' || envConfig.environment === 'staging
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+console.log('🔍 [Choreo Setup] Debug - Supabase URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'undefined');
+console.log('🔍 [Choreo Setup] Debug - Supabase Key length:', supabaseKey ? supabaseKey.length : 'undefined');
+console.log('🔍 [Choreo Setup] Debug - Supabase Key preview:', supabaseKey ? supabaseKey.substring(0, 20) + '...' : 'undefined');
+
 if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
   console.error('❌ [Choreo Setup] Invalid Supabase URL configuration');
   process.exit(1);
@@ -56,6 +60,7 @@ if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
 if (!supabaseKey || supabaseKey.length < 50) {
   console.error('❌ [Choreo Setup] Invalid Supabase anonymous key configuration');
   console.error('❌ [Choreo Setup] Key length:', supabaseKey ? supabaseKey.length : 'undefined');
+  console.error('❌ [Choreo Setup] Full key value:', supabaseKey);
   process.exit(1);
 }
 

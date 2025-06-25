@@ -39,7 +39,15 @@
     "start:safe": "node server.js",
     "deploy:simple": "echo \"Using simplified deployment\"",
     "test:choreo-build": "node scripts/test-choreo-build.js",
-    "test:docker-build": "node scripts/test-docker-build.js"
+    "test:docker-build": "node scripts/test-docker-build.js",
+    "test:choreo": "node scripts/test-choreo-build.js",
+    "test:choreo:quick": "scripts/quick-build-test.bat",
+    "test:choreo:full": "node scripts/test-choreo-build.js",
+    "test:build": "npm run build && node scripts/test-choreo-build.js",
+    "check:docker": "scripts/check-docker.bat",
+    "test:choreo:safe": "scripts/check-docker.bat && npm run test:choreo:full",
+    "test:choreo:github": "node scripts/github-test-choreo.js",
+    "setup:github-actions": "scripts\\setup-github-actions.bat"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

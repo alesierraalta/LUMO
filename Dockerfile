@@ -92,7 +92,9 @@ COPY --from=builder --chown=nextjs:nodejs /workspace/public ./public
 # CRITICAL FIX: Copy our custom scripts and startup script
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-runtime-setup.js ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-env-detector.js ./scripts/
-COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/ 2>/dev/null || echo "Runtime patcher not found, skipping"
+# Copy runtime module patcher if it exists (conditional copy)
+RUN mkdir -p ./src/lib/
+COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/ || echo "Runtime patcher not found, skipping"
 COPY --from=builder --chown=nextjs:nodejs /workspace/server.js ./custom-server.js
 
 # CRITICAL FIX: Copy our intelligent startup script from workspace

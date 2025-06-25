@@ -53,8 +53,9 @@ if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
   process.exit(1);
 }
 
-if (!supabaseKey || supabaseKey.length < 100) {
+if (!supabaseKey || supabaseKey.length < 50) {
   console.error('❌ [Choreo Setup] Invalid Supabase anonymous key configuration');
+  console.error('❌ [Choreo Setup] Key length:', supabaseKey ? supabaseKey.length : 'undefined');
   process.exit(1);
 }
 

@@ -81,6 +81,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 
+# CRITICAL FIX: Set Supabase environment variables for runtime
+ENV NEXT_PUBLIC_SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MzEzMTUsImV4cCI6MjAzMzAwNzMxNX0.QIBUm2NmvtPKv4pEjQhGIjhGJ4LKPjqVjBXVpRpMQwY
+
+# CRITICAL FIX: Force production environment for Choreo
+ENV CHOREO_ENVIRONMENT=production
+ENV CHOREO_USE_STANDALONE=true
+
 # Install curl for health checks
 RUN apk add --no-cache curl
 

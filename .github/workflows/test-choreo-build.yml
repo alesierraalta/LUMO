@@ -108,14 +108,23 @@ jobs:
     - name: Build Docker image
       run: |
         echo "🐳 Building Docker image..."
-        docker build \
-          --build-arg NODE_ENV=${{ matrix.test-env }} \
-          --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ matrix.test-env == 'production' && secrets.SUPABASE_URL_PROD || secrets.SUPABASE_URL_DEV || 'https://test.supabase.co' }}" \
-          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ matrix.test-env == 'production' && secrets.SUPABASE_KEY_PROD || secrets.SUPABASE_KEY_DEV || 'test-key' }}" \
-          --build-arg DATABASE_URL="${{ matrix.test-env == 'production' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_DEV || 'postgresql://test:test@localhost:5432/test' }}" \
-          --tag lumo-choreo-test:${{ matrix.test-env }} \
-          --progress=plain \
-          .
+        if [ "${{ matrix.test-env }}" = "production" ]; then
+          echo "🏭 Building PRODUCTION image (using Dockerfile ENV values)..."
+          docker build \
+            --tag lumo-choreo-test:${{ matrix.test-env }} \
+            --progress=plain \
+            .
+        else
+          echo "🧪 Building DEVELOPMENT image (using build args)..."
+          docker build \
+            --build-arg NODE_ENV=${{ matrix.test-env }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.SUPABASE_URL_DEV || 'https://test.supabase.co' }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.SUPABASE_KEY_DEV || 'test-key' }}" \
+            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL_DEV || 'postgresql://test:test@localhost:5432/test' }}" \
+            --tag lumo-choreo-test:${{ matrix.test-env }} \
+            --progress=plain \
+            .
+        fi
           
     - name: Test Docker image structure
       run: |

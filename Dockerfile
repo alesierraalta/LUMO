@@ -9,7 +9,7 @@ WORKDIR /workspace
 
 # Install ALL dependencies (including devDependencies for build)
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund && npm cache clean --force
+RUN npm ci --no-audit --no-fund --legacy-peer-deps && npm cache clean --force
 
 # Build stage
 FROM base AS builder

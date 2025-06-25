@@ -91,10 +91,10 @@ jobs:
         npm run test:clear-cache || echo "Cache clear skipped"
         echo "✅ Test environment ready"
         
-    - name: 🧪 Run Unit Tests
+    - name: 🧪 Run Unit Tests (CI Mode)
       run: |
-        echo "🧪 Starting unit tests..."
-        npm run test:unit
+        echo "🧪 Starting unit tests in CI mode (mocked environment)..."
+        npm run test:unit:ci
       continue-on-error: false
       
     - name: 🧪 Run Integration Tests  

@@ -1,4 +1,4 @@
-# 🧪 TESTING CHOREO BUILDS
+# 🧪 Testing Choreo Builds - LUMO
 
 ## 🎯 **¿POR QUÉ TESTEAR?**
 
@@ -10,202 +10,214 @@ Testear tus builds antes de subirlos a Choreo te permite:
 - ✅ **Verificar BUILD_ID** - Asegurar que el standalone build funciona
 - ✅ **Probar startup** - Verificar tiempos de arranque
 
-## 🚀 **OPCIONES DE TESTING**
+## 📋 **RESUMEN DE TESTING ACTUALIZADO**
 
-### **1. 🌟 GitHub Actions (RECOMENDADO - Sin Docker)**
+Se ha implementado un sistema de testing híbrido que separa tests unitarios (con mocks) de tests de integración (con DB real):
 
-Perfecto para usuarios sin Docker local. Usa la infraestructura de GitHub.
+### **✅ PROBLEMAS RESUELTOS:**
+- ❌ **Dependencia faltante**: Agregado `@testing-library/dom`
+- ❌ **Supabase en CI**: Sistema de mocks completo implementado
+- ❌ **Tests de integración en GitHub**: Separados de tests unitarios
+- ❌ **Configuración Jest**: Mejorada para entorno CI
 
-#### **🏃‍♂️ Test Rápido (2-3 minutos)**
-Se ejecuta automáticamente en cada push/PR:
-- ✅ Validación de estructura de archivos
-- ✅ Verificación de sintaxis JSON
-- ✅ Detección de conflictos de merge
-- ✅ Verificación de build
-- ✅ Validación de dependencias
+---
 
-#### **🔬 Test Completo (5-10 minutos)**
-Ejecutar manualmente para validación completa:
+## 🎯 **ESTRATEGIAS DE TESTING**
 
-1. **Ir a GitHub Actions**:
-   - Visita tu repositorio en GitHub
-   - Haz clic en "Actions"
-   - Selecciona "Test Choreo Build"
+### **1. 🤖 GitHub Actions (CI/CD)**
+**Para testing automatizado sin Docker local**
 
-2. **Ejecutar Workflow**:
-   - Haz clic en "Run workflow"
-   - Elige tipo: `quick`, `full`, o `production`
-   - Haz clic en "Run workflow"
-
-3. **Monitorear Resultados**:
-   - Ve logs en tiempo real
-   - Descarga reportes de artifacts
-   - Revisa puntuación de confianza
-
-#### **Configurar Secrets en GitHub**
-
-Para testing completo, agrega estos secrets en GitHub Settings > Secrets:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
-DATABASE_URL=tu_database_url
-JWT_SECRET=tu_jwt_secret_32_chars_minimum
-SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
-```
-
-### **2. 🐳 Testing Local con Docker**
-
-Para usuarios con Docker Desktop instalado:
-
-#### **Test Rápido (2-3 minutos)**
 ```bash
-# Windows
-scripts\quick-build-test.bat
-
-# Manual
-node scripts/github-test-choreo.js
+# Tests que se ejecutan en GitHub Actions
+npm run test:unit:ci        # Tests unitarios con mocks
+npm run test:e2e           # Tests End-to-End
+npm run test:performance   # Tests de rendimiento
 ```
 
-#### **Test Completo (5-10 minutos)**
+**✅ Ventajas:**
+- No requiere Docker local
+- Tests unitarios con mocks completos
+- Validación de build y sintaxis
+- Gratuito para repositorios públicos
+
+**❌ Limitaciones:**
+- No tests de integración con DB real
+- Entorno simulado, no idéntico a producción
+
+### **2. 🏠 Testing Local**
+**Para testing completo con base de datos real**
+
 ```bash
-# Windows  
-scripts\test-choreo-build.bat
+# Ejecutar script interactivo
+scripts/run-tests-local.bat
 
-# Manual
-node scripts/test-choreo-build.js --full
+# O manualmente:
+npm run test:unit:ci           # Tests unitarios (mocks)
+npm run test:integration:local # Tests integración (DB real)
+npm run test:e2e              # Tests End-to-End
 ```
 
-## 📋 **QUÉ SE TESTEA**
+**✅ Ventajas:**
+- Tests de integración con Supabase real
+- Validación completa de funcionalidad
+- Debugging más fácil
 
-### **GitHub Actions Testing**
-- ✅ **Estructura de Archivos**: Todos los archivos requeridos presentes
-- ✅ **Validación de Sintaxis**: JSON/YAML correcto
-- ✅ **Conflictos de Merge**: Sin marcadores de conflicto
-- ✅ **Build Docker**: Imagen se construye exitosamente
-- ✅ **Test de Container**: Inicia y responde a health checks
-- ✅ **BUILD_ID**: Detección de standalone server
-- ✅ **Performance**: Validación de tiempo de respuesta
-- ✅ **Environment**: Configuración de variables
+**❌ Limitaciones:**
+- Requiere configuración de DB
+- Variables de entorno Supabase necesarias
 
-### **Testing Local Docker**
-- ✅ **Sistema de Build**: Build de Next.js se completa
-- ✅ **Salida Standalone**: Server.js generado
-- ✅ **Startup Container**: Container Docker ejecuta
-- ✅ **Health Checks**: Endpoints API responden
-- ✅ **Uso de Memoria**: Dentro de límites esperados
+---
 
-## 🎯 **CRITERIOS DE ÉXITO**
+## 🔧 **CONFIGURACIÓN ACTUALIZADA**
 
-Tu build está listo para Choreo cuando:
-
-- ✅ **90%+ tasa de éxito en tests**
-- ✅ **Container inicia en <10 segundos**
-- ✅ **Health endpoint responde en <2 segundos**
-- ✅ **Sin errores críticos en logs**
-- ✅ **BUILD_ID detectado correctamente**
-- ✅ **Standalone server ejecutando**
-
-## 📊 **RESULTADOS DE GITHUB ACTIONS**
-
-### **Alta Confianza (90%+)**
-```
-🎉 HIGH CONFIDENCE - Listo para deployment en Choreo!
-
-✅ Docker build successful
-✅ Container startup successful  
-✅ Health endpoint responding
-✅ BUILD_ID validation passed
-✅ Standalone server detected
+### **Scripts de Package.json:**
+```json
+{
+  "test:unit:ci": "jest --testPathIgnorePatterns=integration --testPathIgnorePatterns=e2e --verbose",
+  "test:integration:local": "jest --config jest.config.integration.js --runInBand --detectOpenHandles",
+  "test:unit": "jest",
+  "test:integration": "jest --config jest.config.integration.js --runInBand"
+}
 ```
 
-### **Necesita Atención (<90%)**
-```
-⚠️ NEEDS ATTENTION - Arreglar errores antes de deploy
+### **Mocks Implementados:**
+- **Supabase Client**: Mock completo con todas las operaciones CRUD
+- **Next.js Router**: Navegación simulada
+- **Fetch API**: Respuestas HTTP simuladas
+- **Storage APIs**: localStorage y sessionStorage
 
-❌ BUILD_ID missing after build
-❌ Container failed to start
-⚠️ Health check timeout
-```
+---
 
-## 🛠️ **PROBLEMAS COMUNES Y SOLUCIONES**
+## 🚀 **WORKFLOWS DE GITHUB ACTIONS**
 
-### **BUILD_ID Faltante**
-```bash
-# Problema: "Could not find a production build"
-# GitHub Actions mostrará: ❌ BUILD_ID not found
-# Solución: Verificar next.config.js standalone output
-```
-
-### **Container No Inicia**
-```bash
-# Problema: Container se cierra inmediatamente
-# GitHub Actions mostrará: ❌ Container failed to start
-# Solución: Verificar Dockerfile WORKDIR /workspace
-```
-
-### **Conflictos de Merge**
-```bash
-# Problema: Errores de parsing JSON
-# GitHub Actions mostrará: ❌ Merge conflict markers found
-# Solución: Resolver conflictos en package.json, Dockerfile
-```
-
-## 🔍 **TESTING DE ENTORNOS**
-
-Testear diferentes entornos en GitHub Actions:
-
+### **Workflow Principal: `.github/workflows/tests.yml`**
 ```yaml
-# En workflow_dispatch inputs
-test_type:
-  - quick      # Validación básica
-  - full       # Testing completo Docker
-  - production # Testing de performance
+- name: 🧪 Run Unit Tests (CI Mode)
+  run: npm run test:unit:ci
+  
+- name: 🧪 Run Integration Tests  
+  run: npm run test:integration -- --runInBand --maxWorkers=1
+  
+- name: 🧪 Run E2E Tests
+  run: npm run test:e2e
 ```
 
-## 📈 **BENCHMARKS DE PERFORMANCE**
+### **Configuración de Secretos GitHub:**
+```
+JWT_SECRET=tu-jwt-secret-32-chars
+SUPABASE_URL_DEV=https://ndprriqyhddjoixrlqnz.supabase.co
+SUPABASE_KEY_DEV=tu-key-dev
+SUPABASE_URL_PROD=https://ubjujxtvlubxowsphvuk.supabase.co
+SUPABASE_KEY_PROD=tu-key-prod
+```
 
-Performance esperada (GitHub Actions):
+---
 
-| Métrica | Target | Actual |
-|---------|--------|--------|
-| Tiempo Build | <5 minutos | ~3 minutos |
-| Container Start | <30 segundos | ~15 segundos |
-| Health Response | <5 segundos | ~2 segundos |
-| Tiempo Total Test | <10 minutos | ~7 minutos |
+## 📊 **RESULTADOS ESPERADOS**
 
-## 🔧 **TROUBLESHOOTING**
+### **GitHub Actions (CI):**
+```
+✅ Unit Tests: ~50-100 tests passing (mocked)
+✅ Build Validation: Syntax and imports
+✅ E2E Tests: User flows simulation
+⏭️ Integration Tests: Skipped (no real DB)
+```
 
-### **Debugging GitHub Actions**
+### **Local Testing:**
+```
+✅ Unit Tests: ~50-100 tests passing (mocked)
+✅ Integration Tests: ~20-50 tests (real DB)
+✅ E2E Tests: Full user flows
+✅ Build Validation: Complete
+```
 
-1. **Revisar Logs de Workflow**:
-   - Ve a tab Actions
-   - Haz clic en run fallido
-   - Expande steps fallidos
-   - Revisa logs detallados
+---
 
-2. **Descargar Artifacts**:
-   - Ve al final del workflow run
-   - Descarga reportes de test
-   - Revisa análisis detallado
+## 🎯 **COMANDOS RÁPIDOS**
 
-3. **Re-ejecutar con Debug**:
-   - Usa "Re-run jobs" con debug logging
-   - Revisa container logs en output
-
-### **Debugging Local Docker**
+### **Para desarrollo diario:**
 ```bash
-# Habilitar logging detallado
-DEBUG=1 node scripts/test-choreo-build.js
+# Tests rápidos (solo unitarios)
+npm run test:unit:ci
 
-# Revisar logs de container
-docker logs lumo-test
+# Tests completos locales
+scripts/run-tests-local.bat
 
-# Reset todo
-docker system prune -a
-rm -rf .next node_modules
-npm install
+# Tests específicos
+npm test -- --testNamePattern="Categories"
 ```
+
+### **Para CI/CD:**
+```bash
+# GitHub Actions ejecuta automáticamente:
+# - En cada push a main/develop
+# - En cada Pull Request
+# - Manualmente desde Actions tab
+```
+
+---
+
+## 🔍 **DEBUGGING DE TESTS**
+
+### **Tests Unitarios Fallando:**
+```bash
+# Ejecutar con más detalle
+npm run test:unit:ci -- --verbose --no-cache
+
+# Test específico
+npm test -- --testNamePattern="specific test name"
+```
+
+### **Tests de Integración Fallando:**
+```bash
+# Verificar conexión DB
+node -e "console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)"
+
+# Ejecutar con debugging
+npm run test:integration:local -- --detectOpenHandles --verbose
+```
+
+---
+
+## 📈 **MÉTRICAS DE ÉXITO**
+
+### **GitHub Actions:**
+- ✅ **Build Success Rate**: >95%
+- ✅ **Unit Test Pass Rate**: >98%
+- ✅ **E2E Test Pass Rate**: >90%
+- ✅ **Build Time**: <10 minutos
+
+### **Local Testing:**
+- ✅ **Full Test Pass Rate**: >95%
+- ✅ **Integration Test Pass Rate**: >90%
+- ✅ **Code Coverage**: >80%
+
+---
+
+## 🎉 **BENEFICIOS DEL NUEVO SISTEMA**
+
+1. **🚀 Velocidad**: Tests unitarios rápidos en CI
+2. **🔒 Confiabilidad**: Mocks estables y predecibles
+3. **💰 Costo**: Sin necesidad de Docker o DB en CI
+4. **🔧 Flexibilidad**: Tests locales con DB real cuando se necesite
+5. **📊 Visibilidad**: Reportes detallados en GitHub Actions
+
+---
+
+## 📞 **SOPORTE**
+
+Si encuentras problemas:
+
+1. **Tests unitarios fallando**: Revisar mocks en `jest.setup.js`
+2. **Tests integración fallando**: Verificar variables Supabase
+3. **GitHub Actions fallando**: Revisar secrets y workflows
+4. **Build errors**: Ejecutar `npm run test:clear-cache`
+
+**🎯 Próximos pasos sugeridos:**
+1. Ejecutar `npm install` para instalar nueva dependencia
+2. Probar `npm run test:unit:ci` localmente
+3. Commitear cambios y ver GitHub Actions
+4. Usar `scripts/run-tests-local.bat` para tests completos
 
 ## 🎯 **FLUJO DE TRABAJO RECOMENDADO**
 

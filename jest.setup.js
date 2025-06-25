@@ -185,4 +185,217 @@ export const testUtils = {
 // Reset mocks before each test
 beforeEach(() => {
   testUtils.resetMocks()
-}) 
+})
+
+// Mock environment variables for testing
+process.env.NODE_ENV = 'test';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+process.env.JWT_SECRET = 'test-jwt-secret-32-characters-long';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+
+// Mock console methods to reduce noise in tests
+const originalError = console.error;
+const originalWarn = console.warn;
+
+beforeAll(() => {
+  console.error = (...args) => {
+    // Suppress specific errors that are expected in tests
+    const message = args[0];
+    if (
+      typeof message === 'string' &&
+      (message.includes('Warning: ReactDOM.render is deprecated') ||
+       message.includes('Warning: React.createFactory') ||
+       message.includes('Warning: componentWillReceiveProps') ||
+       message.includes('Warning: componentWillUpdate') ||
+       message.includes('act(...)'))
+    ) {
+      return;
+    }
+    originalError(...args);
+  };
+
+  console.warn = (...args) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' &&
+      (message.includes('React.createFactory') ||
+       message.includes('componentWillReceiveProps'))
+    ) {
+      return;
+    }
+    originalWarn(...args);
+  };
+});
+
+afterAll(() => {
+  console.error = originalError;
+  console.warn = originalWarn;
+});
+
+// Mock Next.js router
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+    pathname: '/',
+    query: {},
+    asPath: '/',
+    route: '/',
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
+  }),
+}));
+
+// Mock Next.js navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// Mock Supabase client for testing environment
+jest.mock('@supabase/supabase-js', () => {
+  const mockSupabaseClient = {
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      like: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
+      single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      maybeSingle: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      then: jest.fn((callback) => callback({ data: [], error: null })),
+    })),
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ 
+        data: { user: { id: 'test-user', email: 'test@example.com' } }, 
+        error: null 
+      })),
+      getSession: jest.fn(() => Promise.resolve({ 
+        data: { session: { access_token: 'test-token' } }, 
+        error: null 
+      })),
+      signInWithPassword: jest.fn(() => Promise.resolve({ 
+        data: { user: { id: 'test-user' }, session: { access_token: 'test-token' } }, 
+        error: null 
+      })),
+      signOut: jest.fn(() => Promise.resolve({ error: null })),
+      onAuthStateChange: jest.fn(() => ({
+        data: { subscription: { unsubscribe: jest.fn() } }
+      })),
+    },
+    storage: {
+      from: jest.fn(() => ({
+        upload: jest.fn(() => Promise.resolve({ data: { path: 'test-path' }, error: null })),
+        download: jest.fn(() => Promise.resolve({ data: new Blob(), error: null })),
+        remove: jest.fn(() => Promise.resolve({ data: [], error: null })),
+      })),
+    },
+    rpc: jest.fn(() => Promise.resolve({ data: {}, error: null })),
+  };
+
+  return {
+    createClient: jest.fn(() => mockSupabaseClient),
+  };
+});
+
+// Mock fetch globally
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+  })
+);
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(), // deprecated
+    removeListener: jest.fn(), // deprecated
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Mock window.scrollTo
+Object.defineProperty(window, 'scrollTo', {
+  writable: true,
+  value: jest.fn(),
+});
+
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
+// Mock sessionStorage
+const sessionStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+Object.defineProperty(window, 'sessionStorage', {
+  value: sessionStorageMock,
+});
+
+// Setup for React Testing Library
+import { configure } from '@testing-library/react';
+
+configure({
+  testIdAttribute: 'data-testid',
+});
+
+// Clear all mocks before each test
+beforeEach(() => {
+  jest.clearAllMocks();
+  localStorageMock.getItem.mockClear();
+  localStorageMock.setItem.mockClear();
+  localStorageMock.removeItem.mockClear();
+  localStorageMock.clear.mockClear();
+  sessionStorageMock.getItem.mockClear();
+  sessionStorageMock.setItem.mockClear();
+  sessionStorageMock.removeItem.mockClear();
+  sessionStorageMock.clear.mockClear();
+}); 

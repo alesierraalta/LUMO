@@ -113,8 +113,15 @@ RUN chmod +x start.sh
 # CRITICAL FIX: Final verification in runtime container
 RUN echo "🔍 Final verification in runtime container..." && \
     ls -la . && \
+    echo "📁 Checking .next directory..." && \
     ls -la .next/ && \
-    ls -la server.js && \
+    echo "🔍 Checking for server.js (from standalone build)..." && \
+    if [ -f "server.js" ]; then \
+        echo "✅ Standalone server.js found"; \
+    else \
+        echo "❌ Standalone server.js missing"; \
+        exit 1; \
+    fi && \
     echo "✅ All files verified in /workspace"
 
 # Set proper permissions

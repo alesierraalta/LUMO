@@ -23,8 +23,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # CRITICAL FIX: Set Supabase environment variables for build
-ENV NEXT_PUBLIC_SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MzEzMTUsImV4cCI6MjAzMzAwNzMxNX0.QIBUm2NmvtPKv4pEjQhGIjhGJ4LKPjqVjBXVpRpMQwY
+ENV NEXT_PUBLIC_SUPABASE_URL="https://ubjujxtvlubxowsphvuk.supabase.co"
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MzEzMTUsImV4cCI6MjAzMzAwNzMxNX0.QIBUm2NmvtPKv4pEjQhGIjhGJ4LKPjqVjBXVpRpMQwY"
 
 # Build with optimizations - this creates .next directory
 RUN echo "🔨 Starting Next.js build process..." && \
@@ -82,8 +82,8 @@ ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 
 # CRITICAL FIX: Set Supabase environment variables for runtime
-ENV NEXT_PUBLIC_SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MzEzMTUsImV4cCI6MjAzMzAwNzMxNX0.QIBUm2NmvtPKv4pEjQhGIjhGJ4LKPjqVjBXVpRpMQwY
+ENV NEXT_PUBLIC_SUPABASE_URL="https://ubjujxtvlubxowsphvuk.supabase.co"
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MzEzMTUsImV4cCI6MjAzMzAwNzMxNX0.QIBUm2NmvtPKv4pEjQhGIjhGJ4LKPjqVjBXVpRpMQwY"
 
 # CRITICAL FIX: Force production environment for Choreo
 ENV CHOREO_ENVIRONMENT=production

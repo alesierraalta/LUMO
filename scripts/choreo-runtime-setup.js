@@ -7,6 +7,10 @@
 
 console.log('🚀 [Choreo Setup] Starting runtime configuration...');
 
+// CRITICAL: Detect Choreo environment first
+const { getEnvironmentConfig } = require('./choreo-env-detector');
+const envConfig = getEnvironmentConfig();
+
 // Environment validation (relaxed for Choreo deployment)
 const criticalEnvs = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -31,9 +35,14 @@ if (missingOptional.length > 0) {
 
 console.log('✅ [Choreo Setup] Critical environment variables validated');
 
-// Set production optimizations
-process.env.NODE_ENV = 'production';
-process.env.NEXT_TELEMETRY_DISABLED = '1';
+// Set optimizations based on detected environment
+// NOTE: NODE_ENV already set by choreo-env-detector
+if (envConfig.environment === 'production' || envConfig.environment === 'staging') {
+  process.env.NEXT_TELEMETRY_DISABLED = '1';
+  console.log('⚡ [Choreo Setup] Production optimizations applied');
+} else {
+  console.log('🧪 [Choreo Setup] Development mode optimizations applied');
+}
 
 // Validate Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -25,10 +25,10 @@ spec:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     containerPort: 8080
-  # Minimal environment variables
+  # Environment variables (NODE_ENV will be detected automatically)
   env:
-    - name: NODE_ENV
-      value: production
+    - name: CHOREO_ENVIRONMENT
+      value: "{{ .Values.environment }}"  # This will be 'dev' or 'prod' from Choreo
     - name: PORT
       value: "8080"
     - name: DATABASE_URL

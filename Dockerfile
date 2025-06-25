@@ -60,6 +60,15 @@ RUN echo "🔍 Verifying build artifacts..." && \
         exit 1; \
     fi
 
+# CRITICAL FIX: Ensure runtime-module-patcher.js exists for copying
+RUN if [ ! -f "src/lib/runtime-module-patcher.js" ]; then \
+        mkdir -p src/lib/ && \
+        echo "// Placeholder - runtime patcher not available" > src/lib/runtime-module-patcher.js && \
+        echo "⚠️ Created placeholder runtime-module-patcher.js"; \
+    else \
+        echo "✅ Runtime patcher already exists"; \
+    fi
+
 # Production image with minimal size
 FROM base AS runner
 WORKDIR /workspace
@@ -92,9 +101,9 @@ COPY --from=builder --chown=nextjs:nodejs /workspace/public ./public
 # CRITICAL FIX: Copy our custom scripts and startup script
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-runtime-setup.js ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-env-detector.js ./scripts/
-# Copy runtime module patcher if it exists (conditional copy)
+# Copy runtime module patcher (now guaranteed to exist)
 RUN mkdir -p ./src/lib/
-COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/ || echo "Runtime patcher not found, skipping"
+COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/runtime-module-patcher.js
 COPY --from=builder --chown=nextjs:nodejs /workspace/server.js ./custom-server.js
 
 # CRITICAL FIX: Copy our intelligent startup script from workspace

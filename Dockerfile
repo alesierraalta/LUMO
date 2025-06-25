@@ -31,14 +31,30 @@ RUN echo "🔨 Starting Next.js build process..." && \
     npm run build && \
     echo "✅ Build completed successfully"
 
-# CRITICAL FIX: Comprehensive build verification
+# CRITICAL FIX: Comprehensive build verification with BUILD_ID check
 RUN echo "🔍 Verifying build artifacts..." && \
     ls -la .next/ && \
     echo "📁 .next directory contents:" && \
     find .next -type f -name "*.js" | head -10 && \
+    echo "🔍 Checking for BUILD_ID..." && \
+    if [ -f ".next/BUILD_ID" ]; then \
+        echo "✅ BUILD_ID found: $(cat .next/BUILD_ID)"; \
+    else \
+        echo "❌ BUILD_ID missing - this will cause startup issues"; \
+        echo "📁 Full .next contents:"; \
+        find .next -type f | head -20; \
+        exit 1; \
+    fi && \
     if [ -d ".next/standalone" ]; then \
         echo "✅ Standalone build found"; \
         ls -la .next/standalone/; \
+        echo "🔍 Checking standalone server.js..."; \
+        if [ -f ".next/standalone/server.js" ]; then \
+            echo "✅ Standalone server.js found"; \
+        else \
+            echo "❌ Standalone server.js missing"; \
+            exit 1; \
+        fi; \
     else \
         echo "❌ Standalone build missing"; \
         exit 1; \
@@ -64,19 +80,24 @@ RUN adduser --system --uid 1001 nextjs
 # Copy the standalone server files first (this includes server.js and all dependencies)
 COPY --from=builder --chown=nextjs:nodejs /workspace/.next/standalone ./
 
+# CRITICAL FIX: Copy BUILD_ID specifically to ensure it exists
+COPY --from=builder --chown=nextjs:nodejs /workspace/.next/BUILD_ID ./.next/BUILD_ID
+
 # Copy the static assets to the correct location within standalone structure
 COPY --from=builder --chown=nextjs:nodejs /workspace/.next/static ./.next/static
 
 # Copy public files
 COPY --from=builder --chown=nextjs:nodejs /workspace/public ./public
 
-# CRITICAL FIX: Copy our custom scripts for Choreo runtime setup and rename our custom server
+# CRITICAL FIX: Copy our custom scripts and startup script
 COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-runtime-setup.js ./scripts/
+COPY --from=builder --chown=nextjs:nodejs /workspace/scripts/choreo-env-detector.js ./scripts/
 COPY --from=builder --chown=nextjs:nodejs /workspace/src/lib/runtime-module-patcher.js ./src/lib/ 2>/dev/null || echo "Runtime patcher not found, skipping"
 COPY --from=builder --chown=nextjs:nodejs /workspace/server.js ./custom-server.js
 
-# CRITICAL FIX: Create a startup script that runs our setup then the standalone server
-RUN echo '#!/bin/sh\necho "🚀 Starting LUMO with Choreo runtime setup..."\nnode scripts/choreo-runtime-setup.js\necho "✅ Runtime setup complete, starting Next.js server..."\nexec node server.js' > start.sh && chmod +x start.sh
+# CRITICAL FIX: Copy our intelligent startup script from workspace
+COPY --from=builder --chown=nextjs:nodejs /workspace/start.sh ./start.sh
+RUN chmod +x start.sh
 
 # CRITICAL FIX: Final verification in runtime container
 RUN echo "🔍 Final verification in runtime container..." && \

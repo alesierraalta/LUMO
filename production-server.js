@@ -625,20 +625,29 @@ if (isStandalone) {
   
   require('./.next/standalone/server.js');
   } else {
-    console.log('[PRODUCTION-SERVER] Standalone server.js not found, creating minimal standalone server...');
+    console.log('[PRODUCTION-SERVER] Standalone server.js not found, checking for emergency server...');
     
-    // Create a minimal standalone-compatible server
-    const app = next({ dev: false, hostname: '0.0.0.0', port: parseInt(process.env.PORT || '8080') });
-    const handle = app.getRequestHandler();
-    
-    app.prepare().then(() => {
-      createServer((req, res) => {
-        handle(req, res);
-      }).listen(parseInt(process.env.PORT || '8080'), '0.0.0.0', (err) => {
-        if (err) throw err;
-        console.log(`[PRODUCTION-SERVER] Minimal standalone server ready on http://0.0.0.0:${process.env.PORT || '8080'}`);
+    // Check if emergency standalone server exists
+    const emergencyServerPath = path.join(process.cwd(), 'emergency-standalone-server.js');
+    if (fs.existsSync(emergencyServerPath)) {
+      console.log('[PRODUCTION-SERVER] Using emergency standalone server (bypasses Next.js)...');
+      require(emergencyServerPath);
+    } else {
+      console.log('[PRODUCTION-SERVER] Creating minimal standalone server...');
+      
+      // Create a minimal standalone-compatible server
+      const app = next({ dev: false, hostname: '0.0.0.0', port: parseInt(process.env.PORT || '8080') });
+      const handle = app.getRequestHandler();
+      
+      app.prepare().then(() => {
+        createServer((req, res) => {
+          handle(req, res);
+        }).listen(parseInt(process.env.PORT || '8080'), '0.0.0.0', (err) => {
+          if (err) throw err;
+          console.log(`[PRODUCTION-SERVER] Minimal standalone server ready on http://0.0.0.0:${process.env.PORT || '8080'}`);
+        });
       });
-    });
+    }
   }
 } else {
   console.log('[PRODUCTION-SERVER] Using custom server...');

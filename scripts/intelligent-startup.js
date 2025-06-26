@@ -132,8 +132,15 @@ async function main() {
                 console.log(`Error listing files: ${error.message}`);
             }
             
-            console.log('🆘 Creating emergency server...');
-            createEmergencyServer();
+            // Check if we have the emergency standalone server
+            const emergencyServerPath = path.join(currentDir, 'emergency-standalone-server.js');
+            if (fs.existsSync(emergencyServerPath)) {
+                console.log('🚨 Using emergency standalone server (bypasses Next.js completely)...');
+                startServer(emergencyServerPath, 'Starting emergency standalone server (no Next.js)', '2-3 seconds');
+            } else {
+                console.log('🆘 Creating emergency server...');
+                createEmergencyServer();
+            }
         }
     } else {
         console.log('🧪 DEVELOPMENT MODE DETECTED');

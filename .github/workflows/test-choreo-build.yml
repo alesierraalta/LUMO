@@ -161,11 +161,26 @@ jobs:
         echo "🏥 Running container health test..."
         
         # Start container in background
-        docker run -d \
-          --name lumo-test-${{ matrix.test-env }} \
-          --env-file .env.test \
-          -p 3000:3000 \
-          lumo-choreo-test:${{ matrix.test-env }}
+        if [ "${{ matrix.test-env }}" = "production" ]; then
+          echo "🏭 Starting PRODUCTION container (using Dockerfile ENV values)..."
+          docker run -d \
+            --name lumo-test-${{ matrix.test-env }} \
+            -p 3000:3000 \
+            lumo-choreo-test:${{ matrix.test-env }}
+        else
+          echo "🧪 Starting DEVELOPMENT container (using test environment variables)..."
+          docker run -d \
+            --name lumo-test-${{ matrix.test-env }} \
+            -e NODE_ENV=${{ matrix.test-env }} \
+            -e NEXT_PUBLIC_SUPABASE_URL="${{ secrets.SUPABASE_URL_DEV || 'https://test.supabase.co' }}" \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.SUPABASE_KEY_DEV || 'test-key' }}" \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL_DEV || 'postgresql://test:test@localhost:5432/test' }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET || 'test-jwt-secret-32-characters-long' }}" \
+            -e CHOREO_ENVIRONMENT=${{ matrix.test-env }} \
+            -e CHOREO_USE_STANDALONE=false \
+            -p 3000:3000 \
+            lumo-choreo-test:${{ matrix.test-env }}
+        fi
           
         # Wait for container to start
         echo "⏳ Waiting for container to start..."

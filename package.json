@@ -59,7 +59,10 @@
     "choreo:deploy": "node scripts/choreo-deployment-strategy.js",
     "optimize:dev-startup": "node scripts/optimize-dev-startup.js",
     "prevent:typescript-install": "node scripts/prevent-typescript-install.js",
-    "apply:dev-optimizations": "scripts\\apply-dev-optimizations.bat"
+    "apply:dev-optimizations": "scripts\\apply-dev-optimizations.bat",
+    "fix:production-build": "node scripts/fix-production-build.js",
+    "check:production-ready": "node scripts/simple-production-fix.js",
+    "start:intelligent": "node scripts/intelligent-startup.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

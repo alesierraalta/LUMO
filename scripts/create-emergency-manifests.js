@@ -101,7 +101,39 @@ const buildManifest = {
       "static/chunks/pages/_error.js"
     ]
   },
-  ampFirstPages: []
+  ampFirstPages: [],
+  // Add missing CSS-related properties to prevent entryCSSFiles error
+  entryCSSFiles: {
+    "/": [],
+    "/_app": [],
+    "/_error": []
+  },
+  entryJSFiles: {
+    "/": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/index.js"
+    ],
+    "/_app": [
+      "static/chunks/webpack.js", 
+      "static/chunks/main.js",
+      "static/chunks/pages/_app.js"
+    ],
+    "/_error": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js", 
+      "static/chunks/pages/_error.js"
+    ]
+  },
+  cssFiles: [],
+  allFiles: [
+    "static/chunks/webpack.js",
+    "static/chunks/main.js",
+    "static/chunks/polyfills.js",
+    "static/chunks/pages/index.js",
+    "static/chunks/pages/_app.js",
+    "static/chunks/pages/_error.js"
+  ]
 };
 
 fs.writeFileSync(buildManifestPath, JSON.stringify(buildManifest, null, 2));

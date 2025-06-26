@@ -7,6 +7,17 @@
 
 console.log('🚀 [Choreo Setup] Starting runtime configuration...');
 
+// OPTIMIZATION: Run development startup optimizer if in development mode
+if (process.env.NODE_ENV === 'development' || process.env.CHOREO_ENVIRONMENT === 'Development') {
+  console.log('⚡ [Choreo Setup] Running development startup optimizations...');
+  try {
+    const { optimizeDevStartup } = require('./optimize-dev-startup');
+    await optimizeDevStartup();
+  } catch (error) {
+    console.warn('⚠️ [Choreo Setup] Development optimization failed, continuing:', error.message);
+  }
+}
+
 // CRITICAL: Detect Choreo environment first
 const { getEnvironmentConfig } = require('./choreo-env-detector');
 const envConfig = getEnvironmentConfig();

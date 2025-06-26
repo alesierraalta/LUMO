@@ -11,6 +11,9 @@ WORKDIR /workspace
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund --legacy-peer-deps && npm cache clean --force
 
+# OPTIMIZATION: Pre-install TypeScript dependencies to avoid runtime installation
+RUN npm install --save-dev typescript @types/react @types/node --legacy-peer-deps || true
+
 # Build stage
 FROM base AS builder
 WORKDIR /workspace

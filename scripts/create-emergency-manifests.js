@@ -46,6 +46,7 @@ const routesManifest = {
     { page: "/_error", regex: "^/_error/?$", routeKeys: {}, namedRegex: "^/_error/?$" }
   ],
   dynamicRoutes: [],
+  dataRoutes: [],
   locales: [],
   trailingSlash: false
 };

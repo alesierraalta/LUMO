@@ -447,7 +447,27 @@ async function fixMissingBuildScripts(issue: BuildIssue): Promise<boolean> {
     }
     
     if (missingScripts.includes('start')) {
-      packageJson.scripts.start = packageJson.dependencies?.['next'] ? 'next start' : 'node server.js';
+      // Check if using standalone output
+      const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+      let useStandalone = false;
+      
+      if (fs.existsSync(nextConfigPath)) {
+        try {
+          const nextConfigContent = fs.readFileSync(nextConfigPath, 'utf8');
+          useStandalone = nextConfigContent.includes('output: "standalone"') || 
+                          nextConfigContent.includes("output: 'standalone'");
+        } catch (e) {
+          // Ignore error, default to false
+        }
+      }
+      
+      if (packageJson.dependencies?.['next']) {
+        packageJson.scripts.start = useStandalone ? 
+          'node .next/standalone/server.js' : 
+          'next start';
+      } else {
+        packageJson.scripts.start = 'node server.js';
+      }
     }
     
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));

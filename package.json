@@ -8,7 +8,7 @@
     "dev:clean": "npm run clean:cache && npm run dev:fixed",
     "build": "node scripts/build-with-error-handling.js",
     "build:original": "next build && node scripts/post-build-directories.js",
-    "start": "node scripts/choreo-runtime-setup.js && node server.js",
+    "start": "node scripts/intelligent-startup.js",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
@@ -62,7 +62,8 @@
     "apply:dev-optimizations": "scripts\\apply-dev-optimizations.bat",
     "fix:production-build": "node scripts/fix-production-build.js",
     "check:production-ready": "node scripts/simple-production-fix.js",
-    "start:intelligent": "node scripts/intelligent-startup.js"
+    "start:intelligent": "node scripts/intelligent-startup.js",
+    "emergency:build-id": "node scripts/emergency-build-id-fix.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

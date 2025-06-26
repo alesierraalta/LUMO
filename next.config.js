@@ -7,16 +7,26 @@ const path = require('path');
 const nextConfig = {
   output: 'standalone',
   
+  // OPTIMIZATION: Disable telemetry for faster startup
+  telemetry: false,
+  
   experimental: {
     // CRITICAL FIX: Production optimizations for Choreo deployment
     webpackBuildWorker: false,
     optimizeServerReact: true,
     serverMinification: true,
+    
+    // OPTIMIZATION: Development startup optimizations
+    optimizePackageImports: ['@supabase/supabase-js'],
+    memoryBasedWorkersCount: true,
   },
   
   // CRITICAL FIX: Ensure production mode disables development features
   env: {
     CUSTOM_KEY: process.env.NODE_ENV || 'production',
+    // OPTIMIZATION: Development startup optimizations
+    NEXT_TELEMETRY_DISABLED: '1',
+    DISABLE_ESLINT_PLUGIN: 'true',
   },
   
   // Disable ESLint and TypeScript during build for deployment
@@ -37,6 +47,23 @@ const nextConfig = {
   
   // CRITICAL FIX: Enhanced webpack configuration for Choreo deployment with aggressive Supabase handling
   webpack: (config, { dev, isServer, isEdgeRuntime }) => {
+    // OPTIMIZATION: Development optimizations for faster startup
+    if (dev) {
+      // Optimize development builds for faster compilation
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+      
+      // Reduce file watching overhead
+      config.watchOptions = {
+        poll: false,
+        aggregateTimeout: 300,
+      };
+    }
+    
     // Production optimizations
     if (!dev) {
       config.cache = {

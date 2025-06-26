@@ -52,7 +52,11 @@
     "check:docker": "scripts/check-docker.bat",
     "test:choreo:safe": "scripts/check-docker.bat && npm run test:choreo:full",
     "test:choreo:github": "node scripts/github-test-choreo.js",
-    "setup:github-actions": "scripts\\setup-github-actions.bat"
+    "setup:github-actions": "scripts\\setup-github-actions.bat",
+    "choreo:network-fix": "node scripts/choreo-network-fix.js",
+    "choreo:build-retry": "scripts/choreo-build-retry.bat",
+    "choreo:prepare": "npm run choreo:network-fix && npm ci --no-optional --no-audit",
+    "choreo:deploy": "node scripts/choreo-deployment-strategy.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

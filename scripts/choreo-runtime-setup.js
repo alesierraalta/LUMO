@@ -130,8 +130,7 @@ const setupRuntime = async () => {
   console.log(`   - Supabase URL: ${supabaseUrl.substring(0, 30)}...`);
 
   // CRITICAL FIX: Create BUILD_ID if missing for production deployment
-  const fs = require('fs');
-  const path = require('path');
+  // (fs and path already declared at top of function)
   const buildIdPath = path.join(process.cwd(), '.next', 'BUILD_ID');
   
   if (!fs.existsSync(buildIdPath)) {

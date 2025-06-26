@@ -63,7 +63,8 @@
     "fix:production-build": "node scripts/fix-production-build.js",
     "check:production-ready": "node scripts/simple-production-fix.js",
     "start:intelligent": "node scripts/intelligent-startup.js",
-    "emergency:build-id": "node scripts/emergency-build-id-fix.js"
+    "emergency:build-id": "node scripts/emergency-build-id-fix.js",
+    "immediate:build-id": "node scripts/immediate-build-id-fix.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

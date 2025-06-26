@@ -119,7 +119,8 @@ COPY --from=builder --chown=nextjs:nodejs /workspace/server.js ./custom-server.j
 
 # CRITICAL FIX: Copy our intelligent startup script from workspace
 COPY --from=builder --chown=nextjs:nodejs /workspace/start.sh ./start.sh
-RUN chmod +x start.sh
+COPY --from=builder --chown=nextjs:nodejs /workspace/start-build-only.sh ./start-build-only.sh
+RUN chmod +x start.sh start-build-only.sh
 
 # CRITICAL FIX: Final verification in runtime container
 RUN echo "🔍 Final verification in runtime container..." && \

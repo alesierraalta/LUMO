@@ -12,6 +12,7 @@ on:
         - quick
         - full
         - production
+        - build-only
   push:
     branches: [ main ]
   pull_request:
@@ -28,7 +29,7 @@ jobs:
     
     strategy:
       matrix:
-        test-env: [development, production]
+        test-env: [development, production, build-only]
     
     steps:
     - name: Checkout code
@@ -167,6 +168,21 @@ jobs:
             --name lumo-test-${{ matrix.test-env }} \
             -p 3000:3000 \
             lumo-choreo-test:${{ matrix.test-env }}
+        elif [ "${{ matrix.test-env }}" = "build-only" ]; then
+          echo "🔧 Starting BUILD-ONLY container (bypassing credential validation)..."
+          docker run -d \
+            --name lumo-test-${{ matrix.test-env }} \
+            -e NODE_ENV=production \
+            -e NEXT_PUBLIC_SUPABASE_URL="https://build-test.supabase.co" \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY="build-test-key-for-docker-build-validation-only" \
+            -e DATABASE_URL="postgresql://build:test@localhost:5432/buildtest" \
+            -e JWT_SECRET="build-test-jwt-secret-32-characters-minimum-length" \
+            -e CHOREO_ENVIRONMENT=production \
+            -e CHOREO_BUILD_ONLY=true \
+            -e CHOREO_USE_STANDALONE=true \
+            -p 3000:3000 \
+            lumo-choreo-test:${{ matrix.test-env }} \
+            /bin/sh /workspace/start-build-only.sh
         else
           echo "🧪 Starting DEVELOPMENT container (using test environment variables)..."
           docker run -d \

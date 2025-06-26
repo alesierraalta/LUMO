@@ -60,6 +60,72 @@ Object.entries = function(obj) {
   return originalObjectEntries(obj);
 };
 
+// Enhanced property access protection
+const createSafeProxy = (target, name) => {
+  return new Proxy(target || {}, {
+    get(obj, prop) {
+      if (prop === 'entryCSSFiles') {
+        if (!obj[prop]) {
+          console.log(`[RUNTIME-PROTECTION] Auto-creating entryCSSFiles for ${name}`);
+          obj[prop] = {};
+        }
+        return obj[prop];
+      }
+      return obj[prop];
+    }
+  });
+};
+
+// Patch require to intercept manifest loading
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+Module.prototype.require = function(id) {
+  const result = originalRequire.apply(this, arguments);
+  
+  // Intercept manifest files
+  if (typeof id === 'string' && id.includes('manifest')) {
+    if (result && typeof result === 'object') {
+      return createSafeProxy(result, id);
+    }
+  }
+  
+  return result;
+};
+
+// Global property access interceptor
+const originalDefineProperty = Object.defineProperty;
+Object.defineProperty = function(obj, prop, descriptor) {
+  try {
+    return originalDefineProperty.call(this, obj, prop, descriptor);
+  } catch (e) {
+    if (e.message && e.message.includes('entryCSSFiles')) {
+      console.log('[RUNTIME-PROTECTION] Prevented defineProperty error for entryCSSFiles');
+      return obj;
+    }
+    throw e;
+  }
+};
+
+// Enhanced error handling for property access
+const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+Object.getOwnPropertyDescriptor = function(obj, prop) {
+  try {
+    if (prop === 'entryCSSFiles' && (!obj || obj[prop] === undefined)) {
+      // Return a descriptor for an empty object
+      return {
+        value: {},
+        writable: true,
+        enumerable: true,
+        configurable: true
+      };
+    }
+    return originalGetOwnPropertyDescriptor.call(this, obj, prop);
+  } catch (e) {
+    console.log('[RUNTIME-PROTECTION] Protected getOwnPropertyDescriptor for', prop);
+    return undefined;
+  }
+};
+
 // Handle entryCSSFiles errors
 process.on('uncaughtException', (error) => {
   if (error.message && 

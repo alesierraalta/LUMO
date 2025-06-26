@@ -28,14 +28,20 @@ console.log('\n🔍 Checking for standalone build...');
 const standaloneServerPath = path.join(currentDir, 'server.js');
 const buildIdPath = path.join(currentDir, '.next', 'BUILD_ID');
 const customServerPath = path.join(currentDir, 'custom-server.js');
+const productionServerPath = path.join(currentDir, 'production-server.js');
+const safeServerPath = path.join(currentDir, 'safe-server.js');
 
 const hasStandaloneServer = fs.existsSync(standaloneServerPath);
 const hasBuildId = fs.existsSync(buildIdPath);
 const hasCustomServer = fs.existsSync(customServerPath);
+const hasProductionServer = fs.existsSync(productionServerPath);
+const hasSafeServer = fs.existsSync(safeServerPath);
 
 console.log(`   - Standalone server.js: ${hasStandaloneServer ? '✅' : '❌'}`);
 console.log(`   - BUILD_ID file: ${hasBuildId ? '✅' : '❌'}`);
 console.log(`   - Custom server: ${hasCustomServer ? '✅' : '❌'}`);
+console.log(`   - Production server: ${hasProductionServer ? '✅' : '❌'}`);
+console.log(`   - Safe server: ${hasSafeServer ? '✅' : '❌'}`);
 
 if (hasBuildId) {
     try {
@@ -108,8 +114,12 @@ async function main() {
     if (currentEnv === 'production') {
         console.log('🎯 PRODUCTION MODE DETECTED');
         
-        if (hasStandaloneServer && hasBuildId) {
-            startServer(standaloneServerPath, 'Starting standalone server (optimal)', '2-3 seconds');
+        if (hasProductionServer) {
+            startServer(productionServerPath, 'Starting production server with entryCSSFiles protection (optimal)', '5-10 seconds');
+        } else if (hasSafeServer) {
+            startServer(safeServerPath, 'Starting safe server with entryCSSFiles protection (optimal)', '5-10 seconds');
+        } else if (hasStandaloneServer && hasBuildId) {
+            startServer(standaloneServerPath, 'Starting standalone server (fallback)', '2-3 seconds');
         } else if (hasCustomServer) {
             startServer(customServerPath, 'Starting custom server (fallback)', '10-15 seconds');
         } else {

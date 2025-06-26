@@ -99,7 +99,25 @@ try {
 console.log('[PRODUCTION-SERVER] Starting production server with enhanced CSS fixes...');
 
 // Detect if we're in standalone mode
-const isStandalone = fs.existsSync(path.join(process.cwd(), '.next', 'standalone'));
+let isStandalone = fs.existsSync(path.join(process.cwd(), '.next', 'standalone'));
+
+// Force standalone mode in production if next.config.js has standalone output
+if (!isStandalone && process.env.NODE_ENV === 'production') {
+  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  if (fs.existsSync(nextConfigPath)) {
+    try {
+      const nextConfigContent = fs.readFileSync(nextConfigPath, 'utf8');
+      if (nextConfigContent.includes('output: "standalone"') || 
+          nextConfigContent.includes("output: 'standalone'")) {
+        isStandalone = true;
+        console.log('[PRODUCTION-SERVER] Forced standalone mode due to next.config.js');
+      }
+    } catch (e) {
+      console.log('[PRODUCTION-SERVER] Could not read next.config.js:', e.message);
+    }
+  }
+}
+
 console.log('[PRODUCTION-SERVER] Running in standalone mode:', isStandalone);
 
 // Prepare paths
@@ -556,8 +574,12 @@ function serveStaticFile(req, res, filePath) {
 }
 
 // Start server
-if (isStandalone && fs.existsSync(path.join(process.cwd(), '.next', 'standalone', 'server.js'))) {
-  console.log('[PRODUCTION-SERVER] Using standalone server with enhanced CSS handling...');
+if (isStandalone) {
+  // Check if standalone server.js exists
+  const standaloneServerPath = path.join(process.cwd(), '.next', 'standalone', 'server.js');
+  
+  if (fs.existsSync(standaloneServerPath)) {
+    console.log('[PRODUCTION-SERVER] Using existing standalone server with enhanced CSS handling...');
   
   // Create a proxy that adds fallback CSS loading to every request
   const originalCreateServer = require('http').createServer;
@@ -602,6 +624,22 @@ if (isStandalone && fs.existsSync(path.join(process.cwd(), '.next', 'standalone'
   };
   
   require('./.next/standalone/server.js');
+  } else {
+    console.log('[PRODUCTION-SERVER] Standalone server.js not found, creating minimal standalone server...');
+    
+    // Create a minimal standalone-compatible server
+    const app = next({ dev: false, hostname: '0.0.0.0', port: parseInt(process.env.PORT || '8080') });
+    const handle = app.getRequestHandler();
+    
+    app.prepare().then(() => {
+      createServer((req, res) => {
+        handle(req, res);
+      }).listen(parseInt(process.env.PORT || '8080'), '0.0.0.0', (err) => {
+        if (err) throw err;
+        console.log(`[PRODUCTION-SERVER] Minimal standalone server ready on http://0.0.0.0:${process.env.PORT || '8080'}`);
+      });
+    });
+  }
 } else {
   console.log('[PRODUCTION-SERVER] Using custom server...');
   

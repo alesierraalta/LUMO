@@ -58,6 +58,7 @@
     "choreo:prepare": "npm run choreo:network-fix && npm ci --no-optional --no-audit",
     "choreo:deploy": "node scripts/choreo-deployment-strategy.js",
     "optimize:dev-startup": "node scripts/optimize-dev-startup.js",
+    "prevent:typescript-install": "node scripts/prevent-typescript-install.js",
     "apply:dev-optimizations": "scripts\\apply-dev-optimizations.bat"
   },
   "dependencies": {

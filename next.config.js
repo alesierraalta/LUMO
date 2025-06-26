@@ -7,9 +7,6 @@ const path = require('path');
 const nextConfig = {
   output: 'standalone',
   
-  // OPTIMIZATION: Disable telemetry for faster startup
-  telemetry: false,
-  
   experimental: {
     // CRITICAL FIX: Production optimizations for Choreo deployment
     webpackBuildWorker: false,

@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-06-26T03:04:25.860Z",
+  "phase": "monitoring",
+  "instructions": [
+    "Open Choreo console in browser",
+    "Navigate to your project",
+    "Check build logs for network errors",
+    "Monitor for ECONNRESET errors",
+    "Verify successful dependency installation",
+    "Confirm build completion",
+    "Test deployed application"
+  ],
+  "expectedBehavior": [
+    "npm ci should complete without ECONNRESET",
+    "Build should finish in <10 minutes",
+    "Application should start successfully",
+    "Health endpoint should respond"
+  ]
+}

@@ -14,26 +14,44 @@ const setupRuntime = async () => {
   const emergencyBuildIdPath = path.join(process.cwd(), '.next', 'BUILD_ID');
   
   if (!fs.existsSync(emergencyBuildIdPath)) {
-    console.log('🆘 [Choreo Setup] BUILD_ID missing - creating emergency BUILD_ID...');
+    console.log('🆘 [Choreo Setup] BUILD_ID missing - creating emergency manifests...');
     try {
-      // Ensure .next directory exists
-      const nextDir = path.join(process.cwd(), '.next');
-      if (!fs.existsSync(nextDir)) {
-        fs.mkdirSync(nextDir, { recursive: true });
-        console.log('📁 [Choreo Setup] Created .next directory');
-      }
-      
-      // Create emergency BUILD_ID
-      const emergencyBuildId = Date.now().toString();
-      fs.writeFileSync(emergencyBuildIdPath, emergencyBuildId);
-      console.log(`✅ [Choreo Setup] Emergency BUILD_ID created: ${emergencyBuildId}`);
+      // Run emergency manifest creator
+      const { execSync } = require('child_process');
+      execSync('node scripts/create-emergency-manifests.js', { stdio: 'inherit' });
+      console.log('✅ [Choreo Setup] Emergency manifests created successfully');
     } catch (error) {
-      console.warn(`⚠️ [Choreo Setup] Could not create BUILD_ID: ${error.message}`);
+      console.warn(`⚠️ [Choreo Setup] Could not create emergency manifests: ${error.message}`);
+      // Fallback: Create just BUILD_ID
+      try {
+        const nextDir = path.join(process.cwd(), '.next');
+        if (!fs.existsSync(nextDir)) {
+          fs.mkdirSync(nextDir, { recursive: true });
+        }
+        const emergencyBuildId = Date.now().toString();
+        fs.writeFileSync(emergencyBuildIdPath, emergencyBuildId);
+        console.log(`✅ [Choreo Setup] Fallback BUILD_ID created: ${emergencyBuildId}`);
+      } catch (fallbackError) {
+        console.warn(`⚠️ [Choreo Setup] Fallback BUILD_ID creation failed: ${fallbackError.message}`);
+      }
     }
   } else {
     try {
       const buildId = fs.readFileSync(emergencyBuildIdPath, 'utf8').trim();
       console.log(`✅ [Choreo Setup] BUILD_ID found: ${buildId}`);
+      
+      // Check if other manifests exist
+      const routesManifestPath = path.join(process.cwd(), '.next', 'routes-manifest.json');
+      if (!fs.existsSync(routesManifestPath)) {
+        console.log('⚠️ [Choreo Setup] Routes manifest missing - creating emergency manifests...');
+        try {
+          const { execSync } = require('child_process');
+          execSync('node scripts/create-emergency-manifests.js', { stdio: 'inherit' });
+          console.log('✅ [Choreo Setup] Emergency manifests created successfully');
+        } catch (error) {
+          console.warn(`⚠️ [Choreo Setup] Could not create emergency manifests: ${error.message}`);
+        }
+      }
     } catch (error) {
       console.warn(`⚠️ [Choreo Setup] BUILD_ID read error: ${error.message}`);
     }

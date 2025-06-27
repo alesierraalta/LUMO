@@ -132,12 +132,16 @@ async function main() {
                 console.log(`Error listing files: ${error.message}`);
             }
             
-            // Check for hybrid server first (best of both worlds)
+            // Check for LUMO hybrid server first (best of both worlds)
+            const lumoHybridServerPath = path.join(currentDir, 'lumo-hybrid-server.js');
             const hybridServerPath = path.join(currentDir, 'hybrid-server.js');
             const emergencyServerPath = path.join(currentDir, 'emergency-standalone-server.js');
             
-            if (fs.existsSync(hybridServerPath)) {
-                console.log('🔄 Using hybrid server (Emergency + Next.js) - Best option!');
+            if (fs.existsSync(lumoHybridServerPath)) {
+                console.log('🚀 Using LUMO hybrid server (enhanced for real app) - BEST OPTION!');
+                startServer(lumoHybridServerPath, 'Starting LUMO hybrid server (real Next.js app)', '10-15 seconds');
+            } else if (fs.existsSync(hybridServerPath)) {
+                console.log('🔄 Using hybrid server (Emergency + Next.js) - Good option!');
                 startServer(hybridServerPath, 'Starting hybrid server (Emergency fallback + Real Next.js)', '5-10 seconds');
             } else if (fs.existsSync(emergencyServerPath)) {
                 console.log('🚨 Using emergency standalone server (bypasses Next.js completely)...');

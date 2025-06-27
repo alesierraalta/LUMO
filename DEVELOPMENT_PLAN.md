@@ -163,3 +163,93 @@ GET /dashboard 200 in 1237ms
 **PRIORIDAD ALTA**: Completar Fase 7 (Tasks 28-31) para resolver el deployment timeout en producción
 
 **¿Quieres continuar con el fix del deployment de producción (Fase 7)?** 
+
+# Project Architecture
+
+## Current System Overview
+LUMO is a Next.js 15.3.1 inventory management system designed for deployment on WSO2 Choreo platform. The system uses:
+
+- **Frontend**: Next.js 15.3.1 with React 19, TailwindCSS, Shadcn UI
+- **Backend**: Next.js API routes with custom authentication
+- **Database**: Hybrid system (SQLite dev, PostgreSQL prod via Supabase)
+- **Authentication**: Custom JWT + Supabase integration
+- **Deployment**: Docker containerization with standalone Next.js build
+- **Platform**: WSO2 Choreo with automatic scaling and health monitoring
+
+## Current Architecture Issues Identified
+
+### Critical Deployment Blockers
+1. **Static Assets 404 Errors**: JavaScript chunks not served correctly (37+ files failing)
+2. **Mock Supabase Client Errors**: `TypeError: order is not a function` in build mode
+3. **Dockerfile Working Directory Mismatch**: `/workspace` vs `/app` inconsistency
+4. **Build ID Missing**: Standalone build fails without proper BUILD_ID
+5. **Health Check Timeouts**: Deployment fails due to slow startup times
+6. **Environment Detection Issues**: Build mode vs runtime mode confusion
+
+### Performance Issues
+- Server startup time: 270-308ms (acceptable but could be optimized)
+- Health check delays causing deployment timeouts
+- Resource allocation not optimized for Choreo constraints
+
+### Configuration Fragmentation
+- Multiple server implementations (lumo-simple-server.js, lumo-optimized-server.js, lumo-static-server.js)
+- Inconsistent environment variable handling
+- Complex build process with multiple scripts
+
+# Task List
+
+## Phase 1: Critical Infrastructure Fixes
+
+- [ ] 1. **Analyze** — Current deployment architecture — Audit all Choreo-related files, identify conflicts between server implementations, document current state vs desired state
+- [ ] 2. **Consolidate** — Server implementations — Merge lumo-static-server.js, lumo-simple-server.js, and lumo-optimized-server.js into single production-ready server with static asset serving
+- [ ] 3. **Fix** — Dockerfile working directory — Update Dockerfile to use consistent /workspace path, ensure all COPY commands align with Choreo runtime environment
+- [ ] 4. **Resolve** — Static assets serving — Implement proper Express.js static middleware for /_next/static/* routes, configure cache headers for optimal performance
+- [ ] 5. **Enhance** — Mock Supabase client — Fix query builder chain implementation to prevent "order is not a function" errors during build mode
+
+## Phase 2: Build System Optimization
+
+- [ ] 6. **Standardize** — Build process — Create single build script that handles all scenarios (dev, staging, prod), eliminate redundant build configurations
+- [ ] 7. **Implement** — BUILD_ID verification — Add automated BUILD_ID creation and validation, ensure standalone build always has valid BUILD_ID
+- [ ] 8. **Optimize** — Environment detection — Improve build vs runtime mode detection, eliminate false positives that trigger build mode in production
+- [ ] 9. **Configure** — Health check endpoints — Optimize /api/health response time, add static assets status to health check response
+- [ ] 10. **Validate** — Build artifacts — Create comprehensive build verification script that checks all required files before deployment
+
+## Phase 3: Choreo Configuration Standardization
+
+- [ ] 11. **Update** — choreo.yaml configuration — Optimize resource allocation, adjust health check timings, ensure environment variables are properly configured
+- [ ] 12. **Streamline** — Environment variables — Consolidate all environment variable handling into single configuration file, eliminate duplicates
+- [ ] 13. **Implement** — Startup optimization — Create intelligent startup script that minimizes cold start time, implements proper error handling
+- [ ] 14. **Configure** — Port management — Implement robust port validation and fallback mechanisms for different deployment scenarios
+- [ ] 15. **Test** — Local Choreo simulation — Create scripts to simulate Choreo environment locally for testing before deployment
+
+## Phase 4: Database and Authentication Integration
+
+- [ ] 16. **Verify** — Supabase integration — Ensure all database operations work correctly in production mode, fix any remaining mock client issues
+- [ ] 17. **Optimize** — Authentication flow — Streamline JWT + Supabase authentication, eliminate redundant auth checks
+- [ ] 18. **Implement** — Database connection pooling — Configure optimal connection settings for Choreo environment
+- [ ] 19. **Test** — Production data flow — Verify all CRUD operations work correctly with real Supabase backend
+- [ ] 20. **Document** — Authentication architecture — Create clear documentation for authentication flow and troubleshooting
+
+## Phase 5: Performance and Monitoring
+
+- [ ] 21. **Implement** — Performance monitoring — Add comprehensive metrics collection for response times, error rates, resource usage
+- [ ] 22. **Optimize** — Static asset caching — Configure optimal cache headers, implement CDN-friendly asset serving
+- [ ] 23. **Create** — Deployment verification — Build automated test suite that validates deployment success across all critical endpoints
+- [ ] 24. **Establish** — Error tracking — Implement proper error logging and alerting for production issues
+- [ ] 25. **Configure** — Auto-scaling policies — Optimize Choreo scaling configuration based on actual usage patterns
+
+## Phase 6: Testing and Quality Assurance
+
+- [ ] 26. **Create** — Integration test suite — Build comprehensive tests covering all deployment scenarios, static asset serving, database operations
+- [ ] 27. **Implement** — Smoke tests — Create quick validation tests that can be run immediately after deployment
+- [ ] 28. **Build** — Load testing — Implement performance tests to validate system behavior under load
+- [ ] 29. **Create** — Rollback procedures — Document and test rollback procedures for failed deployments
+- [ ] 30. **Validate** — Cross-platform compatibility — Ensure deployment works correctly across different Choreo environments (dev, staging, prod)
+
+## Phase 7: Documentation and Maintenance
+
+- [ ] 31. **Document** — Deployment procedures — Create comprehensive deployment guide with troubleshooting steps
+- [ ] 32. **Create** — Monitoring playbook — Document monitoring procedures, alert thresholds, incident response
+- [ ] 33. **Establish** — Maintenance procedures — Create regular maintenance tasks, update procedures, security patches
+- [ ] 34. **Build** — Developer onboarding — Create guide for new developers to understand and work with the deployment system
+- [ ] 35. **Implement** — Continuous improvement — Establish feedback loop for deployment improvements based on real-world usage 

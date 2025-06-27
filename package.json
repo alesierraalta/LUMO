@@ -8,7 +8,7 @@
     "dev:clean": "npm run clean:cache && npm run dev:fixed",
     "build": "node scripts/build-simple.js",
     "build:original": "next build && node scripts/post-build-directories.js",
-    "start": "node lumo-simple-server.js",
+    "start": "node lumo-static-server.js",
     "lint": "echo 'Linting passed - no linter configured'",
     "lint:fix": "next lint --fix",
     "type-check": "echo 'TypeScript check passed - tsc not configured'",
@@ -125,6 +125,8 @@
     "dotenv": "^16.4.5",
     "embla-carousel-react": "^8.0.2",
     "exceljs": "4.4.0",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "0.518.0",
     "natural": "^6.12.0",
@@ -187,10 +189,10 @@
     }
   },
   "optionalDependencies": {
-    "@next/swc-win32-x64-msvc": "15.3.1",
-    "@next/swc-linux-x64-gnu": "15.3.1",
+    "@next/swc-darwin-arm64": "15.3.1",
     "@next/swc-darwin-x64": "15.3.1",
-    "@next/swc-darwin-arm64": "15.3.1"
+    "@next/swc-linux-x64-gnu": "15.3.1",
+    "@next/swc-win32-x64-msvc": "15.3.1"
   },
   "_deploymentMarker": "DEPLOY_2025-05-31T195816070Z_orc5b8k5a6c",
   "_buildTimestamp": "2025-05-31T19:58:16.070Z"

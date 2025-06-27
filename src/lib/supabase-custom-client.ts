@@ -513,6 +513,29 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
 
   if (isBuild) {
     console.log('🏗️ [CUSTOM-CLIENT] BUILD MODE: Using mock Supabase client');
+    
+    // Create a proper mock query builder that implements the full chain
+    const createMockQueryBuilder = () => {
+      const mockBuilder = {
+        select: () => mockBuilder,
+        eq: () => mockBuilder,
+        neq: () => mockBuilder,
+        gt: () => mockBuilder,
+        gte: () => mockBuilder,
+        lt: () => mockBuilder,
+        lte: () => mockBuilder,
+        like: () => mockBuilder,
+        ilike: () => mockBuilder,
+        in: () => mockBuilder,
+        is: () => mockBuilder,
+        order: () => mockBuilder,
+        limit: () => mockBuilder,
+        single: () => Promise.resolve({ data: null, error: { message: 'Build mode - client unavailable' } }),
+        then: (callback: any) => Promise.resolve({ data: [], error: null }).then(callback)
+      };
+      return mockBuilder;
+    };
+    
     // Return a mock client that won't fail during build
     return {
       auth: {
@@ -522,13 +545,7 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
         signOut: () => Promise.resolve({ error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            single: () => Promise.resolve({ data: null, error: { message: 'Build mode - client unavailable' } })
-          })
-        })
-      })
+      from: () => createMockQueryBuilder()
     } as any;
   }
 
@@ -538,6 +555,29 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn('⚠️ Missing Supabase configuration - using fallback client');
+      
+      // Create a proper fallback query builder
+      const createFallbackQueryBuilder = () => {
+        const fallbackBuilder = {
+          select: () => fallbackBuilder,
+          eq: () => fallbackBuilder,
+          neq: () => fallbackBuilder,
+          gt: () => fallbackBuilder,
+          gte: () => fallbackBuilder,
+          lt: () => fallbackBuilder,
+          lte: () => fallbackBuilder,
+          like: () => fallbackBuilder,
+          ilike: () => fallbackBuilder,
+          in: () => fallbackBuilder,
+          is: () => fallbackBuilder,
+          order: () => fallbackBuilder,
+          limit: () => fallbackBuilder,
+          single: () => Promise.resolve({ data: null, error: { message: 'Configuration missing' } }),
+          then: (callback: any) => Promise.resolve({ data: [], error: null }).then(callback)
+        };
+        return fallbackBuilder;
+      };
+      
       // Return fallback client instead of throwing error
       return {
         auth: {
@@ -547,13 +587,7 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
           signOut: () => Promise.resolve({ error: null }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
         },
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              single: () => Promise.resolve({ data: null, error: { message: 'Configuration missing' } })
-            })
-          })
-        })
+        from: () => createFallbackQueryBuilder()
       } as any;
     }
 

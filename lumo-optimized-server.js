@@ -4,11 +4,21 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const net = require('net');
 
-const PORT = process.env.PORT || 8080;
+// PORT VALIDATION AND CORRECTION
+const validatePort = (port) => {
+  const numPort = parseInt(port, 10);
+  if (isNaN(numPort) || numPort < 0 || numPort > 65535) {
+    console.log(`⚠️ [LUMO] Invalid port ${port}, using default 8080`);
+    return 8080;
+  }
+  return numPort;
+};
+
+const PORT = validatePort(process.env.PORT || 8080);
 const standaloneServerPath = '.next/standalone/server.js';
 const hasStandalone = fs.existsSync(standaloneServerPath);
 
-console.log(`🚀 [LUMO] Starting (Standalone: ${hasStandalone ? '✅' : '❌'})`);
+console.log(`🚀 [LUMO] Starting (Standalone: ${hasStandalone ? '✅' : '❌'}) on port ${PORT}`);
 
 let standaloneProcess = null;
 let isReady = false;
@@ -123,7 +133,10 @@ const start = async () => {
     
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        console.error(`❌ [LUMO] Port ${PORT} in use. Try: PORT=8081 node lumo-ultra-compact-server.js`);
+        console.error(`❌ [LUMO] Port ${PORT} in use. Try: PORT=8081 node lumo-optimized-server.js`);
+        process.exit(1);
+      } else {
+        console.error(`❌ [LUMO] Server error:`, err.message);
         process.exit(1);
       }
     });

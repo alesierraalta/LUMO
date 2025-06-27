@@ -1,15 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
 import { z } from "zod";
-import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-server";
 
-// Build-time detection
+// ULTRA-AGGRESSIVE BUILD DETECTION
 const isBuild = process.env.NODE_ENV === 'production' && (
   process.env.NEXT_PHASE === 'phase-production-build' ||
   process.env.BUILD_ID ||
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co' ||
+  typeof process !== 'undefined' && process.argv && process.argv.some(arg => arg.includes('next build'))
 );
+
+// ULTRA BUILD-SAFE: Only import during runtime
+let db: any = null;
+let getCurrentUserFromToken: any = null;
+let getTokenFromRequest: any = null;
+
+if (!isBuild) {
+  try {
+    // Dynamic imports only during runtime
+    const dbModule = require("@/lib/db");
+    const authModule = require("@/lib/auth-server");
+    
+    db = dbModule.default;
+    getCurrentUserFromToken = authModule.getCurrentUserFromToken;
+    getTokenFromRequest = authModule.getTokenFromRequest;
+  } catch (error) {
+    console.warn('⚠️ Failed to load runtime modules:', error);
+  }
+}
 
 // Validation schema for category creation
 const CategorySchema = z.object({
@@ -17,120 +35,92 @@ const CategorySchema = z.object({
   description: z.string().optional(),
 });
 
-// Build-safe response helper
+// ULTRA BUILD-SAFE response helper
 const createBuildSafeResponse = (data: any = [], status: number = 200) => {
   if (isBuild) {
-    console.log('🏗️ Build mode: Returning mock response for categories');
-    return NextResponse.json(data, { status });
+    console.log('🏗️ BUILD MODE: Returning mock response for categories API');
+    return NextResponse.json({ success: true, data: [], message: 'Build mode - mock response' }, { status: 200 });
   }
-  return null;
+  return NextResponse.json(data, { status });
 };
 
-// GET /api/categories - List all categories
+// GET /api/categories - Get all categories
 export async function GET(request: NextRequest) {
+  // IMMEDIATE BUILD CHECK
+  if (isBuild) {
+    console.log('🏗️ BUILD MODE: Categories GET bypassed');
+    return createBuildSafeResponse([]);
+  }
+
+  // Runtime safety checks
+  if (!db || !getCurrentUserFromToken || !getTokenFromRequest) {
+    console.log('⚠️ Runtime modules not available');
+    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
+  }
+
   try {
-    // Build-time safety check
-    const buildResponse = createBuildSafeResponse([]);
-    if (buildResponse) return buildResponse;
-
     const token = getTokenFromRequest(request);
-    let user = null;
-    
-    if (token) {
-      user = await getCurrentUserFromToken(token);
-    }
-    
-    // Fallback to default user if no token or user found
+    const user = await getCurrentUserFromToken(token);
+
     if (!user) {
-      user = {
-        id: 'dd97c238-6649-4e31-979b-c9ef12959998',
-        email: 'alesierraalta@gmail.com',
-        name: 'Alejandro Sierra (ROOT)',
-        role: 'USER'
-      };
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!db) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
-    }
-
-    // Allow all authenticated users to view categories for product assignment
     const categories = await db.category.findMany({
-      orderBy: {
-        name: "asc",
-      },
+      orderBy: { name: 'asc' }
     });
-    
-    return NextResponse.json(categories || []);
-  } catch (error: unknown) {
-    console.error("Error fetching categories:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch categories";
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+
+    return NextResponse.json(categories);
+  } catch (error) {
+    console.error('❌ Categories GET error:', error);
+    return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
   }
 }
 
 // POST /api/categories - Create a new category
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
+  // IMMEDIATE BUILD CHECK
+  if (isBuild) {
+    console.log('🏗️ BUILD MODE: Categories POST bypassed');
+    return createBuildSafeResponse({ id: 'mock-id', name: 'Mock Category' }, 201);
+  }
+
+  // Runtime safety checks
+  if (!db || !getCurrentUserFromToken || !getTokenFromRequest) {
+    console.log('⚠️ Runtime modules not available');
+    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
+  }
+
   try {
-    // Build-time safety check
-    const buildResponse = createBuildSafeResponse({ id: 'build-mock', name: 'Mock Category' }, 201);
-    if (buildResponse) return buildResponse;
+    const token = getTokenFromRequest(request);
+    const user = await getCurrentUserFromToken(token);
 
-    const token = getTokenFromRequest(req);
-    let user = null;
-    
-    if (token) {
-      user = await getCurrentUserFromToken(token);
-    }
-    
-    // Fallback to default user if no token or user found
     if (!user) {
-      user = {
-        id: 'dd97c238-6649-4e31-979b-c9ef12959998',
-        email: 'alesierraalta@gmail.com',
-        name: 'Alejandro Sierra (ROOT)',
-        role: 'USER'
-      };
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Allow both ADMIN and USER roles to create categories
-    if (user.role !== 'ADMIN' && user.role !== 'USER') {
-      return NextResponse.json(
-        { error: "No tienes permisos para crear categorías" },
-        { status: 403 }
-      );
-    }
-
-    if (!db) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
-    }
-    
-    const body = await req.json();
+    const body = await request.json();
     const validatedData = CategorySchema.parse(body);
 
-    const category = await db.category.create({
+    const newCategory = await db.category.create({
       data: {
-        ...validatedData,
-        createdById: user.id,
-      },
+        name: validatedData.name,
+        description: validatedData.description,
+        userId: user.id,
+      }
     });
 
-    return NextResponse.json(category, { status: 201 });
+    return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {
+    console.error('❌ Categories POST error:', error);
+    
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
-      );
+      return NextResponse.json({ 
+        error: "Validation failed", 
+        details: error.errors 
+      }, { status: 400 });
     }
 
-    console.error('Error creating category:', error);
-    return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create category" }, { status: 500 });
   }
 } 

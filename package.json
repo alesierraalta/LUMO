@@ -73,7 +73,16 @@
     "github:ready": "npm run quality:gate",
     "commit:safe": "npm run pre-commit && git add . && git commit",
     "test:build-fix": "node scripts/test-build-fix.js",
-    "choreo:verify": "node scripts/test-build-fix.js && npm run build"
+    "test:ultra-build": "node scripts/test-ultra-build-fix.js",
+    "choreo:verify": "node scripts/test-ultra-build-fix.js",
+    "choreo:ultra-safe": "node scripts/test-ultra-build-fix.js && npm run build",
+    "monitor:setup": "node scripts/setup-monitoring.js",
+    "monitor:choreo": "node scripts/choreo-post-deploy-monitor.js",
+    "monitor:supabase-fix": "node scripts/monitor-supabase-fix.js",
+    "monitor:quick": "node scripts/monitor-supabase-fix.js",
+    "monitor:full": "node scripts/choreo-post-deploy-monitor.js 15",
+    "monitor:demo": "node scripts/demo-monitoring.js",
+    "monitor:capabilities": "node scripts/demo-monitoring.js --capabilities"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

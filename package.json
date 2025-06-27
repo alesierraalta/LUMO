@@ -71,7 +71,9 @@
     "quality:quick": "npm run build && npm run test:unit:ci",
     "pre-commit": "node scripts/pre-commit-hook.js",
     "github:ready": "npm run quality:gate",
-    "commit:safe": "npm run pre-commit && git add . && git commit"
+    "commit:safe": "npm run pre-commit && git add . && git commit",
+    "test:build-fix": "node scripts/test-build-fix.js",
+    "choreo:verify": "node scripts/test-build-fix.js && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

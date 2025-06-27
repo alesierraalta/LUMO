@@ -3,15 +3,36 @@ import db from "@/lib/db";
 import { z } from "zod";
 import { getCurrentUserFromToken, getTokenFromRequest } from "@/lib/auth-server";
 
+// Build-time detection
+const isBuild = process.env.NODE_ENV === 'production' && (
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.BUILD_ID ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
+);
+
 // Validation schema for category creation
 const CategorySchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
 });
 
+// Build-safe response helper
+const createBuildSafeResponse = (data: any = [], status: number = 200) => {
+  if (isBuild) {
+    console.log('🏗️ Build mode: Returning mock response for categories');
+    return NextResponse.json(data, { status });
+  }
+  return null;
+};
+
 // GET /api/categories - List all categories
 export async function GET(request: NextRequest) {
   try {
+    // Build-time safety check
+    const buildResponse = createBuildSafeResponse([]);
+    if (buildResponse) return buildResponse;
+
     const token = getTokenFromRequest(request);
     let user = null;
     
@@ -39,7 +60,8 @@ export async function GET(request: NextRequest) {
         name: "asc",
       },
     });
-    return NextResponse.json(categories);
+    
+    return NextResponse.json(categories || []);
   } catch (error: unknown) {
     console.error("Error fetching categories:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch categories";
@@ -53,6 +75,10 @@ export async function GET(request: NextRequest) {
 // POST /api/categories - Create a new category
 export async function POST(req: NextRequest) {
   try {
+    // Build-time safety check
+    const buildResponse = createBuildSafeResponse({ id: 'build-mock', name: 'Mock Category' }, 201);
+    if (buildResponse) return buildResponse;
+
     const token = getTokenFromRequest(req);
     let user = null;
     

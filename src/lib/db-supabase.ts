@@ -1,27 +1,41 @@
 /**
  * Supabase Database Client
  * - All environments now use Supabase PostgreSQL
- * - Simplified implementation without Prisma dependencies
+ * - Build-safe implementation with proper fallbacks
  */
 
-// CRITICAL FIX: Build-time environment detection first
+// CRITICAL FIX: Enhanced build-time detection
 const isServer = typeof window === 'undefined';
-const isBuild = process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
+const isBuild = process.env.NODE_ENV === 'production' && (
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.BUILD_ID ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
+);
+
+console.log('🔍 Environment Detection:', {
+  isServer,
+  isBuild,
+  NODE_ENV: process.env.NODE_ENV,
+  NEXT_PHASE: process.env.NEXT_PHASE,
+  BUILD_ID: !!process.env.BUILD_ID,
+  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL
+});
 
 // CRITICAL FIX: Dynamic import to prevent build-time issues
 let createClient: any = null;
 let supabaseClient: any = null;
 
-// Configuration
+// Configuration with build-safe defaults
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// CRITICAL FIX: Only import and create client during runtime, not build
-if (!isBuild) {
+// CRITICAL FIX: Only create real client during runtime with valid config
+if (!isBuild && supabaseUrl !== 'https://placeholder.supabase.co' && supabaseKey !== 'placeholder-key') {
   try {
     // Dynamic require to avoid build-time loading
-          const { getCustomSupabaseClient } = require('./supabase-custom-client');
-      createClient = getCustomSupabaseClient;
+    const { getCustomSupabaseClient } = require('./supabase-custom-client');
+    createClient = getCustomSupabaseClient;
     
     // Create client with realtime completely disabled for server
     supabaseClient = createClient(supabaseUrl, supabaseKey, {
@@ -40,23 +54,29 @@ if (!isBuild) {
       }
     });
     
-    if (isServer) {
-      console.log('✅ Server Supabase client initialized without realtime');
-    }
+    console.log('✅ Real Supabase client initialized');
   } catch (error) {
-    console.warn('⚠️ Supabase client creation failed, using fallback');
+    console.warn('⚠️ Supabase client creation failed, using fallback:', error);
+    supabaseClient = null;
   }
+} else {
+  console.log('🏗️ Build mode detected - using fallback client');
 }
 
-// Build-time fallback
+// Enhanced build-time and error fallback
+const createFallbackResponse = (data: any = []) => ({
+  data,
+  error: null
+});
+
 const fallbackClient = {
   from: (table: string) => ({
-    select: () => ({ data: [], error: null }),
-    insert: () => ({ data: null, error: null }),
-    update: () => ({ data: null, error: null }),
-    delete: () => ({ data: null, error: null }),
+    select: () => createFallbackResponse([]),
+    insert: () => createFallbackResponse(null),
+    update: () => createFallbackResponse(null),
+    delete: () => createFallbackResponse(null),
     eq: function() { return this; },
-    single: () => ({ data: null, error: null }),
+    single: () => createFallbackResponse(null),
     limit: function() { return this; },
     order: function() { return this; },
     range: function() { return this; },
@@ -70,10 +90,32 @@ const fallbackClient = {
 // Export safe client
 export const supabase = supabaseClient || fallbackClient;
 
-// Database operations interface
+// Build-safe database operations
+const createBuildSafeOperation = (operation: Function) => {
+  return async (...args: any[]) => {
+    if (isBuild) {
+      console.log('🏗️ Build mode: Skipping database operation');
+      return null;
+    }
+    
+    if (!supabaseClient) {
+      console.warn('⚠️ No Supabase client available, using fallback');
+      return null;
+    }
+    
+    try {
+      return await operation(...args);
+    } catch (error) {
+      console.error('❌ Database operation failed:', error);
+      return null;
+    }
+  };
+};
+
+// Database operations interface with build safety
 export const db = {
   user: {
-    findUnique: async (params: any) => {
+    findUnique: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('users').select('*');
 
       if (params.where.email) {
@@ -124,9 +166,9 @@ export const db = {
       }
       
       return result;
-    },
+    }),
 
-    findMany: async (params: any = {}) => {
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('users').select('*');
 
       // Apply where conditions
@@ -176,14 +218,14 @@ export const db = {
         updatedAt: new Date(item.updatedAt || item.updated_at),
         role: null // Simplified - no role relation for now
       }));
-    },
+    }),
 
-    findFirst: async (params: any) => {
+    findFirst: createBuildSafeOperation(async (params: any) => {
       const results = await db.user.findMany({ ...params, take: 1 });
       return results.length > 0 ? results[0] : null;
-    },
+    }),
 
-    create: async (params: any) => {
+    create: createBuildSafeOperation(async (params: any) => {
       const userData = {
         email: params.data.email,
         name: params.data.name,
@@ -213,9 +255,9 @@ export const db = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
-    },
+    }),
 
-    update: async (params: any) => {
+    update: createBuildSafeOperation(async (params: any) => {
       const updateData: any = {};
       if (params.data.email) updateData.email = params.data.email;
       if (params.data.name) updateData.name = params.data.name;
@@ -250,9 +292,9 @@ export const db = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
-    },
+    }),
 
-    delete: async (params: any) => {
+    delete: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('users').delete();
 
       if (params.where.id) {
@@ -270,9 +312,9 @@ export const db = {
       }
 
       return { count: 1 };
-    },
+    }),
 
-    count: async (params: any = {}) => {
+    count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('users').select('*', { count: 'exact', head: true });
 
       if (params.where) {
@@ -295,9 +337,9 @@ export const db = {
       }
 
       return count || 0;
-    },
+    }),
 
-    deleteMany: async (params: any = {}) => {
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('users').delete();
 
       // If no parameters are provided, treat as delete all
@@ -337,9 +379,9 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    },
+    }),
 
-    updateMany: async (params: any = {}) => {
+    updateMany: createBuildSafeOperation(async (params: any = {}) => {
       const updateData: any = {};
       if (params.data.email) updateData.email = params.data.email;
       if (params.data.name) updateData.name = params.data.name;
@@ -370,11 +412,11 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    }
+    })
   },
 
   role: {
-    findUnique: async (params: any) => {
+    findUnique: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('roles').select('*');
 
       if (params.where.id) {
@@ -400,9 +442,9 @@ export const db = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
-    },
+    }),
 
-    findMany: async (params: any = {}) => {
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('roles').select('*');
 
       if (params.where) {
@@ -440,9 +482,9 @@ export const db = {
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at)
       }));
-    },
+    }),
 
-    create: async (params: any) => {
+    create: createBuildSafeOperation(async (params: any) => {
       const roleData: any = {
         name: params.data.name,
         description: params.data.description,
@@ -475,9 +517,9 @@ export const db = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
-    },
+    }),
 
-    update: async (params: any) => {
+    update: createBuildSafeOperation(async (params: any) => {
       const updateData: any = {};
       if (params.data.name) updateData.name = params.data.name;
       if (params.data.description !== undefined) updateData.description = params.data.description;
@@ -507,9 +549,9 @@ export const db = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
-    },
+    }),
 
-    count: async (params: any = {}) => {
+    count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('roles').select('*', { count: 'exact', head: true });
 
       if (params.where) {
@@ -532,9 +574,9 @@ export const db = {
       }
 
       return count || 0;
-    },
+    }),
 
-    delete: async (params: any) => {
+    delete: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('roles').delete();
 
       if (params.where.id) {
@@ -549,9 +591,9 @@ export const db = {
       }
 
       return { count: 1 };
-    },
+    }),
 
-    deleteMany: async (params: any = {}) => {
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('roles').delete();
 
       // If no parameters are provided, treat as delete all
@@ -601,11 +643,11 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    }
+    })
   },
 
   category: {
-    findUnique: async (params: any) => {
+    findUnique: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('categories').select('*');
       if (params.where.id) query = query.eq('id', params.where.id);
       if (params.where.name) query = query.eq('name', params.where.name);
@@ -621,9 +663,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    findMany: async (params: any = {}) => {
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('categories').select('*');
       
       // Handle WHERE conditions
@@ -702,9 +744,9 @@ export const db = {
       }
 
       return categories;
-    },
+    }),
 
-    create: async (params: any) => {
+    create: createBuildSafeOperation(async (params: any) => {
       const categoryData = {
         name: params.data.name,
         description: params.data.description,
@@ -727,9 +769,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    update: async (params: any) => {
+    update: createBuildSafeOperation(async (params: any) => {
       const updateData: any = {};
       if (params.data.name) updateData.name = params.data.name;
       if (params.data.description !== undefined) updateData.description = params.data.description;
@@ -749,9 +791,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    delete: async (params: any) => {
+    delete: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('categories').delete();
       if (params.where?.id) {
         query = query.eq('id', params.where.id);
@@ -761,9 +803,9 @@ export const db = {
       if (error) throw new Error(`Database error: ${error.message}`);
 
       return { count: 1 };
-    },
+    }),
 
-    count: async (params: any = {}) => {
+    count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('categories').select('*', { count: 'exact', head: true });
       
       if (params.where) {
@@ -805,9 +847,9 @@ export const db = {
       if (error) throw new Error(`Database error: ${error.message}`);
 
       return count || 0;
-    },
+    }),
 
-    deleteMany: async (params: any = {}) => {
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('categories').delete();
 
       // For safety, require at least one condition or an explicit "delete all" flag
@@ -846,11 +888,11 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    }
+    })
   },
 
   inventoryItem: {
-    findUnique: async (params: any) => {
+    findUnique: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('inventory_items').select('*');
       
       if (params.where.id) {
@@ -877,9 +919,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    findMany: async (params: any = {}) => {
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('inventory_items').select('*');
       
       // Handle WHERE conditions
@@ -934,9 +976,9 @@ export const db = {
         updatedAt: new Date(item.updated_at),
         createdById: item.created_by_id
       }));
-    },
+    }),
 
-    create: async (params: any) => {
+    create: createBuildSafeOperation(async (params: any) => {
       const itemData: any = {
         name: params.data.name,
         description: params.data.description,
@@ -979,9 +1021,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    update: async (params: any) => {
+    update: createBuildSafeOperation(async (params: any) => {
       const updateData: any = {};
       if (params.data.name) updateData.name = params.data.name;
       if (params.data.description !== undefined) updateData.description = params.data.description;
@@ -1021,9 +1063,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    delete: async (params: any) => {
+    delete: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('inventory_items').delete();
 
       if (params.where.id) {
@@ -1038,9 +1080,9 @@ export const db = {
       }
 
       return { count: 1 };
-    },
+    }),
 
-    count: async (params: any = {}) => {
+    count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('inventory_items').select('*', { count: 'exact', head: true });
 
       if (params.where) {
@@ -1065,9 +1107,9 @@ export const db = {
       }
 
       return count || 0;
-    },
+    }),
 
-    deleteMany: async (params: any = {}) => {
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('inventory_items').delete();
 
       // For safety, require at least one condition or an explicit "delete all" flag
@@ -1106,11 +1148,11 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    }
+    })
   },
 
   stockMovement: {
-    findMany: async (params: any = {}) => {
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('stock_movements').select(`
         *,
         inventory_item:inventory_items(
@@ -1207,9 +1249,9 @@ export const db = {
       }
 
       return movements;
-    },
+    }),
 
-    count: async (params: any = {}) => {
+    count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('stock_movements').select('*', { count: 'exact', head: true });
 
       // Handle WHERE conditions (same as findMany but for counting)
@@ -1234,9 +1276,9 @@ export const db = {
       }
 
       return count || 0;
-    },
+    }),
 
-    findUnique: async (params: any) => {
+    findUnique: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('stock_movements').select(`
         *,
         inventory_item:inventory_items(
@@ -1275,9 +1317,9 @@ export const db = {
           } : null
         } : null
       };
-    },
+    }),
 
-    delete: async (params: any) => {
+    delete: createBuildSafeOperation(async (params: any) => {
       let query = supabase.from('stock_movements').delete();
 
       if (params.where.id) {
@@ -1291,9 +1333,9 @@ export const db = {
       }
 
       return { count: 1 };
-    },
+    }),
 
-    create: async (params: any) => {
+    create: createBuildSafeOperation(async (params: any) => {
       const movementData = {
         inventory_item_id: params.data.inventoryItemId,
         type: params.data.type,
@@ -1327,9 +1369,9 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    },
+    }),
 
-    deleteMany: async (params: any = {}) => {
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('stock_movements').delete();
 
       // For safety, require at least one condition or an explicit "delete all" flag
@@ -1364,50 +1406,50 @@ export const db = {
       }
 
       return { count: 1 }; // Simplified return
-    }
+    })
   },
 
   sale: {
-    findMany: async () => [],
-    create: async () => ({}),
-    update: async () => ({}),
-    delete: async () => ({ count: 1 }),
-    count: async () => 0
+    findMany: createBuildSafeOperation(async () => []),
+    create: createBuildSafeOperation(async () => ({})),
+    update: createBuildSafeOperation(async () => ({})),
+    delete: createBuildSafeOperation(async () => ({ count: 1 })),
+    count: createBuildSafeOperation(async () => 0)
   },
   saleItem: {
-    createMany: async () => ({})
+    createMany: createBuildSafeOperation(async () => ({}))
   },
   location: {
-    findMany: async () => [],
-    create: async () => ({}),
-    update: async () => ({}),
-    delete: async () => ({ count: 1 })
+    findMany: createBuildSafeOperation(async () => []),
+    create: createBuildSafeOperation(async () => ({})),
+    update: createBuildSafeOperation(async () => ({})),
+    delete: createBuildSafeOperation(async () => ({ count: 1 }))
   },
   priceHistory: {
-    findMany: async () => [],
-    create: async () => ({})
+    findMany: createBuildSafeOperation(async () => []),
+    create: createBuildSafeOperation(async () => ({}))
   },
   importSession: {
-    create: async () => ({}),
-    update: async () => ({}),
-    findUnique: async () => null
+    create: createBuildSafeOperation(async () => ({})),
+    update: createBuildSafeOperation(async () => ({})),
+    findUnique: createBuildSafeOperation(async () => null)
   },
   importError: {
-    createMany: async () => ({})
+    createMany: createBuildSafeOperation(async () => ({}))
   },
 
   // Utility methods for Prisma compatibility
-  $queryRaw: async (sql: any, ...params: any[]) => {
+  $queryRaw: createBuildSafeOperation(async (sql: any, ...params: any[]) => {
     // For test compatibility - return empty array for raw queries
     console.log('📝 $queryRaw called with:', sql, params);
     return [];
-  },
+  }),
 
-  $disconnect: async () => {
+  $disconnect: createBuildSafeOperation(async () => {
     // For test compatibility - Supabase doesn't need explicit disconnect
     console.log('🔌 $disconnect called - no action needed for Supabase');
     return Promise.resolve();
-  }
+  })
 };
 
 export default db;

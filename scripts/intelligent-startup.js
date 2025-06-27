@@ -132,9 +132,14 @@ async function main() {
                 console.log(`Error listing files: ${error.message}`);
             }
             
-            // Check if we have the emergency standalone server
+            // Check for hybrid server first (best of both worlds)
+            const hybridServerPath = path.join(currentDir, 'hybrid-server.js');
             const emergencyServerPath = path.join(currentDir, 'emergency-standalone-server.js');
-            if (fs.existsSync(emergencyServerPath)) {
+            
+            if (fs.existsSync(hybridServerPath)) {
+                console.log('🔄 Using hybrid server (Emergency + Next.js) - Best option!');
+                startServer(hybridServerPath, 'Starting hybrid server (Emergency fallback + Real Next.js)', '5-10 seconds');
+            } else if (fs.existsSync(emergencyServerPath)) {
                 console.log('🚨 Using emergency standalone server (bypasses Next.js completely)...');
                 startServer(emergencyServerPath, 'Starting emergency standalone server (no Next.js)', '2-3 seconds');
             } else {

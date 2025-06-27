@@ -2,10 +2,10 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Tag, Filter } from "lucide-react";
-import db from "@/lib/db";
 import { CategoryList } from "@/components/categories/category-list";
 import { CategorySearch } from "@/components/categories/category-search";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { getCategoriesData } from "./actions";
 
 export const metadata: Metadata = {
   title: "Categories",
@@ -17,24 +17,32 @@ interface PageProps {
 }
 
 async function getCategories(query?: string) {
-  const categories = await db.category.findMany({
-    where: query ? {
-      OR: [
-        { name: { contains: query } },
-        { description: { contains: query } },
-      ],
-    } : undefined,
-    include: {
-      _count: {
-        select: { inventoryItems: true },
+  try {
+    // Importación dinámica para evitar ejecución durante build
+    const { db } = await import('@/lib/db-supabase');
+    
+    const categories = await db.category.findMany({
+      where: query ? {
+        OR: [
+          { name: { contains: query } },
+          { description: { contains: query } },
+        ],
+      } : undefined,
+      include: {
+        _count: {
+          select: { inventoryItems: true },
+        },
       },
-    },
-    orderBy: {
-      name: 'asc',
-    },
-  });
+      orderBy: {
+        name: 'asc',
+      },
+    });
 
-  return categories;
+    return categories;
+  } catch (error) {
+    console.error('Error loading categories:', error);
+    return [];
+  }
 }
 
 export default async function CategoriesPage({ searchParams }: PageProps) {

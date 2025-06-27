@@ -6,11 +6,9 @@ import { BarChart3, ClipboardList, PieChart, DollarSign, PlusCircle, Package, Tr
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, StatCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { getAllProducts } from "@/services/productService";
-import { getLowStockItems } from "@/services/inventoryService";
 import { formatDate, getApiBaseUrl } from "@/lib/utils";
 import { ActionLink } from "@/components/ui/action-link";
-import db from "@/lib/db";
+import { getDashboardData } from "./actions";
 
 interface Product {
   id: string;
@@ -37,29 +35,11 @@ export default async function DashboardPage() {
   // For now, we'll show the dashboard without authentication
   // TODO: Add custom authentication check here
   
-  let products: Product[] = [];
-  let lowStockItems: any[] = [];
-  let categories: any[] = [];
+  // Usar Server Action en lugar de import directo de db
+  const { products, lowStockItems, categories, error } = await getDashboardData();
 
-  try {
-    // Obtener datos reales de la base de datos con manejo de errores
-    [products, lowStockItems] = await Promise.all([
-      getAllProducts(),
-      getLowStockItems()
-    ]) as [Product[], any[]];
-
-    // Get categories directly from database instead of API call
-    if (db) {
-      categories = await db.category.findMany({
-        orderBy: {
-          name: "asc",
-        },
-      });
-    }
-  } catch (error) {
-    console.error('Error loading dashboard data:', error);
-    
-    // Si hay error de base de datos, mostrar mensaje específico
+  // Si hay error de base de datos, mostrar mensaje específico
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -68,6 +48,9 @@ export default async function DashboardPage() {
           </h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             There was a problem loading the dashboard data. Please try again later.
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-500">
+            Error: {error}
           </p>
         </div>
       </div>

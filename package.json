@@ -39,7 +39,7 @@
     "test:stability": "node scripts/validate-server-stability.js",
     "build:test": "node scripts/test-build.js",
     "build:clean": "rimraf .next && npm run build",
-    "build:choreo": "NODE_ENV=production npm run build",
+    "build:choreo": "npm run build:ultra-safe",
     "build:safe": "next build",
     "start:safe": "node server.js",
     "deploy:simple": "echo \"Using simplified deployment\"",
@@ -82,7 +82,11 @@
     "monitor:quick": "node scripts/monitor-supabase-fix.js",
     "monitor:full": "node scripts/choreo-post-deploy-monitor.js 15",
     "monitor:demo": "node scripts/demo-monitoring.js",
-    "monitor:capabilities": "node scripts/demo-monitoring.js --capabilities"
+    "monitor:capabilities": "node scripts/demo-monitoring.js --capabilities",
+    "build:ultra-safe": "node scripts/ultra-build-fix.js && node scripts/build-simple.js",
+    "verify:build-fix": "node scripts/verify-build-fix.js",
+    "monitor:ultra-build-fix": "node scripts/monitor-ultra-build-fix.js",
+    "monitor:ultra-build-fix:production": "node scripts/monitor-ultra-build-fix.js https://your-choreo-app.choreoapis.dev 30000"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

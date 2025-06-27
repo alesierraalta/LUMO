@@ -1,3 +1,17 @@
+
+// ULTRA-AGGRESSIVE BUILD DETECTION
+const isBuild = process.env.NODE_ENV === 'production' && (
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.BUILD_ID ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co' ||
+  typeof process !== 'undefined' && process.argv && process.argv.some(arg => arg.includes('next build'))
+);
+
+if (isBuild) {
+  console.log('🏗️ BUILD MODE: Bypassing Supabase initialization');
+}
+
 /**
  * Supabase JWT Authentication System
  * - Uses native Supabase JWT tokens

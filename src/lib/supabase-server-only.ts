@@ -5,19 +5,23 @@
  * ULTRA BUILD FIX: Complete bypass during build phase
  */
 
-// ULTRA-AGGRESSIVE BUILD DETECTION
+// FIXED BUILD DETECTION - Only trigger during actual build, not runtime
 const isServer = typeof window === 'undefined';
-const isBuild = process.env.NODE_ENV === 'production' && (
+const isBuild = (
   process.env.NEXT_PHASE === 'phase-production-build' ||
-  process.env.BUILD_ID ||
+  (typeof process !== 'undefined' && process.argv && process.argv.some(arg => arg.includes('next build')))
+);
+
+// RUNTIME SAFETY: Check for missing configuration but don't treat as build mode
+const hasMissingConfig = (
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co' ||
-  typeof process !== 'undefined' && process.argv && process.argv.some(arg => arg.includes('next build'))
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
 );
 
 console.log('🔍 [SERVER-ONLY] Environment Detection:', {
   isServer,
   isBuild,
+  hasMissingConfig,
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
   BUILD_ID: !!process.env.BUILD_ID,
@@ -35,6 +39,10 @@ let supabaseServiceKey: string | undefined;
 
 if (isBuild) {
   console.log('🏗️ [SERVER-ONLY] BUILD MODE: Skipping Supabase configuration checks');
+  supabaseUrl = 'https://placeholder.supabase.co';
+  supabaseServiceKey = 'placeholder-key';
+} else if (hasMissingConfig) {
+  console.log('⚠️ [SERVER-ONLY] RUNTIME MODE: Missing Supabase configuration - using fallback client');
   supabaseUrl = 'https://placeholder.supabase.co';
   supabaseServiceKey = 'placeholder-key';
 } else {

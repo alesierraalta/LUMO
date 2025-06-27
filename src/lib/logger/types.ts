@@ -18,6 +18,10 @@ export interface LogContext {
   version?: string;
   requestId?: string;
   traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  requestPath?: string;
+  operation?: string;
 }
 
 export interface LogEntry {

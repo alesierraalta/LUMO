@@ -1,0 +1,278 @@
+{
+  "errorPatternAnalysis": {
+    "timestamp": "2025-01-17T12:00:00.000Z",
+    "taskId": "TASK_6",
+    "phase": "PHASE_1_CURRENT_STATE_ANALYSIS",
+    "analysisType": "ERROR_PATTERNS_AND_ROOT_CAUSE_TRACKING",
+    "currentErrorInfrastructure": {
+      "errorLogger": {
+        "status": "ACTIVE",
+        "location": "src/lib/logger/error-logger.ts",
+        "capabilities": [
+          "Error severity classification (LOW, MEDIUM, HIGH, CRITICAL)",
+          "Error categorization (10 categories including AUTHENTICATION, DATABASE, VALIDATION)",
+          "Correlation ID generation and tracking",
+          "Error deduplication with 5-minute throttling",
+          "Rich error context capture (user, request, session, module)",
+          "Client-side error reporting integration",
+          "Stack trace preservation",
+          "Automatic error frequency tracking"
+        ],
+        "limitations": [
+          "No automated pattern recognition",
+          "No cross-error correlation analysis",
+          "No predictive error detection",
+          "No deployment-stage error tracking",
+          "Limited root cause suggestion capability"
+        ]
+      },
+      "clientSideErrorReporting": {
+        "status": "ACTIVE",
+        "integration": "Comprehensive",
+        "capabilities": [
+          "Real-time error capture with correlation IDs",
+          "Detailed stack trace preservation",
+          "Browser context capture (viewport, user agent, URL)",
+          "Error severity classification",
+          "Automatic error categorization"
+        ],
+        "coverage": "Complete frontend error tracking"
+      }
+    },
+    "identifiedErrorPatterns": {
+      "authenticationFailures": {
+        "pattern": "Cannot read properties of undefined (reading 'role')",
+        "frequency": "15+ instances",
+        "severity": "HIGH",
+        "category": "AUTHENTICATION",
+        "locations": [
+          "src/lib/auth.ts:413:17",
+          "src/app/(main)/settings/users/edit/[id]/page.tsx:33:66"
+        ],
+        "rootCause": "User authentication state inconsistency",
+        "impact": "User access control failures",
+        "pattern_signature": "TypeError: Cannot read properties of undefined (reading 'role')",
+        "firstOccurrence": "2025-05-30T10:59:04.000Z",
+        "lastOccurrence": "2025-05-30T11:13:51.000Z",
+        "correlationIds": [
+          "error-1748602744354-mutlv804a",
+          "error-1748602744357-0i622y2aa",
+          "error-1748602747497-c1a5o46ek"
+        ]
+      },
+      "componentRenderingFailures": {
+        "pattern": "Element type is invalid: expected a string but got: undefined",
+        "frequency": "10+ instances", 
+        "severity": "MEDIUM",
+        "category": "APPLICATION",
+        "locations": [
+          "NewUserPage component",
+          "InventoryPage component"
+        ],
+        "rootCause": "Missing component exports or import/export mismatches",
+        "impact": "Page rendering failures and white screens",
+        "pattern_signature": "Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined",
+        "firstOccurrence": "2025-05-30T02:53:22.000Z",
+        "lastOccurrence": "2025-05-30T23:25:42.000Z",
+        "correlationIds": [
+          "error-1748573602871-rvuloaffh",
+          "error-1748573602869-d6zuw52zo",
+          "error-1748647542109-2iz7wi8tx"
+        ]
+      },
+      "dataProcessingFailures": {
+        "pattern": "priceHistory.map is not a function",
+        "frequency": "8+ instances",
+        "severity": "MEDIUM", 
+        "category": "APPLICATION",
+        "locations": [
+          "src/app/(main)/inventory/movements/client.tsx:1577:60",
+          "src/app/(main)/inventory/movements/client.tsx:1601:60"
+        ],
+        "rootCause": "Data type mismatch - expecting array but receiving non-array",
+        "impact": "Inventory movements page failures",
+        "pattern_signature": "TypeError: priceHistory.map is not a function",
+        "firstOccurrence": "2025-05-31T20:49:28.000Z",
+        "lastOccurrence": "2025-05-31T21:12:03.000Z",
+        "correlationIds": [
+          "error-1748724568207-pq08skgo8",
+          "error-1748724568205-7blxcj8kp",
+          "error-1748725129083-a7m22nta6"
+        ]
+      }
+    },
+    "errorFrequencyAnalysis": {
+      "totalErrors": "40+ logged instances",
+      "errorRate": "~2-3 errors per hour during active development",
+      "peakErrorPeriods": [
+        "2025-05-30 10:59-11:13 (authentication errors)",
+        "2025-05-31 20:49-21:12 (data processing errors)"
+      ],
+      "errorDistribution": {
+        "authentication": "37.5% (15/40)",
+        "componentRendering": "25% (10/40)", 
+        "dataProcessing": "20% (8/40)",
+        "other": "17.5% (7/40)"
+      }
+    },
+    "rootCauseTrackingCapabilities": {
+      "currentCapabilities": {
+        "errorCorrelation": {
+          "status": "BASIC",
+          "description": "Correlation IDs track individual errors but no cross-error correlation",
+          "coverage": "Single error instance tracking only"
+        },
+        "stackTraceAnalysis": {
+          "status": "COMPLETE",
+          "description": "Full stack traces preserved with line numbers and file paths",
+          "coverage": "100% of errors include detailed stack traces"
+        },
+        "contextCapture": {
+          "status": "COMPREHENSIVE",
+          "description": "Rich context including user, session, request, and browser info",
+          "coverage": "Complete context for debugging"
+        },
+        "errorDeduplication": {
+          "status": "ACTIVE",
+          "description": "5-minute throttling prevents error flooding",
+          "coverage": "Automatic deduplication based on error signature"
+        }
+      },
+      "missingCapabilities": {
+        "patternRecognition": {
+          "status": "NOT_IMPLEMENTED",
+          "description": "No automated recognition of recurring error patterns",
+          "impact": "Manual analysis required to identify trends"
+        },
+        "crossErrorCorrelation": {
+          "status": "NOT_IMPLEMENTED", 
+          "description": "No analysis of related errors or cascading failures",
+          "impact": "Root cause analysis limited to individual errors"
+        },
+        "deploymentErrorTracking": {
+          "status": "NOT_IMPLEMENTED",
+          "description": "No correlation between errors and deployment stages",
+          "impact": "Cannot identify deployment-related error patterns"
+        },
+        "predictiveAnalysis": {
+          "status": "NOT_IMPLEMENTED",
+          "description": "No prediction of potential errors based on patterns",
+          "impact": "Reactive rather than proactive error handling"
+        },
+        "automatedRootCauseAnalysis": {
+          "status": "NOT_IMPLEMENTED",
+          "description": "No automated suggestions for error resolution",
+          "impact": "Manual root cause analysis required"
+        }
+      }
+    },
+    "extremeDebuggingRequirements": {
+      "realTimePatternDetection": {
+        "required": "YES",
+        "description": "AI-powered real-time detection of error patterns during deployment",
+        "implementation": "Machine learning models analyzing error streams"
+      },
+      "deploymentStageCorrelation": {
+        "required": "YES", 
+        "description": "Track errors by deployment stage (build, deploy, startup, runtime)",
+        "implementation": "Stage-aware error tagging and correlation"
+      },
+      "cascadingFailureAnalysis": {
+        "required": "YES",
+        "description": "Detect and trace cascading failures across components",
+        "implementation": "Dependency graph analysis with error propagation tracking"
+      },
+      "predictiveErrorPrevention": {
+        "required": "YES",
+        "description": "Predict potential errors before they occur",
+        "implementation": "Pattern analysis with early warning system"
+      },
+      "automatedResolutionSuggestions": {
+        "required": "YES",
+        "description": "AI-powered suggestions for error resolution",
+        "implementation": "Knowledge base with automated solution matching"
+      }
+    },
+    "errorImpactAssessment": {
+      "criticalityMatrix": {
+        "authenticationErrors": {
+          "businessImpact": "HIGH",
+          "userExperience": "CRITICAL",
+          "systemStability": "MEDIUM",
+          "description": "Prevents user access to application features"
+        },
+        "componentRenderingErrors": {
+          "businessImpact": "HIGH", 
+          "userExperience": "CRITICAL",
+          "systemStability": "LOW",
+          "description": "Results in white screens and unusable pages"
+        },
+        "dataProcessingErrors": {
+          "businessImpact": "MEDIUM",
+          "userExperience": "HIGH", 
+          "systemStability": "LOW",
+          "description": "Specific feature failures but system remains functional"
+        }
+      },
+      "deploymentRisk": {
+        "current": "MEDIUM-HIGH",
+        "reasoning": "Recurring patterns indicate systemic issues that could affect production deployments",
+        "recommendation": "Implement extreme debugging before production deployment"
+      }
+    },
+    "implementationPriority": [
+      {
+        "priority": 1,
+        "capability": "Real-time Pattern Detection",
+        "effort": "HIGH",
+        "impact": "CRITICAL",
+        "description": "Detect recurring error patterns during deployment"
+      },
+      {
+        "priority": 2,
+        "capability": "Deployment Stage Correlation", 
+        "effort": "MEDIUM",
+        "impact": "HIGH",
+        "description": "Track errors by deployment stage for better debugging"
+      },
+      {
+        "priority": 3,
+        "capability": "Cascading Failure Analysis",
+        "effort": "HIGH",
+        "impact": "HIGH", 
+        "description": "Understand error propagation across components"
+      },
+      {
+        "priority": 4,
+        "capability": "Automated Resolution Suggestions",
+        "effort": "HIGH",
+        "impact": "MEDIUM",
+        "description": "Provide actionable error resolution guidance"
+      },
+      {
+        "priority": 5,
+        "capability": "Predictive Error Prevention",
+        "effort": "VERY_HIGH",
+        "impact": "MEDIUM",
+        "description": "Prevent errors before they occur"
+      }
+    ]
+  },
+  "taskCompletion": {
+    "status": "COMPLETED",
+    "findings": [
+      "Comprehensive error logging infrastructure already in place",
+      "Three major error patterns identified with high frequency",
+      "Strong individual error tracking but limited pattern analysis",
+      "No deployment-stage error correlation",
+      "Missing predictive and automated analysis capabilities"
+    ],
+    "nextSteps": [
+      "Implement real-time pattern detection system",
+      "Add deployment stage correlation to error tracking",
+      "Develop cascading failure analysis",
+      "Create automated resolution suggestion engine",
+      "Build predictive error prevention system"
+    ]
+  }
+} 

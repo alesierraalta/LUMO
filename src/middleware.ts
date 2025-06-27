@@ -1,6 +1,7 @@
 // CRITICAL FIX: Edge Runtime compatible middleware without Supabase realtime issues
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createCorrelationMiddleware } from './lib/middleware/correlation-middleware'
 
 // CRITICAL FIX: Add dashboard and choreo-specific routes to public routes
 const publicRoutes = [
@@ -75,10 +76,14 @@ export async function middleware(request: NextRequest) {
       pathname === '/favicon.ico') {
     return NextResponse.next()
   }
+
+  // PHASE 2 ENHANCEMENT: Apply correlation middleware for all requests
+  const correlationMiddleware = createCorrelationMiddleware()
+  let response = await correlationMiddleware(request)
   
   // Skip middleware for public routes
   if (publicRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.next()
+    return response // Return response with correlation headers
   }
 
   try {
@@ -114,13 +119,13 @@ export async function middleware(request: NextRequest) {
         console.log('🔑 Middleware: Admin route accessed');
       }
 
-      return NextResponse.next()
+      return response // Return response with correlation headers
     }
 
     // CRITICAL FIX: For dashboard route, allow access temporarily to prevent 400 errors
     if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
       console.log('⚠️ Middleware: Allowing dashboard access temporarily to prevent 400 errors');
-      return NextResponse.next()
+      return response // Return response with correlation headers
     }
 
     console.log('❌ Middleware: No valid authentication found for', pathname);
@@ -130,7 +135,7 @@ export async function middleware(request: NextRequest) {
     console.error('❌ Middleware error:', error)
     // CRITICAL FIX: Don't redirect on middleware errors, allow through
     console.log('⚠️ Middleware: Error occurred, allowing request through to prevent 400 errors');
-    return NextResponse.next()
+    return response // Return response with correlation headers
   }
 }
 

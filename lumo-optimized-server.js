@@ -1,89 +1,88 @@
-// LUMO Ultra-Optimized Server - Minimal, efficient, 100% functional
+// LUMO Ultra-Compact Server - Maximum efficiency, minimal code
 const http = require('http');
 const { spawn } = require('child_process');
 const fs = require('fs');
-const path = require('path');
+const net = require('net');
 
 const PORT = process.env.PORT || 8080;
-const HOSTNAME = '0.0.0.0';
-
-// Check for standalone server
-const standaloneServerPath = path.join(process.cwd(), '.next', 'standalone', 'server.js');
+const standaloneServerPath = '.next/standalone/server.js';
 const hasStandalone = fs.existsSync(standaloneServerPath);
 
-console.log(`🚀 [LUMO-OPT] Starting optimized server (Standalone: ${hasStandalone ? '✅' : '❌'})`);
+console.log(`🚀 [LUMO] Starting (Standalone: ${hasStandalone ? '✅' : '❌'})`);
 
 let standaloneProcess = null;
-let isStandaloneReady = false;
+let isReady = false;
+let standalonePort = null;
 
-// Health endpoints only
-const healthRoutes = {
-  '/health': () => JSON.stringify({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    server: 'lumo-optimized',
-    standalone: hasStandalone,
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  }),
-  '/api/health': () => JSON.stringify({
-    status: 'healthy',
-    message: 'LUMO optimized server operational',
-    timestamp: new Date().toISOString()
-  })
-};
+// Find available port
+const findPort = (port) => new Promise((resolve) => {
+  const server = net.createServer();
+  server.listen(port, () => {
+    const p = server.address().port;
+    server.close(() => resolve(p));
+  });
+  server.on('error', () => resolve(findPort(port + 1)));
+});
 
-// Start standalone server if available
-if (hasStandalone) {
-  console.log('🎯 [LUMO-OPT] Starting standalone server...');
+// Start standalone if available
+const startStandalone = async () => {
+  if (!hasStandalone) return;
+  standalonePort = await findPort(PORT + 1);
+  console.log(`🎯 [LUMO] Starting standalone on port ${standalonePort}`);
   
   standaloneProcess = spawn('node', [standaloneServerPath], {
-    env: { ...process.env, PORT: PORT + 1 }, // Use different port
+    env: { ...process.env, PORT: standalonePort },
     stdio: 'pipe'
   });
   
   standaloneProcess.stdout.on('data', (data) => {
-    const output = data.toString();
-    if (output.includes('ready') || output.includes('started')) {
-      isStandaloneReady = true;
-      console.log('✅ [LUMO-OPT] Standalone server ready');
+    if (data.toString().includes('ready')) {
+      isReady = true;
+      console.log('✅ [LUMO] Standalone ready');
     }
   });
   
-  standaloneProcess.on('error', (err) => {
-    console.error('❌ [LUMO-OPT] Standalone error:', err.message);
-  });
-}
+  standaloneProcess.on('error', () => isReady = false);
+};
 
-// Proxy to standalone server
-function proxyToStandalone(req, res) {
-  const options = {
+// Proxy function
+const proxy = (req, res) => {
+  if (!standalonePort) {
+    res.writeHead(503);
+    res.end('Service unavailable');
+    return;
+  }
+  
+  const proxyReq = http.request({
     hostname: 'localhost',
-    port: PORT + 1,
+    port: standalonePort,
     path: req.url,
     method: req.method,
     headers: req.headers
-  };
-  
-  const proxyReq = http.request(options, (proxyRes) => {
+  }, (proxyRes) => {
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
     proxyRes.pipe(res);
   });
   
-  proxyReq.on('error', (err) => {
-    res.writeHead(500);
-    res.end('Proxy Error');
+  proxyReq.on('error', () => {
+    res.writeHead(503);
+    res.end('Service unavailable');
   });
   
   req.pipe(proxyReq);
-}
+};
+
+// Health endpoints
+const health = {
+  '/health': () => JSON.stringify({ status: 'healthy', timestamp: new Date().toISOString() }),
+  '/api/health': () => JSON.stringify({ status: 'healthy', server: 'lumo-ultra-compact' })
+};
 
 // Main server
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname;
   
-  // CORS headers
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -95,46 +94,53 @@ const server = http.createServer((req, res) => {
   }
   
   // Health routes
-  if (healthRoutes[pathname]) {
+  if (health[url.pathname]) {
     res.setHeader('Content-Type', 'application/json');
     res.writeHead(200);
-    res.end(healthRoutes[pathname]());
+    res.end(health[url.pathname]());
     return;
   }
   
-  // Proxy to standalone if ready
-  if (hasStandalone && isStandaloneReady) {
-    proxyToStandalone(req, res);
+  // Proxy to standalone
+  if (hasStandalone && isReady) {
+    proxy(req, res);
     return;
   }
   
-  // Fallback for non-standalone
-  res.setHeader('Content-Type', 'text/html');
-  res.writeHead(200);
-  res.end(`
-<!DOCTYPE html>
-<html>
-<head><title>LUMO</title></head>
-<body style="font-family:Arial;margin:40px;text-align:center;">
-  <h1>🚀 LUMO System</h1>
-  <p>Initializing... Please wait.</p>
-  <script>setTimeout(() => location.reload(), 5000);</script>
-</body>
-</html>
-  `);
+  // Fallback
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end('<html><head><title>LUMO</title></head><body style="font-family:Arial;text-align:center;margin:40px;"><h1>🚀 LUMO</h1><p>Starting...</p><script>setTimeout(()=>location.reload(),3000)</script></body></html>');
 });
 
 // Start server
-server.listen(PORT, HOSTNAME, () => {
-  console.log(`✅ [LUMO-OPT] Server running at http://${HOSTNAME}:${PORT}`);
-});
+const start = async () => {
+  try {
+    await startStandalone();
+    
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ [LUMO] Server running at http://0.0.0.0:${PORT}`);
+    });
+    
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ [LUMO] Port ${PORT} in use. Try: PORT=8081 node lumo-ultra-compact-server.js`);
+        process.exit(1);
+      }
+    });
+  } catch (error) {
+    console.error('❌ [LUMO] Failed to start:', error.message);
+    process.exit(1);
+  }
+};
 
 // Graceful shutdown
 const shutdown = () => {
-  console.log('📴 [LUMO-OPT] Shutting down...');
+  console.log('📴 [LUMO] Shutting down...');
   if (standaloneProcess) standaloneProcess.kill('SIGTERM');
   server.close(() => process.exit(0));
 };
 
 process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown); 
+process.on('SIGINT', shutdown);
+
+start(); 

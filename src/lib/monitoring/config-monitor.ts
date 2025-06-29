@@ -68,16 +68,25 @@ export class ExtremeConfigMonitor {
   }
 
   /**
-   * Validate all critical configuration
+   * Validate all critical configuration - ONLY the 12 keys specified by user
    */
   validateConfiguration(): ConfigValidationResult {
-    const requiredSupabaseVars = [
-      'NEXT_PUBLIC_SUPABASE_URL',
+    const requiredChoreoVars = [
+      'CHOREO_ENVIRONMENT',
+      'APP_NAME',
+      'APP_VERSION', 
+      'FORCE_SUPABASE',
+      'JWT_SECRET',
+      'NEXTAUTH_SECRET',
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY'
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NODE_ENV',
+      'NEXTAUTH_URL',
+      'SUPABASE_KEY',
+      'SUPABASE_URL'
     ];
 
-    const missingVars = requiredSupabaseVars.filter(varName => !process.env[varName]);
+    const missingVars = requiredChoreoVars.filter(varName => !process.env[varName]);
     const buildIdExists = this.checkBuildId();
     
     const environmentDetection: EnvironmentDetection = {

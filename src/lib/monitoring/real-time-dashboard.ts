@@ -83,13 +83,20 @@ export class RealTimeDashboard {
     const configValidation = this.configMonitor.validateConfiguration();
     const startupSummary = this.startupTracker.getStartupSummary();
     
-    // Check required environment variables
+    // Check required environment variables - ONLY the 12 keys specified by user
     const requiredVars = [
-      'NEXT_PUBLIC_SUPABASE_URL',
+      'CHOREO_ENVIRONMENT',
+      'APP_NAME',
+      'APP_VERSION',
+      'FORCE_SUPABASE',
+      'JWT_SECRET',
+      'NEXTAUTH_SECRET',
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
-      'DATABASE_URL',
-      'JWT_SECRET'
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NODE_ENV',
+      'NEXTAUTH_URL',
+      'SUPABASE_KEY',
+      'SUPABASE_URL'
     ];
 
     const envVarStatus: Record<string, boolean> = {};

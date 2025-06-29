@@ -1,0 +1,92 @@
+{
+  "timestamp": "2025-06-28T01:18:45.817Z",
+  "severity": "CRITICAL",
+  "issues": [
+    "Missing Supabase configuration preventing database functionality"
+  ],
+  "recommendations": [],
+  "analysis": {
+    "startup": {
+      "serverStart": true,
+      "standaloneStart": true,
+      "readyTime": 576,
+      "ports": [
+        "8080",
+        "8081"
+      ],
+      "issues": []
+    },
+    "environment": {
+      "detections": [
+        {
+          "isServer": true,
+          "isBuild": false,
+          "hasMissingConfig": true,
+          "NODE_ENV": "production",
+          "BUILD_ID": false,
+          "hasSupabaseUrl": true
+        },
+        {
+          "isServer": true,
+          "isBuild": false,
+          "hasMissingConfig": true,
+          "NODE_ENV": "production",
+          "BUILD_ID": false,
+          "hasSupabaseUrl": true
+        },
+        {
+          "isServer": true,
+          "isBuild": false,
+          "hasMissingConfig": true,
+          "NODE_ENV": "production",
+          "BUILD_ID": false,
+          "hasSupabaseUrl": true
+        },
+        {
+          "isServer": true,
+          "isBuild": false,
+          "hasMissingConfig": true,
+          "NODE_ENV": "production",
+          "BUILD_ID": false,
+          "hasSupabaseUrl": true
+        }
+      ],
+      "issues": [
+        "Missing configuration detected",
+        "BUILD_ID is false - production build issues",
+        "Missing configuration detected",
+        "BUILD_ID is false - production build issues",
+        "Missing configuration detected",
+        "BUILD_ID is false - production build issues",
+        "Missing configuration detected",
+        "BUILD_ID is false - production build issues"
+      ],
+      "missingConfig": true,
+      "buildId": false,
+      "nodeEnv": "production"
+    },
+    "supabase": {
+      "hasUrl": true,
+      "missingConfig": true,
+      "fallbackClient": true,
+      "issues": [
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY likely missing",
+        "DATABASE_URL likely missing from secrets"
+      ],
+      "occurrences": 7
+    },
+    "errors": {
+      "errors": [],
+      "warnings": [
+        "2025-06-28T00:52:07.127260738Z npm warn config cache-max This option has been deprecated in favor of `--prefer-online`"
+      ],
+      "criticalCount": 0,
+      "warningCount": 1
+    },
+    "performance": {
+      "startupTime": null,
+      "readyTime": 576,
+      "issues": []
+    }
+  }
+}

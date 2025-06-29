@@ -36,7 +36,8 @@ import {
   Server,
   GitBranch,
   Eye,
-  Search
+  Search,
+  Settings
 } from 'lucide-react';
 
 // Import all monitoring components
@@ -84,6 +85,28 @@ interface QuickInsight {
   timestamp: Date;
   autoAction?: string;
   relatedAnalysis?: string;
+}
+
+interface ChoreoStatus {
+  supabase: {
+    isConfigured: boolean;
+    hasUrl: boolean;
+    hasAnonKey: boolean;
+    hasDatabaseUrl: boolean;
+  };
+  environment: {
+    isValid: boolean;
+    nodeEnv: string;
+    hasBuildId: boolean;
+    hasMissingConfig: boolean;
+    isServer: boolean;
+  };
+  diagnostic: {
+    severity: 'CRITICAL' | 'WARNING' | 'INFO';
+    issuesCount: number;
+    lastCheck: string;
+  };
+  configIssues: string[];
 }
 
 const COMPONENT_ICONS = {
@@ -135,6 +158,28 @@ export const ExtremeDebugDashboard: React.FC = () => {
   const performanceCollector = PerformanceMetricsCollector.getInstance();
   const deploymentTracker = DeploymentEventTracker.getInstance();
   const rootCauseEngine = RootCauseAnalysisEngine.getInstance();
+
+  const [choreoStatus, setChoreoStatus] = useState<ChoreoStatus>({
+    supabase: {
+      isConfigured: false,
+      hasUrl: false,
+      hasAnonKey: false,
+      hasDatabaseUrl: false
+    },
+    environment: {
+      isValid: false,
+      nodeEnv: '',
+      hasBuildId: false,
+      hasMissingConfig: false,
+      isServer: false
+    },
+    diagnostic: {
+      severity: 'INFO',
+      issuesCount: 0,
+      lastCheck: ''
+    },
+    configIssues: []
+  });
 
   // Update debug session correlation ID
   useEffect(() => {
@@ -411,6 +456,18 @@ export const ExtremeDebugDashboard: React.FC = () => {
     }
   };
 
+  const updateChoreoStatus = (newStatus: Partial<ChoreoStatus>): void => {
+    setChoreoStatus(prev => ({ ...prev, ...newStatus }));
+  };
+
+  const runConfigDiagnostic = (): void => {
+    // Implementation of runConfigDiagnostic function
+  };
+
+  const copyConfigInstructions = (): void => {
+    // Implementation of copyConfigInstructions function
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -655,9 +712,146 @@ export const ExtremeDebugDashboard: React.FC = () => {
           <DeploymentStatusTracker />
         </TabsContent>
       </Tabs>
+
+      {/* Choreo Configuration Issues Section */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Choreo Configuration Issues
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Supabase Configuration Status */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Supabase Configuration</h4>
+                <Badge variant={choreoStatus.supabase.isConfigured ? "default" : "destructive"}>
+                  {choreoStatus.supabase.isConfigured ? "Configured" : "Missing"}
+                </Badge>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>SUPABASE_URL:</span>
+                  <span className={choreoStatus.supabase.hasUrl ? "text-green-600" : "text-red-600"}>
+                    {choreoStatus.supabase.hasUrl ? "✓" : "✗"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>ANON_KEY:</span>
+                  <span className={choreoStatus.supabase.hasAnonKey ? "text-green-600" : "text-red-600"}>
+                    {choreoStatus.supabase.hasAnonKey ? "✓" : "✗"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>DATABASE_URL:</span>
+                  <span className={choreoStatus.supabase.hasDatabaseUrl ? "text-green-600" : "text-red-600"}>
+                    {choreoStatus.supabase.hasDatabaseUrl ? "✓" : "✗"}
+                  </span>
+                </div>
+              </div>
+              {!choreoStatus.supabase.isConfigured && (
+                <div className="mt-3 p-2 bg-red-50 rounded text-xs text-red-700">
+                  Missing Supabase configuration detected. Application using fallback client.
+                </div>
+              )}
+            </div>
+
+            {/* Environment Detection */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Environment Detection</h4>
+                <Badge variant={choreoStatus.environment.isValid ? "default" : "secondary"}>
+                  {choreoStatus.environment.nodeEnv}
+                </Badge>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>BUILD_ID:</span>
+                  <span className={choreoStatus.environment.hasBuildId ? "text-green-600" : "text-red-600"}>
+                    {choreoStatus.environment.hasBuildId ? "Present" : "Missing"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Missing Config:</span>
+                  <span className={choreoStatus.environment.hasMissingConfig ? "text-red-600" : "text-green-600"}>
+                    {choreoStatus.environment.hasMissingConfig ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Server Mode:</span>
+                  <span className={choreoStatus.environment.isServer ? "text-green-600" : "text-red-600"}>
+                    {choreoStatus.environment.isServer ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Configuration Diagnostic */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Diagnostic Status</h4>
+                <Badge variant={choreoStatus.diagnostic.severity === 'CRITICAL' ? "destructive" : 
+                               choreoStatus.diagnostic.severity === 'WARNING' ? "secondary" : "default"}>
+                  {choreoStatus.diagnostic.severity}
+                </Badge>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>Issues Detected: {choreoStatus.diagnostic.issuesCount}</div>
+                <div>Last Check: {choreoStatus.diagnostic.lastCheck}</div>
+                {choreoStatus.diagnostic.issuesCount > 0 && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => runConfigDiagnostic()}
+                    className="w-full mt-2"
+                  >
+                    Run Full Diagnostic
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration Issues List */}
+          {choreoStatus.configIssues.length > 0 && (
+            <div className="mt-4 p-4 bg-red-50 rounded-lg">
+              <h4 className="font-medium text-red-800 mb-2">Configuration Issues Detected:</h4>
+              <ul className="space-y-1 text-sm text-red-700">
+                {choreoStatus.configIssues.map((issue, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    {issue}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Quick Fix Instructions */}
+          {!choreoStatus.supabase.isConfigured && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-800 mb-2">Quick Fix Instructions:</h4>
+              <div className="space-y-2 text-sm text-blue-700">
+                <div>1. Add NEXT_PUBLIC_SUPABASE_ANON_KEY to Choreo environment variables</div>
+                <div>2. Add DATABASE_URL to Choreo secrets</div>
+                <div>3. Redeploy the application</div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => copyConfigInstructions()}
+                  className="mt-2"
+                >
+                  Copy Configuration Values
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
 export default ExtremeDebugDashboard;
-</rewritten_file>

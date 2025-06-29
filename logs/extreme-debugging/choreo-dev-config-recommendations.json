@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-01-27T13:55:00Z",
+  "environment": "development",
+  "extreme_debugging_analysis": {
+    "current_status": "CRITICAL - Missing SUPABASE_SERVICE_ROLE_KEY and DATABASE_URL",
+    "build_id_status": "✅ Present (Tl3-1eJ7pZXktsfNV10kH)",
+    "memory_usage": "82MB",
+    "uptime": "300s",
+    "monitoring_active": true
+  },
+  
+  "choreo_development_environment_variables": {
+    "CHOREO_ENVIRONMENT": "development",
+    "APP_NAME": "lumo",
+    "APP_VERSION": "1.0.0",
+    "FORCE_SUPABASE": "true",
+    "JWT_SECRET": "[GENERATE_RANDOM_32_CHAR_STRING]",
+    "NEXTAUTH_SECRET": "[GENERATE_RANDOM_32_CHAR_STRING]",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "[YOUR_SUPABASE_ANON_KEY]",
+    "NEXT_PUBLIC_SUPABASE_URL": "[YOUR_SUPABASE_URL]",
+    "NODE_ENV": "development",
+    "NEXTAUTH_URL": "https://[YOUR_CHOREO_DEV_URL]",
+    "SUPABASE_KEY": "[YOUR_SUPABASE_SERVICE_ROLE_KEY]",
+    "SUPABASE_URL": "[YOUR_SUPABASE_URL]"
+  },
+  
+  "critical_missing_variables": [
+    {
+      "variable": "SUPABASE_SERVICE_ROLE_KEY",
+      "current_name_in_choreo": "SUPABASE_KEY",
+      "description": "Service role key for server-side Supabase operations",
+      "severity": "CRITICAL",
+      "impact": "Database operations will fail, authentication issues"
+    },
+    {
+      "variable": "DATABASE_URL", 
+      "alternative": "Use SUPABASE_URL instead",
+      "description": "Database connection URL - can use Supabase URL",
+      "severity": "HIGH",
+      "impact": "Direct database connections may fail"
+    }
+  ],
+  
+  "extreme_debugging_recommendations": {
+    "immediate_actions": [
+      "Set SUPABASE_KEY to your Supabase service role key",
+      "Ensure NEXT_PUBLIC_SUPABASE_URL matches SUPABASE_URL", 
+      "Generate secure JWT_SECRET and NEXTAUTH_SECRET",
+      "Set NEXTAUTH_URL to your Choreo development URL"
+    ],
+    "validation_steps": [
+      "Monitor /api/extreme-debug endpoint after configuration",
+      "Check that configurationStatus changes from CRITICAL to HEALTHY",
+      "Verify BUILD_ID remains present",
+      "Monitor memory usage and startup performance"
+    ]
+  },
+  
+  "security_notes": {
+    "jwt_secret": "Generate 32+ character random string for JWT signing",
+    "nextauth_secret": "Generate 32+ character random string for NextAuth.js",
+    "supabase_keys": "Never expose service role key in client-side code",
+    "environment_isolation": "Ensure development keys are separate from production"
+  }
+} 

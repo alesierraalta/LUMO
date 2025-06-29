@@ -1,0 +1,62 @@
+{
+  "timestamp": "2025-01-27T14:00:00Z",
+  "extreme_debugging_current_status": {
+    "configuration": "🚨 CRITICAL",
+    "uptime": "465s",
+    "memory": "82MB",
+    "build_id": "✅ Present (Tl3-1eJ7pZXktsfNV10kH)",
+    "missing_critical": ["SUPABASE_SERVICE_ROLE_KEY", "DATABASE_URL"]
+  },
+  
+  "choreo_development_variables_exact": {
+    "CHOREO_ENVIRONMENT": "development",
+    "APP_NAME": "lumo",
+    "APP_VERSION": "1.0.0",
+    "FORCE_SUPABASE": "true",
+    "JWT_SECRET": "42b47e9ad92607eaa1ff726c6090450ddc37485b5044e6649825c322414a8837",
+    "NEXTAUTH_SECRET": "0b866e0d46dab837a42108fe4fa365cdd5189b252ab011c2ac5f54c4e834bb91",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "[TU_SUPABASE_ANON_KEY_AQUI]",
+    "NEXT_PUBLIC_SUPABASE_URL": "[TU_SUPABASE_URL_AQUI]",
+    "NODE_ENV": "development",
+    "NEXTAUTH_URL": "[TU_URL_CHOREO_DEV_AQUI]",
+    "SUPABASE_KEY": "[TU_SUPABASE_SERVICE_ROLE_KEY_AQUI]",
+    "SUPABASE_URL": "[MISMO_QUE_NEXT_PUBLIC_SUPABASE_URL]"
+  },
+  
+  "extreme_debugging_mapping": {
+    "SUPABASE_KEY": {
+      "maps_to_internal": "SUPABASE_SERVICE_ROLE_KEY",
+      "current_status": "❌ MISSING",
+      "criticality": "CRITICAL",
+      "impact": "Database operations fail, authentication issues"
+    },
+    "SUPABASE_URL": {
+      "maps_to_internal": "DATABASE_URL",
+      "current_status": "❌ MISSING", 
+      "criticality": "HIGH",
+      "impact": "Database connections may fail"
+    },
+    "NEXT_PUBLIC_SUPABASE_URL": {
+      "current_status": "✅ PRESENT",
+      "note": "Already configured correctly"
+    },
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+      "current_status": "✅ PRESENT",
+      "note": "Already configured correctly"
+    },
+    "JWT_SECRET": {
+      "current_status": "✅ PRESENT",
+      "note": "Already configured correctly"
+    }
+  },
+  
+  "validation_after_config": {
+    "expected_result": "Configuration status changes from CRITICAL to HEALTHY",
+    "monitor_endpoint": "/api/extreme-debug",
+    "expected_changes": [
+      "SUPABASE_SERVICE_ROLE_KEY: ❌ → ✅",
+      "DATABASE_URL: ❌ → ✅",
+      "Configuration: 🚨 CRITICAL → ✅ HEALTHY"
+    ]
+  }
+} 

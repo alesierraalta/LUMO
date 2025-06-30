@@ -20,6 +20,21 @@ let startupTimer = null;
 let healthCheckTimer = null;
 let isShuttingDown = false;
 
+// Fail fast if Supabase configuration uses placeholder values
+const validateSupabaseConfig = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || url === 'https://placeholder.supabase.co' || key === 'placeholder-key') {
+    console.error('❌ [LUMO] Invalid Supabase configuration detected');
+    console.error(`   NEXT_PUBLIC_SUPABASE_URL: ${url}`);
+    console.error(`   NEXT_PUBLIC_SUPABASE_ANON_KEY length: ${key ? key.length : 'undefined'}`);
+    console.error('   Please configure valid Supabase secrets in Choreo (see CHOREO_SECRETS_SETUP.md).');
+    process.exit(1);
+  }
+};
+
+validateSupabaseConfig();
+
 console.log('🚀 [LUMO] Enhanced Static Server with Timeout Prevention - v2.0');
 console.log(`⏱️  Startup timeout: ${STARTUP_TIMEOUT}ms`);
 console.log(`🔄 Max startup attempts: ${MAX_STARTUP_ATTEMPTS}`);

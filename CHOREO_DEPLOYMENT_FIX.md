@@ -1,205 +1,211 @@
-# Choreo Deployment Fix Guide
+# 🚀 Choreo Deployment Runtime Failure Fix
 
-## Issues Identified
+## 🔍 **Root Cause Analysis**
 
-Your Choreo deployment is experiencing several database schema and authentication issues:
+Your LUMO inventory application was failing on Choreo after running successfully for ~27 seconds with the error "Standalone server failed to start." 
 
-### 1. Database Schema Mismatch
-- **Error**: `Could not find the 'min_stock_level' column of 'inventory_items' in the schema cache`
-- **Cause**: The Supabase migration file was missing the `min_stock_level`, `margin`, and `image_url` columns
-- **Impact**: Product creation fails because the application expects these columns
+### **Primary Issues Identified:**
 
-### 2. Authentication Issues
-- **Error**: Categories and locations returning empty arrays (status 200 but no data)
-- **Cause**: APIs require authentication but no admin user exists in the database
-- **Impact**: Frontend cannot load categories and locations for product creation
+1. **❌ Missing `start.sh` Script**
+   - `choreo.yaml` references `./start.sh` as the deployment command
+   - This file was missing from the repository
+   - Choreo would start the app successfully, then fail when trying to execute the missing script
 
-### 3. Missing Default Data
-- **Issue**: No default categories, locations, or admin user in the database
-- **Impact**: Application appears empty and unusable
+2. **⚠️ Duplicate Environment Variable Definitions**
+   - Environment variables were defined in both `deploy.env` and `env` sections
+   - This could cause configuration conflicts
 
-## Solutions Implemented
+3. **🔧 Suboptimal Health Check Timing**
+   - Readiness probe: 30s initial delay was too long
+   - Liveness probe: 60s initial delay could miss early failures
 
-### ✅ 1. Fixed Prisma Schema
-Updated `prisma/schema.prisma` to include:
-- `margin` field for profit margin calculations
-- `imageUrl` field with proper database mapping (`@map("image_url")`)
-- Proper field mappings for Supabase compatibility
+4. **📝 Supabase Configuration Warnings**
+   - Fallback client warnings despite environment variables being present
+   - Insufficient validation logic
 
-### ✅ 2. Updated Supabase Migration
-Updated `supabase-migration.sql` to include:
-- `min_stock_level INTEGER DEFAULT 0`
-- `margin DECIMAL(10,2) DEFAULT 0`
-- `image_url TEXT`
+## 🛠️ **Applied Fixes**
 
-### ✅ 3. Created Schema Fix Script
-Created `supabase-schema-fix.sql` to add missing columns to existing database:
-- Adds missing columns with proper defaults
-- Creates default categories and locations
-- Handles existing data migration
-
-### ✅ 4. Created Choreo Setup Script
-Created `scripts/choreo-setup.js` for complete deployment setup:
-- Creates admin user with proper authentication
-- Sets up roles and permissions
-- Creates default categories and locations
-- Verifies database connection and setup
-
-### ✅ 5. Fixed API Authentication
-Updated `src/app/api/products/route.ts`:
-- Added proper authentication checks
-- Fixed `createdById` field assignment
-- Improved error handling for missing fields
-
-## Deployment Instructions
-
-### Step 1: Apply Database Schema Fix
-
-1. **Login to your Supabase dashboard**
-2. **Go to SQL Editor**
-3. **Run the schema fix script**:
-   ```sql
-   -- Copy and paste the contents of supabase-schema-fix.sql
-   -- This will add missing columns and create default data
-   ```
-
-### Step 2: Run Choreo Setup Script
-
-1. **In your Choreo deployment environment**, run:
-   ```bash
-   node scripts/choreo-setup.js
-   ```
-
-   This script will:
-   - ✅ Verify Supabase connection
-   - ✅ Create roles (ADMIN, MANAGER, USER)
-   - ✅ Create permissions system
-   - ✅ Create admin user: `alesierraalta@gmail.com` / `admin123`
-   - ✅ Create default categories (General, Electrónicos, Ropa, Hogar)
-   - ✅ Create default locations (Almacén Principal, Tienda, Depósito)
-
-### Step 3: Verify the Fix
-
-1. **Login to your application** with:
-   - Email: `alesierraalta@gmail.com`
-   - Password: `admin123`
-
-2. **Test the following**:
-   - ✅ Dashboard loads without errors
-   - ✅ Categories dropdown shows default categories
-   - ✅ Locations dropdown shows default locations
-   - ✅ Product creation works without schema errors
-
-### Step 4: Create a Test Product
-
-Try creating a product with these details:
-```json
-{
-  "name": "Test Product",
-  "sku": "TEST-001",
-  "price": 100,
-  "cost": 50,
-  "quantity": 10,
-  "minStockLevel": 5,
-  "categoryId": "[select from dropdown]",
-  "locationId": "[select from dropdown]"
-}
-```
-
-## Environment Variables Required
-
-Ensure these environment variables are set in Choreo:
+### **1. ✅ Created Missing `start.sh` Script**
 
 ```bash
-# Supabase Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+#!/bin/bash
+# LUMO Inventory Management System - Choreo Startup Script
 
-# Authentication
-JWT_SECRET=your_jwt_secret_key
+set -e  # Exit on any error
 
-# Deployment Flag
-CHOREO_DEPLOYMENT=true
-NODE_ENV=production
+echo "🚀 Starting LUMO Inventory Management System..."
+echo "📅 Timestamp: $(date)"
+echo "🌍 Environment: ${NODE_ENV:-production}"
+echo "🔧 Choreo Environment: ${CHOREO_ENVIRONMENT:-unknown}"
+
+# Validate critical environment variables
+REQUIRED_VARS=(
+    "DATABASE_URL"
+    "JWT_SECRET"
+    "NEXT_PUBLIC_SUPABASE_URL"
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+)
+
+# Check for missing variables and validate Supabase config
+# ... (comprehensive validation logic)
+
+# Start Next.js standalone server
+cd .next/standalone
+exec node server.js
 ```
 
-## Troubleshooting
+**Key Features:**
+- ✅ Comprehensive environment variable validation
+- ✅ Supabase configuration checks
+- ✅ JWT secret length validation
+- ✅ Standalone build verification
+- ✅ Proper error handling with exit codes
 
-### If Categories/Locations Still Empty:
-1. Check browser console for authentication errors
-2. Verify admin user was created: `SELECT * FROM users WHERE email = 'alesierraalta@gmail.com';`
-3. Check if categories exist: `SELECT * FROM categories;`
-4. Ensure you're logged in with the admin credentials
+### **2. ✅ Fixed `choreo.yaml` Configuration**
 
-### If Product Creation Still Fails:
-1. Check if all columns exist: 
-   ```sql
-   SELECT column_name FROM information_schema.columns 
-   WHERE table_name = 'inventory_items' 
-   AND column_name IN ('min_stock_level', 'margin', 'image_url');
+**Removed duplicate environment variables:**
+```yaml
+deploy:
+  command: ./start.sh
+  containerPort: 8080
+  # Removed duplicate env section here
+
+env:
+  # Consolidated all environment variables here
+  - name: CHOREO_ENVIRONMENT
+    value: "{{ .Values.environment }}"
+  - name: NODE_ENV
+    value: "production"
+  # ... other variables
+```
+
+**Optimized health checks:**
+```yaml
+healthCheck:
+  readinessProbe:
+    initialDelaySeconds: 15  # Reduced from 30
+  livenessProbe:
+    initialDelaySeconds: 30  # Reduced from 60
+```
+
+### **3. ✅ Enhanced Supabase Client Configuration**
+
+**Improved validation logic:**
+```typescript
+const hasMissingConfig = (
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co' ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'placeholder-key'
+);
+```
+
+**Better error reporting:**
+```typescript
+console.log('🔧 Configuration status:', {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
+  key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
+  urlIsPlaceholder: process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co',
+  keyIsPlaceholder: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'placeholder-key'
+});
+```
+
+## 🚀 **Deployment Steps**
+
+### **Step 1: Verify Choreo Secrets**
+
+Ensure these secrets are properly configured in Choreo:
+
+```bash
+DATABASE_URL=postgresql://...
+JWT_SECRET=your-32-character-or-longer-secret
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### **Step 2: Commit and Deploy**
+
+```bash
+# Commit the fixes
+git add .
+git commit -m "fix(deploy): add missing start.sh and fix choreo configuration"
+git push origin main
+
+# Deploy to Choreo
+# The deployment should now succeed
+```
+
+### **Step 3: Monitor Deployment**
+
+The deployment logs should now show:
+
+```
+🚀 Starting LUMO Inventory Management System...
+📅 Timestamp: ...
+🌍 Environment: production
+🔧 Choreo Environment: prod
+🔍 Validating environment configuration...
+✅ DATABASE_URL is configured
+✅ JWT_SECRET is configured
+✅ NEXT_PUBLIC_SUPABASE_URL is configured
+✅ NEXT_PUBLIC_SUPABASE_ANON_KEY is configured
+✅ All environment variables validated successfully
+✅ Standalone build found
+🌐 Server will start on port: 8080
+🚀 Starting Next.js standalone server...
+```
+
+## 🔍 **Troubleshooting**
+
+### **If deployment still fails:**
+
+1. **Check Choreo Secrets:**
+   ```bash
+   # Verify all required secrets are set in Choreo dashboard
+   # Ensure no placeholder values remain
    ```
-2. Verify the schema fix script ran successfully
-3. Check application logs for specific error messages
 
-### If Authentication Issues Persist:
-1. Verify JWT_SECRET is set in environment variables
-2. Check if roles and permissions were created properly
-3. Ensure admin user has the ADMIN role assigned
+2. **Verify Build Output:**
+   ```bash
+   # Ensure standalone build is generated
+   ls -la .next/standalone/server.js
+   ```
 
-## Database Schema Verification
+3. **Check Health Endpoint:**
+   ```bash
+   # Test health endpoint locally
+   curl http://localhost:8080/api/health
+   ```
 
-Run this query in Supabase SQL Editor to verify the fix:
+### **Expected Behavior:**
 
-```sql
--- Check if all required columns exist
-SELECT 'inventory_items columns' as info, column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'inventory_items' 
-AND column_name IN ('min_stock_level', 'margin', 'image_url');
+- ✅ Application starts within 15 seconds
+- ✅ Health checks pass consistently
+- ✅ No "fallback client" warnings
+- ✅ Supabase connection established
+- ✅ Stable runtime operation
 
--- Check data counts
-SELECT 'users' as table_name, COUNT(*) as count FROM users
-UNION ALL
-SELECT 'categories', COUNT(*) FROM categories
-UNION ALL
-SELECT 'locations', COUNT(*) FROM locations
-UNION ALL
-SELECT 'roles', COUNT(*) FROM roles
-UNION ALL
-SELECT 'permissions', COUNT(*) FROM permissions;
+## 📊 **Verification Checklist**
 
--- Check admin user
-SELECT email, name, is_active, role:roles(name) 
-FROM users 
-WHERE email = 'alesierraalta@gmail.com';
-```
+- [ ] `start.sh` exists and is executable
+- [ ] `choreo.yaml` has no duplicate environment variables
+- [ ] All Choreo secrets are configured correctly
+- [ ] Health checks are optimized (15s/30s delays)
+- [ ] Supabase configuration is valid
+- [ ] JWT secret is at least 32 characters
+- [ ] Standalone build is generated (next.config.js has `output: 'standalone'`)
 
-## Success Indicators
+## 🎯 **Success Metrics**
 
-After applying these fixes, you should see:
-- ✅ No more "min_stock_level column not found" errors
-- ✅ Categories dropdown populated with default categories
-- ✅ Locations dropdown populated with default locations
-- ✅ Successful product creation
-- ✅ Admin user can access all features
-- ✅ Dashboard displays properly
+After deployment, you should see:
+- ✅ Deployment completes successfully
+- ✅ Application remains stable beyond 30 seconds
+- ✅ Health endpoint returns 200 OK
+- ✅ No "Standalone server failed to start" errors
+- ✅ Supabase client initializes without fallback warnings
 
-## Next Steps
+---
 
-1. **Change default admin password** after first login
-2. **Create additional users** as needed
-3. **Customize categories and locations** for your business
-4. **Test all application features** thoroughly
-5. **Set up regular database backups**
+**Status:** 🟢 **READY FOR DEPLOYMENT**
 
-## Support
-
-If you encounter any issues after following this guide:
-1. Check the Choreo deployment logs
-2. Verify all environment variables are set correctly
-3. Ensure the Supabase database is accessible
-4. Review the browser console for client-side errors
-
-The application should now be fully functional with proper authentication and database schema! 
+The root cause has been identified and fixed. Your application should now deploy successfully on Choreo. 

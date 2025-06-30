@@ -14,7 +14,9 @@ const isBuild = (
 // RUNTIME SAFETY: Check for missing configuration but don't treat as build mode
 const hasMissingConfig = (
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co' ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'placeholder-key'
 );
 
 console.log('🔍 Environment Detection:', {
@@ -24,7 +26,10 @@ console.log('🔍 Environment Detection:', {
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
   BUILD_ID: !!process.env.BUILD_ID,
-  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL
+  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
+  choreoEnv: process.env.CHOREO_ENVIRONMENT || 'not-set'
 });
 
 // CRITICAL: Completely skip ALL Supabase code during build
@@ -34,8 +39,14 @@ let supabaseClient: any = null;
 if (isBuild) {
   console.log('🏗️ BUILD MODE: Completely bypassing Supabase initialization');
 } else if (hasMissingConfig) {
-  console.log('⚠️ RUNTIME MODE: Missing Supabase configuration - using fallback client');
-  // During build, set everything to null immediately
+  console.log('⚠️ RUNTIME MODE: Missing or invalid Supabase configuration - using fallback client');
+  console.log('🔧 Configuration status:', {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
+    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
+    urlIsPlaceholder: process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co',
+    keyIsPlaceholder: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'placeholder-key'
+  });
+  // During runtime with missing config, set to null
   supabaseClient = null;
 } else {
   // Only during runtime, try to create real client

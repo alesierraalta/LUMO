@@ -1,119 +1,20 @@
-# 🚀 CHOREO DEPLOYMENT GUIDE - DESDE CERO
-**LUMO Inventory Management System - Despliegue Completo**
+# 🚀 CHOREO DEPLOYMENT COMPLETE GUIDE v2.0
+## LUMO Inventory Management System - Enhanced with Timeout Prevention
 
-> **FECHA:** 2025-06-30  
-> **VERSIÓN:** 2.0 - Configuración Completa desde Cero  
-> **ESTADO:** ✅ KEYS REALES INCLUIDAS
+> **UPDATED:** Enhanced with timeout prevention system to fix the 27-second failure issue
 
----
+## 📋 PREREQUISITES
 
-## 📋 **ÍNDICE**
+Before starting, ensure you have:
+- ✅ Choreo account with deployment access
+- ✅ GitHub repository with LUMO code
+- ✅ Supabase project configured
+- ✅ All environment variables ready
 
-1. [🎯 Preparación Inicial](#preparación-inicial)
-2. [🔧 Configuración de Archivos](#configuración-de-archivos)
-3. [🌐 Configuración de Choreo](#configuración-de-choreo)
-4. [🚀 Proceso de Despliegue](#proceso-de-despliegue)
-5. [✅ Verificación y Testing](#verificación-y-testing)
-6. [🔍 Troubleshooting](#troubleshooting)
+## 🔧 ENHANCED CONFIGURATION FILES
 
----
-
-## 🎯 **PREPARACIÓN INICIAL**
-
-### **1. Verificar Prerequisitos**
-
-```bash
-# Verificar Node.js y npm
-node --version  # Debe ser >= 18.0.0
-npm --version   # Debe ser >= 8.0.0
-
-# Verificar Git
-git --version
-
-# Verificar que estás en el directorio correcto
-pwd  # Debe mostrar: /c/Users/alesierraalta/Documents/python/new-inventory-app
-```
-
-### **2. Limpiar Estado Anterior**
-
-```bash
-# Limpiar builds anteriores
-npm run clean 2>nul || echo "No hay builds anteriores"
-
-# Verificar estado de Git
-git status
-git pull origin main  # Asegurar última versión
-```
-
----
-
-## 🔧 **CONFIGURACIÓN DE ARCHIVOS**
-
-### **3. Verificar/Crear Dockerfile**
-
-```dockerfile
-# Dockerfile (en la raíz del proyecto)
-FROM node:18-alpine AS base
-
-# Instalar dependencias solo cuando sea necesario
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /workspace
-
-# Instalar dependencias
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-# Rebuild para producción
-FROM base AS builder
-WORKDIR /workspace
-COPY --from=deps /workspace/node_modules ./node_modules
-COPY . .
-
-# Configurar variables de entorno para build
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Build de la aplicación
-RUN npm run build
-
-# Imagen de producción
-FROM base AS runner
-WORKDIR /workspace
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copiar archivos públicos
-COPY --from=builder /workspace/public ./public
-
-# Copiar build standalone
-COPY --from=builder --chown=nextjs:nodejs /workspace/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /workspace/.next/static ./.next/static
-
-# Copiar scripts necesarios
-COPY --from=builder /workspace/lumo-static-server.js ./
-COPY --from=builder /workspace/start.sh ./
-
-# Hacer ejecutable el script de inicio
-RUN chmod +x ./start.sh
-
-USER nextjs
-
-EXPOSE 8080 8081
-
-ENV PORT=8081
-
-CMD ["./start.sh"]
-```
-
-### **4. Configurar choreo.yaml**
-
+### 1. choreo.yaml (UPDATED - Timeout Prevention)
 ```yaml
-# choreo.yaml
 apiVersion: core.choreo.dev/v1beta1
 kind: Component
 metadata:
@@ -147,6 +48,8 @@ spec:
       value: "1"
     - name: PORT
       value: "8081"
+    - name: STARTUP_TIMEOUT
+      value: "60"
       
   # Secrets (configurar en Choreo Console)
   secrets:
@@ -168,425 +71,256 @@ spec:
       context: /
       schemaFilePath: openapi.yaml
       
-  # Health Checks
+  # Health Checks - OPTIMIZED FOR TIMEOUT PREVENTION
   probes:
     readiness:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 10
+      failureThreshold: 5
+      
+    liveness:
+      httpGet:
+        path: /api/health
+        port: 8080
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 15
+      failureThreshold: 3
+      
+    startup:
       httpGet:
         path: /api/health
         port: 8080
       initialDelaySeconds: 15
       periodSeconds: 10
       timeoutSeconds: 5
+      failureThreshold: 20
       
-    liveness:
-      httpGet:
-        path: /api/health
-        port: 8080
-      initialDelaySeconds: 30
-      periodSeconds: 30
-      timeoutSeconds: 10
-      
-    startup:
-      httpGet:
-        path: /api/health
-        port: 8080
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 3
-      failureThreshold: 12
-      
-  # Resource Configuration
+  # Resource Configuration - INCREASED FOR STABILITY
   resources:
     requests:
-      memory: "4Gi"
-      cpu: "2000m"
+      memory: "6Gi"
+      cpu: "3000m"
     limits:
-      memory: "8Gi"
-      cpu: "4000m"
+      memory: "12Gi"
+      cpu: "6000m"
       
   # Scaling Configuration
   scaling:
-    minReplicas: 2
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 70
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
 ```
 
-### **5. Verificar start.sh**
+### 2. Enhanced start.sh (Timeout Prevention)
+**KEY FEATURES:**
+- ✅ 60-second startup timeout with retry logic
+- ✅ Enhanced environment validation
+- ✅ Graceful error handling
+- ✅ Performance optimizations
 
-```bash
-#!/bin/bash
-# start.sh
+### 3. Enhanced lumo-static-server.js (Multi-Attempt Startup)
+**KEY FEATURES:**
+- ✅ 3 startup attempts with 2-second delays
+- ✅ Health check monitoring every 5 seconds
+- ✅ Graceful shutdown handling
+- ✅ Enhanced error recovery
 
-echo "🚀 [LUMO] Starting LUMO Deployment Verification..."
+## 🎯 EXACT SECRET VALUES
 
-# Función para logging
-log() {
-    echo "🔍 [LUMO] $1"
-}
+Copy these EXACT values into Choreo Console > Secrets:
 
-# Verificar variables de entorno críticas
-log "Checking critical environment variables..."
-
-# Verificar Supabase URLs
-if [[ -z "$NEXT_PUBLIC_SUPABASE_URL" ]]; then
-    log "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL not set"
-    exit 1
-fi
-
-if [[ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]]; then
-    log "❌ ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY not set"
-    exit 1
-fi
-
-if [[ -z "$JWT_SECRET" ]]; then
-    log "❌ ERROR: JWT_SECRET not set"
-    exit 1
-fi
-
-# Validar que no sean placeholders
-if [[ "$NEXT_PUBLIC_SUPABASE_URL" == *"your-project"* ]] || [[ "$NEXT_PUBLIC_SUPABASE_URL" == *"placeholder"* ]]; then
-    log "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL contains placeholder values"
-    exit 1
-fi
-
-if [[ "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == *"your_anon_key"* ]] || [[ "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == *"placeholder"* ]]; then
-    log "❌ ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY contains placeholder values"
-    exit 1
-fi
-
-# Verificar longitud de JWT_SECRET
-if [[ ${#JWT_SECRET} -lt 32 ]]; then
-    log "❌ ERROR: JWT_SECRET must be at least 32 characters long"
-    exit 1
-fi
-
-log "✅ All environment variables validated successfully"
-
-# Verificar archivos necesarios
-log "Checking required files..."
-
-if [[ ! -f "./server.js" ]]; then
-    log "❌ ERROR: server.js not found"
-    exit 1
-fi
-
-if [[ ! -d "./.next" ]]; then
-    log "❌ ERROR: .next directory not found"
-    exit 1
-fi
-
-log "✅ All required files present"
-
-# Mostrar configuración (sin valores sensibles)
-log "Configuration Status:"
-log "  - NODE_ENV: ${NODE_ENV:-'not set'}"
-log "  - APP_NAME: ${APP_NAME:-'not set'}"
-log "  - CHOREO_ENVIRONMENT: ${CHOREO_ENVIRONMENT:-'not set'}"
-log "  - SUPABASE_URL configured: $([ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo "✅" || echo "❌")"
-log "  - SUPABASE_KEY configured: $([ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && echo "✅" || echo "❌")"
-log "  - JWT_SECRET configured: $([ -n "$JWT_SECRET" ] && echo "✅" || echo "❌")"
-
-log "🚀 Starting LUMO with static assets on port 8080"
-log "🚀 Starting standalone server on port 8081..."
-
-# Ejecutar el servidor
-exec node lumo-static-server.js
+### Production Environment Secrets:
 ```
-
-### **6. Verificar lumo-static-server.js**
-
-```javascript
-// lumo-static-server.js
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
-const { join } = require('path');
-const fs = require('fs');
-
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = parseInt(process.env.PORT, 10) || 8081;
-const staticPort = 8080;
-
-console.log('🔍 [LUMO] Starting LUMO with static assets on port', staticPort);
-console.log('🔍 [LUMO] Starting standalone server on port', port, '...');
-
-// Crear servidor estático para archivos públicos
-const staticServer = createServer((req, res) => {
-  const parsedUrl = parse(req.url, true);
-  const { pathname } = parsedUrl;
-  
-  // Servir archivos estáticos desde /public
-  if (pathname.startsWith('/')) {
-    const filePath = join(__dirname, 'public', pathname === '/' ? 'index.html' : pathname);
-    
-    if (fs.existsSync(filePath)) {
-      const ext = pathname.split('.').pop();
-      const contentType = {
-        'html': 'text/html',
-        'js': 'application/javascript',
-        'css': 'text/css',
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'gif': 'image/gif',
-        'ico': 'image/x-icon'
-      }[ext] || 'text/plain';
-      
-      res.writeHead(200, { 'Content-Type': contentType });
-      fs.createReadStream(filePath).pipe(res);
-      return;
-    }
-  }
-  
-  // Redirigir al servidor principal
-  res.writeHead(302, { 'Location': `http://localhost:${port}${req.url}` });
-  res.end();
-});
-
-staticServer.listen(staticPort, () => {
-  console.log(`🔍 [STATIC] Static server ready on port ${staticPort}`);
-});
-
-// Servidor Next.js principal
-const app = next({ dev, hostname, port });
-const handle = app.getRequestHandler();
-
-app.prepare().then(() => {
-  createServer(async (req, res) => {
-    try {
-      await handle(req, res, parse(req.url, true));
-    } catch (err) {
-      console.error('Error occurred handling', req.url, err);
-      res.statusCode = 500;
-      res.end('internal server error');
-    }
-  })
-  .once('error', (err) => {
-    console.error(err);
-    process.exit(1);
-  })
-  .listen(port, () => {
-    console.log(`🔍 [STANDALONE] Ready on port ${port}`);
-  });
-});
-```
-
----
-
-## 🌐 **CONFIGURACIÓN DE CHOREO**
-
-### **7. Valores Exactos para Secrets**
-
-**COPIAR ESTOS VALORES EXACTOS EN CHOREO CONSOLE:**
-
-```env
-# 🔑 SUPABASE CONFIGURATION (Production)
 NEXT_PUBLIC_SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MTIzODQsImV4cCI6MjA2NTA4ODM4NH0.SapRqhZCDJypL1fMCiEChK0ehZRR5CSI1fRgt3Za8r4
-
-# 🔑 SERVER-SIDE SUPABASE
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ3NDM2MjYsImV4cCI6MjA1MDMxOTYyNn0.UOJ-F1nBzKOKNjjz6eSJzxhwGr7r5lOdqJGfC8-KSYQ
 SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTUxMjM4NCwiZXhwIjoyMDY1MDg4Mzg0fQ.dBKGr8BqLGDSGAkCHnHI8FJQb-tTOaQ3gLHo_8rl4Eo
-
-# 🔑 JWT SECRETS
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ3NDM2MjYsImV4cCI6MjA1MDMxOTYyNn0.UOJ-F1nBzKOKNjjz6eSJzxhwGr7r5lOdqJGfC8-KSYQ
 JWT_SECRET=pvkn4ZqUlFJ6/BRynEb+as4VZ+JjOJLkTvVvm3vMflM5qKb+6JDr2hFbxMIHBPEbqju0Xdjbh2Nhlndvvv8AAg==
+DATABASE_URL=postgresql://postgres.ubjujxtvlubxowsphvuk:Theale05042013$$@aws-0-us-east-2.pooler.supabase.com:6543/postgres
 NEXTAUTH_SECRET=pvkn4ZqUlFJ6/BRynEb+as4VZ+JjOJLkTvVvm3vMflM5qKb+6JDr2hFbxMIHBPEbqju0Xdjbh2Nhlndvvv8AAg==
-
-# 🔑 DATABASE
-DATABASE_URL=postgresql://postgres.ubjujxtvlubxowsphvuk:Theale05042013$$@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-
-# 🔑 NEXTAUTH
 NEXTAUTH_URL=https://lumo-1615540597.choreoapis.dev
 ```
 
-### **8. Pasos en Choreo Console**
+## 🚀 DEPLOYMENT STEPS
 
-1. **Acceder a Choreo Console:**
-   - Ve a: https://console.choreo.dev/
-   - Busca tu proyecto "LUMO"
-
-2. **Configurar Secrets:**
-   - Ve a `Settings` → `Environment Variables`
-   - Elimina TODAS las variables existentes
-   - Agrega cada secret con los valores exactos de arriba:
-
-   ```
-   NEXT_PUBLIC_SUPABASE_URL → https://ubjujxtvlubxowsphvuk.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY → eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   SUPABASE_URL → https://ubjujxtvlubxowsphvuk.supabase.co
-   SUPABASE_KEY → eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   JWT_SECRET → pvkn4ZqUlFJ6/BRynEb+as4VZ+JjOJLkTvVvm3vMflM5...
-   DATABASE_URL → postgresql://postgres.ubjujxtvlubxowsphvuk...
-   NEXTAUTH_SECRET → pvkn4ZqUlFJ6/BRynEb+as4VZ+JjOJLkTvVvm3vMflM5...
-   NEXTAUTH_URL → https://lumo-1615540597.choreoapis.dev
-   ```
-
-3. **Guardar Configuración:**
-   - Hacer clic en "Save" después de cada variable
-   - Verificar que no haya typos
-
----
-
-## 🚀 **PROCESO DE DESPLIEGUE**
-
-### **9. Build Local (Verificación)**
-
+### Step 1: Prepare Repository
 ```bash
-# Limpiar y preparar
-npm run clean
-npm ci
-
-# Build de producción
-npm run build
-
-# Verificar que el build fue exitoso
-ls -la .next/
-ls -la .next/standalone/
-```
-
-### **10. Commit y Push**
-
-```bash
-# Verificar cambios
-git status
-
-# Agregar archivos
+# Ensure all files are committed
 git add .
-
-# Commit con mensaje descriptivo
-git commit -m "feat(choreo): complete deployment configuration with real Supabase keys
-
-- Add production Dockerfile with multi-stage build
-- Configure choreo.yaml with proper resource allocation
-- Add comprehensive start.sh with environment validation
-- Include lumo-static-server.js for dual-port setup
-- All environment variables configured with real values
-- Ready for production deployment"
-
-# Push a main
+git commit -m "feat: enhanced timeout prevention system"
 git push origin main
 ```
 
-### **11. Desplegar en Choreo**
+### Step 2: Choreo Console Configuration
 
-1. **Trigger Deployment:**
-   - En Choreo Console, ve a tu proyecto
-   - Click en "Deploy" o "Build & Deploy"
-   - Selecciona la branch "main"
+1. **Go to Choreo Console:** https://console.choreo.dev
+2. **Create/Update Component:**
+   - Name: `lumo`
+   - Type: Web Application
+   - Repository: Your GitHub repo
+   - Branch: `main`
 
-2. **Monitorear Build:**
-   - Observa los logs de build en tiempo real
-   - Verificar que no haya errores
+3. **Configure Secrets:** 
+   - Go to "Deploy" > "Configurations" > "Secrets"
+   - Add ALL 8 secrets with EXACT values above
+   - ⚠️ **CRITICAL:** Copy values exactly, no extra spaces
 
-3. **Verificar Deployment:**
-   - Una vez completado, acceder a la URL de la aplicación
-   - Verificar que la aplicación inicie correctamente
+4. **Configure Environment Variables:**
+   - All env vars are now in choreo.yaml
+   - No manual configuration needed
+
+### Step 3: Deploy
+
+1. **Trigger Build:**
+   - Go to "Deploy" tab
+   - Click "Deploy"
+   - Monitor build logs
+
+2. **Expected Build Process:**
+   ```
+   ✅ Build: ~15-20 seconds
+   ✅ Deployment: ~30-45 seconds  
+   ✅ Health Checks: ~15-30 seconds
+   ✅ Total: ~60-95 seconds
+   ```
+
+## 🎯 TIMEOUT PREVENTION FEATURES
+
+### 1. **Enhanced Health Checks**
+- **Startup Probe:** 20 attempts × 10s = 200s maximum
+- **Readiness Probe:** 5 failures allowed before restart
+- **Liveness Probe:** 3 failures with 30s intervals
+
+### 2. **Resource Optimization**
+- **Memory:** 6GB request, 12GB limit
+- **CPU:** 3 cores request, 6 cores limit
+- **Startup Timeout:** 60 seconds with retry logic
+
+### 3. **Multi-Attempt Startup**
+- **3 startup attempts** with 2-second delays
+- **Health monitoring** every 5 seconds
+- **Graceful shutdown** handling
+
+## 🔍 VERIFICATION CHECKLIST
+
+After deployment, verify:
+
+### ✅ **Application Access**
+- [ ] Main URL responds: `https://lumo-1615540597.choreoapis.dev`
+- [ ] Health endpoint: `https://lumo-1615540597.choreoapis.dev/api/health`
+- [ ] Login page loads: `https://lumo-1615540597.choreoapis.dev/login`
+
+### ✅ **Configuration Status**
+- [ ] No "placeholder" warnings in logs
+- [ ] Environment variables detected as "present"
+- [ ] Supabase configuration validated
+- [ ] JWT authentication working
+
+### ✅ **Performance Metrics**
+- [ ] Startup time < 60 seconds
+- [ ] Memory usage < 6GB
+- [ ] CPU usage < 80%
+- [ ] No timeout errors in logs
+
+## 🚨 TROUBLESHOOTING
+
+### If Still Getting 27-Second Timeout:
+
+1. **Check Choreo Logs:**
+   ```bash
+   # Look for these patterns:
+   - "Startup timeout after 60000ms"
+   - "Retrying startup (2/3)"
+   - "Health check failed"
+   ```
+
+2. **Increase Resources:**
+   ```yaml
+   resources:
+     requests:
+       memory: "8Gi"  # Increase from 6Gi
+       cpu: "4000m"   # Increase from 3000m
+   ```
+
+3. **Extend Timeouts:**
+   ```yaml
+   env:
+     - name: STARTUP_TIMEOUT
+       value: "90"    # Increase from 60
+   ```
+
+### Common Issues:
+
+1. **Secret Configuration:**
+   - Verify ALL 8 secrets are configured
+   - Check for extra spaces or newlines
+   - Ensure values match exactly
+
+2. **Build Failures:**
+   - Check Dockerfile exists in root
+   - Verify package.json has correct scripts
+   - Ensure .next/standalone build exists
+
+3. **Health Check Failures:**
+   - Verify /api/health endpoint exists
+   - Check port 8080 is accessible
+   - Monitor startup logs for errors
+
+## 📊 EXPECTED RESULTS
+
+### ✅ **Success Indicators:**
+```
+🚀 [LUMO] Enhanced Static Server with Timeout Prevention - v2.0
+⏱️  Startup timeout: 60000ms
+🔄 Max startup attempts: 3
+✅ [LUMO] Static server ready on port 8080
+✅ [STANDALONE] Server started successfully
+🏥 [STANDALONE] Health check passed
+🎉 [LUMO] All services started successfully!
+```
+
+### ✅ **Performance Targets:**
+- **Startup Time:** < 60 seconds
+- **Memory Usage:** < 6GB
+- **CPU Usage:** < 80%
+- **Success Rate:** 99.9%
+
+## 🎯 NEXT STEPS
+
+After successful deployment:
+
+1. **Monitor Performance:**
+   - Check Choreo metrics dashboard
+   - Monitor application logs
+   - Verify user authentication
+
+2. **Test Core Features:**
+   - User login/logout
+   - Inventory management
+   - Database operations
+   - API endpoints
+
+3. **Production Readiness:**
+   - Configure domain name
+   - Set up monitoring alerts
+   - Plan backup strategy
+   - Document operational procedures
 
 ---
 
-## ✅ **VERIFICACIÓN Y TESTING**
+## 🏆 SUCCESS CRITERIA
 
-### **12. Scripts de Verificación**
+**Deployment is successful when:**
+- ✅ Application starts within 60 seconds
+- ✅ No "Standalone server failed to start" errors
+- ✅ Health checks pass consistently
+- ✅ All environment variables validated
+- ✅ User authentication working
+- ✅ Database connectivity confirmed
 
-```bash
-# Ejecutar verificación de configuración
-node scripts/verify-choreo-config.bat
-
-# Verificar endpoint de debug
-curl "https://lumo-1615540597.choreoapis.dev/api/debug-env-config"
-
-# Verificar health endpoint
-curl "https://lumo-1615540597.choreoapis.dev/api/health"
-```
-
-### **13. Tests de Funcionalidad**
-
-1. **Verificar Aplicación:**
-   - Acceder a: https://lumo-1615540597.choreoapis.dev
-   - Verificar que la página de login carga
-   - Intentar login con credenciales válidas
-
-2. **Verificar APIs:**
-   - `/api/health` → Debe retornar 200 OK
-   - `/api/debug-env-config` → Debe mostrar configuración sin placeholders
-   - `/api/auth/supabase-me` → Debe funcionar con autenticación
-
-3. **Verificar Base de Datos:**
-   - Login debe conectar con Supabase
-   - Operaciones CRUD deben funcionar
-   - No debe haber errores de conexión
-
----
-
-## 🔍 **TROUBLESHOOTING**
-
-### **14. Problemas Comunes**
-
-**❌ "urlIsPlaceholder: true"**
-```bash
-# SOLUCIÓN: Verificar que las variables en Choreo Console sean exactas
-# NO deben contener "your-project", "placeholder", etc.
-```
-
-**❌ "Standalone server failed to start"**
-```bash
-# SOLUCIÓN: Verificar que start.sh sea ejecutable
-chmod +x start.sh
-
-# Verificar que server.js exista en .next/standalone/
-ls -la .next/standalone/server.js
-```
-
-**❌ "Build failed"**
-```bash
-# SOLUCIÓN: Verificar dependencias
-npm ci
-npm run build
-
-# Verificar que no haya errores de TypeScript
-npm run type-check
-```
-
-### **15. Logs y Debugging**
-
-```bash
-# Ver logs de Choreo deployment
-# (En Choreo Console → Logs)
-
-# Verificar configuración local
-node scripts/generate-choreo-config.js
-
-# Test de conexión a Supabase
-curl -H "Authorization: Bearer ANON_KEY" \
-  "https://ubjujxtvlubxowsphvuk.supabase.co/rest/v1/"
-```
-
----
-
-## 🎯 **CHECKLIST FINAL**
-
-- [ ] ✅ Dockerfile creado y configurado
-- [ ] ✅ choreo.yaml con configuración completa
-- [ ] ✅ start.sh ejecutable y con validaciones
-- [ ] ✅ lumo-static-server.js configurado
-- [ ] ✅ Variables de entorno configuradas en Choreo Console
-- [ ] ✅ Secrets configurados con valores reales (NO placeholders)
-- [ ] ✅ Build local exitoso
-- [ ] ✅ Código commiteado y pusheado
-- [ ] ✅ Deployment ejecutado en Choreo
-- [ ] ✅ Aplicación accesible y funcional
-- [ ] ✅ APIs respondiendo correctamente
-- [ ] ✅ Base de datos conectada y operacional
-
----
-
-## 📞 **SOPORTE**
-
-Si encuentras problemas:
-
-1. **Verificar logs:** Choreo Console → Logs
-2. **Ejecutar debug:** `/api/debug-env-config`
-3. **Verificar configuración:** `scripts/verify-choreo-config.bat`
-4. **Revisar este guide:** Todos los valores están probados y funcionando
-
-**¡CONFIGURACIÓN COMPLETA Y LISTA PARA PRODUCCIÓN!** 🚀 
+**The enhanced timeout prevention system should eliminate the 27-second failure pattern and provide a stable, production-ready deployment.** 

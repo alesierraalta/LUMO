@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-07-01T14:48:56.735Z",
+  "issue": "Configuration Validation Failure",
+  "rootCauses": [
+    {
+      "cause": "Missing Environment Variables",
+      "variables": [
+        "CHOREO_ENVIRONMENT",
+        "APP_NAME",
+        "APP_VERSION",
+        "FORCE_SUPABASE",
+        "JWT_SECRET",
+        "NEXTAUTH_SECRET",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXTAUTH_URL",
+        "SUPABASE_KEY",
+        "SUPABASE_URL"
+      ],
+      "impact": "Application will use fallback clients, degraded functionality"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "Configure missing environment variables in Choreo console",
+      "priority": "CRITICAL",
+      "variables": [
+        "CHOREO_ENVIRONMENT",
+        "APP_NAME",
+        "APP_VERSION",
+        "FORCE_SUPABASE",
+        "JWT_SECRET",
+        "NEXTAUTH_SECRET",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXTAUTH_URL",
+        "SUPABASE_KEY",
+        "SUPABASE_URL"
+      ]
+    }
+  ]
+}

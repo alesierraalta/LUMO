@@ -3,10 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:fixed": "cross-env NODE_OPTIONS=\"--max-old-space-size=6144 --no-deprecation\" next dev",
-    "dev:clean": "npm run clean:cache && npm run dev:fixed",
-    "build": "next build",
+    "dev": "cross-env NEXT_TELEMETRY_DISABLED=1 next dev",
+    "build": "cross-env NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "node server.js",
     "lint": "echo 'Linting passed - no linter configured'",
     "lint:fix": "next lint --fix",

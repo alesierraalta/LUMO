@@ -46,8 +46,14 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   
-  // Webpack optimizations for dev
+  // Webpack optimizations for both dev and production
   webpack: (config, { dev, isServer }) => {
+    // CRITICAL FIX: Configure alias for both dev AND production
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, 'src'),
+    };
+    
     if (dev) {
       // Faster dev builds
       config.optimization.splitChunks = {
@@ -67,12 +73,6 @@ const nextConfig = {
             reuseExistingChunk: true
           }
         }
-      };
-      
-      // Reduce module resolution time
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@': require('path').resolve(__dirname, 'src'),
       };
     }
     

@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MovementsHistoryPage() {
   try {
-    const { data: movementsRaw, pagination } = await getAllStockMovements({ limit: 100 });
+    const { movements: movementsRaw, pagination } = await getAllStockMovements({ limit: 100 });
     
     // Process the movements to ensure valid dates - with null checking
     const movements = (movementsRaw || []).map((movement: any) => ({

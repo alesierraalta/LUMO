@@ -1,3 +1,4 @@
+import db from "@/lib/db";
 import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -84,10 +85,10 @@ export async function GET(request: Request) {
     }
 
     // Get total count for pagination
-    const total = await prisma.inventoryItem.count({ where });
+    const total = await db.inventoryItem.count({ where });
 
     // Get paginated results
-    const products = await prisma.inventoryItem.findMany({
+    const products = await db.inventoryItem.findMany({
       where,
       include: {
         category: true,
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
     const validatedData = ProductSchema.parse(data);
     
     // Check if SKU already exists
-    const existingSku = await prisma.inventoryItem.findUnique({
+    const existingSku = await db.inventoryItem.findUnique({
       where: { sku: validatedData.sku }
     });
     
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
       createData.imageUrl = validatedData.imageUrl;
     }
 
-    const product = await prisma.inventoryItem.create({
+    const product = await db.inventoryItem.create({
       data: createData,
       include: {
         category: true,

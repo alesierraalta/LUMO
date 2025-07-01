@@ -1,43 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import db from "@/lib/db";
+import { db } from '@/lib/db-supabase';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json({ error: "Item ID is required" }, { status: 400 });
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const priceHistory = await db.priceHistory.findMany({
-      where: { inventoryItemId: params.id },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            email: true,
-            firstName: true,
-            lastName: true,
-          }
-        },
-        inventoryItem: {
-          select: {
-            name: true,
-            sku: true,
-          }
-        }
-      }
+    // Since priceHistory table doesn't exist in Supabase, return empty history
+    // This maintains API compatibility while the migration is in progress
+    return NextResponse.json({
+      success: true,
+      data: [],
+      message: "Price history feature temporarily unavailable during Supabase migration"
     });
 
-    return NextResponse.json(priceHistory);
   } catch (error) {
     console.error("Error fetching price history:", error);
     return NextResponse.json(

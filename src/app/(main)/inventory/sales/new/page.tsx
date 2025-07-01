@@ -6,18 +6,18 @@ import db from "@/lib/db";
 import NewSaleForm from "./new-sale-form";
 
 export const metadata: Metadata = {
-  title: "Nueva Orden de Venta",
-  description: "Crear una nueva orden de venta con múltiples productos",
+  title: "Nueva Venta",
+  description: "Registrar una nueva venta de productos del inventario",
 };
 
 async function getInventoryProducts() {
   try {
-    const products = await prisma?.inventoryItem.findMany({
+    const products = await db.inventoryItem.findMany({
       where: {
         active: true,
         quantity: {
-          gt: 0 // Solo productos con stock disponible
-        }
+          gt: 0,
+        },
       },
       include: {
         category: {

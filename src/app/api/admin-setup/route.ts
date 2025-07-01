@@ -1,142 +1,125 @@
-// Endpoint para crear usuario administrador en producción
-import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
+// import db from "@/lib/db";
 
-// Solo para uso de emergencia
-export async function GET(request: NextRequest) {
-  // Verificar la clave secreta en la URL
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get('key');
-  
-  if (key !== 'setup-admin-2025') {
-    return NextResponse.json(
-      { error: 'Unauthorized', message: 'Invalid key' },
-      { status: 401 }
-    );
-  }
-  
+export async function POST(request: NextRequest) {
   try {
-    console.log('🔐 Admin setup: Verificando usuario administrador...');
-    
-    // Buscar usuario administrador
-    const adminUser = await prisma.user.findUnique({
-      where: { email: 'alesierraalta@gmail.com' }
-    });
-    
-    if (!adminUser) {
-      console.log('⚠️ Admin setup: Usuario administrador no encontrado, creándolo...');
-      
-      // Buscar rol de administrador
-      let adminRole = await prisma.role.findUnique({
-        where: { name: 'admin' }
-      });
-      
-      // Si no existe el rol, crearlo
-      if (!adminRole) {
-        console.log('⚠️ Admin setup: Rol de administrador no encontrado, creándolo...');
-        
-        adminRole = await prisma.role.create({
-          data: {
-            name: 'admin',
-            description: 'Acceso completo a todas las funcionalidades'
-          }
-        });
-        
-        // Crear permiso básico
-        const adminPermission = await prisma.permission.create({
-          data: {
-            name: 'admin:all',
-            description: 'Acceso completo de administrador',
-            resource: 'admin',
-            action: 'all'
-          }
-        });
-        
-        // Asignar permiso al rol
-        await prisma.rolePermission.create({
-          data: {
-            roleId: adminRole.id,
-            permissionId: adminPermission.id
-          }
-        });
-        
-        console.log('✅ Admin setup: Rol de administrador creado con permisos');
-      }
-      
-      // Crear usuario administrador
-      const passwordHash = await bcrypt.hash('admin123', 12);
-      const newAdmin = await prisma.user.create({
-        data: {
-          email: 'alesierraalta@gmail.com',
-          passwordHash: passwordHash,
-          firstName: 'Alejandro',
-          lastName: 'Sierra',
-          roleId: adminRole.id,
-          isActive: true,
-          isEmailVerified: true
-        }
-      });
-      
-      await prisma.$disconnect();
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Usuario administrador creado exitosamente',
-        user: {
-          email: newAdmin.email,
-          firstName: newAdmin.firstName,
-          lastName: newAdmin.lastName
-        }
-      });
-    } else {
-      console.log('✅ Admin setup: Usuario administrador encontrado:', adminUser.email);
-      
-      // Asegurar que el usuario tenga rol de administrador
-      const adminRole = await prisma.role.findUnique({
-        where: { name: 'admin' }
-      });
-      
-      if (adminRole && adminUser.roleId !== adminRole.id) {
-        const updatedUser = await prisma.user.update({
-          where: { id: adminUser.id },
-          data: { roleId: adminRole.id }
-        });
-        console.log('✅ Admin setup: Rol de administrador actualizado para', updatedUser.email);
-      }
-      
-      // Actualizar contraseña para asegurar que funcione
-      const passwordHash = await bcrypt.hash('admin123', 12);
-      const updatedUser = await prisma.user.update({
-        where: { id: adminUser.id },
-        data: { 
-          passwordHash: passwordHash,
-          isActive: true,
-          isEmailVerified: true
-        }
-      });
-      
-      await prisma.$disconnect();
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Usuario administrador actualizado',
-        user: {
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName
-        }
-      });
+    const { email, password, action } = await request.json();
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email y contraseña son requeridos' },
+        { status: 400 }
+      );
     }
-  } catch (error: any) {
-    console.error('❌ Admin setup error:', error);
-    
+
+    // TEMPORARILY DISABLED: Supabase migration in progress
+    // This endpoint needs to be updated to work with Supabase auth system
     return NextResponse.json(
       { 
-        error: 'Internal Server Error', 
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        error: 'Admin setup temporalmente deshabilitado durante migración a Supabase',
+        message: 'Use la consola de Supabase para configurar usuarios administradores'
       },
+      { status: 503 }
+    );
+
+    /*
+    // Original Prisma code - needs Supabase equivalent
+    if (action === 'create') {
+      // Verificar si el usuario ya existe
+      const adminUser = await db.user.findUnique({
+        where: { email },
+      });
+
+      if (adminUser) {
+        // Buscar o crear rol de administrador
+        let adminRole = await db.role.findUnique({
+          where: { name: 'ADMIN' },
+        });
+
+        if (!adminRole) {
+          adminRole = await db.role.create({
+            data: {
+              name: 'ADMIN',
+              description: 'Administrador del sistema',
+            },
+          });
+
+          // Crear permiso básico
+          const adminPermission = await db.permission.create({
+            data: {
+              name: 'admin:all',
+              description: 'Acceso completo de administrador',
+              resource: 'all',
+              action: 'all',
+            },
+          });
+
+          // Asociar permiso al rol
+          await db.rolePermission.create({
+            data: {
+              roleId: adminRole.id,
+              permissionId: adminPermission.id,
+            },
+          });
+        }
+
+        // Crear nuevo usuario administrador
+        const newAdmin = await db.user.create({
+          data: {
+            email,
+            password,
+            name: 'Administrador',
+            roleId: adminRole.id,
+            isActive: true,
+            emailVerified: new Date(),
+          },
+        });
+
+        await db.$disconnect();
+
+        return NextResponse.json({
+          success: true,
+          message: 'Usuario administrador creado exitosamente',
+          user: { id: newAdmin.id, email: newAdmin.email, role: adminRole.name },
+        });
+      } else {
+        // Usuario ya existe, actualizar rol
+        const adminRole = await db.role.findUnique({
+          where: { name: 'ADMIN' },
+        });
+
+        if (adminRole) {
+          const updatedUser = await db.user.update({
+            where: { email },
+            data: { roleId: adminRole.id },
+          });
+
+          return NextResponse.json({
+            success: true,
+            message: 'Usuario actualizado a administrador',
+            user: { id: updatedUser.id, email: updatedUser.email, role: adminRole.name },
+          });
+        } else {
+          const updatedUser = await db.user.update({
+            where: { email },
+            data: { roleId: null },
+          });
+
+          return NextResponse.json({
+            success: true,
+            message: 'Rol de administrador no encontrado',
+          });
+        }
+      }
+
+      await db.$disconnect();
+    }
+    */
+
+  } catch (error) {
+    console.error('Error en admin setup:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }

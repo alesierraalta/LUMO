@@ -1,3 +1,4 @@
+import db from "@/lib/db";
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 
@@ -10,8 +11,8 @@ export async function GET() {
 
     // Hacer un query simple para verificar que las tablas existen
     try {
-      const usersCount = await prisma.user.count();
-      const rolesCount = await prisma.role.count();
+      const usersCount = await db.user.count();
+      const rolesCount = await db.role.count();
       
       return NextResponse.json({
         status: 'success',

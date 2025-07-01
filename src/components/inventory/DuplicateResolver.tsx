@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +26,9 @@ import {
   ListFilter,
   DollarSign,
   Hash,
-  Tag
+  Tag,
+  Merge,
+  Trash2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,7 +41,8 @@ import {
   Card, 
   CardContent, 
   CardFooter, 
-  CardHeader
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -57,34 +59,6 @@ const DUPLICATE_TYPES = {
   SKU: 'sku',
   NAME: 'name'
 } as const;
-
-// Animaciones
-// ----------
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1,
-    transition: { 
-      staggerChildren: 0.15,
-      when: "beforeChildren"
-    }
-  },
-  exit: { opacity: 0 }
-};
-
-const itemVariants = {
-  hidden: { y: 30, opacity: 0 },
-  visible: { 
-    y: 0, 
-    opacity: 1,
-    transition: { type: "spring", stiffness: 400, damping: 25 }
-  },
-  exit: { 
-    y: -20, 
-    opacity: 0,
-    transition: { duration: 0.2 }
-  }
-};
 
 // Componentes reutilizables
 // ------------------------
@@ -117,12 +91,8 @@ const ItemRadio = React.memo(({
         />
       </RadioGroup>
       {isSelected && (
-        <motion.div 
-          layoutId={`selected-glow-${groupKey}`}
+        <div 
           className="absolute -inset-2 bg-primary/10 rounded-full -z-10 border-2 border-primary/20"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
         />
       )}
     </div>
@@ -478,10 +448,8 @@ export function DuplicateResolver({
       groupIndex;
     
     return (
-      <motion.div
+      <div
         key={`row-${group.key}-${itemIndex}-${item.id || item.rowId || itemIndex}`}
-        variants={itemVariants}
-        layout
         className={cn(
           "relative rounded-xl border-2 p-6 mb-6 last:mb-0 cursor-pointer transition-all duration-300",
           isSelected 
@@ -547,17 +515,13 @@ export function DuplicateResolver({
 
         {/* Indicador de selección */}
         {isSelected && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-4 right-4"
-          >
+          <div className="absolute top-4 right-4">
             <div className="bg-primary text-primary-foreground rounded-full p-2">
               <Check className="h-4 w-4" />
             </div>
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
     );
   };
   
@@ -628,48 +592,26 @@ export function DuplicateResolver({
   
   // Renderizado de contenido vacío
   const renderEmptyState = () => (
-    <motion.div 
-      className="flex flex-col items-center justify-center py-20 px-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-    >
-      <motion.div 
-        className="bg-green-50 p-8 rounded-full mb-8 border border-green-200"
-        variants={itemVariants}
-      >
+    <div className="flex flex-col items-center justify-center py-20 px-8">
+      <div className="bg-green-50 p-8 rounded-full mb-8 border border-green-200">
         <CheckCircle2 className="h-20 w-20 text-green-600" />
-      </motion.div>
-      <motion.h3 
-        className="text-2xl font-bold mb-4 text-foreground"
-        variants={itemVariants}
-      >
+      </div>
+      <h3 className="text-2xl font-bold mb-4 text-foreground">
         ¡Todo limpio!
-      </motion.h3>
-      <motion.p 
-        className="text-muted-foreground text-center text-lg mb-8 max-w-md leading-relaxed"
-        variants={itemVariants}
-      >
+      </h3>
+      <p className="text-muted-foreground text-center text-lg mb-8 max-w-md leading-relaxed">
         No se encontraron productos duplicados. Todos los SKUs y nombres son únicos.
-      </motion.p>
-      <motion.div variants={itemVariants}>
-        <Button size="lg" onClick={() => onOpenChange(false)} className="px-8 py-3">
-          Continuar
-        </Button>
-      </motion.div>
-    </motion.div>
+      </p>
+      <Button size="lg" onClick={() => onOpenChange(false)} className="px-8 py-3">
+        Continuar
+      </Button>
+    </div>
   );
   
   // Renderizado de grupo de duplicados
   const renderDuplicateGroup = (group: DuplicateGroup, groupIndex: number) => (
-    <motion.div
+    <div
       key={`group-${group.key}`}
-      variants={itemVariants}
-      layout
-      initial="hidden"
-      animate="visible"
-      exit="exit"
       className="mb-8 last:mb-0"
     >
       <Card className="overflow-hidden border-2 border-border/60 shadow-lg rounded-2xl bg-card">
@@ -724,20 +666,14 @@ export function DuplicateResolver({
         </CardHeader>
         
         <CardContent className="p-8">
-          <motion.div 
-            className="space-y-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
+          <div className="space-y-6">
             <h4 className="text-lg font-semibold text-foreground mb-4">
               Selecciona el producto a mantener:
             </h4>
             {group.items.map((item, itemIndex) => 
               renderItemRow(item, itemIndex, group, groupIndex)
             )}
-          </motion.div>
+          </div>
         </CardContent>
         
         <CardFooter className="px-8 py-6 border-t bg-muted/20 flex flex-col sm:flex-row sm:justify-between gap-3">
@@ -757,180 +693,148 @@ export function DuplicateResolver({
           )}
         </CardFooter>
       </Card>
-    </motion.div>
+    </div>
   );
   
   return (
-    <AnimatePresence>
-      {open && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent 
-            className="w-[98vw] max-w-7xl max-h-[95vh] flex flex-col p-0 gap-0 overflow-hidden bg-background rounded-2xl border-2 border-border/60 shadow-2xl"
-          >
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4 }}
-            >
-              <DialogHeader className="px-8 pt-8 pb-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 rounded-full bg-amber-100 border border-amber-200">
-                    <AlertTriangle className="h-8 w-8 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <DialogTitle className="text-3xl font-bold mb-2">Resolver Duplicados</DialogTitle>
-                    <DialogDescription className="text-lg text-muted-foreground">
-                      Se encontraron productos duplicados en tu importación. Selecciona cómo quieres resolverlos.
-                    </DialogDescription>
-                  </div>
-                  <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full hover:bg-muted">
-                      <X className="h-6 w-6" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">
+            Resolver Productos Duplicados
+          </DialogTitle>
+          <DialogDescription>
+            Se encontraron productos con SKUs o nombres duplicados. Selecciona cómo resolver cada conflicto.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-6">
+            {/* Statistics */}
+            <Alert className="bg-amber-50/80 border-amber-200 text-amber-800">
+              <div className="flex items-center gap-4">
+                <AlertTriangle className="h-6 w-6 text-amber-600 flex-shrink-0" />
+                <AlertDescription className="flex flex-col sm:flex-row sm:gap-6 text-base">
+                  <span className="font-semibold">{duplicateGroups.length} conflictos encontrados</span>
+                </AlertDescription>
+              </div>
+            </Alert>
+
+            {/* Duplicate groups */}
+            {duplicateGroups.map((group, groupIndex) => (
+              <Card key={group.key} className="border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {group.type === 'sku' ? <Package className="h-5 w-5" /> : <Tag className="h-5 w-5" />}
+                    Duplicado por {group.type === 'sku' ? 'SKU' : 'Nombre'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Resolution controls */}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Button
+                      variant={group.resolution === 'merge' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleChangeResolution(groupIndex, 'merge')}
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      Fusionar
                     </Button>
-                  </DialogClose>
-                </div>
-              </DialogHeader>
-            </motion.div>
-            
-            {duplicateGroups.length === 0 ? renderEmptyState() : (
-              <>
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.1 }}
-                >
-                  <div className="flex flex-col gap-6 px-8 py-6 border-y-2 bg-muted/20">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-                        <div className="flex items-center space-x-4">
-                          <Switch 
-                            id="auto-resolve" 
-                            checked={autoResolve}
-                            onCheckedChange={setAutoResolve}
-                            className="scale-125 data-[state=checked]:bg-primary"
-                          />
-                          <Label htmlFor="auto-resolve" className="text-lg font-semibold cursor-pointer">
-                            Resolución automática
-                          </Label>
-                        </div>
-                        
-                        <Button 
-                          onClick={handleAutoResolve} 
-                          variant="outline"
-                          size="lg"
-                          disabled={isProcessing || !autoResolve}
-                          className="h-12 px-6 border-2"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                              <span>Procesando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <ListFilter className="mr-3 h-5 w-5" />
-                              Aplicar reglas inteligentes
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {renderStats()}
-                    </div>
+                    <Button
+                      variant={group.resolution === 'keep' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleChangeResolution(groupIndex, 'keep')}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Mantener
+                    </Button>
+                    <Button
+                      variant={group.resolution === 'rename' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleChangeResolution(groupIndex, 'rename')}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Renombrar
+                    </Button>
                   </div>
-                </motion.div>
-                
-                <Tabs 
-                  value={selectedTab} 
-                  onValueChange={setSelectedTab} 
-                  className="flex-1 flex flex-col overflow-hidden"
-                >
-                  <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.2 }}
+
+                  {/* Items */}
+                  <RadioGroup
+                    value={group.selectedId}
+                    onValueChange={(value) => handleSelectItem(groupIndex, value)}
+                    className="space-y-4"
                   >
-                    <TabsList className="px-8 justify-start border-b-2 rounded-none bg-transparent h-auto py-8 gap-6">
-                      <TabsTrigger 
-                        value={DUPLICATE_TYPES.SKU} 
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-xl text-xl h-16 px-8 py-4 font-bold shadow-sm"
+                    {group.items.map((item, itemIndex) => (
+                      <div
+                        key={`${group.key}-${itemIndex}`}
+                        className={cn(
+                          "relative rounded-xl border-2 p-6 cursor-pointer transition-all duration-300",
+                          item.id === group.selectedId
+                            ? "border-primary bg-primary/5 shadow-lg"
+                            : "border-border hover:border-primary/40 hover:bg-muted/30"
+                        )}
+                        onClick={() => handleSelectItem(groupIndex, item.id)}
                       >
-                        <Package className="h-6 w-6 mr-4" />
-                        SKUs ({duplicateGroups.filter(g => g.type === DUPLICATE_TYPES.SKU).length})
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value={DUPLICATE_TYPES.NAME}
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-xl text-xl h-16 px-8 py-4 font-bold shadow-sm"
-                      >
-                        <Tag className="h-6 w-6 mr-4" />
-                        Nombres ({duplicateGroups.filter(g => g.type === DUPLICATE_TYPES.NAME).length})
-                      </TabsTrigger>
-                    </TabsList>
-                  </motion.div>
-                  
-                  <TabsContent value={DUPLICATE_TYPES.SKU} className="flex-1 overflow-hidden m-0 p-0">
-                    <ScrollArea className="h-[50vh] sm:h-[60vh] md:h-[calc(100vh-400px)]">
-                      <motion.div 
-                        className="p-8"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                      >
-                        {duplicateGroups
-                          .filter(group => group.type === DUPLICATE_TYPES.SKU)
-                          .map((group, groupIndex) => renderDuplicateGroup(group, groupIndex))}
-                      </motion.div>
-                    </ScrollArea>
-                  </TabsContent>
-                  
-                  <TabsContent value={DUPLICATE_TYPES.NAME} className="flex-1 overflow-hidden m-0 p-0">
-                    <ScrollArea className="h-[50vh] sm:h-[60vh] md:h-[calc(100vh-400px)]">
-                      <motion.div 
-                        className="p-8"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                      >
-                        {duplicateGroups
-                          .filter(group => group.type === DUPLICATE_TYPES.NAME)
-                          .map((group, groupIndex) => renderDuplicateGroup(group, groupIndex))}
-                      </motion.div>
-                    </ScrollArea>
-                  </TabsContent>
-                </Tabs>
-                
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.3 }}
-                >
-                  <DialogFooter className="px-8 py-6 border-t-2 bg-muted/10">
-                    <div className="flex gap-4 w-full sm:w-auto">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => onOpenChange(false)} 
-                        className="flex-1 sm:flex-initial h-12 px-8 text-base border-2"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        onClick={handleApplyResolutions} 
-                        disabled={isProcessing}
-                        className="gap-3 flex-1 sm:flex-initial h-12 px-8 text-base font-semibold"
-                      >
-                        <CheckCircle2 className="h-5 w-5" />
-                        Aplicar resoluciones
-                      </Button>
-                    </div>
-                  </DialogFooter>
-                </motion.div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-      )}
-    </AnimatePresence>
+                        <div className="flex items-start gap-4">
+                          <RadioItem
+                            value={item.id}
+                            id={`radio-${group.key}-${itemIndex}`}
+                            className="mt-1"
+                          />
+                          <div className="flex-1 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-semibold text-lg">{item.name}</h4>
+                                <p className="text-sm text-muted-foreground font-mono">SKU: {item.sku}</p>
+                              </div>
+                              <Badge variant={item.existingProduct ? 'default' : 'secondary'}>
+                                {item.existingProduct ? 'En Sistema' : 'Excel'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Precio:</span>
+                                <p className="font-medium">
+                                  {item.price !== null ? `$${item.price.toFixed(2)}` : '-'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Costo:</span>
+                                <p className="font-medium">
+                                  {item.cost !== null ? `$${item.cost.toFixed(2)}` : '-'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Cantidad:</span>
+                                <p className="font-medium">{item.quantity || '-'}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Categoría:</span>
+                                <p className="font-medium">{item.category || '-'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleApplyResolutions} disabled={isProcessing}>
+            {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Aplicar Resoluciones
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 } 

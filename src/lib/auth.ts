@@ -69,42 +69,21 @@ const getPrismaClient = () => {
 };
 
 // Session management
-export const createSession = async (
-  userId: string,
-  email: string,
-  role: string,
-  userAgent?: string,
-  ipAddress?: string
-): Promise<string> => {
-  const client = getPrismaClient();
-
-  const token = generateToken({ 
-    userId, 
-    email,
-    roleId: role // For backward compatibility with existing token structure
-  });
-  
+export async function createSession(userId: string): Promise<string> {
+  const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DURATION * 1000);
-  
-  await client.userSession.create({
-    data: {
-      userId,
-      token,
-      expiresAt,
-      userAgent,
-      ipAddress,
-    },
-  });
+
+  // TODO: Implement session storage with Supabase
+  // For now, return the token directly
+  console.log('Creating session for user:', userId, 'with token:', token);
   
   return token;
-};
+}
 
 export const invalidateSession = async (token: string): Promise<void> => {
   try {
-    const client = getPrismaClient();
-    await client.userSession.delete({
-      where: { token },
-    });
+    // TODO: Implement session invalidation with Supabase
+    console.log('Invalidating session token:', token);
   } catch (error) {
     // Session might not exist, ignore error
   }
@@ -112,14 +91,8 @@ export const invalidateSession = async (token: string): Promise<void> => {
 
 export const cleanupExpiredSessions = async (): Promise<void> => {
   try {
-    const client = getPrismaClient();
-    await client.userSession.deleteMany({
-      where: {
-        expiresAt: {
-          lt: new Date(),
-        },
-      },
-    });
+    // TODO: Implement session cleanup with Supabase
+    console.log('Cleaning up expired sessions');
   } catch (error) {
     console.warn('Failed to cleanup expired sessions:', error);
   }
@@ -187,7 +160,7 @@ export const authenticateUser = async (
     });
 
     // Create session - Now using role directly as it's a string
-    const token = await createSession(user.id, user.email, user.role, userAgent, ipAddress);
+    const token = await createSession(user.id);
 
     console.log(`[Auth] Successful login for email: ${email}`);
     return {
@@ -295,24 +268,16 @@ export const getCurrentUser = async (token?: string): Promise<User | null> => {
         return null;
       }
 
-      // Check if session exists in database
-      const session = await client.userSession.findUnique({
-        where: { token: authToken },
-        include: {
-          user: true
-        },
+      // Get user directly from database using userId from token
+      const user = await client.user.findUnique({
+        where: { id: sessionData.userId },
       });
 
-      if (!session || session.expiresAt < new Date()) {
-        // Clean up expired session
-        if (session) {
-          await invalidateSession(authToken);
-        }
+      if (!user || !user.isActive) {
         return null;
       }
 
       // Convert to our User interface
-      const user = session.user;
       return {
         id: user.id,
         email: user.email,

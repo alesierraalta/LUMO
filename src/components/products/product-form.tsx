@@ -26,11 +26,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { calculateMargin, calculatePrice, createProductApi, updateProductApi } from "@/lib/client-utils";
+import { calculateMargin, calculatePrice, createProductApi, updateProductApi, ProductData } from "@/lib/client-utils";
 import { locationsApi } from "@/lib/api-client";
 
 // Import Radio Group components
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 
 // Import icons
 import { Tag, MapPin, ExternalLink } from "lucide-react";
@@ -441,11 +441,11 @@ export default function ProductForm({
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="price" id="price-mode" />
+                  <RadioItem value="price" id="price-mode" />
                   <Label htmlFor="price-mode" className="text-sm">Especificar Precio</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="margin" id="margin-mode" />
+                  <RadioItem value="margin" id="margin-mode" />
                   <Label htmlFor="margin-mode" className="text-sm">Especificar Margen (Cálculo automático del precio)</Label>
                 </div>
               </RadioGroup>

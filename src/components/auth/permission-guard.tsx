@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,19 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   fallback,
   showAlert = true,
 }) => {
-  const { user, isLoading } = useAuth();
-  
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simple loading simulation since auth context doesn't provide isLoading
+    const timer = setTimeout(() => setIsLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <div data-testid="loading-spinner" className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -54,11 +61,11 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   let hasAccess = false;
 
   if (permission) {
-    hasAccess = hasPermission(user, permission);
+    hasAccess = hasPermission(user as any, permission);
   } else if (permissions && permissions.length > 0) {
     hasAccess = requireAll 
-      ? hasAllPermissions(user, permissions)
-      : hasAnyPermission(user, permissions);
+      ? hasAllPermissions(user as any, permissions)
+      : hasAnyPermission(user as any, permissions);
   } else {
     // Si no se especifica ningún permiso, denegar acceso
     hasAccess = false;
@@ -107,20 +114,20 @@ export const PermissionButton: React.FC<PermissionButtonProps> = ({
   variant = 'default',
   size = 'default',
 }) => {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   
-  if (isLoading || !user) {
+  if (!user) {
     return null;
   }
 
   let hasAccess = false;
 
   if (permission) {
-    hasAccess = hasPermission(user, permission);
+    hasAccess = hasPermission(user as any, permission);
   } else if (permissions && permissions.length > 0) {
     hasAccess = requireAll 
-      ? hasAllPermissions(user, permissions)
-      : hasAnyPermission(user, permissions);
+      ? hasAllPermissions(user as any, permissions)
+      : hasAnyPermission(user as any, permissions);
   }
 
   if (!hasAccess) {
@@ -146,13 +153,13 @@ export const usePermissions = () => {
   
   return {
     hasPermission: (permission: string) => {
-      return hasPermission(user, permission);
+      return hasPermission(user as any, permission);
     },
     hasAllPermissions: (permissions: string[]) => {
-      return hasAllPermissions(user, permissions);
+      return hasAllPermissions(user as any, permissions);
     },
     hasAnyPermission: (permissions: string[]) => {
-      return hasAnyPermission(user, permissions);
+      return hasAnyPermission(user as any, permissions);
     },
     user,
   };

@@ -1,5 +1,6 @@
-
+// Global type definitions
 
 export interface CustomNodeJsGlobal {
-  prisma: PrismaClient;
+  // TODO: Replace with Supabase client type during migration
+  prisma: any;
 } 

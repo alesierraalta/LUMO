@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabase-server-only';
 import db from '@/lib/db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { db as supabaseDb } from '@/lib/db-supabase';
 
 export const runtime = 'nodejs';
 
@@ -64,101 +65,19 @@ async function getCurrentUser(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!db) {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    // Check authentication and admin privileges
-    const currentUser = await getCurrentUser(request);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Admin privileges required' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    
-    // Validate input
-    const result = createUserSchema.safeParse(body);
-    if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: result.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const { email, password, name, roleId } = result.data;
-
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
-      where: { email }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Verify role exists and is active
-    const role = await db.role.findFirst({
-      where: { 
-        id: roleId,
-        isActive: true 
-      }
-    });
-
-    if (!role) {
-      return NextResponse.json(
-        { error: 'Invalid role specified' },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
-    const user = await db.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        roleId,
-        isActive: true,
-      },
-      include: {
-        role: true
-      }
-    });
-
+    // User creation functionality temporarily unavailable during Supabase migration
     return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isActive: user.isActive,
-      },
-      message: 'User created successfully.',
-    }, { status: 201 });
+      success: false,
+      message: "User creation functionality temporarily unavailable during Supabase migration"
+    }, { status: 503 });
 
-  } catch (error: any) {
-    console.error('Create user error:', error);
+  } catch (error) {
+    console.error("Error creating user:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create user' },
+      { error: "Failed to create user" },
       { status: 500 }
     );
   }
@@ -167,62 +86,20 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     if (!db) {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    // Check authentication and admin privileges
-    const currentUser = await getCurrentUser(request);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Only admins can view users' },
-        { status: 403 }
-      );
-    }
-
-    // Get all users with their role data
-    const users = await db.user.findMany({
-      include: {
-        role: true  // Include role data
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Format the response to include complete role information
-    const formattedUsers = users.map(user => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role ? {
-        id: user.role.id,
-        name: user.role.name,
-        description: user.role.description,
-        isSystem: user.role.isSystem,
-        isActive: user.role.isActive
-      } : null,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
-
+    // Users functionality temporarily unavailable during Supabase migration
     return NextResponse.json({
       success: true,
-      users: formattedUsers
+      data: [],
+      message: "Users functionality temporarily unavailable during Supabase migration"
     });
 
-  } catch (error: any) {
-    console.error('Get users error:', error);
+  } catch (error) {
+    console.error("Error fetching users:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch users' },
+      { error: "Failed to fetch users" },
       { status: 500 }
     );
   }

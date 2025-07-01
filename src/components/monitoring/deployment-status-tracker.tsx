@@ -139,7 +139,8 @@ export const DeploymentStatusTracker: React.FC<DeploymentStatusTrackerProps> = (
   const [isLive, setIsLive] = useState(autoRefresh);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const { correlationId } = useCorrelation();
+  const correlation = useCorrelation();
+  const correlationId = correlation.getContext().correlationId;
 
   // Subscribe to deployment events and update state
   useEffect(() => {

@@ -1,58 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db-supabase';
 import { z } from "zod";
 import { serializeDecimal } from "@/lib/utils";
-import { getCurrentUser } from "@/lib/auth";
 
-// Validation schema for the request body
+// Schema for validating financial updates
 const financialsUpdateSchema = z.object({
   price: z.number().min(0).optional(),
   cost: z.number().min(0).optional(),
-  margin: z.number().optional(), // Margin is calculated but stored
-  changeReason: z.string().optional(), // Added for tracking reason of price/cost change
+  margin: z.number().optional(),
+  changeReason: z.string().optional(),
 });
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
-    
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!prisma) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
-    }
-
-    console.log("Route params:", { id, userId: user.id });
+    const { id } = params;
+    const body = await request.json();
 
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Inventory item ID is required" },
+        { error: 'ID del producto es requerido' },
         { status: 400 }
       );
     }
 
-    const body = await request.json();
-    console.log("Received body:", body);
-    
+    if (!db) {
+      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    }
+
     // Validate request body
     const validation = financialsUpdateSchema.safeParse(body);
     if (!validation.success) {
-      console.log("Validation errors:", validation.error.issues);
       return NextResponse.json(
         { success: false, error: "Invalid data provided", issues: validation.error.issues },
         { status: 400 }
       );
     }
     
-    const { price, cost, margin, changeReason } = validation.data;
+    const { price, cost, margin } = validation.data;
 
     // Prepare data for update (only include fields that are present)
     const updateData: { price?: number; cost?: number; margin?: number } = {};
@@ -68,201 +55,100 @@ export async function PATCH(
       );
     }
 
-    // Get the current inventory item to compare with new values
-    const currentItem = await db.inventoryItem.findUnique({
+    // Update the inventory item (simplified - no transaction or history)
+    const updatedItem = await db.inventoryItem.update({
       where: { id },
+      data: updateData,
     });
 
-    if (!currentItem) {
-      return NextResponse.json(
-        { success: false, error: "Inventory item not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if any financial values have changed
-    const hasFinancialChanges = 
-      (price !== undefined && price !== currentItem.price) ||
-      (cost !== undefined && cost !== currentItem.cost) ||
-      (margin !== undefined && margin !== currentItem.margin);
-
-    // Perform transaction to update item and create history record if there are changes
-    try {
-      console.log("Starting transaction for ID:", id);
-      console.log("Update data:", updateData);
-      console.log("Current values:", {
-        price: currentItem.price,
-        cost: currentItem.cost,
-        margin: currentItem.margin
-      });
-      
-      const updatedItem = await db.$transaction(async (tx) => {
-        console.log("Transaction started");
-        
-        // Update the inventory item
-        console.log("Updating inventory item with data:", updateData);
-        const updated = await tx.inventoryItem.update({
-          where: { id },
-          data: updateData,
-        });
-        console.log("Inventory item updated successfully");
-
-        // Only create history record if there are actual changes
-        if (hasFinancialChanges) {
-          console.log("Creating price history record");
-          const historyData = {
-            inventoryItemId: id,
-            oldPrice: currentItem.price,
-            newPrice: price !== undefined ? price : currentItem.price,
-            oldCost: currentItem.cost,
-            newCost: cost !== undefined ? cost : currentItem.cost,
-            oldMargin: currentItem.margin,
-            newMargin: margin !== undefined ? margin : currentItem.margin,
-            changeReason: changeReason || "Manual update",
-            ...(user ? { userId: user.id } : {})
-          };
-          console.log("Price history data:", historyData);
-          
-          await tx.priceHistory.create({
-            data: historyData,
-          });
-          console.log("Price history record created successfully");
-        } else {
-          console.log("No financial changes detected, skipping history record");
-        }
-
-        return updated;
-      });
-      
-      console.log("Transaction completed successfully");
-
-      return NextResponse.json({
-        success: true,
-        message: "Inventory item financials updated successfully.",
-        data: serializeDecimal(updatedItem),
-      }, { status: 200 });
-    } catch (txError) {
-      console.error("Transaction error:", txError);
-      throw txError; // Re-throw to be caught by the outer catch block
-    }
+    return NextResponse.json({
+      success: true,
+      message: "Inventory item financials updated successfully.",
+      data: serializeDecimal(updatedItem),
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error("Error updating inventory financials:", error);
-
-    let statusCode = 500;
-    let errorMessage = "Error updating inventory financials";
-
-    // Check for Prisma-specific errors (e.g., record not found)
-    if (error.code === 'P2025') { // Prisma code for Record to update not found
-      statusCode = 404;
-      errorMessage = "Inventory item not found";
-    }
-    
     return NextResponse.json(
       { 
         success: false,
-        error: errorMessage,
-        details: error.message // Include original error message for debugging
+        error: "Error updating inventory financials",
+        details: error.message
       },
-      { status: statusCode }
+      { status: 500 }
     );
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const resolvedParams = await params;
-  const { id } = resolvedParams;
   try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID del producto es requerido' },
+        { status: 400 }
+      );
     }
 
-    if (!prisma) {
+    if (!db) {
       return NextResponse.json({ error: "Database not available" }, { status: 500 });
     }
 
-    const inventoryItem = await db.inventoryItem.findUnique({
+    // Get the inventory item with financial data
+    const item = await db.inventoryItem.findUnique({
       where: { id },
       include: {
-        priceHistory: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          include: {
-            user: {
-              select: {
-                email: true,
-                firstName: true,
-                lastName: true,
-              }
-            }
-          }
-        },
-        transactions: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          include: {
-            sale: {
-              select: {
-                id: true,
-                date: true,
-                total: true,
-              }
-            }
+        category: {
+          select: {
+            id: true,
+            name: true
           }
         }
       }
     });
 
-    if (!inventoryItem) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    if (!item) {
+      return NextResponse.json(
+        { error: 'Producto no encontrado' },
+        { status: 404 }
+      );
     }
 
     // Calculate financial metrics
-    const totalRevenue = inventoryItem.transactions.reduce(
-      (sum, transaction) => sum + transaction.subtotal, 0
-    );
+    const cost = Number(item.cost) || 0;
+    const price = Number(item.price) || 0;
+    const quantity = item.quantity || 0;
 
-    const totalUnitsSold = inventoryItem.transactions.reduce(
-      (sum, transaction) => sum + transaction.quantity, 0
-    );
-
-    const averageSellingPrice = totalUnitsSold > 0 ? totalRevenue / totalUnitsSold : 0;
-    const currentMargin = inventoryItem.margin;
-    const profitPerUnit = inventoryItem.price - inventoryItem.cost;
-    const totalProfit = totalUnitsSold * profitPerUnit;
+    const margin = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+    const totalValue = price * quantity;
+    const totalCost = cost * quantity;
+    const totalProfit = totalValue - totalCost;
 
     const financials = {
-      item: {
-        id: inventoryItem.id,
-        name: inventoryItem.name,
-        sku: inventoryItem.sku,
-        currentPrice: inventoryItem.price,
-        currentCost: inventoryItem.cost,
-        currentMargin: currentMargin,
-        quantity: inventoryItem.quantity,
-      },
-      metrics: {
-        totalRevenue,
-        totalUnitsSold,
-        averageSellingPrice,
-        profitPerUnit,
-        totalProfit,
-        marginPercentage: currentMargin,
-      },
-      recentPriceHistory: inventoryItem.priceHistory,
-      recentTransactions: inventoryItem.transactions,
+      id: item.id,
+      name: item.name,
+      sku: item.sku,
+      cost,
+      price,
+      quantity,
+      margin: Math.round(margin * 100) / 100,
+      totalValue: Math.round(totalValue * 100) / 100,
+      totalCost: Math.round(totalCost * 100) / 100,
+      totalProfit: Math.round(totalProfit * 100) / 100,
+      category: item.category?.name || 'Sin categoría',
+      lastUpdated: item.lastUpdated
     };
 
     return NextResponse.json(financials);
+
   } catch (error) {
-    console.error("Error fetching financial data:", error);
+    console.error('Error fetching financial data:', error);
     return NextResponse.json(
-      { error: "Failed to fetch financial data" },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }

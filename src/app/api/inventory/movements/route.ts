@@ -54,13 +54,14 @@ export async function GET(request: NextRequest) {
       
       // Mapear el formato de respuesta para que sea consistente con lo que espera el cliente
       return NextResponse.json({
-        data: result.data || [],
-        movements: result.data || [], // Mantener ambos formatos para compatibilidad
+        data: result.movements || [],
+        movements: result.movements || [], // Mantener ambos formatos para compatibilidad
         pagination: result.pagination || {
           total: 0,
-          page: 1, 
-          limit: 50,
-          totalPages: 0
+          pages: 0,
+          currentPage: 1,
+          hasNext: false,
+          hasPrev: false
         }
       });
     } catch (error) {

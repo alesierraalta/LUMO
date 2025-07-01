@@ -123,7 +123,7 @@ const getRoleTypeColor = (isSystem: boolean) => {
 };
 
 export default function RolePermissionsPage() {
-  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const { user: currentUser } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -142,10 +142,8 @@ export default function RolePermissionsPage() {
   const [roleTypeFilter, setRoleTypeFilter] = useState('all');
 
   useEffect(() => {
-    if (!authLoading) {
-      loadRoles();
-    }
-  }, [authLoading]);
+    loadRoles();
+  }, []);
 
   const loadRoles = async () => {
     try {
@@ -373,7 +371,7 @@ export default function RolePermissionsPage() {
     return matchesSearch && matchesType;
   });
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />

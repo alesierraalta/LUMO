@@ -1,3 +1,4 @@
+import db from "@/lib/db";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     };
 
     // Get sales with transaction details
-    const sales = await prisma.sale.findMany({
+    const sales = await db.sale.findMany({
       where,
       include: {
         transactions: {

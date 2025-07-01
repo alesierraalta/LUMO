@@ -10,7 +10,8 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { getProductsWithLowStock } from "@/services/productService";
-import { getLowStockItems, getOutOfStockItems, calculateStockStatus, StockStatus } from "@/services/inventoryService";
+import { getLowStockItems, getOutOfStockItems } from "@/services/inventoryService";
+import { StockStatus } from "@/lib/inventory-utils";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import PrintHeader from "@/components/reports/print-header";
 import { formatCurrency, getApiBaseUrl, serializeDecimal } from "@/lib/utils";

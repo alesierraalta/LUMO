@@ -277,14 +277,14 @@ export const submitForm = async (formTestId = 'form') => {
 
 // Loading helpers
 export const waitForLoadingToFinish = async () => {
-  const { waitForElementToBeRemoved, queryByText } = await import('@testing-library/react');
+  const { waitForElementToBeRemoved, screen } = await import('@testing-library/react');
   
   // Wait for common loading indicators to disappear
   const loadingIndicators = [
-    () => queryByText('Loading...'),
-    () => queryByText('Cargando...'),
-    () => queryByText('Guardando...'),
-    () => queryByText('Procesando...'),
+    () => screen.queryByText('Loading...'),
+    () => screen.queryByText('Cargando...'),
+    () => screen.queryByText('Guardando...'),
+    () => screen.queryByText('Procesando...'),
   ];
   
   for (const getIndicator of loadingIndicators) {

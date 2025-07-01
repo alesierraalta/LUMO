@@ -1373,9 +1373,9 @@ export default function ImportForm({ userId }: ImportFormProps) {
                               />
                               {item.confidence.sku < 0.8 && renderConfidenceBadge(item.confidence.sku)}
                               {item.warnings?.duplicateSku && (
-                                <TooltipProvider key={`tooltip-provider-${item.id}-sku`}>
+                                <TooltipProvider key={`tooltip-provider-${index}-sku`}>
                                   <Tooltip>
-                                    <TooltipTrigger key={`tooltip-trigger-${item.id}-sku`} asChild>
+                                    <TooltipTrigger key={`tooltip-trigger-${index}-sku`} asChild>
                                       <AlertCircle className="h-5 w-5 text-orange-600 ml-2" />
                                     </TooltipTrigger>
                                     <TooltipContent className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-700">
@@ -1393,9 +1393,9 @@ export default function ImportForm({ userId }: ImportFormProps) {
                                 </TooltipProvider>
                               )}
                               {item.warnings?.existingSku && (
-                                <TooltipProvider key={`tooltip-provider-${item.id}-existing`}>
+                                <TooltipProvider key={`tooltip-provider-${index}-existing`}>
                                   <Tooltip>
-                                    <TooltipTrigger key={`tooltip-trigger-${item.id}-existing`} asChild>
+                                    <TooltipTrigger key={`tooltip-trigger-${index}-existing`} asChild>
                                       <AlertCircle className="h-5 w-5 text-blue-600 ml-2" />
                                     </TooltipTrigger>
                                     <TooltipContent className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-700">

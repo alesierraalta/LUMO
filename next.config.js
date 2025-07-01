@@ -44,17 +44,13 @@ const nextConfig = {
   
   // CRITICAL FIX: Enhanced webpack configuration for Choreo deployment with aggressive Supabase handling
   webpack: (config, { dev, isServer, isEdgeRuntime }) => {
-    // OPTIMIZATION: Development optimizations for faster startup
     if (dev) {
-      // Optimize development builds for faster compilation
       config.optimization = {
         ...config.optimization,
         removeAvailableModules: false,
         removeEmptyChunks: false,
         splitChunks: false,
       };
-      
-      // Reduce file watching overhead
       config.watchOptions = {
         poll: false,
         aggregateTimeout: 300,

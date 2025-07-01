@@ -17,16 +17,6 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true
   },

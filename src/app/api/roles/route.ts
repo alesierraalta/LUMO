@@ -1,33 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-server';
+import { getCurrentUser, isAdmin } from '@/lib/auth-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated and is admin
-    const token = getTokenFromRequest(request);
-    if (!token) {
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
       );
     }
 
@@ -53,27 +38,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is authenticated and is admin
-    const token = getTokenFromRequest(request);
-    if (!token) {
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
       );
     }
 
@@ -126,27 +96,12 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Check if user is authenticated and is admin
-    const token = getTokenFromRequest(request);
-    if (!token) {
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
       );
     }
 
@@ -208,27 +163,12 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Check if user is authenticated and is admin
-    const token = getTokenFromRequest(request);
-    if (!token) {
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
-      );
-    }
-    
-    const currentUser = await getCurrentUserFromToken(token);
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    if (!isAdmin(currentUser)) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
       );
     }
 
@@ -268,19 +208,19 @@ export async function DELETE(request: NextRequest) {
 
     if (usersWithRole.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete role that is assigned to users' },
+        { error: 'Cannot delete role - it is assigned to users' },
         { status: 400 }
       );
     }
 
     // Delete role
-    const deletedRole = await db.role.delete({
+    await db.role.delete({
       where: { id: roleId }
     });
 
     return NextResponse.json({
       success: true,
-      role: deletedRole
+      message: 'Role deleted successfully'
     });
   } catch (error) {
     console.error('Delete role error:', error);

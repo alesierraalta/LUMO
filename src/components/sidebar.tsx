@@ -180,32 +180,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
               <SidebarLink href="/inventory/add" icon={UserPlus} title="Agregar Producto" collapsed={collapsed} onClick={handleLinkClick} />
             )}
 
-            {/* Sales Section */}
-            {hasAnyPermission(user as any, ['sales:read', 'sales:write']) && (
-              <>
-                <SidebarLink href="/sales" icon={ShoppingCart} title="Ventas" collapsed={collapsed} onClick={handleLinkClick} />
-                {hasPermission(user as any, 'sales:write') && (
-                  <SidebarLink href="/inventory/sales/new" icon={UserPlus} title="Nueva Venta" collapsed={collapsed} onClick={handleLinkClick} />
-                )}
-              </>
-            )}
-
             <Separator className="my-2" />
 
             {/* Management Section */}
             {hasPermission(user as any, 'users:read') && (
               <SidebarLink href="/settings/users" icon={Users} title="Usuarios" collapsed={collapsed} onClick={handleLinkClick} />
-            )}
-
-            <Separator className="my-2" />
-
-            {/* Reports Section */}
-            {hasPermission(user as any, 'reports:read') && (
-              <>
-                <SidebarLink href="/reports/low-stock" icon={AlertTriangle} title="Stock Bajo" collapsed={collapsed} onClick={handleLinkClick} />
-                <SidebarLink href="/reports/sales" icon={TrendingUp} title="Reporte Ventas" collapsed={collapsed} onClick={handleLinkClick} />
-                <SidebarLink href="/reports/inventory" icon={FileText} title="Reporte Inventario" collapsed={collapsed} onClick={handleLinkClick} />
-              </>
             )}
           </>
         )}

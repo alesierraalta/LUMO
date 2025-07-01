@@ -1,105 +1,111 @@
+import { getCurrentUser, isAdmin } from '@/lib/auth-server';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserFromToken, getTokenFromRequest, isAdmin } from '@/lib/auth-server';
-import { supabaseServer } from '@/lib/supabase-server-only';
 import db from '@/lib/db';
-import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-import { db as supabaseDb } from '@/lib/db-supabase';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const createUserSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  name: z.string().min(1, 'Name is required'),
-  roleId: z.string().min(1, 'Role ID is required'),
-});
-
-// Helper function to get current user from either Supabase or legacy JWT
-async function getCurrentUser(request: NextRequest) {
-  // Try Supabase authentication first
-  const authHeader = request.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    
-    try {
-      // Initialize Supabase client
-              const supabase = supabaseServer;
-      
-      // Verify the token with Supabase
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (!error && user) {
-        // Get user data from our database
-        const dbUser = await db.user.findUnique({
-          where: { email: user.email },
-          include: { role: true }
-        });
-        
-        if (dbUser && dbUser.isActive) {
-          return {
-            id: dbUser.id,
-            email: dbUser.email,
-            name: dbUser.name,
-            role: dbUser.role?.name || 'USER',
-            isActive: dbUser.isActive,
-            createdAt: dbUser.createdAt,
-            updatedAt: dbUser.updatedAt,
-          };
-        }
-      }
-    } catch (supabaseError) {
-      console.log('Supabase auth failed, trying legacy JWT...');
-    }
-  }
-  
-  // Fallback to legacy JWT authentication
-  const token = getTokenFromRequest(request);
-  if (token) {
-    return await getCurrentUserFromToken(token);
-  }
-  
-  return null;
-}
-
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    if (!db) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin access required' },
+        { status: 401 }
+      );
     }
 
-    // User creation functionality temporarily unavailable during Supabase migration
-    return NextResponse.json({
-      success: false,
-      message: "User creation functionality temporarily unavailable during Supabase migration"
-    }, { status: 503 });
+    // Get all users with their roles
+    const users = await db.user.findMany({
+      include: {
+        role: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
 
+    return NextResponse.json({
+      success: true,
+      users
+    });
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error('Get users error:', error);
     return NextResponse.json(
-      { error: "Failed to create user" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    if (!db) {
-      return NextResponse.json({ error: "Database not available" }, { status: 500 });
+    // Simple authentication check
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isAdmin(currentUser)) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin access required' },
+        { status: 401 }
+      );
     }
 
-    // Users functionality temporarily unavailable during Supabase migration
-    return NextResponse.json({
-      success: true,
-      data: [],
-      message: "Users functionality temporarily unavailable during Supabase migration"
+    const body = await request.json();
+    const { name, email, roleId, isActive = true } = body;
+
+    // Validation
+    if (!name || !email || !roleId) {
+      return NextResponse.json(
+        { error: 'Name, email, and role are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingUser = await db.user.findUnique({
+      where: { email }
     });
 
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Email already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Check if role exists
+    const role = await db.role.findUnique({
+      where: { id: roleId }
+    });
+
+    if (!role) {
+      return NextResponse.json(
+        { error: 'Role not found' },
+        { status: 400 }
+      );
+    }
+
+    // Create new user
+    const newUser = await db.user.create({
+      data: {
+        name,
+        email,
+        roleId,
+        isActive
+      },
+      include: {
+        role: true
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: newUser
+    });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error('Create user error:', error);
     return NextResponse.json(
-      { error: "Failed to fetch users" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

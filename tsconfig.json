@@ -1,11 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "es6"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -17,8 +12,19 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "target": "es2017",
     "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "types": ["node", "jest", "@testing-library/jest-dom"]
   },
   "include": [
     "next-env.d.ts",
@@ -28,6 +34,14 @@
   ],
   "exclude": [
     "node_modules",
-    "src/scripts"
-  ]
+    ".next",
+    "dist",
+    "build",
+    "coverage",
+    "playwright-report",
+    "test-results"
+  ],
+  "ts-node": {
+    "esm": true
+  }
 }

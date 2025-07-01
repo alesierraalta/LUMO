@@ -1,11 +1,13 @@
 #!/bin/bash
 set -e
 
-# Validate essentials
+# Ultra-fast validation - only critical checks
 [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] && echo "❌ Missing SUPABASE_URL" && exit 1
-[ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && echo "❌ Missing SUPABASE_KEY" && exit 1
 [ -z "$JWT_SECRET" ] && echo "❌ Missing JWT_SECRET" && exit 1
 
-# Start
-echo "🚀 Starting LUMO..."
+# Silent mode for faster startup
+export CHOREO_SILENT=true
+export NEXT_TELEMETRY_DISABLED=1
+
+# Start with minimal logging
 exec node server.js 

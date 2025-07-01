@@ -38,46 +38,93 @@ const rootFilesToDelete = [
 
 // Scripts to delete
 const scriptsToDelete = [
-  // List all scripts except essential ones
-  'deploy-lumo-final.bat',
-  'test-lumo-hybrid.js',
-  'intelligent-startup.js',
-  'deploy-hybrid-to-choreo.bat',
-  'test-hybrid.bat',
-  'test-hybrid-server.js',
-  'choreo-deployment-strategy.js',
-  'choreo-build-retry.bat',
-  'choreo-network-fix.js',
-  'create-emergency-manifests.js',
-  'immediate-build-id-fix.js',
-  'emergency-build-id-fix.js',
-  'simple-production-fix.js',
-  'fix-production-build.js',
-  'optimize-dev-startup.js',
-  'prevent-typescript-install.js',
-  'apply-dev-optimizations.bat',
-  'choreo-runtime-setup-build-only.js',
-  'github-test-choreo.js',
-  'test-choreo-build.js',
-  'validate-choreo-environments.js',
-  'test-docker-build.js',
-  'retry-deployment.js',
-  'choreo-dns-fix.js',
-  'monitor-choreo-deployment.js',
-  'choreo-startup.sh',
-  'fix-choreo-production-timeout.js',
-  'diagnose-choreo-production.js',
-  'test-choreo-admin-fix.js',
-  'test-local-admin.js',
-  'ensure-admin-access-choreo.js',
-  'test-choreo-admin-access.js',
-  'confirm-email-production.js',
-  'fix-root-user-production.js',
-  'build-with-error-handling.js',
-  'choreo-build-success.js',
-  'build-bypass-data-collection.js',
-  'final-100-percent-validation.js',
-  // Add any other non-essential scripts here
+  'deploy-lumo-final.bat',           // Replaced by deploy-optimized-final.bat
+  'test-lumo-hybrid.js',             // Replaced by test-optimized-server.js
+  'intelligent-startup.js',          // Replaced by intelligent-startup-optimized.js
+  'deploy-hybrid-to-choreo.bat',     // Obsolete
+  'test-hybrid.bat',                 // Obsolete
+  'test-hybrid-server.js',           // Obsolete
+  'choreo-deployment-strategy.js',   // Obsolete
+  'choreo-build-retry.bat',          // Obsolete
+  'choreo-network-fix.js',           // Obsolete
+  'create-emergency-manifests.js',   // Obsolete
+  'immediate-build-id-fix.js',       // Obsolete
+  'emergency-build-id-fix.js',       // Obsolete
+  'simple-production-fix.js',        // Obsolete
+  'fix-production-build.js',         // Obsolete
+  'optimize-dev-startup.js',         // Obsolete
+  'prevent-typescript-install.js',   // Obsolete
+  'apply-dev-optimizations.bat',     // Obsolete
+  'choreo-runtime-setup-build-only.js', // Obsolete
+  'github-test-choreo.js',           // Obsolete
+  'test-choreo-build.js',            // Obsolete
+  'validate-choreo-environments.js', // Obsolete
+  'test-docker-build.js',            // Obsolete
+  'retry-deployment.js',             // Obsolete
+  'choreo-dns-fix.js',               // Obsolete
+  'monitor-choreo-deployment.js',    // Obsolete
+  'choreo-startup.sh',               // Obsolete
+  'fix-choreo-production-timeout.js', // Obsolete
+  'diagnose-choreo-production.js',   // Obsolete
+  'test-choreo-admin-fix.js',        // Obsolete
+  'test-local-admin.js',             // Obsolete
+  'ensure-admin-access-choreo.js',   // Obsolete
+  'test-choreo-admin-access.js',     // Obsolete
+  'confirm-email-production.js',     // Obsolete
+  'fix-root-user-production.js',     // Obsolete
+  'build-with-error-handling.js',    // Obsolete
+  'choreo-build-success.js',         // Obsolete
+  'build-bypass-data-collection.js', // Obsolete
+  'final-100-percent-validation.js', // Obsolete
+  'emergency-build-fix.js',          // Obsolete
+  'complete-all-tasks.js',           // Obsolete
+  'comprehensive-validation.js',     // Obsolete
+  'crash-recovery.js',               // Obsolete
+  'validate-stability.js',           // Obsolete
+  'validate-server-stability.js',    // Obsolete
+  'monitor-memory.js',               // Obsolete
+  'optimize-memory-usage.js',        // Obsolete
+  'emergency-choreo-fix.js',         // Obsolete
+  'commit-and-push.js',              // Obsolete
+  'test-custom-server.js',           // Obsolete
+  'debug-getCurrentUser.js',         // Obsolete
+  'test-middleware-fix.js',          // Obsolete
+  'debug-middleware-cookies.js',     // Obsolete
+  'test-email-query-fix.js',         // Obsolete
+  'test-auth-context-fix.js',        // Obsolete
+  'test-frontend-simulation.js',     // Obsolete
+  'test-supabase-me-endpoint.js',    // Obsolete
+  'test-locations-fix.js',           // Obsolete
+  'debug-locations-auth.js',         // Obsolete
+  'test-current-stock-fix.js',       // Obsolete
+  'test-inventory-fix.js',           // Obsolete
+  'fix-all-permission-pages.js',     // Obsolete
+  'debug-user-permissions.js',       // Obsolete
+  'test-users-api-token-fix.js',     // Obsolete
+  'test-users-api-fix.js',           // Obsolete
+  'test-auth-provider-fix.js',       // Obsolete
+  'test-infinite-loop-final-verification.js', // Obsolete
+  'test-infinite-loop-final-debug.js', // Obsolete
+  'test-loop-debugging.js',          // Obsolete
+  'test-infinite-loop-fix.js',       // Obsolete
+  'test-browser-simulation.js',      // Obsolete
+  'test-complete-login-flow.js',     // Obsolete
+  'test-full-auth-flow.js',          // Obsolete
+  'test-login.js',                   // Obsolete
+  'create-root-user-simple.js',      // Obsolete
+  'create-supabase-root-user.js',    // Obsolete
+  'test-polyfill-optimization.js',   // Obsolete
+  'setup-dev-environment.js',        // Obsolete
+  'ensure-single-root-user.js',      // Obsolete
+  'test-auth-fix.js',                // Obsolete
+  'test-github-actions-fix.js',      // Obsolete
+  'debug-failing-tests.js',          // Obsolete
+  'validate-github-actions-fix.js',  // Obsolete
+  'test-database-fix.js',            // Obsolete
+  'fix-github-actions.js',           // Obsolete
+  'fix-supabase-deleteall-method.js', // Obsolete
+  'fix-supabase-not-method.js',      // Obsolete
+  'fix-neq-method-errors.js'         // Obsolete
 ];
 
 // Function to safely delete file

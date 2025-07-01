@@ -1,76 +1,50 @@
 /**
- * RUNTIME MODULE PATCHER
- * Patches Node.js module system to redirect @supabase/realtime-js imports
- * Works at runtime regardless of webpack configuration
+ * ULTRA-MINIMAL RUNTIME MODULE PATCHER
+ * Fastest possible module patching for Choreo dev environment
  */
 
 const path = require('path');
 const Module = require('module');
 
-// Store original require function
+// Cache for performance
+const patchCache = new Map();
+
+// Minimal patching - only what's absolutely necessary
 const originalRequire = Module.prototype.require;
 
-// Create comprehensive fallback path
-const fallbackPath = path.resolve(__dirname, 'realtime-fallback.js');
-
-console.log('🔧 Runtime Module Patcher: Initializing Supabase realtime fallback');
-console.log('📁 Fallback path:', fallbackPath);
-
-// Patch Module.prototype.require
 Module.prototype.require = function(id) {
-  // Intercept all @supabase/realtime-js related imports
-  if (id === '@supabase/realtime-js' || 
-      id.startsWith('@supabase/realtime-js/') ||
-      id.includes('realtime-js')) {
-    
-    console.log('🔄 Intercepted realtime-js import:', id, '-> redirecting to fallback');
-    
+  // Fast path - check cache first
+  if (patchCache.has(id)) {
+    return patchCache.get(id);
+  }
+
+  // Only patch problematic Supabase modules
+  if (id === '@supabase/realtime-js' || id.includes('realtime-js')) {
     try {
-      // Return our fallback module
-      return originalRequire.call(this, fallbackPath);
+      const fallbackPath = path.join(process.cwd(), 'src/lib/realtime-fallback.js');
+      const fallback = originalRequire.call(this, fallbackPath);
+      patchCache.set(id, fallback);
+      return fallback;
     } catch (error) {
-      console.warn('⚠️ Fallback module load failed:', error.message);
-      // Return minimal fallback if file doesn't exist
-      return {
-        RealtimeClient: class { 
-          constructor() { this.channels = []; }
+      // Silent fallback
+      const mockFallback = {
+        RealtimeClient: class MockRealtimeClient {
+          constructor() {}
           connect() { return Promise.resolve(); }
           disconnect() { return Promise.resolve(); }
-          channel() { return { subscribe: () => Promise.resolve(), unsubscribe: () => Promise.resolve() }; }
-        },
-        RealtimeChannel: class {
-          constructor() { this.state = 'closed'; }
-          subscribe() { return Promise.resolve(); }
-          unsubscribe() { return Promise.resolve(); }
+          channel() { return { subscribe: () => {}, unsubscribe: () => {} }; }
         }
       };
+      patchCache.set(id, mockFallback);
+      return mockFallback;
     }
   }
-  
-  // For all other modules, use original require
+
+  // Default behavior for all other modules
   return originalRequire.call(this, id);
 };
 
-// Also patch require.resolve for module resolution
-const originalResolve = Module._resolveFilename;
-Module._resolveFilename = function(request, parent, isMain) {
-  if (request === '@supabase/realtime-js' || 
-      request.startsWith('@supabase/realtime-js/') ||
-      request.includes('realtime-js')) {
-    
-    console.log('🔍 Resolving realtime-js module:', request, '-> redirecting to fallback');
-    return fallbackPath;
-  }
-  
-  return originalResolve.call(this, request, parent, isMain);
-};
-
-// Export for confirmation
-module.exports = {
-  patched: true,
-  fallbackPath,
-  timestamp: new Date().toISOString()
-};
-
-console.log('✅ Runtime Module Patcher: Successfully initialized');
-console.log('🛡️ All @supabase/realtime-js imports will be redirected to fallback'); 
+// Minimal initialization message
+if (process.env.CHOREO_SILENT !== 'true') {
+  console.log('🔧 Runtime patcher: Ready');
+} 

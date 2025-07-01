@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Menu, X, LogOut, Settings, User as UserIcon, BarChart3, Package, ShoppingCart, Users, MapPin, Tag, FileText, AlertTriangle, TrendingUp, Archive, UserPlus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Menu, X, LogOut, Settings, User as UserIcon, BarChart3, Package, ShoppingCart, Users, MapPin, Tag, FileText, AlertTriangle, TrendingUp, Archive, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -18,9 +18,10 @@ interface SidebarLinkProps {
   badge?: string;
   collapsed?: boolean;
   onClick?: () => void;
+  isSubItem?: boolean;
 }
 
-const SidebarLink: React.FC<SidebarLinkProps> = ({ href, icon: Icon, title, badge, collapsed, onClick }) => {
+const SidebarLink: React.FC<SidebarLinkProps> = ({ href, icon: Icon, title, badge, collapsed, onClick, isSubItem = false }) => {
   const pathname = usePathname();
   const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
 
@@ -30,7 +31,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ href, icon: Icon, title, badg
       onClick={onClick}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-accent hover:text-accent-foreground ${
         isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
-      }`}
+      } ${isSubItem ? 'ml-6 text-sm' : ''}`}
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
       {!collapsed && (
@@ -40,6 +41,44 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ href, icon: Icon, title, badg
         </>
       )}
     </Link>
+  );
+};
+
+interface SidebarDropdownProps {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  collapsed?: boolean;
+  children: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+const SidebarDropdown: React.FC<SidebarDropdownProps> = ({ icon: Icon, title, collapsed, children, isOpen, onToggle }) => {
+  const pathname = usePathname();
+  const isActiveSection = pathname.includes('/inventory') || pathname.includes('/categories') || pathname.includes('/locations');
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-accent hover:text-accent-foreground ${
+          isActiveSection ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        <Icon className="h-4 w-4 flex-shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left">{title}</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </>
+        )}
+      </button>
+      {!collapsed && isOpen && (
+        <div className="mt-1 space-y-1">
+          {children}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -54,6 +93,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
   const router = useRouter();
   const { user, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [openDropdowns, setOpenDropdowns] = useState<{ [key: string]: boolean }>({
+    inventory: false,
+  });
 
   useEffect(() => {
     // Simple loading simulation
@@ -74,6 +116,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
     if (onClose) {
       onClose();
     }
+  };
+
+  const toggleDropdown = (key: string) => {
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   return (
@@ -105,14 +154,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
               <SidebarLink href="/dashboard" icon={BarChart3} title="Dashboard" collapsed={collapsed} onClick={handleLinkClick} />
             )}
 
-            {/* Inventory Section */}
-            {hasAnyPermission(user as any, ['inventory:read', 'inventory:write']) && (
-              <>
-                <SidebarLink href="/inventory" icon={Package} title="Inventario" collapsed={collapsed} onClick={handleLinkClick} />
-                {hasPermission(user as any, 'inventory:write') && (
-                  <SidebarLink href="/inventory/add" icon={UserPlus} title="Agregar Producto" collapsed={collapsed} onClick={handleLinkClick} />
+            {/* Inventory Dropdown Section */}
+            {hasAnyPermission(user as any, ['inventory:read', 'inventory:write', 'categories:read', 'locations:read']) && (
+              <SidebarDropdown 
+                icon={Package} 
+                title="Inventario" 
+                collapsed={collapsed}
+                isOpen={openDropdowns.inventory}
+                onToggle={() => toggleDropdown('inventory')}
+              >
+                {hasAnyPermission(user as any, ['inventory:read', 'inventory:write']) && (
+                  <SidebarLink href="/inventory" icon={Package} title="Productos" collapsed={collapsed} onClick={handleLinkClick} isSubItem />
                 )}
-              </>
+                {hasPermission(user as any, 'categories:read') && (
+                  <SidebarLink href="/categories" icon={Tag} title="Categorías" collapsed={collapsed} onClick={handleLinkClick} isSubItem />
+                )}
+                {hasPermission(user as any, 'locations:read') && (
+                  <SidebarLink href="/locations" icon={MapPin} title="Ubicaciones" collapsed={collapsed} onClick={handleLinkClick} isSubItem />
+                )}
+              </SidebarDropdown>
+            )}
+
+            {/* Add Product Quick Action */}
+            {hasPermission(user as any, 'inventory:write') && (
+              <SidebarLink href="/inventory/add" icon={UserPlus} title="Agregar Producto" collapsed={collapsed} onClick={handleLinkClick} />
             )}
 
             {/* Sales Section */}
@@ -128,18 +193,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
             <Separator className="my-2" />
 
             {/* Management Section */}
-            {hasAnyPermission(user as any, ['categories:read', 'locations:read', 'users:read']) && (
-              <>
-                {hasPermission(user as any, 'categories:read') && (
-                  <SidebarLink href="/categories" icon={Tag} title="Categorías" collapsed={collapsed} onClick={handleLinkClick} />
-                )}
-                {hasPermission(user as any, 'locations:read') && (
-                  <SidebarLink href="/locations" icon={MapPin} title="Ubicaciones" collapsed={collapsed} onClick={handleLinkClick} />
-                )}
-                {hasPermission(user as any, 'users:read') && (
-                  <SidebarLink href="/settings/users" icon={Users} title="Usuarios" collapsed={collapsed} onClick={handleLinkClick} />
-                )}
-              </>
+            {hasPermission(user as any, 'users:read') && (
+              <SidebarLink href="/settings/users" icon={Users} title="Usuarios" collapsed={collapsed} onClick={handleLinkClick} />
             )}
 
             <Separator className="my-2" />

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 async function getInventoryProducts() {
   try {
-    const products = await prisma?.inventoryItem.findMany({
+    const products = await db.inventoryItem.findMany({
       where: {
         active: true,
       },

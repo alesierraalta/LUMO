@@ -34,6 +34,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // Force production optimizations
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
   // Disable source maps in production for security
   productionBrowserSourceMaps: false,
   

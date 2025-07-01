@@ -14,6 +14,10 @@ spec:
       value: "production"
     - name: PORT
       value: "8080"
+    - name: NEXT_TELEMETRY_DISABLED
+      value: "1"
+    - name: HOSTNAME
+      value: "0.0.0.0"
   secrets:
     - name: NEXT_PUBLIC_SUPABASE_URL
     - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -34,10 +38,10 @@ spec:
     readiness:
       path: /api/health
       port: 8080
-      initialDelaySeconds: 10
-      periodSeconds: 5
+      initialDelaySeconds: 5
+      periodSeconds: 3
     liveness:
       path: /api/health
       port: 8080
-      initialDelaySeconds: 15
-      periodSeconds: 10 
+      initialDelaySeconds: 10
+      periodSeconds: 5 

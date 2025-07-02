@@ -1,0 +1,67 @@
+# LUMO INVENTORY MANAGEMENT SYSTEM - ENVIRONMENT CONFIGURATION
+# =============================================================
+# Copia este contenido completo a un archivo llamado .env.local
+
+# CONFIGURACIÓN SUPABASE PARA DESARROLLO
+# =======================================
+# URL del proyecto Supabase (DESARROLLO)
+NEXT_PUBLIC_SUPABASE_URL=https://ndprriqyhddjoixrlqnz.supabase.co
+
+# Clave anónima de Supabase (DESARROLLO) 
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0MDAsImV4cCI6MjA2NTY4NDQwMH0.4rzi6UFGnN6ien_706ETHjBylZMK6jt0vjRvvnJ1J-8
+
+# CONFIGURACIÓN SUPABASE PARA PRODUCCIÓN
+# =======================================
+# URL del proyecto Supabase (PRODUCCIÓN)
+NEXT_PUBLIC_SUPABASE_URL_PROD=https://ubjujxtvlubxowsphvuk.supabase.co
+
+# Clave anónima de Supabase (PRODUCCIÓN)
+NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZUFub24iLCJpYXQiOjE3NDk1MTIzODQsImV4cCI6MjA2NTA4ODM4NH0.SapRqhZCDJypL1fMCiEChK0ehZRR5CSI1fRgt3Za8r4
+
+# CONFIGURACIÓN DE SERVIDOR SUPABASE (para operaciones admin)
+# ===========================================================
+# Clave de servicio para operaciones de administrador (DESARROLLO)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDEwODQwMCwiZXhwIjoyMDY1Njg0NDAwfQ.Nqs_Lm2qdqcbgNV0r9BsxmkJPCEgPiZeKUOz0eJWXKI
+
+# CONFIGURACIÓN DE AUTENTICACIÓN
+# ==============================
+# Secreto para JWT (mínimo 32 caracteres)
+JWT_SECRET=lumo-super-secret-jwt-key-2024-production-ready-32chars
+
+# URL base de la aplicación
+NEXTAUTH_URL=https://42bcb564-7feb-4cae-857b-6f5ff7243ab2.e1-us-east-azure.choreoapps.dev
+NEXTAUTH_SECRET=lumo-super-secret-nextauth-key-2024-production-ready
+
+# CONFIGURACIÓN DEL ENTORNO
+# =========================
+# Forzar uso de Supabase (no usar Prisma/SQLite)
+FORCE_SUPABASE=true
+
+# Entorno actual (development/production)
+NODE_ENV=development
+
+# CONFIGURACIÓN DE LA APLICACIÓN
+# ==============================
+# Nombre de la aplicación
+APP_NAME=LUMO Inventory Management
+
+# Versión de la aplicación  
+APP_VERSION=2.0.0
+
+# INSTRUCCIONES DE USO:
+# ====================
+# 1. Copia TODO este contenido
+# 2. Crea un archivo llamado .env.local en la raíz del proyecto
+# 3. Pega el contenido completo
+# 4. Guarda el archivo
+# 5. Reinicia el servidor de desarrollo
+
+# CREDENCIALES DE PRUEBA:
+# ======================
+# Email: alesierraalta@gmail.com
+# Password: admin123
+
+# PROYECTOS SUPABASE:
+# ==================
+# Desarrollo: ndprriqyhddjoixrlqnz (https://ndprriqyhddjoixrlqnz.supabase.co)
+# Producción: ubjujxtvlubxowsphvuk (https://ubjujxtvlubxowsphvuk.supabase.co) 

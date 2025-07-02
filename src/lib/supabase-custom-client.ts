@@ -47,6 +47,9 @@ interface QueryBuilder {
   is: (column: string, value: any) => QueryBuilder;
   order: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
   limit: (count: number) => QueryBuilder;
+  insert: (data: any) => QueryBuilder;
+  update: (data: any) => QueryBuilder;
+  delete: () => QueryBuilder;
   single: () => Promise<{ data: any; error: any }>;
   then: (callback: (result: { data: any; error: any }) => any) => Promise<any>;
 }
@@ -360,6 +363,9 @@ class CustomQueryBuilder implements QueryBuilder {
   private orderBy: string[] = [];
   private limitCount?: number;
   private isSingle = false;
+  private operation: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private insertData?: any;
+  private updateData?: any;
 
   constructor(client: CustomSupabaseClient, table: string) {
     this.client = client;
@@ -433,6 +439,10 @@ class CustomQueryBuilder implements QueryBuilder {
     return this;
   }
 
+  insert(data: any): QueryBuilder { this.operation = 'insert'; this.insertData = data; return this; }
+  update(data: any): QueryBuilder { this.operation = 'update'; this.updateData = data; return this; }
+  delete(): QueryBuilder { this.operation = 'delete'; return this; }
+
   single(): Promise<{ data: any; error: any }> {
     this.isSingle = true;
     return this.execute();
@@ -444,23 +454,6 @@ class CustomQueryBuilder implements QueryBuilder {
 
   private async execute(): Promise<{ data: any; error: any }> {
     try {
-      let url = `/rest/v1/${this.table}?select=${encodeURIComponent(this.selectColumns)}`;
-      
-      // Add filters
-      if (this.filters.length > 0) {
-        url += '&' + this.filters.join('&');
-      }
-
-      // Add ordering
-      if (this.orderBy.length > 0) {
-        url += `&order=${this.orderBy.join(',')}`;
-      }
-
-      // Add limit
-      if (this.limitCount !== undefined) {
-        url += `&limit=${this.limitCount}`;
-      }
-
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'apikey': (this.client as any).supabaseKey,
@@ -470,30 +463,42 @@ class CustomQueryBuilder implements QueryBuilder {
         headers['Authorization'] = `Bearer ${(this.client as any).session.access_token}`;
       }
 
-      if (this.isSingle) {
-        headers['Accept'] = 'application/vnd.pgrst.object+json';
+      const isWrite = this.operation !== 'select';
+      let url = `/rest/v1/${this.table}`;
+      let method = this.operation === 'insert' ? 'POST' : this.operation === 'update' ? 'PATCH' : this.operation === 'delete' ? 'DELETE' : 'GET';
+      let body: string | undefined;
+
+      if (isWrite) {
+        headers['Prefer'] = 'return=representation';
+        if (this.operation === 'insert') {
+          body = JSON.stringify(this.insertData);
+          if (this.selectColumns !== '*') url += `?select=${encodeURIComponent(this.selectColumns)}`;
+        } else if (this.operation === 'update') {
+          body = JSON.stringify(this.updateData);
+          if (this.filters.length) url += '?' + this.filters.join('&');
+          if (this.selectColumns !== '*') url += (this.filters.length ? '&' : '?') + `select=${encodeURIComponent(this.selectColumns)}`;
+        } else if (this.filters.length) {
+          url += '?' + this.filters.join('&');
+        }
+      } else {
+        url += `?select=${encodeURIComponent(this.selectColumns)}`;
+        if (this.filters.length) url += '&' + this.filters.join('&');
+        if (this.orderBy.length) url += `&order=${this.orderBy.join(',')}`;
+        if (this.limitCount !== undefined) url += `&limit=${this.limitCount}`;
       }
 
-      const response = await fetch(`${(this.client as any).supabaseUrl}${url}`, {
-        method: 'GET',
-        headers,
-      });
+      if (this.isSingle) headers['Accept'] = 'application/vnd.pgrst.object+json';
+
+      const response = await fetch(`${(this.client as any).supabaseUrl}${url}`, { method, headers, body });
 
       if (!response.ok) {
         const errorData = await response.text();
-        return {
-          data: null,
-          error: { message: `HTTP ${response.status}: ${errorData}`, status: response.status },
-        };
+        return { data: null, error: { message: `HTTP ${response.status}: ${errorData}`, status: response.status } };
       }
 
-      const data = await response.json();
-      return { data, error: null };
+      return { data: await response.json(), error: null };
     } catch (error) {
-      return {
-        data: null,
-        error: { message: 'Network error', details: error },
-      };
+      return { data: null, error: { message: 'Network error', details: error } };
     }
   }
 }

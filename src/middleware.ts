@@ -7,6 +7,7 @@ import { createCorrelationMiddleware } from './lib/middleware/correlation-middle
 const publicRoutes = [
   '/',
   '/login',
+  '/auth/login',
   '/register',
   '/sign-in',
   '/sign-up',
@@ -27,7 +28,8 @@ const publicRoutes = [
   // CRITICAL FIX: Add choreo-specific debug routes
   '/choreo-status',
   '/choreo-debug-link',
-  '/debug'
+  '/debug',
+  '/api/auth/callback'
 ]
 
 // Admin-only routes

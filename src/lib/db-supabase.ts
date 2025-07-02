@@ -19,6 +19,13 @@ const hasMissingConfig = (
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'placeholder-key'
 );
 
+// CRITICAL FIX: Better environment detection (safe for both server and client)
+const isProduction = process.env.NODE_ENV === 'production' || 
+                    !!process.env.BUILD_ID || 
+                    process.env.CHOREO_ENVIRONMENT === 'Production';
+
+const choreoEnv = isProduction ? 'Production' : 'Development';
+
 console.log('🔍 Environment Detection:', {
   isServer,
   isBuild,
@@ -29,7 +36,7 @@ console.log('🔍 Environment Detection:', {
   hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
   hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
-  choreoEnv: process.env.CHOREO_ENVIRONMENT || 'not-set'
+  choreoEnv
 });
 
 // CRITICAL: Completely skip ALL Supabase code during build

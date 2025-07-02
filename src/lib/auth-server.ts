@@ -31,22 +31,38 @@ export const getCurrentUser = async (): Promise<any> => {
     const cookieStore = await cookies();
     console.log('🔍 getCurrentUser: Got cookie store');
     
-    // Log all available cookies for debugging
+    // CRITICAL FIX: Check for any Supabase session cookies
     const allCookies = cookieStore.getAll();
-    console.log('🔍 getCurrentUser: Available cookies:', allCookies.map(c => c.name).join(', '));
+    const supabaseCookies = allCookies.filter(c => 
+      c.name.includes('sb-') || 
+      c.name.includes('supabase') ||
+      c.name.includes('auth-token')
+    );
+    console.log('🔍 getCurrentUser: Available Supabase cookies:', supabaseCookies.map(c => c.name).join(', '));
     
     // Use server-safe Supabase client
     const supabase = supabaseServer;
     console.log('🔍 getCurrentUser: Using Supabase-only client');
 
-    // Get the current session from Supabase
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // CRITICAL FIX: Better session detection
+    let session = null;
+    let sessionError = null;
+
+    try {
+      const { data: sessionData, error } = await supabase.auth.getSession();
+      session = sessionData?.session;
+      sessionError = error;
+    } catch (err) {
+      console.warn('⚠️ getCurrentUser: Session check failed, trying alternative methods');
+      sessionError = err;
+    }
+
     console.log('🔍 getCurrentUser: Supabase session check result:');
-    console.log('  - Error:', error?.message || 'none');
+    console.log('  - Error:', sessionError?.message || 'none');
     console.log('  - Session exists:', !!session);
     console.log('  - User exists:', !!session?.user);
     
-    if (!error && session?.user) {
+    if (!sessionError && session?.user) {
       console.log('✅ getCurrentUser: Valid Supabase session found');
       console.log('  - User ID:', session.user.id);
       console.log('  - Email:', session.user.email);

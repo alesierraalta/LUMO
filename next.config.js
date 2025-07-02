@@ -6,7 +6,16 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines']
   },
+  
+  // CRITICAL FIX: Cross-origin requests for Choreo
+  allowedDevOrigins: [
+    '42bcb564-7feb-4cae-857b-6f5ff7243ab2.e1-us-east-azure.choreoapps.dev',
+    '*.choreoapps.dev',
+    'localhost:3000',
+    'localhost:8080'
+  ],
   
   // Turbopack (stable now)
   turbopack: {
@@ -53,6 +62,11 @@ const nextConfig = {
     
     return config;
   },
+
+  // Environment detection optimization
+  env: {
+    FORCE_PRODUCTION: process.env.NODE_ENV === 'production' ? 'true' : 'false'
+  }
 };
 
 module.exports = nextConfig; 

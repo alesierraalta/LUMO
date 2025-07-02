@@ -1,0 +1,115 @@
+{
+  "timestamp": "2025-07-02T14:17:13.479Z",
+  "environment": "production",
+  "url": "https://42bcb564-7feb-4cae-857b-6f5ff7243ab2.e1-us-east-azure.choreoapps.dev",
+  "summary": {
+    "total": 12,
+    "passed": 2,
+    "failed": 10,
+    "scenarios": [
+      {
+        "name": "Health Check",
+        "success": true,
+        "duration": 43104,
+        "details": "Status: 200, Service: lumo-inventory",
+        "critical": true
+      },
+      {
+        "name": "Admin Authentication",
+        "success": false,
+        "duration": 25977,
+        "details": "Status: 401, Success: false, Token: Missing",
+        "critical": true
+      },
+      {
+        "name": "Admin Permissions Verification",
+        "success": false,
+        "duration": 0,
+        "details": "No admin token available",
+        "critical": true
+      },
+      {
+        "name": "User Registration Test 1",
+        "success": false,
+        "duration": 5107,
+        "details": "Status: 200, Success: true, Email: prod-user-1751465808039@example.com, Role: USER",
+        "critical": true
+      },
+      {
+        "name": "User Registration Test 2",
+        "success": false,
+        "duration": 525,
+        "details": "Status: 200, Success: true, Email: prod-admin-1751465815151@example.com, Role: USER",
+        "critical": true
+      },
+      {
+        "name": "Role Assignment Test",
+        "success": false,
+        "duration": 0,
+        "details": "Prerequisites not met (need admin token and 2 test users)",
+        "critical": true
+      },
+      {
+        "name": "New Admin Login Test",
+        "success": false,
+        "duration": 0,
+        "details": "No promoted admin user available",
+        "critical": true
+      },
+      {
+        "name": "Permission Validation Test",
+        "success": false,
+        "duration": 0,
+        "details": "No admin token for permission test",
+        "critical": true
+      },
+      {
+        "name": "User Access Control Test",
+        "success": false,
+        "duration": 0,
+        "details": "No regular user available for test",
+        "critical": true
+      },
+      {
+        "name": "Invalid Credentials Test",
+        "success": true,
+        "duration": 3837,
+        "details": "Status: 401, Success: false, Expected: 401 with failure",
+        "critical": false
+      },
+      {
+        "name": "Invalid Token Test",
+        "success": false,
+        "duration": 0,
+        "details": "Error: Unexpected end of JSON input",
+        "critical": false
+      },
+      {
+        "name": "Complete User Journey Test",
+        "success": false,
+        "duration": 0,
+        "details": "Critical Tests: 1/9, Users Created: 0, Admin Token: false",
+        "critical": true
+      }
+    ],
+    "adminToken": null,
+    "testUsers": []
+  },
+  "evaluation": {
+    "overall": false,
+    "critical": false,
+    "criticalPassed": 1,
+    "criticalTotal": 10,
+    "criticalFailed": 9
+  },
+  "testUsers": [],
+  "recommendations": [
+    "🚨 CRITICAL: Fix failing tests immediately before allowing user access",
+    "🔍 Investigate authentication and authorization failures",
+    "🛠️ Verify database connectivity and user table integrity",
+    "📋 Check API endpoint implementations for user management",
+    "🔒 Review JWT token generation and validation",
+    "⚡ Test role assignment and permission checking logic",
+    "🧪 Re-run tests after fixes to verify resolution"
+  ]
+}

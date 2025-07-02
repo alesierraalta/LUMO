@@ -1,0 +1,79 @@
+{
+  "timestamp": "2025-07-02T14:03:19.443Z",
+  "environment": "production",
+  "url": "https://42bcb564-7feb-4cae-857b-6f5ff7243ab2.e1-us-east-azure.choreoapps.dev",
+  "summary": {
+    "total": 6,
+    "passed": 1,
+    "failed": 5,
+    "scenarios": [
+      {
+        "name": "Health Check",
+        "success": true,
+        "duration": 52078,
+        "details": "Status: 200, Service: lumo-inventory",
+        "data": {
+          "status": "healthy",
+          "timestamp": "2025-07-02T14:03:29.519Z",
+          "service": "lumo-inventory",
+          "version": "1.0.0",
+          "environment": "development",
+          "uptime": 20,
+          "responseTime": 0
+        }
+      },
+      {
+        "name": "Login with Admin Credentials",
+        "success": false,
+        "duration": 0,
+        "details": "Error: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+        "data": null
+      },
+      {
+        "name": "Verify Admin Permissions",
+        "success": false,
+        "duration": 971,
+        "details": "Failed to login for permission test",
+        "data": null
+      },
+      {
+        "name": "Test User Registration",
+        "success": false,
+        "duration": 4260,
+        "details": "Status: 200, Success: true, Email: prod-test-1751464990665@example.com",
+        "data": {
+          "success": true,
+          "user": {
+            "id": "9fbdbd42-dfff-4a19-b610-c9105fd1faf3",
+            "email": "prod-test-1751464990665@example.com",
+            "name": "Production Test User",
+            "role": "USER",
+            "isActive": true,
+            "createdAt": "2025-07-02T14:04:10.058Z"
+          }
+        }
+      },
+      {
+        "name": "Test Role Management",
+        "success": false,
+        "duration": 1122,
+        "details": "Failed to login for role test",
+        "data": null
+      },
+      {
+        "name": "Test Permission Validation",
+        "success": false,
+        "duration": 368,
+        "details": "Failed to login for permission validation test",
+        "data": null
+      }
+    ]
+  },
+  "recommendations": [
+    "🚨 Fix failing production tests immediately",
+    "🔍 Check database connectivity and configuration",
+    "🛠️ Verify API endpoints are responding correctly",
+    "📋 Review server logs for errors",
+    "⚡ Test in staging environment first"
+  ]
+}

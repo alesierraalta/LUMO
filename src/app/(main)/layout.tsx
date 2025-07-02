@@ -1,7 +1,5 @@
 'use client';
 
-import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/contexts/auth-context";
 import { Sidebar, MobileNav } from "@/components/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton } from "@/components/user-button";
@@ -19,27 +17,29 @@ export default function MainLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <AuthProvider>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
-        />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card flex-shrink-0">
-            <MobileNav />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar 
+        collapsed={sidebarCollapsed} 
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card flex-shrink-0">
+          <MobileNav />
+          <div className="flex items-center gap-2">
             <div className="text-sm text-muted-foreground">
-              Sistema de Inventario
+              Sistema de Inventario LUMO
             </div>
+            <ModeToggle />
+            <UserButton />
           </div>
-          <main className="flex-1 overflow-auto p-4 bg-background">
-            {children}
-          </main>
         </div>
+        <main className="flex-1 overflow-auto p-4 bg-background">
+          {children}
+        </main>
       </div>
       
       {/* Debug panel - only in development */}
       {process.env.NODE_ENV === 'development' && <AuthDebugPanel />}
-    </AuthProvider>
+    </div>
   );
 } 

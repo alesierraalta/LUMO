@@ -1491,3 +1491,24 @@ export const db = {
 };
 
 export default db;
+
+// Quick fix for Supabase order function
+import { getSupabaseClient } from './supabase-singleton';
+
+export const supabase = getSupabaseClient();
+
+// Optimized dashboard data fetch
+export async function getDashboardData() {
+  try {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .limit(10);
+    
+    if (error) throw error;
+    return { data: data || [] };
+  } catch (error) {
+    console.error('Dashboard data error:', error);
+    return { data: [] };
+  }
+}

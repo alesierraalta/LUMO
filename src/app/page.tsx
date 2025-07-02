@@ -1,17 +1,25 @@
 "use client";
 
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
   useEffect(() => {
-    // For now, just redirect to dashboard
-    // TODO: Add authentication check here
-    redirect("/dashboard");
-  }, []);
+    if (!loading) {
+      if (user) {
+        router.push("/dashboard");
+      } else {
+        router.push("/auth/login");
+      }
+    }
+  }, [user, loading, router]);
 
   // Show loading until redirect happens
   return (

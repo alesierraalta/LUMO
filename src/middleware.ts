@@ -71,6 +71,13 @@ function verifySupabaseToken(token: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
+  // OPTIMIZED: Redirect /auth/login to /login directly in middleware
+  if (pathname === '/auth/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+  
   // CRITICAL FIX: Skip middleware for static assets and Next.js internals
   if (pathname.startsWith('/_next/') || 
       pathname.startsWith('/static/') || 

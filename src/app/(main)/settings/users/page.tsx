@@ -113,14 +113,25 @@ export default function UsersPage() {
             </p>
           </div>
           
-          <PermissionGuard permission="users:create" showAlert={false}>
-            <Link href="/settings/users/new">
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Crear Usuario
-              </Button>
-            </Link>
-          </PermissionGuard>
+          <div className="flex items-center gap-3">
+            <PermissionGuard permission="users:admin" showAlert={false}>
+              <Link href="/settings/users/roles">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Gestionar Roles
+                </Button>
+              </Link>
+            </PermissionGuard>
+            
+            <PermissionGuard permission="users:create" showAlert={false}>
+              <Link href="/settings/users/new">
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Crear Usuario
+                </Button>
+              </Link>
+            </PermissionGuard>
+          </div>
         </div>
 
         {/* Filtros y búsqueda */}

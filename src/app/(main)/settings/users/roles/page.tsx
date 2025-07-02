@@ -328,14 +328,21 @@ export default function RolePermissionsPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Error deleting role');
+        
+        // Better error message for role assigned to users
+        if (error.error?.includes('assigned to users')) {
+          toast.error(`No se puede eliminar "${role.name}" porque está asignado a usuarios. Primero reasigna o elimina los usuarios con este rol.`);
+        } else {
+          toast.error(error.error || 'Error al eliminar el rol');
+        }
+        return;
       }
 
       setRoles(prev => prev.filter(r => r.id !== roleId));
       toast.success('Rol eliminado exitosamente');
     } catch (error: any) {
       console.error('Error deleting role:', error);
-      toast.error(error.message || 'Error al eliminar el rol');
+      toast.error('Error de conexión al eliminar el rol');
     } finally {
       setIsSaving(false);
     }
@@ -362,6 +369,7 @@ export default function RolePermissionsPage() {
 
   // Filtrar roles
   const filteredRoles = roles.filter(role => {
+    if (!role) return false; // Prevent null/undefined roles
     const matchesSearch = role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          role.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = roleTypeFilter === 'all' || 
@@ -421,7 +429,7 @@ export default function RolePermissionsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {roles.filter(r => r.isSystem).length}
+              {roles.filter(r => r?.isSystem).length}
             </div>
             <div className="text-sm text-muted-foreground">Roles Sistema</div>
           </CardContent>
@@ -429,7 +437,7 @@ export default function RolePermissionsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-emerald-600">
-              {roles.filter(r => !r.isSystem).length}
+              {roles.filter(r => r && !r.isSystem).length}
             </div>
             <div className="text-sm text-muted-foreground">Roles Personalizados</div>
           </CardContent>

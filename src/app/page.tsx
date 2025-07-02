@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
 
+// Force rebuild - Updated: 2025-07-02 14:00:00
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();

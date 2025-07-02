@@ -5,9 +5,11 @@ const nextConfig = {
   // Essential optimizations only
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines']
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons']
   },
+  
+  // FIXED: Moved from experimental to root level
+  serverExternalPackages: ['@prisma/client', '@prisma/engines'],
   
   // CRITICAL FIX: Cross-origin requests for Choreo
   allowedDevOrigins: [

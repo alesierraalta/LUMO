@@ -19,36 +19,42 @@ try {
   // Silent fail - not critical for dev
 }
 
+const { createServer } = require('http');
+const { parse } = require('url');
+const next = require('next');
 const fs = require('fs');
 const path = require('path');
 
-// Enhanced production detection for Choreo
+// Detect actual environment from Choreo
+const choreoEnv = process.env.CHOREO_ENVIRONMENT; // 'Development' or 'Production'
+const nodeEnv = process.env.NODE_ENV;
+
+// Build artifacts detection (for optimizations, not environment forcing)
 const hasStandaloneServer = fs.existsSync(path.join(__dirname, '.next', 'BUILD_ID')) ||
                            fs.existsSync(path.join(__dirname, '.next', 'server.js')) ||
                            fs.existsSync(path.join(__dirname, '.next', 'standalone'));
 
-const dev = !hasStandaloneServer && process.env.NODE_ENV !== 'production';
-const isProd = !dev || hasStandaloneServer || process.env.NODE_ENV === 'production';
+// Determine if we should run in dev mode - respect Choreo environment
+const dev = nodeEnv !== 'production' && choreoEnv !== 'Production';
 
-// Force production mode if build artifacts exist
-if (hasStandaloneServer) {
+// Only force production if explicitly in Choreo Production environment
+if (choreoEnv === 'Production' && nodeEnv !== 'production') {
   process.env.NODE_ENV = 'production';
 }
 
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
-console.log(`🚀 Starting server: ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
+console.log(`🚀 Starting server: ${dev ? 'DEVELOPMENT' : 'PRODUCTION'} mode`);
+console.log(`🌍 Choreo Environment: ${choreoEnv || 'Not set'}`);
 console.log(`📦 BUILD_ID exists: ${hasStandaloneServer}`);
+console.log(`🔧 NODE_ENV: ${process.env.NODE_ENV}`);
 console.log(`🌐 Server will run on: http://${hostname}:${port}`);
 
-const app = require('next')({ dev, hostname, port });
+const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const { createServer } = require('http');
-  const { parse } = require('url');
-
   createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true);

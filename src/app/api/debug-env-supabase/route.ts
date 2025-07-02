@@ -4,7 +4,10 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 DEBUG SUPABASE ENV VARIABLES');
     
-    const supabaseUrl = 'https://ubjujxtvlubxowsphvuk.supabase.co';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ndprriqyhddjoixrlqnz.supabase.co';
+    
+    console.log('🔧 Using Supabase URL:', supabaseUrl);
+    console.log('🔑 Service key length:', supabaseServiceKey?.length || 'undefined');
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     

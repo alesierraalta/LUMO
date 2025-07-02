@@ -19,8 +19,11 @@ export async function POST(request: NextRequest) {
     console.log('Registration attempt for:', email);
 
     // Use Supabase service role client to bypass email confirmation
-    const supabaseUrl = 'https://ubjujxtvlubxowsphvuk.supabase.co';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3Bodnd1ayIsInJvbGUiOiJzZXJ2aWNlX3JvbGUiLCJpYXQiOjE3MTc5NzYzODQsImV4cCI6MjAzMzU1MjM4NH0.oUP6oOOaYjRcqLEGBBHsO7CfZPKKbJJKcAJQbFKHcWU';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ndprriqyhddjoixrlqnz.supabase.co';
+    
+    console.log('🔧 Using Supabase URL:', supabaseUrl);
+    console.log('🔑 Service key length:', supabaseServiceKey?.length || 'undefined');
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDEwODQwMCwiZXhwIjoyMDY1Njg0NDAwfQ.Nqs_Lm2qdqcbgNV0r9BsxmkJPCEgPiZeKUOz0eJWXKI';
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {

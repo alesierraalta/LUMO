@@ -1,0 +1,78 @@
+# SOLUCIÓN FINAL - PROBLEMA DE VARIABLES DE ENTORNO EN CHOREO
+# ==========================================================
+
+## 🚨 PROBLEMA IDENTIFICADO:
+El frontend está usando variables de entorno COMPILADAS en build time que son de producción,
+aunque las variables actuales en Choreo ya están configuradas para desarrollo.
+
+## ✅ SOLUCIÓN COMPLETA:
+
+### PASO 1: Verificar Variables en Choreo
+Asegúrate de que estas variables estén configuradas en Choreo:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://ndprriqyhddjoixrlqnz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0MDAsImV4cCI6MjA2NTY4NDQwMH0.4rzi6UFGnN6ien_706ETHjBylZMK6jt0vjRvvnJ1J-8
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDEwODQwMCwiZXhwIjoyMDY1Njg0NDAwfQ.Nqs_Lm2qdqcbgNV0r9BsxmkJPCEgPiZeKUOz0eJWXKI
+```
+
+### PASO 2: Forzar Rebuild Completo
+El problema es que Next.js compila las variables NEXT_PUBLIC_* en build time.
+Necesitas forzar un rebuild completo:
+
+1. **Hacer un cambio mínimo al código** (para triggerar rebuild)
+2. **Hacer commit y push**
+3. **Esperar a que Choreo haga redeploy completo**
+
+### PASO 3: Cambio para Triggerar Rebuild
+Ejecuta estos comandos:
+
+```bash
+# Hacer un cambio mínimo para triggerar rebuild
+echo "// Updated $(date)" >> src/app/page.tsx
+
+# Commit y push
+git add .
+git commit -m "fix: force rebuild with correct environment variables"
+git push origin main
+```
+
+### PASO 4: Verificar Después del Deploy
+Después del redeploy, ejecuta:
+
+```bash
+node scripts/debug-supabase-config.js
+```
+
+Deberías ver:
+```
+"url": "https://ndprriqyhddjoixrlqnz.supabase.co"  ✅ CORRECTO
+```
+
+### PASO 5: Limpiar Cache del Navegador
+1. Abre herramientas de desarrollador (F12)
+2. Click derecho en el botón refresh
+3. Selecciona "Empty Cache and Hard Reload"
+4. O usa modo incógnito
+
+## 🎯 RESULTADO ESPERADO:
+
+Después de estos pasos:
+✅ Login funcionará con alesierraalta@gmail.com / admin123
+✅ Sidebar aparecerá correctamente
+✅ Aplicación completamente funcional
+
+## 📝 EXPLICACIÓN TÉCNICA:
+
+Next.js compila las variables NEXT_PUBLIC_* en build time y las incluye en el bundle JavaScript.
+Aunque cambies las variables en Choreo, el JavaScript compilado sigue usando los valores antiguos
+hasta que se hace un rebuild completo.
+
+## 🚨 SI SIGUE SIN FUNCIONAR:
+
+Si después del rebuild sigue fallando, el problema puede ser:
+1. Choreo no está usando las variables correctas
+2. Hay cache en el CDN de Choreo
+3. Las variables no se están aplicando al build process
+
+En ese caso, contacta al soporte de Choreo para verificar la configuración de variables de entorno. 

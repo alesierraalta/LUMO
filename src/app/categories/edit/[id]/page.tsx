@@ -7,28 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function EditUserPage() {
+export default function EditCategoryPage() {
   const router = useRouter();
   const params = useParams();
-  const userId = params.id as string;
+  const categoryId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [category, setCategory] = useState<any>(null);
 
   useEffect(() => {
     // Mock data for GitHub Pages static export
-    setUser({
-      id: userId,
-      name: "Sample User",
-      email: "user@example.com",
-      role: "USER"
+    setCategory({
+      id: categoryId,
+      name: "Sample Category",
+      description: "Sample category for GitHub Pages"
     });
     setLoading(false);
-  }, [userId]);
+  }, [categoryId]);
 
   const handleSave = () => {
     // Mock save functionality for GitHub Pages
-    alert("User saved (GitHub Pages demo)");
-    router.push("/settings/users");
+    alert("Category saved (GitHub Pages demo)");
+    router.push("/categories");
   };
 
   if (loading) {
@@ -39,37 +38,28 @@ export default function EditUserPage() {
     <div className="container mx-auto py-6">
       <Card>
         <CardHeader>
-          <CardTitle>Edit User</CardTitle>
+          <CardTitle>Edit Category</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Category Name</Label>
             <Input
               id="name"
-              value={user?.name || ""}
-              onChange={(e) => setUser({...user, name: e.target.value})}
+              value={category?.name || ""}
+              onChange={(e) => setCategory({...category, name: e.target.value})}
             />
           </div>
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="description">Description</Label>
             <Input
-              id="email"
-              type="email"
-              value={user?.email || ""}
-              onChange={(e) => setUser({...user, email: e.target.value})}
-            />
-          </div>
-          <div>
-            <Label htmlFor="role">Role</Label>
-            <Input
-              id="role"
-              value={user?.role || ""}
-              onChange={(e) => setUser({...user, role: e.target.value})}
+              id="description"
+              value={category?.description || ""}
+              onChange={(e) => setCategory({...category, description: e.target.value})}
             />
           </div>
           <div className="flex gap-2">
             <Button onClick={handleSave}>Save Changes</Button>
-            <Button variant="outline" onClick={() => router.push("/settings/users")}>
+            <Button variant="outline" onClick={() => router.push("/categories")}>
               Cancel
             </Button>
           </div>

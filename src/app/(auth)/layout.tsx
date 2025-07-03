@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import { ReactNode } from "react";
 
-// Disable static generation for auth pages
-export const dynamic = 'force-dynamic';
+// Static export compatible auth layout
 
 export const metadata: Metadata = {
   title: "Autenticación - Sistema de Inventario",

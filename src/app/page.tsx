@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
-// Disable static generation for this page
-export const dynamic = 'force-dynamic';
+// Static export compatible page
 
 // Force rebuild - Updated: 2025-07-02 14:00:00
 export default function Home() {

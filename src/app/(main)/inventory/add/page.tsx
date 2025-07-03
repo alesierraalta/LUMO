@@ -33,8 +33,7 @@ import {
   X
 } from "lucide-react"
 
-// Disable static generation for this page
-export const dynamic = 'force-dynamic';
+// Static export compatible page
 
 // Main component with the form
 function AddProductContent() {

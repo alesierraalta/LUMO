@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import type { Category } from "@/app/(main)/categories/columns";
+import type { Category } from "@/app/categories/columns";
 import { Pencil, Trash, PackageOpen, Tag, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";

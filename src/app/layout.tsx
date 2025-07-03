@@ -4,8 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/contexts/auth-context";
 
-// Disable static generation for all pages
-export const dynamic = 'force-dynamic';
+// Static export compatible layout
 
 export const metadata: Metadata = {
   title: "LUMO - Sistema de Gestión de Inventario",

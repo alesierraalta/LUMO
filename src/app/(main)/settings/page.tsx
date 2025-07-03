@@ -1,27 +1,46 @@
-import { Metadata } from "next";
+"use client";
+
+import { useState, useEffect } from "react";
 import { Settings, User, Shield, Bell, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarginSettings } from "@/components/margin-settings";
-import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-server";
-import { redirect } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Settings | LUMO",
-  description: "Manage your account settings and preferences",
-};
+export default function SettingsPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
-export const dynamic = 'force-dynamic';
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login");
+      return;
+    }
 
-export default async function SettingsPage() {
-  const user = await getCurrentUser();
-  
-  if (!user) {
-    redirect("/login");
+    if (user) {
+      // Check if user is admin (you can customize this logic)
+      setUserIsAdmin(user.email === 'alesierraalta@gmail.com' || user.role === 'admin');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-sm text-muted-foreground">Loading settings...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const userIsAdmin = isAdmin(user);
+  if (!user) {
+    return null; // Will redirect
+  }
 
   return (
     <div className="space-y-6">
@@ -46,13 +65,13 @@ export default async function SettingsPage() {
           <CardContent>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                <strong>Name:</strong> {user.name}
+                <strong>Name:</strong> {user.name || user.email}
               </p>
               <p className="text-sm text-muted-foreground">
                 <strong>Email:</strong> {user.email}
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>Role:</strong> <span className="capitalize">{user.role}</span>
+                <strong>Role:</strong> <span className="capitalize">{userIsAdmin ? 'admin' : 'user'}</span>
               </p>
             </div>
           </CardContent>
@@ -96,7 +115,7 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
         )}
-          </div>
+      </div>
 
       {/* Margin Settings Section */}
       <div className="mt-8">

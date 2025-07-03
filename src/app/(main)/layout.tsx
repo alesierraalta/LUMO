@@ -6,8 +6,7 @@ import { UserButton } from "@/components/user-button";
 import { AuthDebugPanel } from "@/components/debug/auth-debug";
 import { useState } from "react";
 
-// Disable static generation for main layout
-export const dynamic = 'force-dynamic';
+// Static export compatible main layout
 
 export default function MainLayout({
   children,

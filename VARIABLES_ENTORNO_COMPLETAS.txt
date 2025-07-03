@@ -1,0 +1,140 @@
+================================================================================
+                    LUMO INVENTORY - VARIABLES DE ENTORNO COMPLETAS
+================================================================================
+
+📅 Fecha: 03/07/2025
+🎯 Proyecto: LUMO Inventory Management System
+🔧 Configuración: Dev/Prod Separados
+
+================================================================================
+                              🔧 DESARROLLO LOCAL
+================================================================================
+
+📁 Archivo: .env.local (en la raíz del proyecto)
+🗄️ Base de datos: DEV (ndprriqyhddjoixrlqnz)
+🌐 URL: http://localhost:3000
+
+# LUMO INVENTORY - DESARROLLO LOCAL
+# Base de datos de DESARROLLO
+NEXT_PUBLIC_SUPABASE_URL=https://ndprriqyhddjoixrlqnz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0MDAsImV4cCI6MjA2NTY4NDQwMH0.4rzi6UFGnN6ien_706ETHjBylZMK6jt0vjRvvnJ1J-8
+
+# Configuración de aplicación
+FORCE_SUPABASE=true
+NODE_ENV=development
+APP_NAME=LUMO Inventory Management
+APP_VERSION=2.0.0
+
+# Autenticación para desarrollo
+NEXTAUTH_SECRET=lumo-dev-secret-key-2024
+NEXTAUTH_URL=http://localhost:3000
+
+================================================================================
+                              🚀 PRODUCCIÓN (VERCEL)
+================================================================================
+
+🌐 Plataforma: Vercel
+🗄️ Base de datos: PROD (ubjujxtvlubxowsphvuk)
+🌍 URL: https://lumo-alesierraaltas-projects.vercel.app
+
+⚠️ IMPORTANTE: Estas variables se configuran en Vercel Dashboard
+📍 Ubicación: https://vercel.com/dashboard → Proyecto "lumo" → Settings → Environment Variables
+
+# LUMO INVENTORY - PRODUCCIÓN
+# Base de datos de PRODUCCIÓN
+NEXT_PUBLIC_SUPABASE_URL=https://ubjujxtvlubxowsphvuk.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MTIzODQsImV4cCI6MjA2NTA4ODM4NH0.SapRqhZCDJypL1fMCiEChK0ehZRR5CSI1fRgt3Za8r4
+
+# Configuración de aplicación
+FORCE_SUPABASE=true
+NODE_ENV=production
+APP_NAME=LUMO Inventory Management
+APP_VERSION=2.0.0
+
+# Autenticación para producción
+NEXTAUTH_SECRET=lumo-super-secret-production-key-2024-secure
+NEXTAUTH_URL=https://lumo-alesierraaltas-projects.vercel.app
+
+================================================================================
+                              📋 INSTRUCCIONES DE USO
+================================================================================
+
+🔧 CONFIGURAR DESARROLLO:
+1. Copia las variables de DESARROLLO
+2. Crea el archivo .env.local en la raíz del proyecto
+3. Pega las variables en el archivo
+4. Ejecuta: npm run dev
+
+🚀 CONFIGURAR PRODUCCIÓN:
+1. Ve a https://vercel.com/dashboard
+2. Selecciona el proyecto "lumo"
+3. Ve a Settings → Environment Variables
+4. Agrega cada variable de PRODUCCIÓN una por una
+5. Asegúrate de seleccionar "Production" como environment
+6. Ejecuta: npm run deploy
+
+⚡ CONFIGURACIÓN AUTOMÁTICA:
+- Desarrollo: npm run env:dev
+- Producción: npm run env:setup:complete
+- Verificar: npm run env:check
+
+================================================================================
+                              🗄️ BASES DE DATOS
+================================================================================
+
+📊 DESARROLLO (DEV):
+- URL: https://ndprriqyhddjoixrlqnz.supabase.co
+- Dashboard: https://supabase.com/dashboard/project/ndprriqyhddjoixrlqnz
+- Propósito: Pruebas y desarrollo
+- Datos: Datos de prueba, se pueden borrar
+
+🏭 PRODUCCIÓN (PROD):
+- URL: https://ubjujxtvlubxowsphvuk.supabase.co
+- Dashboard: https://supabase.com/dashboard/project/ubjujxtvlubxowsphvuk
+- Propósito: Aplicación en vivo
+- Datos: Datos reales, NUNCA borrar
+
+================================================================================
+                              🔒 SEGURIDAD
+================================================================================
+
+⚠️ IMPORTANTE:
+- NUNCA subir .env.local al repositorio
+- NUNCA compartir las claves secretas
+- Usar diferentes secrets para dev/prod
+- Revisar regularmente las variables en Vercel
+
+🔐 CLAVES SECRETAS:
+- Desarrollo: lumo-dev-secret-key-2024
+- Producción: lumo-super-secret-production-key-2024-secure
+
+================================================================================
+                              📞 SOPORTE
+================================================================================
+
+🔗 Enlaces útiles:
+- Vercel Dashboard: https://vercel.com/dashboard
+- Supabase DEV: https://supabase.com/dashboard/project/ndprriqyhddjoixrlqnz
+- Supabase PROD: https://supabase.com/dashboard/project/ubjujxtvlubxowsphvuk
+
+📧 Scripts disponibles:
+- npm run env:setup:complete - Configuración completa
+- npm run env:dev - Solo desarrollo
+- npm run env:check - Verificar variables
+- npm run dev - Desarrollo local
+- npm run deploy - Deploy a producción
+
+================================================================================
+                              ✅ ESTADO ACTUAL
+================================================================================
+
+✅ Variables de desarrollo configuradas
+✅ Variables de producción configuradas en Vercel
+✅ Base de datos DEV funcionando
+✅ Base de datos PROD funcionando
+✅ Aplicación desplegada en Vercel
+✅ Separación completa dev/prod implementada
+
+🎉 ¡CONFIGURACIÓN COMPLETADA EXITOSAMENTE!
+
+================================================================================ 

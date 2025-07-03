@@ -8,7 +8,6 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  // Vercel handles routing automatically - no need for static export
   eslint: {
     ignoreDuringBuilds: false,
   },

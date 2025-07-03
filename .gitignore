@@ -56,3 +56,5 @@ auto-update.bat
 confirm-email-prod.bat
 fix-root-prod.bat
 CHOREO_SECRETS_CONFIG.txt
+
+.vercel

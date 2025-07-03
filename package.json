@@ -56,7 +56,11 @@
     "test:ultra-build": "node scripts/test-ultra-build-fix.js",
     "vercel-build": "next build",
     "deploy": "vercel --prod",
-    "deploy:preview": "vercel"
+    "deploy:preview": "vercel",
+    "env:setup": "node scripts/setup-vercel-env.js",
+    "env:setup:complete": "node scripts/setup-dev-prod-env.js",
+    "env:dev": "cp env.local.template .env.local",
+    "env:check": "vercel env ls"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

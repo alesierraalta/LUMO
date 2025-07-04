@@ -17,16 +17,9 @@ export async function GET(
       );
     }
 
-    // Only admins can view other users
-    if (currentUser.role?.name !== 'ADMIN' && currentUser.id !== id) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     const supabase = await createServerClient();
     
+    // First check if user exists
     const { data: user, error } = await supabase
       .from('users')
       .select(`
@@ -41,6 +34,14 @@ export async function GET(
       .eq('id', id)
       .single();
 
+    if (error && error.code === 'PGRST116') {
+      // User not found
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
     if (error) {
       console.error('Error fetching user:', error);
       return NextResponse.json(
@@ -53,6 +54,14 @@ export async function GET(
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Now check permissions after confirming user exists
+    if (currentUser.role?.name !== 'ADMIN' && currentUser.id !== id) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
       );
     }
 

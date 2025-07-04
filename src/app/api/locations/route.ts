@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db-supabase';
 import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
+import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,35 +20,48 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    const where: any = {};
+    const supabase = await createServerClient();
+    
+    let query = supabase
+      .from('locations')
+      .select('id, name, description, is_active, created_at, updated_at')
+      .order('name', { ascending: true });
 
+    // Apply search filter
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } }
-      ];
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
-    const locations = await db.location.findMany({
-      where,
-      include: {
-        _count: {
-          select: {
-            inventoryItems: true
-          }
-        }
-      },
-      orderBy: { name: 'asc' },
-      take: limit,
-      skip: offset
-    });
+    // Apply pagination and execute query
+    const { data: locations, error } = await query.range(offset, offset + limit - 1);
 
-    const total = await db.location.count({ where });
+    if (error) {
+      console.error('Error fetching locations:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch locations' },
+        { status: 500 }
+      );
+    }
+
+    // Get total count for pagination
+    const { count: total } = await supabase
+      .from('locations')
+      .select('*', { count: 'exact', head: true });
+
+    // Transform to match expected format
+    const transformedLocations = locations?.map(location => ({
+      id: location.id,
+      name: location.name,
+      description: location.description,
+      isActive: location.is_active,
+      createdAt: location.created_at,
+      updatedAt: location.updated_at
+    })) || [];
 
     return NextResponse.json({
       success: true,
-      locations,
-      total,
+      locations: transformedLocations,
+      total: total || 0,
       limit,
       offset
     });
@@ -75,18 +88,39 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
+    const supabase = await createServerClient();
     
-    const location = await db.location.create({
-      data: {
+    const { data: location, error } = await supabase
+      .from('locations')
+      .insert({
         name: data.name,
         description: data.description,
-        isActive: data.isActive !== false
-      }
-    });
+        is_active: data.isActive !== false
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating location:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to create location' },
+        { status: 500 }
+      );
+    }
+
+    // Transform to match expected format
+    const transformedLocation = {
+      id: location.id,
+      name: location.name,
+      description: location.description,
+      isActive: location.is_active,
+      createdAt: location.created_at,
+      updatedAt: location.updated_at
+    };
 
     return NextResponse.json({
       success: true,
-      location
+      location: transformedLocation
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating location:', error);

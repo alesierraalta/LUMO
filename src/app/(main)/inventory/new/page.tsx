@@ -125,8 +125,8 @@ export default function NewInventoryItemPage() {
         },
         body: JSON.stringify({
           ...formData,
-          categoryId: formData.categoryId || null,
-          locationId: formData.locationId || null
+          categoryId: formData.categoryId === 'none' ? null : formData.categoryId,
+          locationId: formData.locationId === 'none' ? null : formData.locationId
         })
       });
 
@@ -164,16 +164,14 @@ export default function NewInventoryItemPage() {
   };
 
   const calculateMargin = () => {
-    if (formData.cost > 0) {
-      return (((formData.price - formData.cost) / formData.cost) * 100).toFixed(1);
-    }
-    return '0';
+    if (formData.price === 0 || formData.cost === 0) return 0;
+    return (((formData.price - formData.cost) / formData.price) * 100).toFixed(1);
   };
 
   if (loading) {
     return (
       <div className="container mx-auto p-6 max-w-4xl">
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
             <p className="text-muted-foreground">Loading form data...</p>
@@ -338,12 +336,15 @@ export default function NewInventoryItemPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="categoryId">Category</Label>
-                <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)}>
+                <Select 
+                  value={formData.categoryId || "none"} 
+                  onValueChange={(value) => handleInputChange('categoryId', value === "none" ? "" : value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Category</SelectItem>
+                    <SelectItem value="none">No Category</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -354,12 +355,15 @@ export default function NewInventoryItemPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="locationId">Location</Label>
-                <Select value={formData.locationId} onValueChange={(value) => handleInputChange('locationId', value)}>
+                <Select 
+                  value={formData.locationId || "none"} 
+                  onValueChange={(value) => handleInputChange('locationId', value === "none" ? "" : value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Location</SelectItem>
+                    <SelectItem value="none">No Location</SelectItem>
                     {locations.map((location) => (
                       <SelectItem key={location.id} value={location.id}>
                         {location.name}

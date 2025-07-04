@@ -217,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (isMounted) {
           setLoading(false);
+          console.log('🔄 Loading state set to false');
         }
       }
     };
@@ -226,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [fetchUser]);
+  }, []); // CRITICAL FIX: Empty dependency array to prevent infinite loops
 
   // Listen to Supabase auth changes - FIXED: Only react to specific events with dynamic import
   useEffect(() => {
@@ -241,16 +242,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('🔔 Auth state change:', event, session?.user?.email || 'No user');
           
-          // Only react to specific auth events to prevent infinite loops
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log('🔄 Refreshing user data due to auth change');
-            const userData = await fetchUser(false); // Force refresh on auth changes
-            setUser(userData);
-          } else if (event === 'SIGNED_OUT') {
+          // CRITICAL FIX: Only react to sign out events, not sign in to prevent loops
+          if (event === 'SIGNED_OUT') {
             console.log('👋 User signed out');
             setUser(null);
             userCache = null; // Clear cache
+            setLoading(false); // CRITICAL FIX: Ensure loading is false
           }
+          // REMOVED: Don't react to SIGNED_IN or TOKEN_REFRESHED to prevent infinite loops
+          // The initial auth check in the first useEffect handles authentication
         });
         
         subscription = data.subscription;
@@ -266,7 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscription.unsubscribe();
       }
     };
-  }, [fetchUser]);
+  }, []); // CRITICAL FIX: Remove fetchUser dependency to prevent re-subscription loops
 
   const value = {
     user,

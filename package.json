@@ -60,7 +60,8 @@
     "env:setup": "node scripts/setup-vercel-env.js",
     "env:setup:complete": "node scripts/setup-dev-prod-env.js",
     "env:dev": "cp env.local.template .env.local",
-    "env:check": "vercel env ls"
+    "env:check": "vercel env ls",
+    "github:connect": "node scripts/setup-github-vercel.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

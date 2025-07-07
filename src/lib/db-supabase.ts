@@ -937,13 +937,13 @@ export const db = {
       }
 
       try {
-        let query = supabase.from('categories').delete();
-        if (params.where?.id) {
-          query = query.eq('id', params.where.id);
-        }
+      let query = supabase.from('categories').delete();
+      if (params.where?.id) {
+        query = query.eq('id', params.where.id);
+      }
 
         console.log('🗑️ Executing Supabase delete query...');
-        const { error } = await query;
+      const { error } = await query;
         
         if (error) {
           console.error('❌ Supabase delete error:', error);
@@ -951,7 +951,7 @@ export const db = {
         }
 
         console.log('✅ Supabase delete successful');
-        return { count: 1 };
+      return { count: 1 };
       } catch (error) {
         console.error('❌ Category delete operation failed:', error);
         throw error; // Re-throw the error instead of returning null

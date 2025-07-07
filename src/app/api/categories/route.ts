@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('✅ User ID verified in database');
     }
-
+    
     const category = await db.category.create({
       data: {
         name: data.name.trim(),

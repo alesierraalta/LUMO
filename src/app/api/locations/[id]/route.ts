@@ -148,7 +148,7 @@ export async function PUT(
       isActive: updatedLocation.is_active,
       createdAt: updatedLocation.created_at,
       updatedAt: updatedLocation.updated_at,
-      _count: {
+        _count: {
         inventoryItems: count || 0
       }
     };

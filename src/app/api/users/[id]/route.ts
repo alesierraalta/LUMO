@@ -353,17 +353,17 @@ export async function DELETE(
 
       // Update any other tables that might reference this user (only if they have created_by_id column)
       try {
-        const { error: locationsError } = await supabase
-          .from('locations')
-          .update({ created_by_id: null })
-          .eq('created_by_id', id);
-        
-        if (locationsError) {
+      const { error: locationsError } = await supabase
+        .from('locations')
+        .update({ created_by_id: null })
+        .eq('created_by_id', id);
+      
+      if (locationsError) {
           // If the column doesn't exist, that's fine - just log and continue
           if (locationsError.message?.includes("Could not find the 'created_by_id' column")) {
             console.log('ℹ️ Locations table does not have created_by_id column - skipping');
           } else {
-            console.warn('⚠️ Warning updating locations:', locationsError);
+        console.warn('⚠️ Warning updating locations:', locationsError);
           }
         }
       } catch (locationsUpdateError) {

@@ -122,9 +122,9 @@ export const getCurrentUser = async (): Promise<any> => {
 
     // TEMPORARY FIX: Allow admin access in development for testing
     if (process.env.NODE_ENV === 'development' && process.env.CHOREO_ENVIRONMENT === 'Development') {
-      console.log('🔧 getCurrentUser: Development mode - returning temporary admin user');
+      console.log('🔧 getCurrentUser: Development mode - returning temporary admin user with real UUID');
       return {
-        id: 'dev-admin',
+        id: '5f493c59-420e-4a9b-afed-0b67bfa892d5', // Real UUID from Supabase Auth
         email: 'alesierraalta@gmail.com',
         name: 'Dev Admin',
         role: 'ADMIN',
@@ -149,11 +149,36 @@ export const getCurrentUser = async (): Promise<any> => {
   }
 };
 
-// REPLACEMENT for getCurrentUserFromToken - now uses Supabase Bearer token
+// REPLACEMENT for getCurrentUserFromToken - now handles both JWT and Supabase tokens
 export const getCurrentUserFromToken = async (token: string): Promise<any> => {
-  console.log('🔍 getCurrentUserFromToken: Using Supabase token authentication...');
+  console.log('🔍 getCurrentUserFromToken: Checking token type...');
   
   try {
+    // First, try to parse as JWT token (from our login API)
+    if (token.includes('.')) {
+      console.log('🔍 getCurrentUserFromToken: Attempting JWT token parsing...');
+      const jwt = require('jsonwebtoken');
+      
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        console.log('✅ getCurrentUserFromToken: JWT token valid:', decoded);
+        
+        // Return user object based on JWT payload
+        return {
+          id: decoded.userId,
+          email: decoded.email,
+          name: decoded.name || decoded.email?.split('@')[0] || 'User',
+          role: decoded.role || 'USER',
+          isActive: true,
+          permissions: decoded.role === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
+        };
+      } catch (jwtError) {
+        console.log('❌ getCurrentUserFromToken: JWT verification failed:', jwtError.message);
+      }
+    }
+    
+    // If JWT fails, try as Supabase token
+    console.log('🔍 getCurrentUserFromToken: Attempting Supabase token...');
     const supabase = supabaseServer;
     
     // Use the provided token to get user from Supabase

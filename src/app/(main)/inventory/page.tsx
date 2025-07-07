@@ -29,8 +29,8 @@ interface InventoryItem {
   description?: string;
   currentStock: number;
   minStockLevel: number;
-  cost: number;
-  price: number;
+  unitCost: number;
+  unitPrice: number;
   category?: {
     id: string;
     name: string;
@@ -106,13 +106,13 @@ export default function InventoryPage() {
 
   const calculateMetrics = (inventoryItems: InventoryItem[]) => {
     const totalItems = inventoryItems.length;
-    const totalValue = inventoryItems.reduce((sum, item) => sum + (item.currentStock * item.cost), 0);
+    const totalValue = inventoryItems.reduce((sum, item) => sum + (item.currentStock * item.unitCost), 0);
     const lowStockItems = inventoryItems.filter(item => item.currentStock <= item.minStockLevel && item.currentStock > 0).length;
     const outOfStockItems = inventoryItems.filter(item => item.currentStock <= 0).length;
     
     const margins = inventoryItems.map(item => {
-      if (item.cost <= 0) return 0;
-      return ((item.price - item.cost) / item.cost) * 100;
+      if (item.unitCost <= 0) return 0;
+      return ((item.unitPrice - item.unitCost) / item.unitCost) * 100;
     });
     const averageMargin = margins.length > 0 ? margins.reduce((sum, margin) => sum + margin, 0) / margins.length : 0;
     
@@ -125,7 +125,7 @@ export default function InventoryPage() {
     });
     const topCategory = Object.keys(categoryCount).reduce((a, b) => categoryCount[a] > categoryCount[b] ? a : b, '');
     
-    const totalRevenue = inventoryItems.reduce((sum, item) => sum + (item.currentStock * item.price), 0);
+    const totalRevenue = inventoryItems.reduce((sum, item) => sum + (item.currentStock * item.unitPrice), 0);
     
     setMetrics({
       totalItems,
@@ -148,7 +148,9 @@ export default function InventoryPage() {
         item.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
       // Category filter
-      const matchesCategory = categoryFilter === 'all' || item.category?.id === categoryFilter;
+      const matchesCategory = categoryFilter === 'all' || 
+        (categoryFilter === 'none' && !item.category) ||
+        item.category?.id === categoryFilter;
       
       // Stock filter
       let matchesStock = true;
@@ -349,12 +351,13 @@ export default function InventoryPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
+                                      <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="none">No Category</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -400,17 +403,20 @@ export default function InventoryPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <InventoryTable 
+          <InventoryTable
             inventoryItems={filteredItems.map(item => ({
               ...item,
+              price: item.unitPrice,
+              cost: item.unitCost,
               quantity: item.currentStock,
-              categoryId: item.category?.id,
+              categoryId: item.category?.id || null,
               lastUpdated: item.updatedAt,
               active: item.isActive,
-              margin: item.cost > 0 ? ((item.price - item.cost) / item.cost) * 100 : 0
+              margin: item.unitCost > 0 ? ((item.unitPrice - item.unitCost) / item.unitCost) * 100 : 0
             }))}
             allCategories={categories}
-            activeTab={'all'}
+            activeTab={stockFilter as any}
+            onTabChange={(tab) => setStockFilter(tab)}
           />
         </CardContent>
       </Card>

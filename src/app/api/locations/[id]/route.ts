@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db-supabase';
 import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
+import { createServerClient } from '@/lib/supabase-server';
+import { db } from '@/lib/db-supabase';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
@@ -18,27 +21,44 @@ export async function GET(
       );
     }
 
-    const location = await db.location.findUnique({
-      where: { id: params.id },
-      include: {
-        _count: {
-          select: {
-            inventoryItems: true
-          }
-        }
-      }
-    });
+    const supabase = await createServerClient();
+    
+    // Get location
+    const { data: location, error } = await supabase
+      .from('locations')
+      .select('id, name, description, is_active, created_at, updated_at')
+      .eq('id', id)
+      .single();
 
-    if (!location) {
+    if (error || !location) {
       return NextResponse.json(
         { success: false, error: 'Location not found' },
         { status: 404 }
       );
     }
 
+    // Get inventory items count
+    const { count } = await supabase
+      .from('inventory_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('location_id', id);
+
+    // Transform to match expected format
+    const transformedLocation = {
+      id: location.id,
+      name: location.name,
+      description: location.description,
+      isActive: location.is_active,
+      createdAt: location.created_at,
+      updatedAt: location.updated_at,
+      _count: {
+        inventoryItems: count || 0
+      }
+    };
+
     return NextResponse.json({
       success: true,
-      location
+      location: transformedLocation
     });
 
   } catch (error) {
@@ -52,9 +72,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
@@ -76,12 +98,16 @@ export async function PUT(
       );
     }
 
-    // Check if location exists
-    const existingLocation = await db.location.findUnique({
-      where: { id: params.id }
-    });
+    const supabase = await createServerClient();
 
-    if (!existingLocation) {
+    // Check if location exists
+    const { data: existingLocation, error: checkError } = await supabase
+      .from('locations')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (checkError || !existingLocation) {
       return NextResponse.json(
         { success: false, error: 'Location not found' },
         { status: 404 }
@@ -89,25 +115,47 @@ export async function PUT(
     }
 
     // Update location
-    const updatedLocation = await db.location.update({
-      where: { id: params.id },
-      data: {
+    const { data: updatedLocation, error: updateError } = await supabase
+      .from('locations')
+      .update({
         name: name.trim(),
         description: description?.trim() || null,
-        isActive: Boolean(isActive)
-      },
-      include: {
-        _count: {
-          select: {
-            inventoryItems: true
-          }
-        }
+        is_active: Boolean(isActive),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select('id, name, description, is_active, created_at, updated_at')
+      .single();
+
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to update location' },
+        { status: 500 }
+      );
+    }
+
+    // Get inventory items count
+    const { count } = await supabase
+      .from('inventory_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('location_id', id);
+
+    // Transform to match expected format
+    const transformedLocation = {
+      id: updatedLocation.id,
+      name: updatedLocation.name,
+      description: updatedLocation.description,
+      isActive: updatedLocation.is_active,
+      createdAt: updatedLocation.created_at,
+      updatedAt: updatedLocation.updated_at,
+      _count: {
+        inventoryItems: count || 0
       }
-    });
+    };
 
     return NextResponse.json({
       success: true,
-      location: updatedLocation
+      location: transformedLocation
     });
 
   } catch (error) {
@@ -121,9 +169,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
@@ -137,7 +187,7 @@ export async function DELETE(
 
     // Check if location exists and get inventory count
     const location = await db.location.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -167,7 +217,7 @@ export async function DELETE(
 
     // Delete the location
     await db.location.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({

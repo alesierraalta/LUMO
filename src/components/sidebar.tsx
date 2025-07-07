@@ -175,10 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
               </SidebarDropdown>
             )}
 
-            {/* Add Product Quick Action */}
-            {hasPermission(user as any, 'inventory:write') && (
-              <SidebarLink href="/inventory/add" icon={UserPlus} title="Agregar Producto" collapsed={collapsed} onClick={handleLinkClick} />
-            )}
+
 
             <Separator className="my-2" />
 

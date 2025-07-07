@@ -4,9 +4,11 @@ import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
@@ -19,7 +21,7 @@ export async function GET(
     }
 
     const category = await db.category.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         createdBy: {
           select: {
@@ -58,9 +60,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
@@ -76,7 +80,7 @@ export async function PUT(
 
     // Check if category exists
     const existingCategory = await db.category.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingCategory) {
@@ -87,7 +91,7 @@ export async function PUT(
     }
 
     const category = await db.category.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: data.name,
         description: data.description
@@ -123,23 +127,33 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
+    console.log('🗑️ DELETE /api/categories/[id] - Starting deletion process');
+    console.log('Category ID:', id);
+
     // Get user from token or session
     const token = getTokenFromRequest(request);
+    console.log('Token found:', !!token);
+    
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    console.log('User found:', !!user, user?.id);
     
     if (!user) {
+      console.log('❌ No user found - unauthorized');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    console.log('🔍 Checking if category exists...');
     // Check if category exists
     const existingCategory = await db.category.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -149,7 +163,14 @@ export async function DELETE(
       }
     });
 
+    console.log('Category found:', !!existingCategory);
+    if (existingCategory) {
+      console.log('Category name:', existingCategory.name);
+      console.log('Associated products count:', existingCategory._count.inventoryItems);
+    }
+
     if (!existingCategory) {
+      console.log('❌ Category not found');
       return NextResponse.json(
         { success: false, error: 'Category not found' },
         { status: 404 }
@@ -158,6 +179,7 @@ export async function DELETE(
 
     // Check if category has inventory items
     if (existingCategory._count.inventoryItems > 0) {
+      console.log('❌ Category has associated products - cannot delete');
       return NextResponse.json(
         { 
           success: false, 
@@ -167,18 +189,30 @@ export async function DELETE(
       );
     }
 
-    await db.category.delete({
-      where: { id: params.id }
+    console.log('🗑️ Proceeding with deletion...');
+    const deleteResult = await db.category.delete({
+      where: { id }
     });
+    console.log('🗑️ Delete result:', deleteResult);
 
+    console.log('✅ Category deleted successfully');
     return NextResponse.json({
       success: true,
       message: 'Category deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting category:', error);
+    console.error('❌ Error deleting category:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      cause: error?.cause
+    });
+    
+    // Return more specific error information
+    const errorMessage = error?.message || 'Unknown error occurred';
     return NextResponse.json(
-      { success: false, error: 'Failed to delete category' },
+      { success: false, error: `Failed to delete category: ${errorMessage}` },
       { status: 500 }
     );
   }

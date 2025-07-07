@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth-server';
+import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
 import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(
@@ -8,7 +8,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const currentUser = await getCurrentUser();
+    
+    // Get user from token or session
+    const token = getTokenFromRequest(request);
+    const currentUser = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     
     if (!currentUser) {
       return NextResponse.json(
@@ -58,7 +61,9 @@ export async function GET(
     }
 
     // Now check permissions after confirming user exists
-    if (currentUser.role?.name !== 'ADMIN' && currentUser.id !== id) {
+    // Handle both role formats: string ('ADMIN') and object ({ name: 'ADMIN' })
+    const userRole = typeof currentUser.role === 'string' ? currentUser.role : currentUser.role?.name;
+    if (userRole !== 'ADMIN' && currentUser.id !== id) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
@@ -90,13 +95,16 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const currentUser = await getCurrentUser();
+    
+    // Get user from token or session
+    const token = getTokenFromRequest(request);
+    const currentUser = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     
     if (!currentUser) {
       return NextResponse.json(
@@ -106,7 +114,9 @@ export async function PATCH(
     }
 
     // Only admins can update other users, users can update themselves
-    if (currentUser.role?.name !== 'ADMIN' && currentUser.id !== id) {
+    // Handle both role formats: string ('ADMIN') and object ({ name: 'ADMIN' })
+    const userRole = typeof currentUser.role === 'string' ? currentUser.role : currentUser.role?.name;
+    if (userRole !== 'ADMIN' && currentUser.id !== id) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
@@ -128,7 +138,7 @@ export async function PATCH(
     if (isActive !== undefined) updateData.is_active = isActive;
 
     // Only admins can change roles
-    if (role !== undefined && currentUser.role?.name === 'ADMIN') {
+    if (role !== undefined && userRole === 'ADMIN') {
       // First, get the role ID
       const { data: roleData, error: roleError } = await supabase
         .from('roles')
@@ -148,14 +158,13 @@ export async function PATCH(
 
     // Check if email is already taken (if email is being updated)
     if (email !== undefined) {
-      const { data: existingUser, error: checkError } = await supabase
+      const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('id')
         .eq('email', email.toLowerCase())
-        .neq('id', id)
-        .single();
+        .neq('id', id);
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
         console.error('Error checking email:', checkError);
         return NextResponse.json(
           { success: false, error: 'Failed to validate email' },
@@ -163,7 +172,7 @@ export async function PATCH(
         );
       }
 
-      if (existingUser) {
+      if (existingUsers && existingUsers.length > 0) {
         return NextResponse.json(
           { success: false, error: 'Email already exists' },
           { status: 400 }
@@ -228,7 +237,9 @@ export async function DELETE(
     const { id } = await params;
     console.log('🗑️ DELETE request for user:', id);
     
-    const currentUser = await getCurrentUser();
+    // Get user from token or session
+    const token = getTokenFromRequest(request);
+    const currentUser = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     console.log('🔍 Current user:', currentUser);
     
     if (!currentUser) {
@@ -340,14 +351,23 @@ export async function DELETE(
         console.warn('⚠️ Warning updating inventory:', inventoryError);
       }
 
-      // Update any other tables that might reference this user
-      const { error: locationsError } = await supabase
-        .from('locations')
-        .update({ created_by_id: null })
-        .eq('created_by_id', id);
-      
-      if (locationsError) {
-        console.warn('⚠️ Warning updating locations:', locationsError);
+      // Update any other tables that might reference this user (only if they have created_by_id column)
+      try {
+        const { error: locationsError } = await supabase
+          .from('locations')
+          .update({ created_by_id: null })
+          .eq('created_by_id', id);
+        
+        if (locationsError) {
+          // If the column doesn't exist, that's fine - just log and continue
+          if (locationsError.message?.includes("Could not find the 'created_by_id' column")) {
+            console.log('ℹ️ Locations table does not have created_by_id column - skipping');
+          } else {
+            console.warn('⚠️ Warning updating locations:', locationsError);
+          }
+        }
+      } catch (locationsUpdateError) {
+        console.log('ℹ️ Skipping locations update - column may not exist');
       }
 
       console.log('✅ Related records updated successfully');

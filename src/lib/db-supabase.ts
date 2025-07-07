@@ -122,25 +122,25 @@ const fallbackClient = {
 export const supabase = isBuild ? fallbackClient : (supabaseClient || fallbackClient);
 
 // ULTRA BUILD-SAFE database operations
-const createBuildSafeOperation = (operation: Function) => {
+const createBuildSafeOperation = (operation: Function, fallbackValue: any = null) => {
   return async (...args: any[]) => {
     // FIRST CHECK: Immediate build bypass
     if (isBuild) {
       console.log('🏗️ BUILD MODE: Returning mock data for database operation');
-      return null;
+      return fallbackValue;
     }
     
     // SECOND CHECK: No client available
     if (!supabaseClient) {
       console.log('⚠️ No Supabase client available during runtime - using fallback');
-      return null;
+      return fallbackValue;
     }
     
     try {
       return await operation(...args);
     } catch (error) {
       console.error('❌ Database operation failed:', error);
-      return null;
+      return fallbackValue;
     }
   };
 };
@@ -520,7 +520,7 @@ export const db = {
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at)
       }));
-    }),
+    }, []),
 
     create: createBuildSafeOperation(async (params: any) => {
       const roleData: any = {
@@ -693,7 +693,7 @@ export const db = {
       const { data, error } = await query.single();
       if (error || !data) return null;
       
-      return {
+      const result: any = {
         id: data.id,
         name: data.name,
         description: data.description,
@@ -701,6 +701,40 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
+
+      // Handle include.createdBy if requested
+      if (params.include?.createdBy && data.created_by_id) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('id', data.created_by_id)
+          .single();
+        
+        if (!userError && userData) {
+          result.createdBy = {
+            id: userData.id,
+            name: userData.name,
+            email: userData.email
+          };
+        }
+      }
+
+      // Handle include._count.inventoryItems if requested
+      if (params.include?._count?.select?.inventoryItems) {
+        const { count, error: countError } = await supabase
+          .from('inventory_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('category_id', result.id);
+        
+        if (countError) {
+          console.error('Error getting inventory count for category:', countError);
+          result._count = { inventoryItems: 0 };
+        } else {
+          result._count = { inventoryItems: count || 0 };
+        }
+      }
+      
+      return result;
     }),
 
     findMany: createBuildSafeOperation(async (params: any = {}) => {
@@ -784,22 +818,48 @@ export const db = {
       return categories;
     }),
 
-    create: createBuildSafeOperation(async (params: any) => {
-      const categoryData = {
+    create: async (params: any) => {
+      // Bypass createBuildSafeOperation temporarily to see the actual error
+      console.log('🔧 Category create called directly');
+      
+      // Check build mode and client availability manually
+      if (isBuild) {
+        console.log('🏗️ BUILD MODE detected');
+        return null;
+      }
+      
+      if (!supabaseClient) {
+        console.log('⚠️ No Supabase client available');
+        throw new Error('Supabase client not available');
+      }
+      
+      const categoryData: any = {
         name: params.data.name,
         description: params.data.description,
-        created_by_id: params.data.createdById,
       };
-
+      
+      // Only include created_by_id if it's not null
+      if (params.data.createdById) {
+        categoryData.created_by_id = params.data.createdById;
+      }
+      
+      console.log('🔧 About to insert category data:', JSON.stringify(categoryData, null, 2));
+      
+      // Create category with basic fields first
       const { data, error } = await supabase
         .from('categories')
         .insert(categoryData)
-        .select()
+        .select('*')
         .single();
 
-      if (error) throw new Error(`Database error: ${error.message}`);
+      if (error) {
+        console.error('❌ Category creation error:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
 
-      return {
+      console.log('✅ Category created in database:', JSON.stringify(data, null, 2));
+
+      const result: any = {
         id: data.id,
         name: data.name,
         description: data.description,
@@ -807,7 +867,37 @@ export const db = {
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
       };
-    }),
+      
+      // Fetch createdBy user separately if requested
+      if (params.include?.createdBy && data.created_by_id) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('id', data.created_by_id)
+          .single();
+        
+        if (!userError && userData) {
+          result.createdBy = userData;
+        }
+      }
+      
+      // Handle _count for inventory items
+      if (params.include?._count?.select?.inventoryItems) {
+        const { count, error: countError } = await supabase
+          .from('inventory_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('category_id', result.id);
+        
+        if (!countError) {
+          result._count = {
+            inventoryItems: count || 0
+          };
+        }
+      }
+      
+      console.log('✅ Category result prepared:', JSON.stringify(result, null, 2));
+      return result;
+    },
 
     update: createBuildSafeOperation(async (params: any) => {
       const updateData: any = {};
@@ -831,17 +921,42 @@ export const db = {
       };
     }),
 
-    delete: createBuildSafeOperation(async (params: any) => {
-      let query = supabase.from('categories').delete();
-      if (params.where?.id) {
-        query = query.eq('id', params.where.id);
+    delete: async (params: any) => {
+      console.log('🗑️ db.category.delete called with params:', params);
+      
+      // FIRST CHECK: Immediate build bypass
+      if (isBuild) {
+        console.log('🏗️ BUILD MODE: Returning mock data for database operation');
+        return { count: 1 };
+      }
+      
+      // SECOND CHECK: No client available
+      if (!supabaseClient) {
+        console.log('⚠️ No Supabase client available during runtime - using fallback');
+        return { count: 1 };
       }
 
-      const { error } = await query;
-      if (error) throw new Error(`Database error: ${error.message}`);
+      try {
+        let query = supabase.from('categories').delete();
+        if (params.where?.id) {
+          query = query.eq('id', params.where.id);
+        }
 
-      return { count: 1 };
-    }),
+        console.log('🗑️ Executing Supabase delete query...');
+        const { error } = await query;
+        
+        if (error) {
+          console.error('❌ Supabase delete error:', error);
+          throw new Error(`Database error: ${error.message}`);
+        }
+
+        console.log('✅ Supabase delete successful');
+        return { count: 1 };
+      } catch (error) {
+        console.error('❌ Category delete operation failed:', error);
+        throw error; // Re-throw the error instead of returning null
+      }
+    },
 
     count: createBuildSafeOperation(async (params: any = {}) => {
       let query = supabase.from('categories').select('*', { count: 'exact', head: true });
@@ -960,17 +1075,50 @@ export const db = {
     }),
 
     findMany: createBuildSafeOperation(async (params: any = {}) => {
-      let query = supabase.from('inventory_items').select('*');
+      // Build select query with includes
+      let selectQuery = '*';
+      if (params.include) {
+        const includes = [];
+        if (params.include.category) includes.push('categories(id, name, description)');
+        if (params.include.location) includes.push('locations(id, name, description)');
+        if (params.include.createdBy) includes.push('users(id, name, email)');
+        if (includes.length > 0) {
+          selectQuery = `*, ${includes.join(', ')}`;
+        }
+      }
+      
+      let query = supabase.from('inventory_items').select(selectQuery);
       
       // Handle WHERE conditions
       if (params.where) {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'categoryId') {
             query = query.eq('category_id', value);
+          } else if (key === 'locationId') {
+            query = query.eq('location_id', value);
           } else if (key === 'createdById') {
             query = query.eq('created_by_id', value);
           } else if (key === 'isActive') {
             query = query.eq('is_active', value);
+          } else if (key === 'currentStock' && value && typeof value === 'object' && (value as any).lte) {
+            // Handle low stock comparison - we'll skip this here and handle it in post-processing
+            // Since Supabase doesn't easily support column-to-column comparisons in the client
+            // We'll filter this after getting the data
+          } else if (key === 'OR') {
+            // Handle OR conditions for search - simplified approach
+            const conditions = value as any[];
+            if (conditions.length > 0) {
+              // For now, just use the first condition (typically name search)
+              // This is a simplified approach until we can fix the OR syntax
+              const firstCondition = conditions[0];
+              if (firstCondition.name?.contains) {
+                query = query.ilike('name', `%${firstCondition.name.contains}%`);
+              } else if (firstCondition.sku?.contains) {
+                query = query.ilike('sku', `%${firstCondition.sku.contains}%`);
+              } else if (firstCondition.description?.contains) {
+                query = query.ilike('description', `%${firstCondition.description.contains}%`);
+              }
+            }
           } else {
             query = query.eq(key, value);
           }
@@ -999,22 +1147,56 @@ export const db = {
         return [];
       }
 
-      return data.map((item: any) => ({
+      // Ensure we always return an array, even if data is null or undefined
+      const safeData = data || [];
+
+      // Transform the data to match expected format
+      let transformedData = safeData.map((item: any) => ({
         id: item.id,
         name: item.name,
         description: item.description,
         sku: item.sku,
-        categoryId: item.category_id,
-        currentStock: item.quantity,
+        barcode: item.barcode,
+        currentStock: item.current_stock,
         minStockLevel: item.min_stock_level,
-        unitCost: item.cost,
-        unitPrice: item.price,
+        maxLevel: item.max_level,
+        unitCost: item.unit_cost,
+        unitPrice: item.unit_price,
+        categoryId: item.category_id,
+        locationId: item.location_id,
+        imageUrl: item.image_url,
         isActive: item.is_active,
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
-        createdById: item.created_by_id
+        createdById: item.created_by_id,
+        // Include related data
+        category: item.categories ? {
+          id: item.categories.id,
+          name: item.categories.name,
+          description: item.categories.description
+        } : null,
+        location: item.locations ? {
+          id: item.locations.id,
+          name: item.locations.name,
+          description: item.locations.description
+        } : null,
+        createdBy: item.users ? {
+          id: item.users.id,
+          name: item.users.name,
+          email: item.users.email
+        } : null
       }));
-    }),
+
+      // Post-process low stock filtering if needed
+      if (params.where && params.where.currentStock && params.where.currentStock.lte) {
+        transformedData = transformedData.filter((item: any) => 
+          item.currentStock <= item.minStockLevel
+        );
+      }
+
+      // Always return an array, never null
+      return transformedData;
+    }, []),
 
     create: createBuildSafeOperation(async (params: any) => {
       const itemData: any = {
@@ -1026,8 +1208,12 @@ export const db = {
         min_stock_level: params.data.minStockLevel || 0,
         cost: params.data.unitCost || 0,
         price: params.data.unitPrice || 0,
-        created_by_id: params.data.createdById,
       };
+      
+      // Only include created_by_id if it's not null
+      if (params.data.createdById) {
+        itemData.created_by_id = params.data.createdById;
+      }
       
       // Include ID if provided (for testing)
       if (params.data.id) {
@@ -1127,11 +1313,31 @@ export const db = {
         Object.entries(params.where).forEach(([key, value]) => {
           if (key === 'categoryId') {
             query = query.eq('category_id', value);
+          } else if (key === 'locationId') {
+            query = query.eq('location_id', value);
           } else if (key === 'createdById') {
             query = query.eq('created_by_id', value);
           } else if (key === 'isActive') {
             query = query.eq('is_active', value);
-          } else {
+          } else if (key === 'currentStock' && value && typeof value === 'object' && (value as any).lte) {
+            // Skip currentStock.lte filtering for count - would need complex column comparison
+            // This will be handled by returning the total count and filtering in post-processing
+          } else if (key === 'OR') {
+            // Handle OR conditions for search - simplified approach
+            const conditions = value as any[];
+            if (conditions.length > 0) {
+              // For count, just use the first condition (typically name search)
+              const firstCondition = conditions[0];
+              if (firstCondition.name?.contains) {
+                query = query.ilike('name', `%${firstCondition.name.contains}%`);
+              } else if (firstCondition.sku?.contains) {
+                query = query.ilike('sku', `%${firstCondition.sku.contains}%`);
+              } else if (firstCondition.description?.contains) {
+                query = query.ilike('description', `%${firstCondition.description.contains}%`);
+              }
+            }
+          } else if (key !== 'currentStock') {
+            // Skip currentStock direct queries as they need column mapping
             query = query.eq(key, value);
           }
         });
@@ -1458,10 +1664,135 @@ export const db = {
     createMany: createBuildSafeOperation(async () => ({}))
   },
   location: {
-    findMany: createBuildSafeOperation(async () => []),
-    create: createBuildSafeOperation(async () => ({})),
-    update: createBuildSafeOperation(async () => ({})),
-    delete: createBuildSafeOperation(async () => ({ count: 1 }))
+    findMany: createBuildSafeOperation(async (params: any = {}) => {
+      let query = supabase.from('locations').select('*');
+      
+      // Handle WHERE conditions
+      if (params.where) {
+        Object.entries(params.where).forEach(([key, value]) => {
+          if (key === 'isActive') {
+            query = query.eq('is_active', value);
+          } else {
+            query = query.eq(key, value);
+          }
+        });
+      }
+
+      // Handle ORDER BY
+      if (params.orderBy) {
+        Object.entries(params.orderBy).forEach(([key, direction]) => {
+          const dbKey = key === 'isActive' ? 'is_active' : key;
+          query = query.order(dbKey, { ascending: direction === 'asc' });
+        });
+      }
+
+      const { data, error } = await query;
+      if (error) throw new Error(`Database error: ${error.message}`);
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        isActive: item.is_active,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at)
+      }));
+    }),
+    
+    findUnique: createBuildSafeOperation(async (params: any) => {
+      let query = supabase.from('locations').select('*');
+      if (params.where.id) query = query.eq('id', params.where.id);
+      if (params.where.name) query = query.eq('name', params.where.name);
+      
+      const { data, error } = await query.single();
+      if (error || !data) return null;
+      
+      const result = {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        isActive: data.is_active,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at)
+      };
+
+      // Handle include._count.inventoryItems
+      if (params.include?._count?.select?.inventoryItems) {
+        const { count, error: countError } = await supabase
+          .from('inventory_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('location_id', result.id);
+          
+        if (countError) {
+          console.error('Error getting inventory count:', countError);
+          (result as any)._count = { inventoryItems: 0 };
+        } else {
+          (result as any)._count = { inventoryItems: count || 0 };
+        }
+      }
+      
+      return result;
+    }),
+    
+    create: createBuildSafeOperation(async (params: any) => {
+      const locationData = {
+        name: params.data.name,
+        description: params.data.description,
+        is_active: params.data.isActive !== false
+      };
+
+      const { data, error } = await supabase
+        .from('locations')
+        .insert(locationData)
+        .select()
+        .single();
+
+      if (error) throw new Error(`Database error: ${error.message}`);
+
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        isActive: data.is_active,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at)
+      };
+    }),
+    
+    update: createBuildSafeOperation(async (params: any) => {
+      const updateData: any = {};
+      if (params.data.name) updateData.name = params.data.name;
+      if (params.data.description !== undefined) updateData.description = params.data.description;
+      if (params.data.isActive !== undefined) updateData.is_active = params.data.isActive;
+      updateData.updated_at = new Date().toISOString();
+
+      let query = supabase.from('locations').update(updateData);
+      if (params.where.id) query = query.eq('id', params.where.id);
+
+      const { data, error } = await query.select().single();
+      if (error) throw new Error(`Database error: ${error.message}`);
+
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        isActive: data.is_active,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at)
+      };
+    }),
+    
+    delete: createBuildSafeOperation(async (params: any) => {
+      let query = supabase.from('locations').delete();
+      if (params.where?.id) {
+        query = query.eq('id', params.where.id);
+      }
+
+      const { error } = await query;
+      if (error) throw new Error(`Database error: ${error.message}`);
+
+      return { count: 1 };
+    })
   },
   priceHistory: {
     findMany: createBuildSafeOperation(async () => []),

@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (lowStock) {
-      where.currentStock = { lte: { field: 'minStockLevel' } };
+      // Use a special flag for low stock filtering - this will be handled in post-processing
+      where.currentStock = { lte: 'minStockLevel' };
     }
 
     const items = await db.inventoryItem.findMany({
@@ -98,33 +99,40 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json();
     
+    // Handle development mode user ID
+    let createdById = user.id;
+    if (user.id === 'dev-admin') {
+      // In development mode, use a valid UUID or null
+      createdById = null;
+    }
+    
     const item = await db.inventoryItem.create({
       data: {
         name: data.name,
         description: data.description,
         sku: data.sku,
         barcode: data.barcode,
-        currentStock: data.currentStock || 0,
+        currentStock: data.currentStock || data.quantity || 0,
         minStockLevel: data.minStockLevel || 0,
         maxLevel: data.maxLevel,
-        cost: data.cost || 0,
-        price: data.price || 0,
-        categoryId: data.categoryId,
-        locationId: data.locationId,
+        unitCost: data.cost || data.unitCost || 0,
+        unitPrice: data.price || data.unitPrice || 0,
+        categoryId: data.categoryId === 'none' ? null : data.categoryId,
+        locationId: data.locationId === 'none' ? null : data.locationId,
         imageUrl: data.imageUrl,
-        createdById: user.id,
+        createdById,
         isActive: true
       },
       include: {
         category: true,
         location: true,
-        createdBy: {
+        createdBy: createdById ? {
           select: {
             id: true,
             name: true,
             email: true
           }
-        }
+        } : undefined
       }
     });
 

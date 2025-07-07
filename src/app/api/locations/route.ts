@@ -15,25 +15,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
     const supabase = await createServerClient();
     
-    let query = supabase
+    // Simple query without pagination for now
+    const { data: locations, error } = await supabase
       .from('locations')
       .select('id, name, description, is_active, created_at, updated_at')
       .order('name', { ascending: true });
-
-    // Apply search filter
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-    }
-
-    // Apply pagination and execute query
-    const { data: locations, error } = await query.range(offset, offset + limit - 1);
 
     if (error) {
       console.error('Error fetching locations:', error);
@@ -42,11 +30,6 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // Get total count for pagination
-    const { count: total } = await supabase
-      .from('locations')
-      .select('*', { count: 'exact', head: true });
 
     // Transform to match expected format
     const transformedLocations = locations?.map(location => ({
@@ -61,9 +44,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       locations: transformedLocations,
-      total: total || 0,
-      limit,
-      offset
+      total: transformedLocations.length,
+      limit: 50,
+      offset: 0
     });
   } catch (error) {
     console.error('Error fetching locations:', error);

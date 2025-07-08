@@ -1,0 +1,289 @@
+{
+  "timestamp": "2025-07-08T13:45:51.370Z",
+  "environment": "production",
+  "url": "https://lumo-woad.vercel.app",
+  "database": "https://ubjujxtvlubxowsphvuk.supabase.co",
+  "results": {
+    "passed": 45,
+    "failed": 0,
+    "total": 45,
+    "details": [
+      {
+        "name": "Conexión a Supabase",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:42.541Z"
+      },
+      {
+        "name": "Tabla users existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:42.735Z"
+      },
+      {
+        "name": "Tabla roles existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:42.936Z"
+      },
+      {
+        "name": "Tabla categories existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:43.137Z"
+      },
+      {
+        "name": "Tabla inventory_items existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:43.256Z"
+      },
+      {
+        "name": "Tabla locations existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:43.465Z"
+      },
+      {
+        "name": "Tabla stock_movements existe",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:43.669Z"
+      },
+      {
+        "name": "Health endpoint",
+        "passed": true,
+        "details": "Status: healthy",
+        "timestamp": "2025-07-08T13:45:44.272Z"
+      },
+      {
+        "name": "Usuario admin existe",
+        "passed": {
+          "id": "dd97c238-6649-4e31-979b-c9ef12959998",
+          "email": "alesierraalta@gmail.com",
+          "name": "Alejandro Sierra (ROOT)",
+          "is_active": true,
+          "role_id": "7240b17e-bcc0-4a04-9a5e-62ca637003d2"
+        },
+        "details": "",
+        "timestamp": "2025-07-08T13:45:44.490Z"
+      },
+      {
+        "name": "Usuario admin tiene rol ADMIN",
+        "passed": true,
+        "details": "Rol: ADMIN",
+        "timestamp": "2025-07-08T13:45:44.693Z"
+      },
+      {
+        "name": "Todos los roles existen",
+        "passed": true,
+        "details": "Roles: ADMIN, MANAGER, USER",
+        "timestamp": "2025-07-08T13:45:44.894Z"
+      },
+      {
+        "name": "CRUD - Crear categoría",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:45.311Z"
+      },
+      {
+        "name": "CRUD - Leer categoría",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:45.525Z"
+      },
+      {
+        "name": "CRUD - Actualizar categoría",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:45.728Z"
+      },
+      {
+        "name": "CRUD - Eliminar categoría",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:45.832Z"
+      },
+      {
+        "name": "CRUD - Crear ubicación",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:46.082Z"
+      },
+      {
+        "name": "CRUD - Leer ubicación",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:46.188Z"
+      },
+      {
+        "name": "CRUD - Actualizar ubicación",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:46.394Z"
+      },
+      {
+        "name": "CRUD - Eliminar ubicación",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:46.532Z"
+      },
+      {
+        "name": "CRUD - Crear item inventario",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:47.140Z"
+      },
+      {
+        "name": "CRUD - Leer item inventario",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:47.282Z"
+      },
+      {
+        "name": "CRUD - Actualizar item inventario",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:47.480Z"
+      },
+      {
+        "name": "CRUD - Eliminar item inventario",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:47.584Z"
+      },
+      {
+        "name": "API /api/health",
+        "passed": true,
+        "details": "Status: 200",
+        "timestamp": "2025-07-08T13:45:47.762Z"
+      },
+      {
+        "name": "API /api/users",
+        "passed": true,
+        "details": "Status: 401",
+        "timestamp": "2025-07-08T13:45:48.026Z"
+      },
+      {
+        "name": "API /api/categories",
+        "passed": true,
+        "details": "Status: 401",
+        "timestamp": "2025-07-08T13:45:48.135Z"
+      },
+      {
+        "name": "API /api/inventory",
+        "passed": true,
+        "details": "Status: 401",
+        "timestamp": "2025-07-08T13:45:48.246Z"
+      },
+      {
+        "name": "API /api/locations",
+        "passed": true,
+        "details": "Status: 401",
+        "timestamp": "2025-07-08T13:45:48.350Z"
+      },
+      {
+        "name": "API /api/roles",
+        "passed": true,
+        "details": "Status: 401",
+        "timestamp": "2025-07-08T13:45:48.450Z"
+      },
+      {
+        "name": "Integridad - Usuarios sin rol",
+        "passed": true,
+        "details": "Usuarios sin rol: 0",
+        "timestamp": "2025-07-08T13:45:48.724Z"
+      },
+      {
+        "name": "Integridad - Items sin categoría",
+        "passed": true,
+        "details": "Items sin categoría: 0",
+        "timestamp": "2025-07-08T13:45:48.913Z"
+      },
+      {
+        "name": "Integridad - Datos usuarios consistentes",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:49.113Z"
+      },
+      {
+        "name": "Roles - Crear usuario MANAGER",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:49.716Z"
+      },
+      {
+        "name": "Roles - Usuario MANAGER tiene rol correcto",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:49.916Z"
+      },
+      {
+        "name": "Roles - Crear usuario USER",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:50.225Z"
+      },
+      {
+        "name": "Roles - Usuario USER tiene rol correcto",
+        "passed": true,
+        "details": "",
+        "timestamp": "2025-07-08T13:45:50.425Z"
+      },
+      {
+        "name": "Roles - Sistema de permisos configurado",
+        "passed": true,
+        "details": "Permisos encontrados: 42",
+        "timestamp": "2025-07-08T13:45:50.809Z"
+      },
+      {
+        "name": "Roles - ADMIN tiene permisos configurados",
+        "passed": true,
+        "details": "ADMIN permisos: 23",
+        "timestamp": "2025-07-08T13:45:50.809Z"
+      },
+      {
+        "name": "Roles - Jerarquía de permisos correcta",
+        "passed": true,
+        "details": "ADMIN: 23, MANAGER: 14, USER: 5",
+        "timestamp": "2025-07-08T13:45:50.810Z"
+      },
+      {
+        "name": "Roles - Permisos base configurados",
+        "passed": true,
+        "details": "Permisos base: 23",
+        "timestamp": "2025-07-08T13:45:50.943Z"
+      },
+      {
+        "name": "Roles - Permisos de categorías",
+        "passed": true,
+        "details": "Permisos categorías: 3",
+        "timestamp": "2025-07-08T13:45:50.943Z"
+      },
+      {
+        "name": "Roles - Permisos de inventario",
+        "passed": true,
+        "details": "Permisos inventario: 5",
+        "timestamp": "2025-07-08T13:45:50.943Z"
+      },
+      {
+        "name": "Roles - Permisos de usuarios",
+        "passed": true,
+        "details": "Permisos usuarios: 3",
+        "timestamp": "2025-07-08T13:45:50.943Z"
+      },
+      {
+        "name": "Performance - Health endpoint < 2000ms",
+        "passed": true,
+        "details": "Tiempo: 223ms",
+        "timestamp": "2025-07-08T13:45:51.166Z"
+      },
+      {
+        "name": "Performance - Query usuarios < 1000ms",
+        "passed": true,
+        "details": "Tiempo: 202ms",
+        "timestamp": "2025-07-08T13:45:51.369Z"
+      }
+    ]
+  }
+}

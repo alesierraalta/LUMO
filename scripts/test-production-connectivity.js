@@ -95,7 +95,9 @@ const runTests = async () => {
         
         if (result.data.status === 'unhealthy') {
           console.log('❌ DATABASE CONNECTION ISSUE DETECTED');
-          console.log('🔧 Root Cause: DATABASE_URL not configured in Vercel');
+          if (result.data.database && result.data.database.error) {
+            console.log(`🔧 Reason: ${result.data.database.error}`);
+          }
         }
       }
     } else {
@@ -111,28 +113,17 @@ const runTests = async () => {
   // Test health endpoint specifically
   const healthResult = await testEndpoint(`${PRODUCTION_URL}/api/health`, 'Health Check');
   
-  if (healthResult.success && healthResult.data.status === 'unhealthy') {
+  if (healthResult.success && healthResult.data.status === 'healthy') {
+    console.log('✅ GOOD NEWS: Database connection is working!');
+    console.log('🎯 Ready for full functionality testing');
+    
+  } else if (healthResult.success && healthResult.data.status === 'unhealthy') {
     console.log('🚨 CRITICAL ISSUE IDENTIFIED:');
     console.log('- Database connection is failing');
     console.log('- Health endpoint shows "unhealthy" status');
-    console.log('- Error: "Network error" in database connection');
-    console.log('');
-    console.log('🔧 REQUIRED ACTION:');
-    console.log('1. Add DATABASE_URL to Vercel environment variables');
-    console.log('2. Use this exact format:');
-    console.log(`   DATABASE_URL=postgres://postgres.${PROJECT_REF}:[PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres`);
-    console.log('3. Replace [PASSWORD] with your actual Supabase database password');
-    console.log('4. Redeploy the application');
-    console.log('');
-    console.log('📍 Where to get password:');
-    console.log(`   https://supabase.com/dashboard/project/${PROJECT_REF}/settings/database`);
-    console.log('');
-    console.log('📍 Where to add environment variable:');
-    console.log('   Vercel Dashboard → Project Settings → Environment Variables');
-    
-  } else if (healthResult.success && healthResult.data.status === 'healthy') {
-    console.log('✅ GOOD NEWS: Database connection is working!');
-    console.log('🎯 Ready for full functionality testing');
+    if (healthResult.data.database && healthResult.data.database.error) {
+        console.log(`- Error: ${healthResult.data.database.error}`);
+    }
     
   } else {
     console.log('❓ Unable to determine database status');
@@ -144,23 +135,6 @@ const runTests = async () => {
   console.log(`Production URL: ${PRODUCTION_URL}`);
   console.log(`Supabase Project: ${PROJECT_REF}`);
   console.log(`Region: us-east-2`);
-  console.log(`Expected DATABASE_URL format:`);
-  console.log(`postgres://postgres.${PROJECT_REF}:[PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres`);
-  
-  console.log('\n✅ Environment Variables Status:');
-  console.log('- APP_NAME: ✅ Configured');
-  console.log('- NODE_ENV: ✅ Configured');
-  console.log('- FORCE_SUPABASE: ✅ Configured');
-  console.log('- NEXT_PUBLIC_SUPABASE_URL: ✅ Configured');
-  console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY: ✅ Configured');
-  console.log('- DATABASE_URL: ❌ MISSING OR INCORRECT');
-  
-  console.log('\n🔄 Next Steps:');
-  console.log('1. Configure DATABASE_URL in Vercel');
-  console.log('2. Redeploy application');
-  console.log('3. Run this test again');
-  console.log('4. Test admin login functionality');
-  console.log('5. Verify all features work 100%');
 };
 
 // Run the tests

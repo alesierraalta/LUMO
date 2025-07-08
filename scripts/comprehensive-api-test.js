@@ -108,6 +108,53 @@ class APITester {
       this.testCategoryId = result.category.id;
     });
 
+    await this.test('Categories - Non-Admin User Cannot Create Category', async () => {
+      // Login as a non-admin user
+      const nonAdminLoginData = {
+        email: 'nonadmin@example.com', // IMPORTANT: Replace with an actual non-admin user's email
+        password: 'nonadminpassword' // IMPORTANT: Replace with the actual non-admin user's password
+      };
+      
+      let nonAdminAuthToken = null;
+      try {
+        const loginResult = await this.apiCall('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify(nonAdminLoginData)
+        });
+        if (loginResult.success && loginResult.token) {
+          nonAdminAuthToken = loginResult.token;
+        }
+      } catch (error) {
+        console.log('   ⚠️  Skipping non-admin category creation test - could not authenticate non-admin user');
+        return;
+      }
+
+      if (!nonAdminAuthToken) {
+        console.log('   ⚠️  Skipping non-admin category creation test - no non-admin auth token');
+        return;
+      }
+
+      const testCategory = {
+        name: `Non-Admin Test Category ${Date.now()}`,
+        description: 'Test description for non-admin comprehensive test'
+      };
+
+      try {
+        await this.apiCall('/api/categories', {
+          method: 'POST',
+          body: JSON.stringify(testCategory),
+          headers: {
+            'Authorization': `Bearer ${nonAdminAuthToken}`
+          }
+        });
+        throw new Error('Non-admin user should NOT be able to create a category');
+      } catch (error) {
+        if (!error.message.includes('401') && !error.message.includes('403')) {
+          throw new Error(`Expected 401 or 403 for non-admin category creation, but got: ${error.message}`);
+        }
+      }
+    });
+
     // 3. Users Tests
     await this.test('Users - List All', async () => {
       const result = await this.apiCall('/api/users');

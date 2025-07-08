@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -8,16 +9,19 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+    // Get current user for authorization
+    const token = getTokenFromRequest(request);
+    const user = token ? await getCurrentUserFromToken(token) : null;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Obtener todos los permisos disponibles
+    // Only ADMIN and MANAGER can view permissions
+    if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Get all permissions from the permissions table
     const { data: permissions, error } = await supabase
       .from('permissions')
       .select('*')
@@ -25,18 +29,25 @@ export async function GET(request: NextRequest) {
       .order('action', { ascending: true });
 
     if (error) {
-      console.error('Error fetching permissions:', error);
+      console.error('❌ Error fetching permissions:', error);
       return NextResponse.json(
-        { error: 'Error al obtener permisos' },
+        { error: 'Failed to fetch permissions' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ permissions });
+    return NextResponse.json({
+      success: true,
+      permissions
+    });
   } catch (error) {
-    console.error('Permissions API error:', error);
+    console.error('❌ Permissions API error:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        success: false, 
+        error: 'Failed to fetch permissions',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, 
       { status: 500 }
     );
   }

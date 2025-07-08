@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -12,6 +13,18 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current user for authorization
+    const token = getTokenFromRequest(request);
+    const user = token ? await getCurrentUserFromToken(token) : null;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only ADMIN and MANAGER can view role permissions
+    if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     // Obtener permisos del rol
@@ -31,20 +44,27 @@ export async function GET(
       .eq('role_id', id);
 
     if (error) {
-      console.error('Error fetching role permissions:', error);
+      console.error('❌ Error fetching role permissions:', error);
       return NextResponse.json(
-        { error: 'Error al obtener permisos del rol' },
+        { error: 'Failed to fetch role permissions' },
         { status: 500 }
       );
     }
 
     const permissions = rolePermissions?.map(rp => rp.permissions) || [];
 
-    return NextResponse.json({ permissions });
+    return NextResponse.json({ 
+      success: true,
+      permissions 
+    });
   } catch (error) {
-    console.error('Role permissions GET error:', error);
+    console.error('❌ Role permissions GET error:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        success: false,
+        error: 'Failed to fetch role permissions',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
@@ -56,6 +76,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current user for authorization
+    const token = getTokenFromRequest(request);
+    const user = token ? await getCurrentUserFromToken(token) : null;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only ADMIN can update role permissions
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = await params;
     const { permissionIds } = await request.json();
 
@@ -66,9 +98,9 @@ export async function PUT(
       .eq('role_id', id);
 
     if (deleteError) {
-      console.error('Error deleting existing permissions:', deleteError);
+      console.error('❌ Error deleting existing permissions:', deleteError);
       return NextResponse.json(
-        { error: 'Error al eliminar permisos existentes' },
+        { error: 'Failed to delete existing permissions' },
         { status: 500 }
       );
     }
@@ -85,22 +117,26 @@ export async function PUT(
         .insert(rolePermissionsData);
 
       if (insertError) {
-        console.error('Error inserting new permissions:', insertError);
+        console.error('❌ Error inserting new permissions:', insertError);
         return NextResponse.json(
-          { error: 'Error al asignar nuevos permisos' },
+          { error: 'Failed to assign new permissions' },
           { status: 500 }
         );
       }
     }
 
     return NextResponse.json({ 
-      message: 'Permisos actualizados correctamente',
-      success: true 
+      success: true,
+      message: 'Permissions updated successfully'
     });
   } catch (error) {
-    console.error('Role permissions PUT error:', error);
+    console.error('❌ Role permissions PUT error:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        success: false,
+        error: 'Failed to update role permissions',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

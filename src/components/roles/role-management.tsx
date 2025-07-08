@@ -37,6 +37,33 @@ const RoleManagement = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Helper function to get Supabase auth headers
+  const getAuthHeaders = async () => {
+    try {
+      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
+      const supabase = getSupabaseClient();
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session?.access_token) {
+        console.error('❌ No valid Supabase session:', error);
+        return {
+          'Content-Type': 'application/json'
+        };
+      }
+      
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      };
+    } catch (error) {
+      console.error('❌ Error getting auth headers:', error);
+      return {
+        'Content-Type': 'application/json'
+      };
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -45,14 +72,8 @@ const RoleManagement = () => {
     try {
       setLoading(true);
       
-      // Obtener token de autenticación
-      const authToken = localStorage.getItem('auth-token') || 
-                       document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1];
-      
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-      };
+      // Get Supabase auth headers
+      const headers = await getAuthHeaders();
       
       // Cargar roles
       const rolesResponse = await fetch('/api/roles', { headers });
@@ -110,16 +131,12 @@ const RoleManagement = () => {
       setSaving(roleId);
       const permissionIds = rolePermissions[roleId]?.map(p => p.id) || [];
       
-      // Obtener token de autenticación
-      const authToken = localStorage.getItem('auth-token') || 
-                       document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1];
+      // Get Supabase auth headers
+      const headers = await getAuthHeaders();
       
       const response = await fetch(`/api/roles/${roleId}/permissions`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-        },
+        headers,
         body: JSON.stringify({ permissionIds }),
       });
 

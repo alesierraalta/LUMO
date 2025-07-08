@@ -151,7 +151,8 @@ export const getCurrentUser = async (): Promise<any> => {
 
 // REPLACEMENT for getCurrentUserFromToken - now handles both JWT and Supabase tokens
 export const getCurrentUserFromToken = async (token: string): Promise<any> => {
-  console.log('🔍 getCurrentUserFromToken: Checking token type...');
+  console.log('🔍 getCurrentUserFromToken: Starting token validation...');
+  console.log('🔑 getCurrentUserFromToken: Token (first 50 chars):', token?.substring(0, 50) + '...');
   
   try {
     // First, try to parse as JWT token (from our login API)
@@ -178,16 +179,30 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
     }
     
     // If JWT fails, try as Supabase token
-    console.log('🔍 getCurrentUserFromToken: Attempting Supabase token...');
+    console.log('🔍 getCurrentUserFromToken: Attempting Supabase token validation...');
+    console.log('🔧 getCurrentUserFromToken: Environment check:');
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
+    console.log('  - NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set');
+    console.log('  - NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set');
+    
     const supabase = supabaseServer;
+    console.log('🔍 getCurrentUserFromToken: Using supabaseServer client');
     
     // Use the provided token to get user from Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
-    if (error || !user) {
-      console.log('❌ getCurrentUserFromToken: Invalid Supabase token');
+    if (error) {
+      console.log('❌ getCurrentUserFromToken: Supabase auth error:', error.message);
+      console.log('❌ getCurrentUserFromToken: Error details:', error);
       return null;
     }
+    
+    if (!user) {
+      console.log('❌ getCurrentUserFromToken: No user found in Supabase response');
+      return null;
+    }
+
+    console.log('✅ getCurrentUserFromToken: Supabase user found:', user.email);
 
     // Get additional user data from database
     let userRole = 'USER';
@@ -195,6 +210,7 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
     let isActive = true;
 
     try {
+      console.log('🔍 getCurrentUserFromToken: Querying database for user:', user.email);
       const { data: dbUser, error: dbError } = await supabase
         .from('users')
         .select(`
@@ -206,18 +222,23 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
         .single();
 
       if (!dbError && dbUser) {
+        console.log('✅ getCurrentUserFromToken: Database user found:', dbUser);
         userName = dbUser.name || userName;
         isActive = dbUser.is_active;
         userRole = (dbUser.roles as any)?.name || 'USER';
       } else {
+        console.warn('⚠️ getCurrentUserFromToken: Database query failed:', dbError?.message);
         // For alesierraalta@gmail.com, default to ADMIN role
         if (user.email === 'alesierraalta@gmail.com') {
+          console.log('🔑 getCurrentUserFromToken: Applied admin role for root user');
           userRole = 'ADMIN';
         }
       }
     } catch (dbError) {
+      console.warn('❌ getCurrentUserFromToken: Database query exception:', dbError);
       // For alesierraalta@gmail.com, default to ADMIN role
       if (user.email === 'alesierraalta@gmail.com') {
+        console.log('🔑 getCurrentUserFromToken: Applied admin role for root user (fallback)');
         userRole = 'ADMIN';
       }
     }
@@ -231,10 +252,11 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
       permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
     };
 
-    console.log('✅ getCurrentUserFromToken: Returning Supabase user:', JSON.stringify(userObj, null, 2));
+    console.log('✅ getCurrentUserFromToken: Returning user object:', JSON.stringify(userObj, null, 2));
     return userObj;
   } catch (error) {
-    console.error('❌ getCurrentUserFromToken: Error:', error);
+    console.error('❌ getCurrentUserFromToken: Unexpected error:', error);
+    console.error('❌ getCurrentUserFromToken: Stack trace:', error.stack);
     return null;
   }
 };

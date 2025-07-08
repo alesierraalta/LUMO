@@ -4,17 +4,28 @@ import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Roles API: Starting authentication check...');
+    
     // Get current user for authorization
     const token = getTokenFromRequest(request);
+    console.log('🔍 Roles API: Token extracted:', token ? 'Token found' : 'No token');
+    console.log('🔑 Roles API: Token (first 50 chars):', token?.substring(0, 50) + '...');
+    
     const user = token ? await getCurrentUserFromToken(token) : null;
+    console.log('🔍 Roles API: User from token:', user ? `${user.email} (${user.role})` : 'No user');
+    
     if (!user) {
+      console.log('❌ Roles API: Unauthorized - no user found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Only ADMIN and MANAGER can view roles
     if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      console.log('❌ Roles API: Forbidden - user role:', user.role);
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    console.log('✅ Roles API: User authorized, fetching roles...');
 
     // Get all active roles
     const roles = await db.role.findMany({
@@ -25,6 +36,8 @@ export async function GET(request: NextRequest) {
         name: 'asc'
       }
     });
+
+    console.log('✅ Roles API: Found', roles.length, 'roles');
 
     return NextResponse.json({
       success: true,

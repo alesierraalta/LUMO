@@ -263,17 +263,30 @@ class CustomSupabaseClient {
       }
     },
 
-    getUser: async (): Promise<{ data: { user: User | null }; error: any }> => {
+    getUser: async (token?: string): Promise<{ data: { user: User | null }; error: any }> => {
       try {
-        const sessionResult = await this.auth.getSession();
-        if (sessionResult.error || !sessionResult.data.session) {
-          return {
-            data: { user: null },
-            error: sessionResult.error,
-          };
+        let authToken = token;
+        
+        // If no token provided, try to get it from current session
+        if (!authToken) {
+          const sessionResult = await this.auth.getSession();
+          if (sessionResult.error || !sessionResult.data.session) {
+            return {
+              data: { user: null },
+              error: sessionResult.error || { message: 'No session available' },
+            };
+          }
+          authToken = sessionResult.data.session.access_token;
         }
 
-        const response = await this.makeRequest('/auth/v1/user');
+        const response = await this.makeRequest('/auth/v1/user', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'apikey': this.supabaseKey,
+          },
+        });
+
         const data = await response.json();
 
         if (!response.ok) {
@@ -548,7 +561,7 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
     // Return a mock client that won't fail during build
     return {
       auth: {
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        getUser: (token?: string) => Promise.resolve({ data: { user: null }, error: null }),
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
         signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: { message: 'Build mode - client unavailable' } }),
         signOut: () => Promise.resolve({ error: null }),
@@ -587,7 +600,7 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
     // Return fallback client instead of throwing error
     return {
       auth: {
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        getUser: (token?: string) => Promise.resolve({ data: { user: null }, error: null }),
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
         signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: { message: 'Configuration missing' } }),
         signOut: () => Promise.resolve({ error: null }),

@@ -14,10 +14,10 @@
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 
-// Configuration
+// Configuration - using production environment
 const BASE_URL = 'https://lumo-woad.vercel.app';
 const SUPABASE_URL = 'https://ubjujxtvlubxowsphvuk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5ODM5NzIsImV4cCI6MjA1MDU1OTk3Mn0.gQaOLnGxf7dJcMzxlCzIUjUOxdRJzlNVUMzRVGOYWj8';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVianVqeHR2bHVieG93c3BodnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MTIzODQsImV4cCI6MjA2NTA4ODM4NH0.SapRqhZCDJypL1fMCiEChK0ehZRR5CSI1fRgt3Za8r4';
 
 // Test credentials
 const TEST_EMAIL = 'alesierraalta@gmail.com';

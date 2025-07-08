@@ -113,7 +113,7 @@ const fallbackClient = {
     range: function() { return this; },
   }),
   auth: {
-    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+    getUser: (token?: string) => Promise.resolve({ data: { user: null }, error: null }),
     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
   }
 };

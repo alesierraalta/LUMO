@@ -3,16 +3,24 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function GET(request: NextRequest) {
   try {
+    // Verificar autenticación
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
     // Obtener todos los permisos disponibles
     const { data: permissions, error } = await supabase
       .from('permissions')
       .select('*')
-      .order('category', { ascending: true })
       .order('resource', { ascending: true })
       .order('action', { ascending: true });
 

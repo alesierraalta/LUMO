@@ -45,12 +45,21 @@ const RoleManagement = () => {
     try {
       setLoading(true);
       
+      // Obtener token de autenticación
+      const authToken = localStorage.getItem('auth-token') || 
+                       document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1];
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+      };
+      
       // Cargar roles
-      const rolesResponse = await fetch('/api/roles');
+      const rolesResponse = await fetch('/api/roles', { headers });
       const rolesData = await rolesResponse.json();
       
       // Cargar permisos
-      const permissionsResponse = await fetch('/api/permissions');
+      const permissionsResponse = await fetch('/api/permissions', { headers });
       const permissionsData = await permissionsResponse.json();
       
       if (rolesData.roles) {
@@ -59,7 +68,7 @@ const RoleManagement = () => {
         // Cargar permisos para cada rol
         const rolePermsData: RolePermissions = {};
         for (const role of rolesData.roles) {
-          const rolePermsResponse = await fetch(`/api/roles/${role.id}/permissions`);
+          const rolePermsResponse = await fetch(`/api/roles/${role.id}/permissions`, { headers });
           const rolePermsResult = await rolePermsResponse.json();
           rolePermsData[role.id] = rolePermsResult.permissions || [];
         }
@@ -101,10 +110,15 @@ const RoleManagement = () => {
       setSaving(roleId);
       const permissionIds = rolePermissions[roleId]?.map(p => p.id) || [];
       
+      // Obtener token de autenticación
+      const authToken = localStorage.getItem('auth-token') || 
+                       document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1];
+      
       const response = await fetch(`/api/roles/${roleId}/permissions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` })
         },
         body: JSON.stringify({ permissionIds }),
       });

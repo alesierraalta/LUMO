@@ -37,30 +37,57 @@ const RoleManagement = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Helper function to get Supabase auth headers
+  // Enhanced helper function to get Supabase auth headers with comprehensive debugging
   const getAuthHeaders = async () => {
     try {
+      console.log('🔍 [RoleManagement] Getting auth headers...');
+      
       const { getSupabaseClient } = await import('@/lib/supabase-singleton');
       const supabase = getSupabaseClient();
       
+      console.log('✅ [RoleManagement] Supabase client obtained');
+      
       const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (error || !session?.access_token) {
-        console.error('❌ No valid Supabase session:', error);
-        return {
-          'Content-Type': 'application/json'
-        };
+      console.log('🔍 [RoleManagement] Session data:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userEmail: session?.user?.email,
+        hasAccessToken: !!session?.access_token,
+        tokenLength: session?.access_token?.length,
+        error: error?.message
+      });
+      
+      if (error) {
+        console.error('❌ [RoleManagement] Session error:', error);
+        throw new Error(`Session error: ${error.message}`);
       }
       
-      return {
+      if (!session) {
+        console.error('❌ [RoleManagement] No session found');
+        throw new Error('No active session');
+      }
+      
+      if (!session.access_token) {
+        console.error('❌ [RoleManagement] No access token in session');
+        throw new Error('No access token in session');
+      }
+      
+      const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       };
+      
+      console.log('✅ [RoleManagement] Auth headers created successfully');
+      console.log('🔑 [RoleManagement] Token preview:', session.access_token.substring(0, 20) + '...');
+      
+      return headers;
+      
     } catch (error) {
-      console.error('❌ Error getting auth headers:', error);
-      return {
-        'Content-Type': 'application/json'
-      };
+      console.error('❌ [RoleManagement] Error getting auth headers:', error);
+      
+      // Don't return headers without authorization - this was the issue!
+      throw error;
     }
   };
 
@@ -71,27 +98,60 @@ const RoleManagement = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 [RoleManagement] Loading roles and permissions data...');
       
-      // Get Supabase auth headers
+      // Get Supabase auth headers with proper error handling
       const headers = await getAuthHeaders();
       
+      console.log('🔄 [RoleManagement] Making API calls...');
+      
       // Cargar roles
+      console.log('📡 [RoleManagement] Fetching roles...');
       const rolesResponse = await fetch('/api/roles', { headers });
+      console.log('📡 [RoleManagement] Roles response status:', rolesResponse.status);
+      
+      if (!rolesResponse.ok) {
+        const errorText = await rolesResponse.text();
+        console.error('❌ [RoleManagement] Roles API error:', errorText);
+        throw new Error(`Roles API error: ${rolesResponse.status} - ${errorText}`);
+      }
+      
       const rolesData = await rolesResponse.json();
+      console.log('✅ [RoleManagement] Roles data received:', rolesData);
       
       // Cargar permisos
+      console.log('📡 [RoleManagement] Fetching permissions...');
       const permissionsResponse = await fetch('/api/permissions', { headers });
+      console.log('📡 [RoleManagement] Permissions response status:', permissionsResponse.status);
+      
+      if (!permissionsResponse.ok) {
+        const errorText = await permissionsResponse.text();
+        console.error('❌ [RoleManagement] Permissions API error:', errorText);
+        throw new Error(`Permissions API error: ${permissionsResponse.status} - ${errorText}`);
+      }
+      
       const permissionsData = await permissionsResponse.json();
+      console.log('✅ [RoleManagement] Permissions data received:', permissionsData);
       
       if (rolesData.roles) {
         setRoles(rolesData.roles);
         
         // Cargar permisos para cada rol
+        console.log('📡 [RoleManagement] Fetching role permissions...');
         const rolePermsData: RolePermissions = {};
         for (const role of rolesData.roles) {
+          console.log(`📡 [RoleManagement] Fetching permissions for role: ${role.name}`);
           const rolePermsResponse = await fetch(`/api/roles/${role.id}/permissions`, { headers });
+          
+          if (!rolePermsResponse.ok) {
+            const errorText = await rolePermsResponse.text();
+            console.error(`❌ [RoleManagement] Role ${role.name} permissions API error:`, errorText);
+            throw new Error(`Role permissions API error: ${rolePermsResponse.status} - ${errorText}`);
+          }
+          
           const rolePermsResult = await rolePermsResponse.json();
           rolePermsData[role.id] = rolePermsResult.permissions || [];
+          console.log(`✅ [RoleManagement] Role ${role.name} permissions loaded:`, rolePermsResult.permissions?.length || 0);
         }
         setRolePermissions(rolePermsData);
       }
@@ -99,11 +159,14 @@ const RoleManagement = () => {
       if (permissionsData.permissions) {
         setPermissions(permissionsData.permissions);
       }
+      
+      console.log('✅ [RoleManagement] All data loaded successfully');
+      
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ [RoleManagement] Error loading data:', error);
       toast({
-        title: "Error",
-        description: "Error al cargar datos de roles y permisos",
+        title: "Error de Autenticación",
+        description: `Error al cargar datos: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -131,7 +194,9 @@ const RoleManagement = () => {
       setSaving(roleId);
       const permissionIds = rolePermissions[roleId]?.map(p => p.id) || [];
       
-      // Get Supabase auth headers
+      console.log(`🔄 [RoleManagement] Saving permissions for role ${roleId}:`, permissionIds);
+      
+      // Get Supabase auth headers with proper error handling
       const headers = await getAuthHeaders();
       
       const response = await fetch(`/api/roles/${roleId}/permissions`, {
@@ -140,21 +205,25 @@ const RoleManagement = () => {
         body: JSON.stringify({ permissionIds }),
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Éxito",
-          description: "Permisos actualizados correctamente",
-        });
-      } else {
-        throw new Error(result.error || 'Error al actualizar permisos');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [RoleManagement] Save permissions API error:', errorText);
+        throw new Error(`Save permissions API error: ${response.status} - ${errorText}`);
       }
+
+      const result = await response.json();
+      console.log('✅ [RoleManagement] Permissions saved successfully:', result);
+      
+      toast({
+        title: "Éxito",
+        description: "Permisos actualizados correctamente",
+      });
+      
     } catch (error) {
-      console.error('Error saving permissions:', error);
+      console.error('❌ [RoleManagement] Error saving permissions:', error);
       toast({
         title: "Error",
-        description: "Error al guardar permisos",
+        description: `Error al guardar permisos: ${error.message}`,
         variant: "destructive",
       });
     } finally {

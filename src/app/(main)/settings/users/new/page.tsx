@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, User, Mail, Shield, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { createClientSupabaseClient } from '@/lib/supabase-auth-client';
 
 export default function NewUserPage() {
   const router = useRouter();
@@ -64,11 +65,21 @@ export default function NewUserPage() {
     }
     
     setLoading(true);
+      // Get access token for Authorization header
+      const supabase = createClientSupabaseClient();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Authentication required');
+      }
+      const token = session.access_token;
+      console.log('🔑 Creating user with token:', token);
     
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch('/api/users', { credentials: 'include',
+
         method: 'POST',
         headers: {
+            'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

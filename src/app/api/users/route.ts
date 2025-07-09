@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    console.log('🔍 POST /api/users auth header:', request.headers.get('authorization'));
   try {
     // Get user from token or session
     const token = getTokenFromRequest(request);

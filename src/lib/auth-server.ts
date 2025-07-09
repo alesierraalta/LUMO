@@ -223,9 +223,25 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
 
       if (!dbError && dbUser) {
         console.log('✅ getCurrentUserFromToken: Database user found:', dbUser);
+        console.log('🔍 getCurrentUserFromToken: Database user roles:', dbUser.roles);
         userName = dbUser.name || userName;
         isActive = dbUser.is_active;
-        userRole = (dbUser.roles as any)?.name || 'USER';
+        
+        // Extract role name from the database response
+        const roleFromDb = (dbUser.roles as any)?.name;
+        console.log('🔍 getCurrentUserFromToken: Role from database:', roleFromDb);
+        
+        if (roleFromDb) {
+          userRole = roleFromDb;
+          console.log('✅ getCurrentUserFromToken: Successfully set role from database:', userRole);
+        } else {
+          console.warn('⚠️ getCurrentUserFromToken: No role found in database response, using fallback');
+          // For alesierraalta@gmail.com, default to ADMIN role
+          if (user.email === 'alesierraalta@gmail.com') {
+            console.log('🔑 getCurrentUserFromToken: Applied admin role for root user (no role in db)');
+            userRole = 'ADMIN';
+          }
+        }
       } else {
         console.warn('⚠️ getCurrentUserFromToken: Database query failed:', dbError?.message);
         // For alesierraalta@gmail.com, default to ADMIN role

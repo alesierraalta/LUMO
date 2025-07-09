@@ -284,9 +284,19 @@ export const getTokenFromRequest = (request: NextRequest): string | null => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-  
-  // No more JWT cookie fallback - ONLY Supabase Bearer tokens
-  console.log('⚠️ getTokenFromRequest: No Supabase Bearer token found');
+
+  // Try Supabase session cookie token
+  try {
+    const cookieToken = request.cookies.get('sb-access-token')?.value || request.cookies.get('sb-refresh-token')?.value;
+    if (cookieToken) {
+      console.log('🔑 getTokenFromRequest: Found Supabase cookie token');
+      return cookieToken;
+    }
+  } catch (e) {
+    console.warn('⚠️ getTokenFromRequest: Error accessing cookies', e);
+  }
+
+  console.log('⚠️ getTokenFromRequest: No token found');
   return null;
 };
 

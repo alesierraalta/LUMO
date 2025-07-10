@@ -57,7 +57,8 @@ export default function NewUserPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    console.log('🔔 handleSubmit invoked', formData);
     e.preventDefault();
     
     if (!validateForm()) {
@@ -65,7 +66,6 @@ export default function NewUserPage() {
     }
     
     setLoading(true);
-    // Retrieve access token
     const supabase = createClientSupabaseClient();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
@@ -122,7 +122,6 @@ export default function NewUserPage() {
       [field]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -349,8 +348,8 @@ export default function NewUserPage() {
               </Button>
             </div>
           </form>
-        </CardContent>
+          </CardContent>
       </Card>
     </div>
   );
-} 
+}

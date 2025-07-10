@@ -61,21 +61,28 @@ export default function NewUserPage() {
     console.log('🔔 handleSubmit invoked', formData);
     e.preventDefault();
     
-    if (!validateForm()) {
+    
+    const valid = validateForm();
+    console.log('🔔 validateForm result', valid, errors);
+    if (!valid) {
       return;
     }
     
     setLoading(true);
     const supabase = createClientSupabaseClient();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('🔔 supabase.getSession', sessionError, session);
     if (sessionError || !session) {
       setLoading(false);
       toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
       return;
     }
     const token = session.access_token;
+    console.log('🔔 got token', token);
       
     try {
+    console.log('🔔 handleSubmit token:', token);
+    console.log('🔔 Creating user with payload:', { name: formData.name.trim(), email: formData.email.trim().toLowerCase(), password: formData.password, role: formData.role, isActive: formData.isActive });
       const response = await fetch('/api/users', { 
         credentials: 'include',
         method: 'POST',
@@ -90,6 +97,7 @@ export default function NewUserPage() {
       });
       
       const data = await response.json();
+    console.log('🔔 POST /api/users response:', response.status, data);
       
       if (response.ok && data.success) {
         toast({
@@ -347,7 +355,7 @@ export default function NewUserPage() {
                 )}
               </Button>
             </div>
-          </form>
+          </div>
           </CardContent>
       </Card>
     </div>

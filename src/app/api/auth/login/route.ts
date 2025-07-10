@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔐 Login attempt for:', email);
+    
 
     const supabase = createClient(
       'https://ubjujxtvlubxowsphvuk.supabase.co',
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      console.log('❌ Supabase auth failed, trying legacy user lookup:', authError.message);
+      
       
       // Fallback to manual user lookup for legacy users
       const { data: user, error: userError } = await supabase
@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
         .eq('email', email.toLowerCase())
         .single();
 
-      console.log('🔍 User lookup result:', { user: user ? 'found' : 'not found', error: userError?.message });
+      
 
       if (userError || !user) {
-        console.log('❌ User not found or error:', userError?.message);
+        
         return NextResponse.json(
           { success: false, error: 'Invalid email or password' },
           { status: 401 }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!user.is_active) {
-        console.log('❌ User account is deactivated');
+        
         return NextResponse.json(
           { success: false, error: 'Account is deactivated' },
           { status: 401 }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       }
       
       if (!passwordMatch) {
-        console.log('❌ Password mismatch');
+        
         return NextResponse.json(
           { success: false, error: 'Invalid email or password' },
           { status: 401 }
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log('✅ Legacy user authenticated successfully');
+      
 
       // Generate JWT token for legacy users
       const token = jwt.sign(
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Supabase auth successful
     if (authData.user) {
-      console.log('✅ Supabase auth successful');
+      
       
       // Get additional user data from our users table
       const { data: userData, error: userDataError } = await supabase
@@ -179,13 +179,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('❌ Authentication failed - no user data');
+    
     return NextResponse.json(
       { success: false, error: 'Authentication failed' },
       { status: 401 }
     );
   } catch (error) {
-    console.error('❌ Login error:', error);
+    
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

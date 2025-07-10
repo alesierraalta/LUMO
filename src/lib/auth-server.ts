@@ -155,36 +155,7 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
   console.log('🔑 getCurrentUserFromToken: Token (first 50 chars):', token?.substring(0, 50) + '...');
   
   try {
-    // First, try to parse as JWT token (from our login API)
-    if (token.includes('.')) {
-      console.log('🔍 getCurrentUserFromToken: Attempting JWT token parsing...');
-      const jwt = require('jsonwebtoken');
-      
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        console.log('✅ getCurrentUserFromToken: JWT token valid:', decoded);
-        
-        // Return user object based on JWT payload
-        return {
-          id: decoded.userId,
-          email: decoded.email,
-          name: decoded.name || decoded.email?.split('@')[0] || 'User',
-          role: decoded.role || 'USER',
-          isActive: true,
-          permissions: decoded.role === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
-        };
-      } catch (jwtError) {
-        console.log('❌ getCurrentUserFromToken: JWT verification failed:', jwtError.message);
-      }
-    }
-    
-    // If JWT fails, try as Supabase token
-    console.log('🔍 getCurrentUserFromToken: Attempting Supabase token validation...');
-    console.log('🔧 getCurrentUserFromToken: Environment check:');
-    console.log('  - NODE_ENV:', process.env.NODE_ENV);
-    console.log('  - NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set');
-    console.log('  - NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set');
-    
+    // Use the provided token to get user from Supabase
     const supabase = supabaseServer;
     console.log('🔍 getCurrentUserFromToken: Using supabaseServer client');
     
@@ -251,10 +222,10 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
         }
       }
     } catch (dbError) {
-      console.warn('❌ getCurrentUserFromToken: Database query exception:', dbError);
+      
       // For alesierraalta@gmail.com, default to ADMIN role
       if (user.email === 'alesierraalta@gmail.com') {
-        console.log('🔑 getCurrentUserFromToken: Applied admin role for root user (fallback)');
+        
         userRole = 'ADMIN';
       }
     }
@@ -268,36 +239,22 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
       permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
     };
 
-    console.log('✅ getCurrentUserFromToken: Returning user object:', JSON.stringify(userObj, null, 2));
+    
     return userObj;
   } catch (error) {
-    console.error('❌ getCurrentUserFromToken: Unexpected error:', error);
-    console.error('❌ getCurrentUserFromToken: Stack trace:', error.stack);
+    
+    
     return null;
   }
 };
 
 // REPLACEMENT for getTokenFromRequest - now gets Supabase Bearer token
 export const getTokenFromRequest = (request: NextRequest): string | null => {
-  // Get Bearer token from Authorization header (Supabase standard)
-  const authHeader = request.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-
-  // Try Supabase session cookie token
-  try {
-    const cookieToken = request.cookies.get('sb-access-token')?.value || request.cookies.get('sb-refresh-token')?.value;
-    if (cookieToken) {
-      console.log('🔑 getTokenFromRequest: Found Supabase cookie token');
-      return cookieToken;
-    }
-  } catch (e) {
-    console.warn('⚠️ getTokenFromRequest: Error accessing cookies', e);
-  }
-
-  console.log('⚠️ getTokenFromRequest: No token found');
-  return null;
+  
+  return request.cookies.get('sb-access-token')?.value
+    || request.cookies.get('sb-refresh-token')?.value
+    || request.cookies.get('auth-token')?.value
+    || null;
 };
 
 // Helper functions for Supabase-only auth
@@ -314,8 +271,8 @@ export const clearAuth = async (): Promise<void> => {
   try {
     const supabase = supabaseServer;
     await supabase.auth.signOut();
-    console.log('✅ Supabase auth cleared');
+    
   } catch (error) {
-    console.error('❌ Error clearing Supabase auth:', error);
+    
   }
 }; 

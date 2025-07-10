@@ -4,24 +4,24 @@ import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 GET /api/users - Starting...');
+    
     
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     
     if (!user) {
-      console.log('❌ No user found - Unauthorized');
+      
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    console.log('✅ User authenticated:', user.email);
+    
 
     const supabase = await createServerClient();
-    console.log('✅ Supabase client created');
+    
     
     // Simple query to get all users
     const { data: users, error: userError } = await supabase
@@ -30,14 +30,14 @@ export async function GET(request: NextRequest) {
       .order('name', { ascending: true });
 
     if (userError) {
-      console.error('❌ Error fetching users:', userError);
+      
       return NextResponse.json(
         { success: false, error: 'Failed to fetch users', details: userError },
         { status: 500 }
       );
     }
 
-    console.log('✅ Users fetched:', users?.length || 0);
+    
 
     // Get roles separately
     const { data: roles, error: rolesError } = await supabase
@@ -45,14 +45,14 @@ export async function GET(request: NextRequest) {
       .select('id, name, description');
 
     if (rolesError) {
-      console.error('❌ Error fetching roles:', rolesError);
+      
       return NextResponse.json(
         { success: false, error: 'Failed to fetch roles', details: rolesError },
         { status: 500 }
       );
     }
 
-    console.log('✅ Roles fetched:', roles?.length || 0);
+    
 
     // Combine users with their roles
     const usersWithRoles = users?.map(user => {
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       };
     }) || [];
 
-    console.log('✅ Users with roles processed:', usersWithRoles.length);
+    
 
     return NextResponse.json({
       success: true,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       offset: 0
     });
   } catch (error) {
-    console.error('❌ Error in GET /api/users:', error);
+    
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    console.log('🔍 POST /api/users auth header:', request.headers.get('authorization'));
+    
   try {
     // Get user from token or session
     const token = getTokenFromRequest(request);
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating user:', error);
+      
       return NextResponse.json(
         { success: false, error: 'Failed to create user' },
         { status: 500 }
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       user: newUser
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating user:', error);
+    
     return NextResponse.json(
       { success: false, error: 'Failed to create user' },
       { status: 500 }

@@ -65,23 +65,21 @@ export default function NewUserPage() {
     }
     
     setLoading(true);
-      // Get access token for Authorization header
-      const supabase = createClientSupabaseClient();
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Authentication required');
-      }
-      const token = session.access_token;
-      console.log('🔑 Creating user with token:', token);
-    
+    // Retrieve access token
+    const supabase = createClientSupabaseClient();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      setLoading(false);
+      toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+      return;
+    }
+    const token = session.access_token;
+      
     try {
-      const response = await fetch('/api/users', { credentials: 'include',
-
+      const response = await fetch('/api/users', { 
+        credentials: 'include',
         method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),

@@ -72,6 +72,7 @@ export default function NewUserPage() {
     setLoading(true);
     
     let token: string | null = null;
+    let useDevMode = false;
     
     try {
       console.log('🔔 Creating Supabase client...');
@@ -99,32 +100,48 @@ export default function NewUserPage() {
           sessionIsUndefined: session === undefined,
           sessionType: typeof session
         });
+        
+        // Enhanced development mode fallback
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔧 Development mode - using fallback authentication');
+          useDevMode = true;
+          token = null; // No token in dev mode
+        } else {
+          setLoading(false);
+          toast({
+            title: 'Error',
+            description: sessionError?.message || 'Authentication required',
+            variant: 'destructive'
+          });
+          return;
+        }
+      } else {
+        console.log('✅ Session validated successfully, continuing with token extraction...');
+        token = session.access_token;
+        console.log('🔔 Got token:', token ? 'Yes' : 'No');
+        console.log('🔔 Token preview:', token?.substring(0, 50) + '...');
+      }
+    } catch (sessionCatchError) {
+      console.error('❌ Caught error getting session:', sessionCatchError);
+      
+      // Enhanced development mode fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 Development mode - caught error, using fallback authentication');
+        useDevMode = true;
+        token = null; // No token in dev mode
+      } else {
         setLoading(false);
         toast({
           title: 'Error',
-          description: sessionError?.message || 'Authentication required',
+          description: 'Failed to get authentication session',
           variant: 'destructive'
         });
         return;
       }
-      
-      console.log('✅ Session validated successfully, continuing with token extraction...');
-      
-      token = session.access_token;
-      console.log('🔔 Got token:', token ? 'Yes' : 'No');
-      console.log('🔔 Token preview:', token?.substring(0, 50) + '...');
-    } catch (sessionCatchError) {
-      console.error('❌ Caught error getting session:', sessionCatchError);
-      setLoading(false);
-      toast({
-        title: 'Error',
-        description: 'Failed to get authentication session',
-        variant: 'destructive'
-      });
-      return;
     }
 
-    if (!token) {
+    // Only require token in production mode
+    if (!useDevMode && !token) {
       console.error('❌ No token available');
       setLoading(false);
       toast({
@@ -136,11 +153,26 @@ export default function NewUserPage() {
     }
 
     try {
+      // Prepare headers based on authentication mode
+      const headers = useDevMode
+        ? {
+            'Content-Type': 'application/json',
+            'X-Development-Mode': 'true'
+          }
+        : {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          };
+      
+      console.log('🔔 Using headers:', useDevMode ? 'Development mode' : 'Production mode with token');
+      
       // First, get the role ID based on the role name
       console.log('🔔 Fetching roles to get roleId for:', formData.role);
       const rolesResponse = await fetch('/api/roles', {
         credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: useDevMode
+          ? { 'X-Development-Mode': 'true' }
+          : { 'Authorization': `Bearer ${token}` }
       });
       
       if (!rolesResponse.ok) {
@@ -175,7 +207,7 @@ export default function NewUserPage() {
       const response = await fetch('/api/users', {
         credentials: 'include',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers,
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),

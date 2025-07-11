@@ -16,21 +16,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Get ALL roles (including inactive ones)
+    console.log('📊 Debug Roles API: Fetching all roles...');
     const { data: allRoles, error: allError } = await supabase
       .from('roles')
       .select('*')
       .order('name', { ascending: true });
+
+    console.log('📊 Debug Roles API: All roles result:', { allRoles, allError });
 
     if (allError) {
       console.error('❌ Debug Roles API: Error fetching all roles:', allError);
     }
 
     // Get only active roles
+    console.log('📊 Debug Roles API: Fetching active roles...');
     const { data: activeRoles, error: activeError } = await supabase
       .from('roles')
       .select('*')
       .eq('is_active', true)
       .order('name', { ascending: true });
+
+    console.log('📊 Debug Roles API: Active roles result:', { activeRoles, activeError });
 
     if (activeError) {
       console.error('❌ Debug Roles API: Error fetching active roles:', activeError);

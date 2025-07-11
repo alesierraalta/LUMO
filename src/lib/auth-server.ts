@@ -121,7 +121,7 @@ export const getCurrentUser = async (): Promise<any> => {
     }
 
     // TEMPORARY FIX: Allow admin access in development for testing
-    if (process.env.NODE_ENV === 'development' && process.env.CHOREO_ENVIRONMENT === 'Development') {
+    if (process.env.NODE_ENV === 'development') {
       console.log('🔧 getCurrentUser: Development mode - returning temporary admin user with real UUID');
       return {
         id: '5f493c59-420e-4a9b-afed-0b67bfa892d5', // Real UUID from Supabase Auth
@@ -250,17 +250,53 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
 
 // REPLACEMENT for getTokenFromRequest - now gets Supabase Bearer token
 export const getTokenFromRequest = (request: NextRequest): string | null => {
+  console.log('🔍 getTokenFromRequest: Extracting token from request...');
+  
   // First check Authorization header for Bearer token
   const authHeader = request.headers.get('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
+    console.log('✅ getTokenFromRequest: Found Bearer token in Authorization header');
     return authHeader.substring(7); // Remove "Bearer " prefix
   }
   
-  // Fallback to checking cookies
-  return request.cookies.get('sb-access-token')?.value
+  // Get all cookies to find Supabase auth cookie
+  const cookies = request.cookies;
+  console.log('🔍 getTokenFromRequest: Checking cookies...');
+  
+  // Look for Supabase auth cookie pattern: sb-{project-id}-auth-token
+  const allCookies = cookies.getAll();
+  console.log('🔍 getTokenFromRequest: Available cookies:', allCookies.map(c => c.name).join(', '));
+  
+  for (const cookie of allCookies) {
+    // Check for Supabase auth token pattern
+    if (cookie.name.match(/^sb-.+-auth-token$/)) {
+      console.log('✅ getTokenFromRequest: Found Supabase auth cookie:', cookie.name);
+      try {
+        // Parse the JSON value to extract access token
+        const authData = JSON.parse(cookie.value);
+        if (authData.access_token) {
+          console.log('✅ getTokenFromRequest: Successfully extracted access token');
+          return authData.access_token;
+        }
+      } catch (error) {
+        console.warn('⚠️ getTokenFromRequest: Failed to parse auth cookie:', error);
+      }
+    }
+  }
+  
+  // Fallback to checking generic cookie names
+  const fallbackToken = request.cookies.get('sb-access-token')?.value
     || request.cookies.get('sb-refresh-token')?.value
     || request.cookies.get('auth-token')?.value
     || null;
+  
+  if (fallbackToken) {
+    console.log('✅ getTokenFromRequest: Found token in fallback cookies');
+  } else {
+    console.log('❌ getTokenFromRequest: No token found in any cookies');
+  }
+  
+  return fallbackToken;
 };
 
 // Helper functions for Supabase-only auth

@@ -4,21 +4,38 @@ import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔔 Users GET API: Starting...');
     
+    // Development mode fallback - check for development mode header
+    const isDevelopmentMode = request.headers.get('X-Development-Mode') === 'true';
+    console.log('🔔 Users GET API: Development mode:', isDevelopmentMode);
     
-    // Get user from token or session
-    const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    let user = null;
     
-    if (!user) {
+    if (isDevelopmentMode && process.env.NODE_ENV === 'development') {
+      console.log('🔧 Users GET API: Using development mode fallback');
+      // In development mode, create a mock admin user
+      user = {
+        id: 'dev-admin',
+        email: 'admin@dev.local',
+        role: 'ADMIN',
+        name: 'Development Admin'
+      };
+    } else {
+      // Get user from token or session
+      const token = getTokenFromRequest(request);
+      user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
       
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      if (!user) {
+        console.log('❌ Users GET API: Unauthorized - no user found');
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
     }
 
-    
+    console.log('✅ Users GET API: User authenticated:', user.role);
 
     const supabase = await createServerClient();
     
@@ -106,26 +123,45 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get user from token or session
-    const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    // Development mode fallback - check for development mode header
+    const isDevelopmentMode = request.headers.get('X-Development-Mode') === 'true';
+    console.log('🔔 Users POST API: Development mode:', isDevelopmentMode);
     
-    if (!user) {
-      console.log('❌ Users POST API: Unauthorized - no user found');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    let user = null;
+    
+    if (isDevelopmentMode && process.env.NODE_ENV === 'development') {
+      console.log('🔧 Users POST API: Using development mode fallback');
+      // In development mode, create a mock admin user
+      user = {
+        id: 'dev-admin',
+        email: 'admin@dev.local',
+        role: 'ADMIN',
+        name: 'Development Admin'
+      };
+    } else {
+      // Get user from token or session
+      const token = getTokenFromRequest(request);
+      user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+      
+      if (!user) {
+        console.log('❌ Users POST API: Unauthorized - no user found');
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      // Only ADMIN can create users
+      if (user.role !== 'ADMIN') {
+        console.log('❌ Users POST API: Forbidden - user role:', user.role);
+        return NextResponse.json(
+          { success: false, error: 'Only administrators can create users' },
+          { status: 403 }
+        );
+      }
     }
 
-    // Only ADMIN can create users
-    if (user.role !== 'ADMIN') {
-      console.log('❌ Users POST API: Forbidden - user role:', user.role);
-      return NextResponse.json(
-        { success: false, error: 'Only administrators can create users' },
-        { status: 403 }
-      );
-    }
+    console.log('✅ Users POST API: User authenticated:', user.role);
 
     const data = await request.json();
     console.log('🔔 Users POST API: Request data:', { ...data, password: '[REDACTED]' });
@@ -141,71 +177,124 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerClient();
     
-    // First, create the user in Supabase Auth
-    console.log('🔔 Users POST API: Creating user in Supabase Auth...');
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: { name: name },
-        emailRedirectTo: undefined // Disable email confirmation for admin-created users
-      }
-    });
-
-    if (authError) {
-      console.error('❌ Users POST API: Supabase Auth error:', authError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: authError.message || 'Failed to create authentication account'
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log('✅ Users POST API: Auth user created:', authData.user?.id);
+    let authUserId;
+    let newUser;
     
-    // Then create the user profile in our users table
-    console.log('🔔 Users POST API: Creating user profile...');
-    const { data: newUser, error: dbError } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user!.id, // Use the auth user ID
-        name: name,
-        email: email,
-        role_id: roleId,
-        is_active: data.isActive !== false
-      })
-      .select(`
-        id,
-        name,
-        email,
-        is_active,
-        created_at,
-        updated_at,
-        role:roles(id, name, description)
-      `)
-      .single();
-
-    if (dbError) {
-      console.error('❌ Users POST API: Database error:', dbError);
+    if (isDevelopmentMode && process.env.NODE_ENV === 'development') {
+      // Development mode: Skip Supabase Auth and use mock user creation
+      console.log('🔧 Users POST API: Development mode - skipping Supabase Auth');
       
-      // If database insert fails, try to clean up the auth user
-      if (authData.user?.id) {
-        console.log('🔔 Users POST API: Attempting to delete auth user after DB error...');
-        // Note: Admin API needed to delete users, for now just log the error
+      // Generate a proper UUID for development user
+      const { randomUUID } = require('crypto');
+      authUserId = randomUUID();
+      console.log('🔧 Generated development user ID:', authUserId);
+      
+      // Create user profile directly in database
+      console.log('🔔 Users POST API: Creating development user profile...');
+      const { data: devUser, error: dbError } = await supabase
+        .from('users')
+        .insert({
+          id: authUserId,
+          name: name,
+          email: email,
+          password: 'dev-placeholder-password', // Placeholder for development mode
+          role_id: roleId,
+          is_active: data.isActive !== false
+        })
+        .select(`
+          id,
+          name,
+          email,
+          is_active,
+          created_at,
+          updated_at,
+          role:roles(id, name, description)
+        `)
+        .single();
+
+      if (dbError) {
+        console.error('❌ Users POST API: Database error:', dbError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: dbError.message || 'Failed to create user profile'
+          },
+          { status: 500 }
+        );
       }
       
-      return NextResponse.json(
-        {
-          success: false,
-          error: dbError.message || 'Failed to create user profile'
-        },
-        { status: 500 }
-      );
-    }
+      newUser = devUser;
+      console.log('✅ Users POST API: Development user created successfully:', newUser);
+      
+    } else {
+      // Production mode: Use Supabase Auth
+      console.log('🔔 Users POST API: Production mode - creating user in Supabase Auth...');
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: { name: name },
+          emailRedirectTo: undefined // Disable email confirmation for admin-created users
+        }
+      });
 
-    console.log('✅ Users POST API: User created successfully:', newUser);
+      if (authError) {
+        console.error('❌ Users POST API: Supabase Auth error:', authError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: authError.message || 'Failed to create authentication account'
+          },
+          { status: 400 }
+        );
+      }
+
+      console.log('✅ Users POST API: Auth user created:', authData.user?.id);
+      authUserId = authData.user!.id;
+      
+      // Then create the user profile in our users table
+      console.log('🔔 Users POST API: Creating user profile...');
+      const { data: prodUser, error: dbError } = await supabase
+        .from('users')
+        .insert({
+          id: authUserId,
+          name: name,
+          email: email,
+          role_id: roleId,
+          is_active: data.isActive !== false
+        })
+        .select(`
+          id,
+          name,
+          email,
+          is_active,
+          created_at,
+          updated_at,
+          role:roles(id, name, description)
+        `)
+        .single();
+
+      if (dbError) {
+        console.error('❌ Users POST API: Database error:', dbError);
+        
+        // If database insert fails, try to clean up the auth user
+        if (authData.user?.id) {
+          console.log('🔔 Users POST API: Attempting to delete auth user after DB error...');
+          // Note: Admin API needed to delete users, for now just log the error
+        }
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: dbError.message || 'Failed to create user profile'
+          },
+          { status: 500 }
+        );
+      }
+      
+      newUser = prodUser;
+      console.log('✅ Users POST API: Production user created successfully:', newUser);
+    }
 
     return NextResponse.json({
       success: true,

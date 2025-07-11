@@ -25,6 +25,21 @@ let userCache: { user: User | null; timestamp: number } | null = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 let isRefetching = false;
 
+// Pre-import modules to prevent dynamic import issues in hooks
+let supabaseClient: any = null;
+let signOutFunction: any = null;
+
+const initializeModules = async () => {
+  if (!supabaseClient) {
+    const { getSupabaseClient } = await import('@/lib/supabase-singleton');
+    supabaseClient = getSupabaseClient();
+  }
+  if (!signOutFunction) {
+    const { signOut } = await import('@/lib/supabase-auth-client');
+    signOutFunction = signOut;
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,10 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // SUPABASE-ONLY AUTHENTICATION (No JWT fallbacks)
       try {
         console.log('🔍 Attempting Supabase-only authentication...');
-        const { getSupabaseClient } = await import('@/lib/supabase-singleton');
-        const supabase = getSupabaseClient();
+        
+        // Ensure modules are initialized
+        await initializeModules();
 
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
         
         if (sessionError) {
           console.warn('⚠️ Session error:', sessionError.message);
@@ -76,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('✅ Active session found:', session.user.email);
 
         // Query user data directly from database (search by email since IDs might not match)
-        const { data: userData, error: userError } = await supabase
+        const { data: userData, error: userError } = await supabaseClient
           .from('users')
           .select(`
             id,
@@ -178,9 +194,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔍 Attempting Supabase-only logout...');
       
+      // Ensure modules are initialized
+      await initializeModules();
+      
       // SUPABASE-ONLY LOGOUT (No JWT fallbacks)
-      const { signOut } = await import('@/lib/supabase-auth-client');
-      const success = await signOut();
+      const success = await signOutFunction();
       
       if (success) {
         console.log('✅ Supabase logout successful');
@@ -235,11 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const setupAuthListener = async () => {
       try {
-        // CRITICAL FIX: Use dynamic import to prevent SSR issues
-        const { getSupabaseClient } = await import('@/lib/supabase-singleton');
-        const supabase = getSupabaseClient();
+        // Ensure modules are initialized
+        await initializeModules();
         
-        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
           console.log('🔔 Auth state change:', event, session?.user?.email || 'No user');
           
           // CRITICAL FIX: Only react to sign out events, not sign in to prevent loops

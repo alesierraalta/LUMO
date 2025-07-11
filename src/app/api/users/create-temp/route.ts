@@ -1,106 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
-  console.log('🔔 Users Create Temp API: Starting...');
-  
   try {
-    // Get user from token or session
-    const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    console.log('🔔 Creating temporary user...');
     
-    if (!user) {
-      console.log('❌ Users Create Temp API: Unauthorized - no user found');
+    // Check if SUPABASE_SERVICE_ROLE_KEY is available
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    
+    if (!serviceRoleKey || !supabaseUrl) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Missing service role key or URL' },
+        { status: 503 }
       );
     }
-
-    // Only ADMIN can create users
-    if (user.role !== 'ADMIN') {
-      console.log('❌ Users Create Temp API: Forbidden - user role:', user.role);
-      return NextResponse.json(
-        { success: false, error: 'Only administrators can create users' },
-        { status: 403 }
-      );
-    }
-
-    const data = await request.json();
-    console.log('🔔 Users Create Temp API: Request data:', { ...data, password: '[REDACTED]' });
     
-    const { name, email, password, roleId } = data;
-    if (!name || !email || !password || !roleId) {
-      console.log('❌ Users Create Temp API: Missing required fields');
+    // Create admin client with service role key
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    
+    // Create the user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: 'pradasamuel1@gmail.com',
+      password: '$OswaldoLumo2025$',
+      email_confirm: true,
+      user_metadata: {
+        name: 'OSWALDO PRADA'
+      }
+    });
+    
+    if (authError) {
+      console.error('❌ Auth error:', authError);
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: authError.message },
         { status: 400 }
       );
     }
-
-    const supabase = await createServerClient();
     
-    // For now, just create the user profile without Supabase Auth
-    // The user will need to use "Forgot Password" to set their password
-    console.log('🔔 Users Create Temp API: Creating user profile without auth...');
+    console.log('✅ Auth user created:', authData.user?.id);
     
-    // Generate a temporary ID (in production, this should be handled differently)
-    const tempUserId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    const { data: newUser, error: dbError } = await supabase
+    // Create user profile
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
       .insert({
-        id: tempUserId,
-        name: name,
-        email: email,
-        role_id: roleId,
-        is_active: data.isActive !== false
+        id: authData.user!.id,
+        email: 'pradasamuel1@gmail.com',
+        name: 'OSWALDO PRADA',
+        password: 'temp_hash', // This will be handled by auth
+        role_id: '408782ff-7669-442f-a626-6eb9569d3f77', // USER role ID
+        is_active: true
       })
-      .select(`
-        id,
-        name,
-        email,
-        is_active,
-        created_at,
-        updated_at,
-        role:roles(id, name, description)
-      `)
+      .select()
       .single();
-
-    if (dbError) {
-      console.error('❌ Users Create Temp API: Database error:', dbError);
+    
+    if (profileError) {
+      console.error('❌ Profile error:', profileError);
+      // Try to delete the auth user
+      await supabaseAdmin.auth.admin.deleteUser(authData.user!.id);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: dbError.message || 'Failed to create user profile' 
-        },
-        { status: 500 }
+        { success: false, error: profileError.message },
+        { status: 400 }
       );
     }
-
-    console.log('✅ Users Create Temp API: User profile created:', newUser);
-
+    
+    console.log('✅ User profile created:', profile);
+    
     return NextResponse.json({
       success: true,
+      message: 'User created successfully',
       user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        isActive: newUser.is_active,
-        createdAt: newUser.created_at,
-        updatedAt: newUser.updated_at,
-        role: newUser.role
-      },
-      warning: 'User created without authentication. They will need to use "Forgot Password" to set their password.'
-    }, { status: 201 });
+        id: authData.user!.id,
+        email: 'pradasamuel1@gmail.com',
+        name: 'OSWALDO PRADA'
+      }
+    });
+    
   } catch (error) {
-    console.error('❌ Users Create Temp API: Unexpected error:', error);
+    console.error('❌ Unexpected error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to create user' 
-      },
+      { success: false, error: 'Failed to create user' },
       { status: 500 }
     );
   }

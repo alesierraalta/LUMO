@@ -83,11 +83,22 @@ export default function NewUserPage() {
       console.log('🔔 Session result:', {
         hasSession: !!session,
         hasError: !!sessionError,
-        error: sessionError?.message
+        error: sessionError?.message,
+        sessionData: session
       });
       
+      console.log('🔔 Session check - sessionError:', sessionError);
+      console.log('🔔 Session check - session object:', session);
+      console.log('🔔 Session check - will enter error block?', sessionError || !session);
+      
       if (sessionError || !session) {
-        console.error('❌ Session error:', sessionError);
+        console.error('❌ No session found:', {
+          sessionError,
+          hasSession: !!session,
+          sessionIsNull: session === null,
+          sessionIsUndefined: session === undefined,
+          sessionType: typeof session
+        });
         setLoading(false);
         toast({
           title: 'Error',
@@ -97,8 +108,11 @@ export default function NewUserPage() {
         return;
       }
       
+      console.log('✅ Session validated successfully, continuing with token extraction...');
+      
       token = session.access_token;
       console.log('🔔 Got token:', token ? 'Yes' : 'No');
+      console.log('🔔 Token preview:', token?.substring(0, 50) + '...');
     } catch (sessionCatchError) {
       console.error('❌ Caught error getting session:', sessionCatchError);
       setLoading(false);

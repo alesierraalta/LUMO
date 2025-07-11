@@ -19,10 +19,13 @@ export const hashPassword = async (password: string): Promise<string> => {
 // Get current user from Supabase ONLY
 export const getCurrentUser = async (): Promise<any> => {
   console.log('🔍 getCurrentUser: Starting Supabase-only authentication check...');
+  console.log('🔍 getCurrentUser: Environment check - NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔍 getCurrentUser: Environment check - NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING');
   
-  // CRITICAL FIX: Handle build-time execution
+  // CRITICAL FIX: Handle build-time execution with better error handling
   if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    console.log('⚠️ getCurrentUser: Build-time execution detected, returning null');
+    console.error('❌ getCurrentUser: NEXT_PUBLIC_SUPABASE_URL is missing in production environment!');
+    console.error('❌ getCurrentUser: This will cause authentication to fail. Please set NEXT_PUBLIC_SUPABASE_URL in Vercel.');
     return null;
   }
   
@@ -127,6 +130,20 @@ export const getCurrentUser = async (): Promise<any> => {
         id: '5f493c59-420e-4a9b-afed-0b67bfa892d5', // Real UUID from Supabase Auth
         email: 'alesierraalta@gmail.com',
         name: 'Dev Admin',
+        role: 'ADMIN',
+        isActive: true,
+        permissions: ['read', 'write', 'delete', 'admin']
+      };
+    }
+
+    // PRODUCTION FIX: Temporary admin access for production testing
+    // This should be removed once proper authentication is implemented
+    if (process.env.NODE_ENV === 'production' && process.env.ENABLE_PROD_ADMIN === 'true') {
+      console.log('🔧 getCurrentUser: Production mode - returning temporary admin user for testing');
+      return {
+        id: '5f493c59-420e-4a9b-afed-0b67bfa892d5', // Real UUID from Supabase Auth
+        email: 'alesierraalta@gmail.com',
+        name: 'Prod Admin',
         role: 'ADMIN',
         isActive: true,
         permissions: ['read', 'write', 'delete', 'admin']

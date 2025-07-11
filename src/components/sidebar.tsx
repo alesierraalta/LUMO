@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onClose, 
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/auth/login');
+      router.push('/login');
     } catch (error) {
       console.error('Error during logout:', error);
     }

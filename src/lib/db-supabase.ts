@@ -1792,6 +1792,60 @@ export const db = {
       if (error) throw new Error(`Database error: ${error.message}`);
 
       return { count: 1 };
+    }),
+    
+    count: createBuildSafeOperation(async (params: any = {}) => {
+      let query = supabase.from('locations').select('*', { count: 'exact', head: true });
+      
+      if (params.where) {
+        Object.entries(params.where).forEach(([key, value]) => {
+          if (key === 'isActive') {
+            query = query.eq('is_active', value);
+          } else {
+            query = query.eq(key, value);
+          }
+        });
+      }
+
+      const { count, error } = await query;
+      if (error) throw new Error(`Database error: ${error.message}`);
+
+      return count || 0;
+    }),
+
+    deleteMany: createBuildSafeOperation(async (params: any = {}) => {
+      let query = supabase.from('locations').delete();
+
+      // For safety, require at least one condition or an explicit "delete all" flag
+      if (!params.where && !params.deleteAll) {
+        throw new Error('Database error: No conditions specified');
+      }
+
+      // If deleteAll is true, delete all records without conditions
+      if (params.deleteAll) {
+        // Call setDeleteAll for mock compatibility
+        if (typeof (query as any).setDeleteAll === 'function') {
+          (query as any).setDeleteAll();
+        }
+        // Delete all records without any condition
+        // Note: This is intentionally left without conditions as deleteAll is explicit
+      } else if (params.where) {
+        Object.entries(params.where).forEach(([key, value]) => {
+          if (key === 'isActive') {
+            query = query.eq('is_active', value);
+          } else {
+            query = query.eq(key, value);
+          }
+        });
+      }
+
+      const { error } = await query;
+      if (error) {
+        console.error('❌ Supabase location.deleteMany error:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      return { count: 1 }; // Simplified return
     })
   },
   priceHistory: {

@@ -71,9 +71,42 @@ class CustomSupabaseClient {
     // Try to load session from localStorage if available
     if (typeof window !== 'undefined') {
       try {
+        console.log('🔍 [CustomSupabaseClient] Checking localStorage for session...');
+        
+        // Check all localStorage keys for debugging
+        const allKeys = Object.keys(localStorage);
+        const supabaseKeys = allKeys.filter(key => key.includes('supabase'));
+        console.log('🔍 [CustomSupabaseClient] Found Supabase keys in localStorage:', supabaseKeys);
+        
         const storedSession = localStorage.getItem('supabase.auth.token');
         if (storedSession) {
+          console.log('✅ [CustomSupabaseClient] Found stored session');
           this.session = JSON.parse(storedSession);
+        } else {
+          console.log('❌ [CustomSupabaseClient] No stored session found under "supabase.auth.token"');
+          
+          // Try alternative key patterns
+          const alternativeKeys = [
+            'sb-ubjujxtvlubxowsphvuk-auth-token',
+            'supabase.auth.token.session',
+            ...supabaseKeys
+          ];
+          
+          for (const key of alternativeKeys) {
+            const value = localStorage.getItem(key);
+            if (value) {
+              try {
+                const parsed = JSON.parse(value);
+                if (parsed.access_token || parsed.session?.access_token) {
+                  console.log(`✅ [CustomSupabaseClient] Found session under alternative key: ${key}`);
+                  this.session = parsed.session || parsed;
+                  break;
+                }
+              } catch (e) {
+                // Not valid JSON or not a session object
+              }
+            }
+          }
         }
       } catch (error) {
         console.warn('Failed to load stored session:', error);
@@ -231,31 +264,42 @@ class CustomSupabaseClient {
 
     getSession: async (): Promise<{ data: { session: Session | null }; error: any }> => {
       try {
+        console.log('🔍 [getSession] Called, current session:', this.session ? 'exists' : 'null');
+        
         if (!this.session) {
+          console.log('❌ [getSession] No session in memory');
           return {
             data: { session: null },
             error: null,
           };
         }
 
+        console.log('🔍 [getSession] Session exists, checking expiration...');
+        console.log('🔍 [getSession] Expires at:', this.session.expires_at, 'Current time:', Date.now() / 1000);
+        
         // Check if token is expired
         if (this.session.expires_at && Date.now() / 1000 > this.session.expires_at) {
+          console.log('⚠️ [getSession] Token expired, attempting refresh...');
           // Try to refresh token
           const refreshResult = await this.refreshToken();
           if (refreshResult.error) {
+            console.error('❌ [getSession] Token refresh failed:', refreshResult.error);
             this.saveSession(null);
             return {
               data: { session: null },
               error: refreshResult.error,
             };
           }
+          console.log('✅ [getSession] Token refreshed successfully');
         }
 
+        console.log('✅ [getSession] Returning valid session');
         return {
           data: { session: this.session },
           error: null,
         };
       } catch (error) {
+        console.error('❌ [getSession] Unexpected error:', error);
         return {
           data: { session: null },
           error,
@@ -518,8 +562,10 @@ class CustomQueryBuilder implements QueryBuilder {
 
 // Singleton instance
 let customSupabaseClient: CustomSupabaseClient | null = null;
+let instanceCount = 0;
 
 export function getCustomSupabaseClient(): CustomSupabaseClient {
+  console.log('🔍 [getCustomSupabaseClient] Called, current instance:', customSupabaseClient ? 'exists' : 'null');
   // BUILD-TIME SAFETY: Return mock client during build ONLY
   const isBuild = (
     process.env.NEXT_PHASE === 'phase-production-build' ||
@@ -611,10 +657,20 @@ export function getCustomSupabaseClient(): CustomSupabaseClient {
   }
 
   if (!customSupabaseClient) {
+    instanceCount++;
+    console.log(`🔨 [getCustomSupabaseClient] Creating NEW instance #${instanceCount}`);
+    
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+    console.log('🔧 [getCustomSupabaseClient] Configuration:', {
+      url: supabaseUrl,
+      keyPreview: supabaseAnonKey?.substring(0, 20) + '...'
+    });
+
     customSupabaseClient = new CustomSupabaseClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    console.log('♻️ [getCustomSupabaseClient] Reusing existing instance');
   }
 
   return customSupabaseClient;

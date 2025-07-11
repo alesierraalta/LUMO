@@ -1,9 +1,8 @@
-'use client';
-
 /**
- * Centralized API client with automatic authentication
- * Fixes 401 Unauthorized errors by including Bearer tokens in all requests
+ * Utility functions for making authenticated API requests
  */
+
+import { getSupabaseClient } from '@/lib/supabase-singleton';
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -12,242 +11,157 @@ export interface ApiResponse<T = any> {
 }
 
 /**
- * Extract authentication token from cookies
+ * Get authorization headers for API requests
  */
-const getAuthToken = (): string | null => {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
+export async function getAuthHeaders(): Promise<HeadersInit> {
   try {
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === 'auth-token') {
-        return value;
-      }
+    const supabase = getSupabaseClient();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session?.access_token) {
+      console.warn('No active session for API request');
+      return {
+        'Content-Type': 'application/json',
+      };
     }
-    return null;
+    
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    };
   } catch (error) {
-    console.error('Error extracting auth token:', error);
-    return null;
+    console.error('Error getting auth headers:', error);
+    return {
+      'Content-Type': 'application/json',
+    };
   }
-};
+}
 
 /**
- * Get authentication headers with Bearer token
+ * Make an authenticated GET request
  */
-const getAuthHeaders = (): HeadersInit => {
-  const token = getAuthToken();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+export async function apiGet<T = any>(url: string): Promise<ApiResponse<T>> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+    
+    const data = response.ok ? await response.json() : null;
+    
+    return {
+      data,
+      error: response.ok ? undefined : data?.error || `Request failed with status ${response.status}`,
+      status: response.status,
+    };
+  } catch (error) {
+    console.error(`API GET error for ${url}:`, error);
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      status: 0,
+    };
   }
-
-  return headers;
-};
+}
 
 /**
- * Authenticated fetch wrapper that automatically includes Bearer token
+ * Make an authenticated POST request
  */
-export const authenticatedFetch = async (
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> => {
-  const authHeaders = getAuthHeaders();
-  
-  const config: RequestInit = {
+export async function apiPost<T = any>(url: string, body?: any): Promise<ApiResponse<T>> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    
+    const data = response.ok ? await response.json() : null;
+    
+    return {
+      data,
+      error: response.ok ? undefined : data?.error || `Request failed with status ${response.status}`,
+      status: response.status,
+    };
+  } catch (error) {
+    console.error(`API POST error for ${url}:`, error);
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      status: 0,
+    };
+  }
+}
+
+/**
+ * Make an authenticated PUT request
+ */
+export async function apiPut<T = any>(url: string, body?: any): Promise<ApiResponse<T>> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      credentials: 'include',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    
+    const data = response.ok ? await response.json() : null;
+    
+    return {
+      data,
+      error: response.ok ? undefined : data?.error || `Request failed with status ${response.status}`,
+      status: response.status,
+    };
+  } catch (error) {
+    console.error(`API PUT error for ${url}:`, error);
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      status: 0,
+    };
+  }
+}
+
+/**
+ * Make an authenticated DELETE request
+ */
+export async function apiDelete<T = any>(url: string): Promise<ApiResponse<T>> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers,
+      credentials: 'include',
+    });
+    
+    const data = response.ok ? await response.json() : null;
+    
+    return {
+      data,
+      error: response.ok ? undefined : data?.error || `Request failed with status ${response.status}`,
+      status: response.status,
+    };
+  } catch (error) {
+    console.error(`API DELETE error for ${url}:`, error);
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      status: 0,
+    };
+  }
+}
+
+/**
+ * Legacy fetch with auth headers (for gradual migration)
+ */
+export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const headers = await getAuthHeaders();
+  return fetch(url, {
     ...options,
-    credentials: 'include',
     headers: {
-      ...authHeaders,
+      ...headers,
       ...options.headers,
     },
-  };
-
-  try {
-    const response = await fetch(url, config);
-    
-    // Log authentication errors for debugging
-    if (response.status === 401) {
-      console.error(`Authentication failed for ${url}:`, {
-        status: response.status,
-        hasToken: !!getAuthToken(),
-        headers: config.headers,
-      });
-    }
-    
-    return response;
-  } catch (error) {
-    console.error(`Network error for ${url}:`, error);
-    throw error;
-  }
-};
-
-/**
- * Authenticated API client with typed responses
- */
-export const apiClient = {
-  /**
-   * GET request with authentication
-   */
-  get: async <T = any>(url: string): Promise<ApiResponse<T>> => {
-    try {
-      const response = await authenticatedFetch(url, {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return {
-          error: `Failed to fetch: ${response.status} - ${errorText}`,
-          status: response.status,
-        };
-      }
-
-      const data = await response.json();
-      return {
-        data,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : 'Network error',
-        status: 0,
-      };
-    }
-  },
-
-  /**
-   * POST request with authentication
-   */
-  post: async <T = any>(url: string, body?: any): Promise<ApiResponse<T>> => {
-    try {
-      const response = await authenticatedFetch(url, {
-        method: 'POST',
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return {
-          error: `Failed to create: ${response.status} - ${errorText}`,
-          status: response.status,
-        };
-      }
-
-      const data = await response.json();
-      return {
-        data,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : 'Network error',
-        status: 0,
-      };
-    }
-  },
-
-  /**
-   * PUT request with authentication
-   */
-  put: async <T = any>(url: string, body?: any): Promise<ApiResponse<T>> => {
-    try {
-      const response = await authenticatedFetch(url, {
-        method: 'PUT',
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return {
-          error: `Failed to update: ${response.status} - ${errorText}`,
-          status: response.status,
-        };
-      }
-
-      const data = await response.json();
-      return {
-        data,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : 'Network error',
-        status: 0,
-      };
-    }
-  },
-
-  /**
-   * DELETE request with authentication
-   */
-  delete: async <T = any>(url: string): Promise<ApiResponse<T>> => {
-    try {
-      const response = await authenticatedFetch(url, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return {
-          error: `Failed to delete: ${response.status} - ${errorText}`,
-          status: response.status,
-        };
-      }
-
-      // Handle empty response for DELETE requests
-      const contentType = response.headers.get('content-type');
-      let data = null;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      }
-
-      return {
-        data,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : 'Network error',
-        status: 0,
-      };
-    }
-  },
-};
-
-/**
- * Specific API endpoints with authentication
- */
-export const locationsApi = {
-  getAll: () => apiClient.get('/api/locations'),
-  getById: (id: string) => apiClient.get(`/api/locations/${id}`),
-  create: (data: any) => apiClient.post('/api/locations', data),
-  update: (id: string, data: any) => apiClient.put(`/api/locations/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/locations/${id}`),
-};
-
-export const categoriesApi = {
-  getAll: () => apiClient.get('/api/categories'),
-  getById: (id: string) => apiClient.get(`/api/categories/${id}`),
-  create: (data: any) => apiClient.post('/api/categories', data),
-  update: (id: string, data: any) => apiClient.put(`/api/categories/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/categories/${id}`),
-};
-
-/**
- * Handle authentication errors consistently
- */
-export const handleAuthError = (error: string, status: number) => {
-  if (status === 401) {
-    console.error('Authentication required. Redirecting to login...');
-    // In a real app, you might want to redirect to login page
-    // window.location.href = '/login';
-    return 'Authentication required. Please log in again.';
-  }
-  return error;
-}; 
+    credentials: 'include',
+  });
+}

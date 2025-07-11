@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import InventoryTable from '@/components/inventory/inventory-table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { apiGet } from '@/lib/api-client';
 
 interface InventoryMetrics {
   totalItems: number;
@@ -74,22 +75,31 @@ export default function InventoryPage() {
     try {
       setLoading(true);
       
-      // Fetch inventory items
-      const inventoryResponse = await fetch('/api/inventory');
-      const inventoryData = await inventoryResponse.json();
+      // Fetch inventory items and categories with authentication
+      const [inventoryRes, categoriesRes] = await Promise.all([
+        apiGet('/api/inventory'),
+        apiGet('/api/categories')
+      ]);
       
-      // Fetch categories for filter
-      const categoriesResponse = await fetch('/api/categories');
-      const categoriesData = await categoriesResponse.json();
-      
-      if (inventoryData.success) {
-        const inventoryItems = inventoryData.items || [];
+      if (inventoryRes.data?.success) {
+        const inventoryItems = inventoryRes.data.items || [];
         setItems(inventoryItems);
         calculateMetrics(inventoryItems);
+      } else if (inventoryRes.error) {
+        console.error('Inventory API error:', inventoryRes.error);
+        toast({
+          title: 'Authentication Error',
+          description: inventoryRes.status === 401
+            ? 'Your session has expired. Please log in again.'
+            : 'Failed to fetch inventory data',
+          variant: 'destructive'
+        });
       }
       
-      if (categoriesData.success) {
-        setCategories(categoriesData.categories || []);
+      if (categoriesRes.data?.success) {
+        setCategories(categoriesRes.data.categories || []);
+      } else if (categoriesRes.error) {
+        console.error('Categories API error:', categoriesRes.error);
       }
       
     } catch (error) {

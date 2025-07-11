@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CategoryList } from '@/components/categories/category-list';
 import { CategorySearch } from '@/components/categories/category-search';
 import type { Category } from '@/app/(main)/categories/columns';
+import { apiGet } from '@/lib/api-client';
 
 interface CategoryMetrics {
   totalCategories: number;
@@ -58,17 +59,19 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/categories');
-      const data = await response.json();
+      const response = await apiGet('/api/categories');
       
-      if (data.success) {
-        const categoriesData = data.categories || [];
+      if (response.data?.success) {
+        const categoriesData = response.data.categories || [];
         setCategories(categoriesData);
         calculateMetrics(categoriesData);
-      } else {
+      } else if (response.error) {
+        console.error('Categories API error:', response.error);
         toast({
-          title: 'Error',
-          description: 'Failed to fetch categories',
+          title: 'Authentication Error',
+          description: response.status === 401
+            ? 'Your session has expired. Please log in again.'
+            : 'Failed to fetch categories',
           variant: 'destructive'
         });
       }

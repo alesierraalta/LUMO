@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Package, Users, TrendingUp, AlertTriangle, DollarSign, Archive, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { apiGet } from '@/lib/api-client';
 
 interface DashboardStats {
   totalProducts: number;
@@ -34,11 +35,11 @@ export default function DashboardPage() {
     try {
       setLoadingStats(true);
       
-      // Fetch multiple endpoints in parallel
-      const [productsRes, usersRes, categoriesRes] = await Promise.all([
-        fetch('/api/inventory').catch(() => null),
-        fetch('/api/users').catch(() => null),
-        fetch('/api/categories').catch(() => null)
+      // Fetch multiple endpoints in parallel with authentication
+      const [inventoryRes, usersRes, categoriesRes] = await Promise.all([
+        apiGet('/api/inventory'),
+        apiGet('/api/users'),
+        apiGet('/api/categories')
       ]);
 
       let totalProducts = 0;
@@ -46,23 +47,23 @@ export default function DashboardPage() {
       let totalValue = 0;
 
       // Process products data
-      if (productsRes && productsRes.ok) {
-        const { items: products = [] } = await productsRes.json();
+      if (inventoryRes.data) {
+        const { items: products = [] } = inventoryRes.data;
         totalProducts = products.length;
         lowStockItems = products.filter((p: any) => p.quantity <= (p.minStockLevel || 5)).length;
         totalValue = products.reduce((sum: number, p: any) => sum + ((p.price ?? p.unitPrice) * p.quantity || 0), 0);
       }
 
       let totalUsers = 0;
-      if (usersRes && usersRes.ok) {
-        const users = await usersRes.json();
-        totalUsers = users.length || 0;
+      if (usersRes.data) {
+        const users = usersRes.data;
+        totalUsers = Array.isArray(users) ? users.length : 0;
       }
 
       let categoriesCount = 0;
-      if (categoriesRes && categoriesRes.ok) {
-        const categories = await categoriesRes.json();
-        categoriesCount = categories.length || 0;
+      if (categoriesRes.data) {
+        const categories = categoriesRes.data;
+        categoriesCount = Array.isArray(categories) ? categories.length : 0;
       }
 
       setStats({

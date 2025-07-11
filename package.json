@@ -61,6 +61,9 @@
     "env:setup:complete": "node scripts/setup-dev-prod-env.js",
     "env:dev": "cp env.local.template .env.local",
     "env:check": "vercel env ls",
+    "env:validate": "node scripts/validate-environment.js",
+    "validate:env": "node scripts/validate-environment.js",
+    "env:safety-check": "node scripts/validate-environment.js",
     "github:connect": "node scripts/setup-github-vercel.js",
     "test:prod:connectivity": "cross-env KEYS_DEBUG=true node scripts/test-production-connectivity.js",
     "verify:env": "node scripts/verify-env.js"

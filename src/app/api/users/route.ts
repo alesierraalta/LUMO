@@ -101,6 +101,13 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
+    const { name, email, password, roleId } = data;
+    if (!name || !email || !password || !roleId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
     const supabase = await createServerClient();
     
     const { data: newUser, error } = await supabase

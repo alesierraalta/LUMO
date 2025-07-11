@@ -47,10 +47,10 @@ export default function DashboardPage() {
 
       // Process products data
       if (productsRes && productsRes.ok) {
-        const products = await productsRes.json();
-        totalProducts = products.length || 0;
+        const { items: products = [] } = await productsRes.json();
+        totalProducts = products.length;
         lowStockItems = products.filter((p: any) => p.quantity <= (p.minStockLevel || 5)).length;
-        totalValue = products.reduce((sum: number, p: any) => sum + (p.price * p.quantity || 0), 0);
+        totalValue = products.reduce((sum: number, p: any) => sum + ((p.price ?? p.unitPrice) * p.quantity || 0), 0);
       }
 
       let totalUsers = 0;

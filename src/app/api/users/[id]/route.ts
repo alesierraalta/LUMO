@@ -239,8 +239,14 @@ export async function DELETE(
     
     // Get user from token or session
     const token = getTokenFromRequest(request);
+    console.log('🔍 Token extracted:', token ? 'YES' : 'NO', token?.substring(0, 20) + '...');
     const currentUser = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     console.log('🔍 Current user:', currentUser);
+    console.log('🔍 Auth functions:', {
+      getTokenFromRequest: typeof getTokenFromRequest,
+      getCurrentUserFromToken: typeof getCurrentUserFromToken,
+      getCurrentUser: typeof getCurrentUser
+    });
     
     if (!currentUser) {
       console.log('❌ No current user found');

@@ -176,6 +176,12 @@ const generateMockData = (tableName, overrides = {}) => {
         userOverrides.is_active = userOverrides.isActive;
         delete userOverrides.isActive;
       }
+      
+      // Handle name fields - support both firstName/lastName and name
+      let userName = userOverrides.name;
+      let firstName = userOverrides.firstName;
+      let lastName = userOverrides.lastName;
+      
       if (userOverrides.firstName) {
         userOverrides.first_name = userOverrides.firstName;
         delete userOverrides.firstName;
@@ -185,9 +191,23 @@ const generateMockData = (tableName, overrides = {}) => {
         delete userOverrides.lastName;
       }
       
+      // If name is not provided but firstName/lastName are, construct name
+      if (!userName && (firstName || lastName)) {
+        userName = [firstName, lastName].filter(Boolean).join(' ');
+      }
+      
+      // If firstName/lastName not provided but name is, split name
+      if (userName && !firstName && !lastName) {
+        const nameParts = userName.split(' ');
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      }
+      
       return {
         ...baseData,
-        name: 'Mock User',
+        name: userName || 'Mock User',
+        first_name: firstName || 'Mock',
+        last_name: lastName || 'User',
         email: `mock-${Date.now()}@test.com`,
         password: 'mock-password',
         role_id: 'mock-role-id',
@@ -1053,8 +1073,9 @@ const executeQuery = (query) => {
       
       baseItem.email = item.email;
       baseItem.password = item.password;
-      baseItem.firstName = item.first_name || item.firstName;
-      baseItem.lastName = item.last_name || item.lastName;
+      baseItem.name = item.name;
+      baseItem.firstName = item.first_name || item.firstName || item.name?.split(' ')[0];
+      baseItem.lastName = item.last_name || item.lastName || item.name?.split(' ').slice(1).join(' ');
       
       // ✅ CRITICAL FIX: Enhanced roleId field mapping with comprehensive fallback logic
       const roleId = item.role_id || item.roleId;
@@ -1115,7 +1136,33 @@ const mockSupabaseClient = {
   from: jest.fn((tableName) => createQueryBuilder(tableName)),
   
   auth: {
-    getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+    getUser: jest.fn((token) => {
+      // If no token provided, return null user
+      if (!token) {
+        return Promise.resolve({ data: { user: null }, error: null });
+      }
+      
+      // Simple token validation - just check if it's a valid format
+      if (typeof token === 'string' && token.length > 10) {
+        // Return a mock user for valid tokens
+        return Promise.resolve({
+          data: {
+            user: {
+              id: 'test-user-id',
+              email: 'test@example.com',
+              user_metadata: {
+                name: 'Test User'
+              }
+            }
+          },
+          error: null
+        });
+      }
+      
+      // Invalid token
+      return Promise.resolve({ data: { user: null }, error: null });
+    }),
+    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: null, error: null })),
     signOut: jest.fn(() => Promise.resolve({ error: null })),
   },

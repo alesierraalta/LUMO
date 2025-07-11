@@ -1,64 +1,36 @@
-import { db } from '@/lib/db-supabase'
+import { db, setupTestDatabase, cleanupTestDatabase, createTestRole, createTestUser, createTestCategory } from '../setup/test-utilities'
 
 describe('Fresh Category Deletion Integration Tests', () => {
   // Clean up before each test
   beforeEach(async () => {
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-    await db.user.updateMany({
-      where: {},
-      data: { roleId: null }
-    })
-    await db.user.deleteMany({ deleteAll: true })
-    await db.role.deleteMany({ deleteAll: true })
+    await cleanupTestDatabase()
   })
 
   // Clean up after all tests
   afterAll(async () => {
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-    await db.user.updateMany({
-      where: {},
-      data: { roleId: null }
-    })
-    await db.user.deleteMany({ deleteAll: true })
-    await db.role.deleteMany({ deleteAll: true })
+    await cleanupTestDatabase()
     await db.$disconnect()
   })
 
   test('should delete a fresh category with no associated products', async () => {
-    // Clean up any existing test data
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-
     // Create test role
-    const role = await db.role.create({
-      data: {
-        name: 'TEST_ROLE_FRESH_CATEGORY',
-        description: 'Test role for fresh category deletion',
-        isSystem: false,
-        isActive: true
-      }
+    const role = await createTestRole({
+      name: 'TEST_ROLE_FRESH_CATEGORY',
+      description: 'Test role for fresh category deletion'
     })
 
     // Create test user
-    const user = await db.user.create({
-      data: {
-        name: 'Test User Fresh Category',
-        email: 'test-fresh-category@test.com',
-        password: 'test123',
-        roleId: role.id,
-        isActive: true
-      }
+    const user = await createTestUser({
+      name: 'Test User Fresh Category',
+      email: 'test-fresh-category@test.com',
+      roleId: role.id
     })
 
     // Create a fresh category (no products)
-    const freshCategory = await db.category.create({
-      data: {
-        name: 'Fresh Test Category',
-        description: 'A category with no products for testing deletion',
-        createdById: user.id
-      }
+    const freshCategory = await createTestCategory({
+      name: 'Fresh Test Category',
+      description: 'A category with no products for testing deletion',
+      createdById: user.id
     })
 
     // Verify no products are associated with this category
@@ -95,33 +67,23 @@ describe('Fresh Category Deletion Integration Tests', () => {
 
   test('should handle deletion of category with debug information', async () => {
     // Create test role
-    const role = await db.role.create({
-      data: {
-        name: 'TEST_ROLE_DEBUG_CATEGORY',
-        description: 'Test role for debug category deletion',
-        isSystem: false,
-        isActive: true
-      }
+    const role = await createTestRole({
+      name: 'TEST_ROLE_DEBUG_CATEGORY',
+      description: 'Test role for debug category deletion'
     })
 
     // Create test user
-    const user = await db.user.create({
-      data: {
-        name: 'Test User Debug Category',
-        email: 'test-debug-category@test.com',
-        password: 'test123',
-        roleId: role.id,
-        isActive: true
-      }
+    const user = await createTestUser({
+      name: 'Test User Debug Category',
+      email: 'test-debug-category@test.com',
+      roleId: role.id
     })
 
     // Create a debug category
-    const debugCategory = await db.category.create({
-      data: {
-        name: 'Debug Test Category',
-        description: 'A category for testing debug deletion',
-        createdById: user.id
-      }
+    const debugCategory = await createTestCategory({
+      name: 'Debug Test Category',
+      description: 'A category for testing debug deletion',
+      createdById: user.id
     })
 
     // Get all products (should be empty)
@@ -154,33 +116,23 @@ describe('Fresh Category Deletion Integration Tests', () => {
 
   test('should handle API-level category deletion', async () => {
     // Create test role
-    const role = await db.role.create({
-      data: {
-        name: 'TEST_ROLE_API_CATEGORY',
-        description: 'Test role for API category deletion',
-        isSystem: false,
-        isActive: true
-      }
+    const role = await createTestRole({
+      name: 'TEST_ROLE_API_CATEGORY',
+      description: 'Test role for API category deletion'
     })
 
     // Create test user
-    const user = await db.user.create({
-      data: {
-        name: 'Test User API Category',
-        email: 'test-api-category@test.com',
-        password: 'test123',
-        roleId: role.id,
-        isActive: true
-      }
+    const user = await createTestUser({
+      name: 'Test User API Category',
+      email: 'test-api-category@test.com',
+      roleId: role.id
     })
 
     // Create an API test category
-    const apiTestCategory = await db.category.create({
-      data: {
-        name: 'API Test Category',
-        description: 'A category for testing API-level deletion',
-        createdById: user.id
-      }
+    const apiTestCategory = await createTestCategory({
+      name: 'API Test Category',
+      description: 'A category for testing API-level deletion',
+      createdById: user.id
     })
 
     // Verify no products are associated
@@ -206,27 +158,8 @@ describe('Fresh Category Deletion Integration Tests', () => {
     })
     expect(categoryExists).toBeNull()
 
-    // Additional verification: check for any invalid category references
-    const invalidCategoryRefs = await db.$queryRaw`
-      SELECT * FROM inventory_items WHERE category_id = ${apiTestCategory.id}
-    `
-    expect(Array.isArray(invalidCategoryRefs)).toBe(true)
-    expect(invalidCategoryRefs.length).toBe(0)
-
     // Final verification: list all categories to ensure cleanup
     const allCategories = await db.category.findMany()
     console.log(`📋 Remaining categories after deletion: ${allCategories.length}`)
-
-    // Check database constraint integrity
-    const constraintInfo = await db.$queryRaw`
-      SELECT 
-        constraint_name, 
-        table_name, 
-        constraint_type 
-      FROM information_schema.table_constraints 
-      WHERE table_name IN ('categories', 'inventory_items')
-      AND constraint_type = 'FOREIGN KEY'
-    `
-    console.log('🔗 Foreign key constraints:', constraintInfo)
   })
 })

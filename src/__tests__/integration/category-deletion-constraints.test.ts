@@ -1,41 +1,24 @@
-import { db } from '@/lib/db-supabase'
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, afterAll } from '@jest/globals'
+import { setupTestDatabase, cleanupTestDatabase, disconnectDatabase, db } from '../setup/test-utilities'
 
 describe('Category Deletion Constraints Integration Tests', () => {
   // Clean up before each test
   beforeEach(async () => {
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-    await db.user.updateMany({
-      where: {},
-      data: { roleId: null }
-    })
-    await db.user.deleteMany({ deleteAll: true })
-    await db.role.deleteMany({ deleteAll: true })
+    await cleanupTestDatabase()
+    await setupTestDatabase()
   })
 
   // Clean up after all tests
   afterAll(async () => {
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-    await db.user.updateMany({
-      where: {},
-      data: { roleId: null }
-    })
-    await db.user.deleteMany({ deleteAll: true })
-    await db.role.deleteMany({ deleteAll: true })
-    await db.$disconnect()
+    await cleanupTestDatabase()
+    await disconnectDatabase()
   })
 
   it('should prevent deletion of category with associated products', async () => {
-    // Clean up any existing test data
-    await db.inventoryItem.deleteMany({ deleteAll: true })
-    await db.category.deleteMany({ deleteAll: true })
-
     // Create test role
     const role = await db.role.create({
       data: {
-        name: 'TEST_ROLE_CONSTRAINT_CATEGORY',
+        name: `TEST_ROLE_CONSTRAINT_CATEGORY_${Date.now()}`,
         description: 'Test role for constraint category deletion',
         isSystem: false,
         isActive: true
@@ -46,7 +29,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     const user = await db.user.create({
       data: {
         name: 'Test User Constraint Category',
-        email: 'test-constraint-category@test.com',
+        email: `test-constraint-category-${Date.now()}@test.com`,
         password: 'test123',
         roleId: role.id,
         isActive: true
@@ -56,7 +39,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     // Create a category
     const category = await db.category.create({
       data: {
-        name: 'Category with Products',
+        name: `Category with Products ${Date.now()}`,
         description: 'A category that has associated products',
         createdById: user.id
       }
@@ -66,12 +49,13 @@ describe('Category Deletion Constraints Integration Tests', () => {
     const product = await db.inventoryItem.create({
       data: {
         name: 'Test Product',
-        sku: 'TEST-SKU-001',
+        sku: `TEST-SKU-${Date.now()}`,
         description: 'A test product',
         categoryId: category.id,
-        quantity: 10,
+        currentStock: 10,
         minStockLevel: 5,
-        unitPrice: 100.00,
+        price: 100.00,
+        cost: 80.00,
         location: 'Test Location',
         createdById: user.id
       }
@@ -85,38 +69,21 @@ describe('Category Deletion Constraints Integration Tests', () => {
     })
     expect(productsCount).toBe(1)
 
-    // Attempt to delete the category - should fail or handle constraint
-    try {
-      await db.category.delete({
+    // Attempt to delete the category - should fail due to foreign key constraint
+    await expect(
+      db.category.delete({
         where: {
           id: category.id
         }
       })
-      
-      // If deletion succeeds, verify category still exists due to constraint
-      const categoryStillExists = await db.category.findUnique({
-        where: {
-          id: category.id
-        }
-      })
-      
-      // In a real database with foreign key constraints, the category should still exist
-      // or the deletion should fail. For this test, we'll check if the category was deleted
-      // but products remain (which would indicate a constraint violation was handled)
-      console.log('Category deletion completed, checking constraints...')
-      
-    } catch (error) {
-      // Expected behavior: deletion should fail due to foreign key constraint
-      console.log('Category deletion failed as expected due to constraints:', error.message)
-      expect(error.message).toContain('constraint')
-    }
+    ).rejects.toThrow(/Cannot delete categories record .* because it is referenced by inventory/)
   })
 
   it('should allow deletion of category without associated products', async () => {
     // Create test role
     const role = await db.role.create({
       data: {
-        name: 'TEST_ROLE_EMPTY_CATEGORY',
+        name: `TEST_ROLE_EMPTY_CATEGORY_${Date.now()}`,
         description: 'Test role for empty category deletion',
         isSystem: false,
         isActive: true
@@ -127,7 +94,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     const user = await db.user.create({
       data: {
         name: 'Test User Empty Category',
-        email: 'test-empty-category@test.com',
+        email: `test-empty-category-${Date.now()}@test.com`,
         password: 'test123',
         roleId: role.id,
         isActive: true
@@ -137,7 +104,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     // Create an empty category (no products)
     const emptyCategory = await db.category.create({
       data: {
-        name: 'Empty Category',
+        name: `Empty Category ${Date.now()}`,
         description: 'A category with no products',
         createdById: user.id
       }
@@ -171,7 +138,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     // Create test role
     const role = await db.role.create({
       data: {
-        name: 'TEST_ROLE_CASCADE_CATEGORY',
+        name: `TEST_ROLE_CASCADE_CATEGORY_${Date.now()}`,
         description: 'Test role for cascade category deletion',
         isSystem: false,
         isActive: true
@@ -182,7 +149,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     const user = await db.user.create({
       data: {
         name: 'Test User Cascade Category',
-        email: 'test-cascade-category@test.com',
+        email: `test-cascade-category-${Date.now()}@test.com`,
         password: 'test123',
         roleId: role.id,
         isActive: true
@@ -192,7 +159,7 @@ describe('Category Deletion Constraints Integration Tests', () => {
     // Create a category
     const category = await db.category.create({
       data: {
-        name: 'Cascade Test Category',
+        name: `Cascade Test Category ${Date.now()}`,
         description: 'A category for testing cascade deletion',
         createdById: user.id
       }
@@ -202,12 +169,13 @@ describe('Category Deletion Constraints Integration Tests', () => {
     const product = await db.inventoryItem.create({
       data: {
         name: 'Cascade Test Product',
-        sku: 'CASCADE-SKU-001',
+        sku: `CASCADE-SKU-${Date.now()}`,
         description: 'A test product for cascade deletion',
         categoryId: category.id,
-        quantity: 5,
+        currentStock: 5,
         minStockLevel: 2,
-        unitPrice: 50.00,
+        price: 50.00,
+        cost: 40.00,
         location: 'Cascade Location',
         createdById: user.id
       }

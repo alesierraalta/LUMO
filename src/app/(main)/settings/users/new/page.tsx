@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createClientSupabaseClient } from '@/lib/supabase-auth-client';
 
+
+
 export default function NewUserPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -57,32 +59,28 @@ export default function NewUserPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async () => {
+    console.log('🔔 START handleSubmit', formData);
     console.log('🔔 handleSubmit invoked', formData);
-    e.preventDefault();
-    
-    
+
     const valid = validateForm();
     console.log('🔔 validateForm result', valid, errors);
     if (!valid) {
       return;
     }
-    
+
     setLoading(true);
     const supabase = createClientSupabaseClient();
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('🔔 supabase.getSession', sessionError, session);
     if (sessionError || !session) {
       setLoading(false);
       toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
       return;
     }
     const token = session.access_token;
-    console.log('🔔 got token', token);
-      
+
     try {
-    console.log('🔔 handleSubmit token:', token);
-    console.log('🔔 Creating user with payload:', { name: formData.name.trim(), email: formData.email.trim().toLowerCase(), password: formData.password, role: formData.role, isActive: formData.isActive });
+      console.log('🔔 Creating user with payload:', { name: formData.name.trim(), email: formData.email.trim().toLowerCase(), password: formData.password, role: formData.role, isActive: formData.isActive });
       const response = await fetch('/api/users', { 
         credentials: 'include',
         method: 'POST',
@@ -178,7 +176,7 @@ export default function NewUserPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -338,7 +336,7 @@ export default function NewUserPage() {
                 Cancel
               </Button>
               <Button
-                type="submit"
+                type="button" onClick={handleSubmit}
                 disabled={loading}
                 className="flex items-center gap-2"
               >

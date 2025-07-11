@@ -149,6 +149,13 @@ export default function NewUserPage() {
       
       const rolesData = await rolesResponse.json();
       console.log('🔔 Roles data:', rolesData);
+      console.log('🔔 Roles array:', rolesData.roles);
+      console.log('🔔 Looking for role:', formData.role);
+      
+      if (!rolesData.roles || rolesData.roles.length === 0) {
+        console.error('❌ No roles returned from API');
+        throw new Error('No roles available in the system');
+      }
       
       const selectedRole = rolesData.roles?.find((r: any) => r.name === formData.role);
       if (!selectedRole) {

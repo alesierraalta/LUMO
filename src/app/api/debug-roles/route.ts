@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServiceSupabaseClient } from '@/lib/supabase-service-client';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Debug Roles API: Starting...');
     
-    // Get Supabase client (no auth check for debugging)
-    const supabase = await createServerClient();
+    // Get Supabase service client with admin privileges
+    const supabase = createServiceSupabaseClient();
+    
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'Service client configuration missing' },
+        { status: 503 }
+      );
+    }
 
     // Get ALL roles (including inactive ones)
     const { data: allRoles, error: allError } = await supabase
@@ -64,7 +71,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Debug Roles API: Creating basic roles...');
     
-    const supabase = await createServerClient();
+    const supabase = createServiceSupabaseClient();
+    
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'Service client configuration missing' },
+        { status: 503 }
+      );
+    }
 
     const basicRoles = [
       { name: 'USER', description: 'Basic user with standard access', is_system: true },

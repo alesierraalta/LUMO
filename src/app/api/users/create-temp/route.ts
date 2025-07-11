@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
     
     // Create the user in Supabase Auth
     const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-      email: 'pradasamuel1@gmail.com',
-      password: '$OswaldoLumo2025$',
+      email: 'alesierraalta@gmail.com',
+      password: 'admin123',
       user_metadata: {
-        name: 'OSWALDO PRADA',
-        roleId: '408782ff-7669-442f-a626-6eb9569d3f77' // USER role ID
+        name: 'Alejandro Sierra Alta',
+        roleId: 'a1b2c3d4-e5f6-7890-abcd-1234567890ef' // ADMIN role ID
       }
     });
     
@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
       .from('users')
       .insert({
         id: authData.id,
-        email: 'pradasamuel1@gmail.com',
-        name: 'OSWALDO PRADA',
+        email: 'alesierraalta@gmail.com',
+        name: 'Alejandro Sierra Alta',
         password: 'temp_hash', // This will be handled by auth
-        role_id: '408782ff-7669-442f-a626-6eb9569d3f77', // USER role ID
+        role_id: 'a1b2c3d4-e5f6-7890-abcd-1234567890ef', // ADMIN role ID
         is_active: true
       })
       .select()
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
       message: 'User created successfully',
       user: {
         id: authData.id,
-        email: 'pradasamuel1@gmail.com',
-        name: 'OSWALDO PRADA'
+        email: 'alesierraalta@gmail.com',
+        name: 'Alejandro Sierra Alta'
       }
     });
     

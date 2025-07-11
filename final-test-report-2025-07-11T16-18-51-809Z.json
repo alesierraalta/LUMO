@@ -1,0 +1,120 @@
+[
+  {
+    "deployment": "https://lumo-woad.vercel.app",
+    "steps": {
+      "environment": {
+        "success": false,
+        "error": "Status 404"
+      },
+      "roles": {
+        "success": false,
+        "created": 0,
+        "total": 3,
+        "results": [
+          {
+            "role": "USER",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          },
+          {
+            "role": "MANAGER",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          },
+          {
+            "role": "ADMIN",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          }
+        ]
+      },
+      "userCreation": {
+        "success": false,
+        "error": "Unknown error"
+      },
+      "login": {
+        "success": false,
+        "error": "Invalid credentials"
+      }
+    },
+    "success": false,
+    "issues": [
+      "Environment diagnostics endpoint failed",
+      "Some roles failed to create",
+      "Admin user creation failed",
+      "Admin login failed"
+    ],
+    "recommendations": []
+  },
+  {
+    "deployment": "https://lumo-git-main-alesierraaltas-projects.vercel.app",
+    "steps": {
+      "environment": {
+        "success": false,
+        "error": "Status 404"
+      },
+      "roles": {
+        "success": false,
+        "created": 0,
+        "total": 3,
+        "results": [
+          {
+            "role": "USER",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          },
+          {
+            "role": "MANAGER",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          },
+          {
+            "role": "ADMIN",
+            "success": false,
+            "error": "HTTP 401: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"roles\\\"\"}"
+          }
+        ]
+      },
+      "userCreation": {
+        "success": false,
+        "error": "Unknown error"
+      },
+      "login": {
+        "success": false,
+        "error": "Invalid credentials"
+      }
+    },
+    "success": false,
+    "issues": [
+      "Environment diagnostics endpoint failed",
+      "Some roles failed to create",
+      "Admin user creation failed",
+      "Admin login failed"
+    ],
+    "recommendations": []
+  },
+  {
+    "deployment": "https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app",
+    "steps": {
+      "environment": {
+        "success": false,
+        "error": "Status 401"
+      },
+      "roles": {
+        "success": false,
+        "error": "Status 401"
+      },
+      "error": {
+        "success": false,
+        "error": "invalid json response body at https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app/api/users/create-temp reason: Unexpected token '<', \"<!doctype \"... is not valid JSON"
+      }
+    },
+    "success": false,
+    "issues": [
+      "Environment diagnostics endpoint failed",
+      "Cannot access roles endpoint",
+      "Network error: invalid json response body at https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app/api/users/create-temp reason: Unexpected token '<', \"<!doctype \"... is not valid JSON"
+    ],
+    "recommendations": []
+  }
+]

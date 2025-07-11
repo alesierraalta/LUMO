@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { createServiceSupabaseClient } from '@/lib/supabase-service-client';
 import { getCurrentUserFromToken, getTokenFromRequest, getCurrentUser } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
@@ -26,7 +27,34 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Roles API: User authorized, fetching roles...');
 
-    // Get Supabase client
+    // Try to use service client first for admin operations
+    const serviceClient = createServiceSupabaseClient();
+    
+    if (serviceClient) {
+      console.log('🔑 Roles API: Using service client (bypasses RLS)');
+      
+      // Get all active roles using service client
+      const { data: roles, error } = await serviceClient
+        .from('roles')
+        .select('id, name, description, is_active')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('❌ Roles API: Service client error:', error);
+        throw error;
+      }
+
+      console.log('✅ Roles API: Found', roles?.length || 0, 'roles via service client');
+
+      return NextResponse.json({
+        success: true,
+        roles: roles || []
+      });
+    }
+
+    // Fallback to regular client if service client not available
+    console.log('⚠️ Roles API: Service client not available, using regular client');
     const supabase = await createServerClient();
 
     // Get all active roles from Supabase

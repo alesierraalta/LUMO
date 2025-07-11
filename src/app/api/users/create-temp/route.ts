@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceSupabaseClient } from '@/lib/supabase-service-client';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔔 Creating temporary user...');
     
-    // Check if SUPABASE_SERVICE_ROLE_KEY is available
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // Create service client for admin operations
+    const serviceClient = createServiceSupabaseClient();
     
-    if (!serviceRoleKey || !supabaseUrl) {
+    if (!serviceClient) {
+      console.log('❌ Service client not available');
       return NextResponse.json(
-        { success: false, error: 'Missing service role key or URL' },
+        { success: false, error: 'Service client configuration missing' },
         { status: 503 }
       );
     }
     
-    // Create admin client with service role key
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    console.log('🔑 Using service client for admin operations');
     
     // Create the user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
       email: 'pradasamuel1@gmail.com',
       password: '$OswaldoLumo2025$',
-      email_confirm: true,
       user_metadata: {
-        name: 'OSWALDO PRADA'
+        name: 'OSWALDO PRADA',
+        roleId: '408782ff-7669-442f-a626-6eb9569d3f77' // USER role ID
       }
     });
     
@@ -40,10 +39,10 @@ export async function POST(request: NextRequest) {
     console.log('✅ Auth user created:', authData.user?.id);
     
     // Create user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await serviceClient
       .from('users')
       .insert({
-        id: authData.user!.id,
+        id: authData.id,
         email: 'pradasamuel1@gmail.com',
         name: 'OSWALDO PRADA',
         password: 'temp_hash', // This will be handled by auth
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (profileError) {
       console.error('❌ Profile error:', profileError);
       // Try to delete the auth user
-      await supabaseAdmin.auth.admin.deleteUser(authData.user!.id);
+      await serviceClient.auth.admin.deleteUser(authData.id);
       return NextResponse.json(
         { success: false, error: profileError.message },
         { status: 400 }
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'User created successfully',
       user: {
-        id: authData.user!.id,
+        id: authData.id,
         email: 'pradasamuel1@gmail.com',
         name: 'OSWALDO PRADA'
       }

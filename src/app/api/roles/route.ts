@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db-supabase';
-import { getCurrentUserFromToken, getTokenFromRequest } from '@/lib/auth-server';
+import { createServerClient } from '@/lib/supabase-server';
+import { getCurrentUserFromToken, getTokenFromRequest, getCurrentUser } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,9 +9,8 @@ export async function GET(request: NextRequest) {
     // Get current user for authorization
     const token = getTokenFromRequest(request);
     console.log('🔍 Roles API: Token extracted:', token ? 'Token found' : 'No token');
-    console.log('🔑 Roles API: Token (first 50 chars):', token?.substring(0, 50) + '...');
     
-    const user = token ? await getCurrentUserFromToken(token) : null;
+    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     console.log('🔍 Roles API: User from token:', user ? `${user.email} (${user.role})` : 'No user');
     
     if (!user) {
@@ -27,30 +26,35 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Roles API: User authorized, fetching roles...');
 
-    // Get all active roles
-    const roles = await db.role.findMany({
-      where: {
-        isActive: true
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    });
+    // Get Supabase client
+    const supabase = await createServerClient();
 
-    console.log('✅ Roles API: Found', roles.length, 'roles');
+    // Get all active roles from Supabase
+    const { data: roles, error } = await supabase
+      .from('roles')
+      .select('id, name, description, is_active')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('❌ Roles API: Supabase error:', error);
+      throw error;
+    }
+
+    console.log('✅ Roles API: Found', roles?.length || 0, 'roles');
 
     return NextResponse.json({
       success: true,
-      roles
+      roles: roles || []
     });
   } catch (error) {
     console.error('❌ Roles API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch roles',
         details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
+      },
       { status: 500 }
     );
   }
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get current user for authorization
     const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : null;
+    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -78,15 +82,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Role name is required' }, { status: 400 });
     }
 
+    // Get Supabase client
+    const supabase = await createServerClient();
+
     // Create the role
-    const role = await db.role.create({
-      data: {
+    const { data: role, error } = await supabase
+      .from('roles')
+      .insert({
         name: name.toUpperCase(),
         description: description || `${name} role`,
-        isSystem,
-        isActive: true
-      }
-    });
+        is_system: isSystem,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Create role API error:', error);
+      throw error;
+    }
 
     return NextResponse.json({
       success: true,
@@ -95,12 +109,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Create role API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to create role',
         details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
+      },
       { status: 500 }
     );
   }
-} 
+}

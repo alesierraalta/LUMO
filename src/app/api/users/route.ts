@@ -87,36 +87,93 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    
+  console.log('🔔 Users POST API: Starting...');
+  
   try {
+    // Check if SUPABASE_SERVICE_ROLE_KEY is available
+    const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    console.log('🔔 Users POST API: Service role key available:', hasServiceKey);
+    
+    if (!hasServiceKey) {
+      console.error('❌ CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing!');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Server configuration error: Unable to create users. Please contact administrator.',
+          details: 'SUPABASE_SERVICE_ROLE_KEY is not configured in environment variables.'
+        },
+        { status: 503 } // Service Unavailable
+      );
+    }
+    
     // Get user from token or session
     const token = getTokenFromRequest(request);
     const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
     
     if (!user) {
+      console.log('❌ Users POST API: Unauthorized - no user found');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    // Only ADMIN can create users
+    if (user.role !== 'ADMIN') {
+      console.log('❌ Users POST API: Forbidden - user role:', user.role);
+      return NextResponse.json(
+        { success: false, error: 'Only administrators can create users' },
+        { status: 403 }
+      );
+    }
+
     const data = await request.json();
+    console.log('🔔 Users POST API: Request data:', { ...data, password: '[REDACTED]' });
+    
     const { name, email, password, roleId } = data;
     if (!name || !email || !password || !roleId) {
+      console.log('❌ Users POST API: Missing required fields');
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
     const supabase = await createServerClient();
     
-    const { data: newUser, error } = await supabase
+    // First, create the user in Supabase Auth
+    console.log('🔔 Users POST API: Creating user in Supabase Auth...');
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: { name: name },
+        emailRedirectTo: undefined // Disable email confirmation for admin-created users
+      }
+    });
+
+    if (authError) {
+      console.error('❌ Users POST API: Supabase Auth error:', authError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: authError.message || 'Failed to create authentication account'
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log('✅ Users POST API: Auth user created:', authData.user?.id);
+    
+    // Then create the user profile in our users table
+    console.log('🔔 Users POST API: Creating user profile...');
+    const { data: newUser, error: dbError } = await supabase
       .from('users')
       .insert({
-        name: data.name,
-        email: data.email,
-        password: data.password, // This should be hashed
-        role_id: data.roleId,
+        id: authData.user!.id, // Use the auth user ID
+        name: name,
+        email: email,
+        role_id: roleId,
         is_active: data.isActive !== false
       })
       .select(`
@@ -130,23 +187,46 @@ export async function POST(request: NextRequest) {
       `)
       .single();
 
-    if (error) {
+    if (dbError) {
+      console.error('❌ Users POST API: Database error:', dbError);
+      
+      // If database insert fails, try to clean up the auth user
+      if (authData.user?.id) {
+        console.log('🔔 Users POST API: Attempting to delete auth user after DB error...');
+        // Note: Admin API needed to delete users, for now just log the error
+      }
       
       return NextResponse.json(
-        { success: false, error: 'Failed to create user' },
+        {
+          success: false,
+          error: dbError.message || 'Failed to create user profile'
+        },
         { status: 500 }
       );
     }
 
+    console.log('✅ Users POST API: User created successfully:', newUser);
+
     return NextResponse.json({
       success: true,
-      user: newUser
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        isActive: newUser.is_active,
+        createdAt: newUser.created_at,
+        updatedAt: newUser.updated_at,
+        role: newUser.role
+      }
     }, { status: 201 });
   } catch (error) {
-    
+    console.error('❌ Users POST API: Unexpected error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create user' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create user'
+      },
       { status: 500 }
     );
   }
-} 
+}

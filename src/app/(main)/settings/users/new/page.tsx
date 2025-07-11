@@ -70,18 +70,88 @@ export default function NewUserPage() {
     }
 
     setLoading(true);
-    const supabase = createClientSupabaseClient();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
+    
+    let token: string | null = null;
+    
+    try {
+      console.log('🔔 Creating Supabase client...');
+      const supabase = createClientSupabaseClient();
+      
+      console.log('🔔 Getting session...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log('🔔 Session result:', {
+        hasSession: !!session,
+        hasError: !!sessionError,
+        error: sessionError?.message
+      });
+      
+      if (sessionError || !session) {
+        console.error('❌ Session error:', sessionError);
+        setLoading(false);
+        toast({
+          title: 'Error',
+          description: sessionError?.message || 'Authentication required',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      token = session.access_token;
+      console.log('🔔 Got token:', token ? 'Yes' : 'No');
+    } catch (sessionCatchError) {
+      console.error('❌ Caught error getting session:', sessionCatchError);
       setLoading(false);
-      toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to get authentication session',
+        variant: 'destructive'
+      });
       return;
     }
-    const token = session.access_token;
+
+    if (!token) {
+      console.error('❌ No token available');
+      setLoading(false);
+      toast({
+        title: 'Error',
+        description: 'Authentication token not found',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      console.log('🔔 Creating user with payload:', { name: formData.name.trim(), email: formData.email.trim().toLowerCase(), password: formData.password, role: formData.role, isActive: formData.isActive });
-      const response = await fetch('/api/users', { 
+      // First, get the role ID based on the role name
+      console.log('🔔 Fetching roles to get roleId for:', formData.role);
+      const rolesResponse = await fetch('/api/roles', {
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!rolesResponse.ok) {
+        throw new Error('Failed to fetch roles');
+      }
+      
+      const rolesData = await rolesResponse.json();
+      console.log('🔔 Roles data:', rolesData);
+      
+      const selectedRole = rolesData.roles?.find((r: any) => r.name === formData.role);
+      if (!selectedRole) {
+        throw new Error(`Role ${formData.role} not found`);
+      }
+      
+      console.log('🔔 Selected role:', selectedRole);
+      
+      console.log('🔔 Creating user with payload:', {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        roleId: selectedRole.id,
+        isActive: formData.isActive
+      });
+      
+      const response = await fetch('/api/users', {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -89,13 +159,13 @@ export default function NewUserPage() {
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
-          role: formData.role,
+          roleId: selectedRole.id, // Send roleId instead of role name
           isActive: formData.isActive
         }),
       });
       
       const data = await response.json();
-    console.log('🔔 POST /api/users response:', response.status, data);
+      console.log('🔔 POST /api/users response:', response.status, data);
       
       if (response.ok && data.success) {
         toast({
@@ -104,17 +174,27 @@ export default function NewUserPage() {
         });
         router.push('/settings/users');
       } else {
-        toast({
-          title: 'Error',
-          description: data.error || 'Failed to create user',
-          variant: 'destructive'
-        });
+        // Check if this is a server configuration error
+        if (response.status === 503 && data.details?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+          console.error('❌ Server configuration error detected');
+          toast({
+            title: 'Server Configuration Error',
+            description: 'The server is not properly configured to create users. Please contact your administrator to add the SUPABASE_SERVICE_ROLE_KEY environment variable in Vercel.',
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: data.error || 'Failed to create user',
+            variant: 'destructive'
+          });
+        }
       }
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create user. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to create user. Please try again.',
         variant: 'destructive'
       });
     } finally {

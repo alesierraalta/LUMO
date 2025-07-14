@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Sidebar, MobileNav } from '@/components/sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { redirect } from 'next/navigation';
+import { DebugToggle } from '@/components/debug-dashboard';
+import browserCompatibility from '@/lib/browser-compatibility';
 
 export default function MainLayout({
   children,
@@ -34,9 +36,9 @@ export default function MainLayout({
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
       <div className={`hidden md:flex ${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300`}>
-        <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
       </div>
 
@@ -55,6 +57,9 @@ export default function MainLayout({
           {children}
         </main>
       </div>
+
+      {/* Debug Dashboard - Only visible in development */}
+      <DebugToggle />
     </div>
   );
 } 

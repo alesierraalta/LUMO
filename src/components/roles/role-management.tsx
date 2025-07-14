@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,7 +43,6 @@ const RoleManagement = () => {
     try {
       console.log('🔍 [RoleManagement] Getting auth headers...');
       
-      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
       const supabase = getSupabaseClient();
       
       console.log('✅ [RoleManagement] Supabase client obtained');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,7 +35,6 @@ const UserRoleAssignment = ({ userId: initialUserId, onUserIdChange }: UserRoleA
   // Enhanced helper function to get auth headers with development mode fallback
   const getAuthHeaders = async () => {
     try {
-      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
       const supabase = getSupabaseClient();
       
       const { data: { session }, error } = await supabase.auth.getSession();

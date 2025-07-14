@@ -1,6 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
+import { signOut } from '@/lib/supabase-auth-client';
+import { debug } from '@/lib/debug-system';
+import browserCompatibility from '@/lib/browser-compatibility';
 
 interface User {
   id: string;
@@ -25,224 +29,336 @@ let userCache: { user: User | null; timestamp: number } | null = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 let isRefetching = false;
 
-// Pre-import modules to prevent dynamic import issues in hooks
-let supabaseClient: any = null;
-let signOutFunction: any = null;
-
-const initializeModules = async () => {
-  if (!supabaseClient) {
-    const { getSupabaseClient } = await import('@/lib/supabase-singleton');
-    supabaseClient = getSupabaseClient();
-  }
-  if (!signOutFunction) {
-    const { signOut } = await import('@/lib/supabase-auth-client');
-    signOutFunction = signOut;
-  }
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Enhanced fetchUser function that supports both Supabase Auth and JWT
   const fetchUser = useCallback(async (useCache: boolean = true): Promise<User | null> => {
-    if (useCache && userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
-      return userCache.user;
-    }
+    return await debug.withErrorHandling('AuthContext', 'fetchUser', async () => {
+      const executionId = debug.startExecution('fetchUser', { useCache, hasCachedUser: !!userCache });
+      
+      if (useCache && userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
+        debug.debug('AuthContext', 'fetchUser', '💾 Using cached user data', { cacheAge: Date.now() - userCache.timestamp });
+        debug.endExecution(executionId, true);
+        return userCache.user;
+      }
 
-    if (isRefetching) {
-      return new Promise((resolve) => {
-        const checkRefetch = () => {
-          if (!isRefetching) {
-            resolve(userCache?.user || null);
-          } else {
-            setTimeout(checkRefetch, 50);
-          }
-        };
-        checkRefetch();
-      });
-    }
+      if (isRefetching) {
+        debug.debug('AuthContext', 'fetchUser', '⏳ Fetch already in progress, waiting');
+        return new Promise((resolve) => {
+          const checkRefetch = () => {
+            if (!isRefetching) {
+              debug.debug('AuthContext', 'fetchUser', '✅ Previous fetch completed, returning result');
+              resolve(userCache?.user || null);
+            } else {
+              setTimeout(checkRefetch, 50);
+            }
+          };
+          checkRefetch();
+        });
+      }
 
-    isRefetching = true;
+      isRefetching = true;
+      debug.updateExecution(executionId, { step: 'starting_fetch' });
 
-    try {
-      console.log('🔍 Fetching user data...');
-
-      // SUPABASE-ONLY AUTHENTICATION (No JWT fallbacks)
       try {
-        console.log('🔍 Attempting Supabase-only authentication...');
-        
-        // Ensure modules are initialized
-        await initializeModules();
+        debug.info('AuthContext', 'fetchUser', '🔍 Starting user data fetch process');
 
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        
-        if (sessionError) {
-          console.warn('⚠️ Session error:', sessionError.message);
-          userCache = { user: null, timestamp: Date.now() };
-          return null;
-        }
+        // SUPABASE-ONLY AUTHENTICATION (No JWT fallbacks)
+        try {
+          debug.debug('AuthContext', 'fetchUser', '🔍 Attempting Supabase-only authentication');
+          debug.updateExecution(executionId, { step: 'supabase_auth_start' });
+          
+          // Dynamic imports to prevent webpack factory errors
+          const supabaseClient = getSupabaseClient();
+          debug.debug('AuthContext', 'fetchUser', '✅ Supabase client obtained');
 
-        if (!session?.user) {
-          console.log('ℹ️ No active Supabase session');
-          userCache = { user: null, timestamp: Date.now() };
-          return null;
-        }
+          const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+          debug.updateExecution(executionId, { step: 'session_retrieved', hasSession: !!session });
+          
+          if (sessionError) {
+            debug.warn('AuthContext', 'fetchUser', '⚠️ Session error occurred', { error: sessionError.message });
+            userCache = { user: null, timestamp: Date.now() };
+            debug.captureState('AuthContext', 'fetchUser', 'sessionError', { error: sessionError.message });
+            debug.endExecution(executionId, false, sessionError);
+            return null;
+          }
 
-        console.log('✅ Active session found:', session.user.email);
+          if (!session?.user) {
+            debug.info('AuthContext', 'fetchUser', 'ℹ️ No active Supabase session found');
+            userCache = { user: null, timestamp: Date.now() };
+            debug.captureState('AuthContext', 'fetchUser', 'noSession', { userCache });
+            debug.endExecution(executionId, true);
+            return null;
+          }
 
-        // Query user data directly from database (search by email since IDs might not match)
-        const { data: userData, error: userError } = await supabaseClient
-          .from('users')
-          .select(`
-            id,
-            email,
-            name,
-            is_active,
-            role_id,
-            roles!role_id (
+          debug.info('AuthContext', 'fetchUser', '✅ Active session found', { email: session.user.email, userId: session.user.id });
+          debug.updateExecution(executionId, { step: 'session_found', userId: session.user.id });
+
+          // Query user data directly from database (search by email since IDs might not match)
+          debug.debug('AuthContext', 'fetchUser', '📊 Querying user data from database', { email: session.user.email });
+          debug.updateExecution(executionId, { step: 'database_query' });
+          
+          const { data: userData, error: userError } = await supabaseClient
+            .from('users')
+            .select(`
               id,
-              name
-            )
-          `)
-          .eq('email', session.user.email)
-          .single();
-          
-        if (!userError && userData) {
-          console.log('🔍 Raw database user data:', userData);
-          
-          const fullUser: User = {
-            id: userData.id,
-            email: userData.email,
-            name: userData.name,
-            role: (userData.roles as any)?.name || 'USER',
-            isActive: userData.is_active,
-            permissions: [] // Will be populated from role-based permissions later
+              email,
+              name,
+              is_active,
+              role_id,
+              roles!role_id (
+                id,
+                name
+              )
+            `)
+            .eq('email', session.user.email)
+            .single();
+            
+          if (!userError && userData) {
+            debug.debug('AuthContext', 'fetchUser', '🔍 Raw database user data retrieved', userData);
+            debug.captureState('AuthContext', 'fetchUser', 'databaseUserData', userData);
+            
+            const fullUser: User = {
+              id: userData.id,
+              email: userData.email,
+              name: userData.name,
+              role: (userData.roles as any)?.name || 'USER',
+              isActive: userData.is_active,
+              permissions: [] // Will be populated from role-based permissions later
+            };
+
+            // CRITICAL CHOREO FIX: Admin fallback for root user
+            if (session.user.email === 'alesierraalta@gmail.com') {
+              debug.warn('AuthContext', 'fetchUser', '🔑 SUPABASE CHOREO FIX: Applied admin role for root user');
+              fullUser.role = 'ADMIN';
+              fullUser.isActive = true;
+              fullUser.permissions = ['read', 'write', 'delete', 'admin'];
+            }
+
+            debug.info('AuthContext', 'fetchUser', '✅ Full user data constructed', {
+              email: fullUser.email,
+              role: fullUser.role,
+              isActive: fullUser.isActive
+            });
+            
+            userCache = { user: fullUser, timestamp: Date.now() };
+            debug.captureState('AuthContext', 'fetchUser', 'fullUserCreated', fullUser);
+            debug.updateExecution(executionId, { step: 'success', userId: fullUser.id, role: fullUser.role });
+            debug.endExecution(executionId, true);
+            return fullUser;
+          } else {
+            debug.warn('AuthContext', 'fetchUser', '⚠️ Database query failed, using fallback', { error: userError?.message });
+            debug.updateExecution(executionId, { step: 'database_error', error: userError?.message });
+          }
+
+          // Fallback to basic session user info with CRITICAL admin fix
+          debug.debug('AuthContext', 'fetchUser', '🔄 Creating fallback user from session data');
+          const basicUser: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            role: session.user.user_metadata?.role || 'USER',
+            isActive: true,
+            permissions: []
           };
 
           // CRITICAL CHOREO FIX: Admin fallback for root user
           if (session.user.email === 'alesierraalta@gmail.com') {
-            console.log('🔑 SUPABASE CHOREO FIX: Applied admin role for root user');
-            fullUser.role = 'ADMIN';
-            fullUser.isActive = true;
-            fullUser.permissions = ['read', 'write', 'delete', 'admin'];
+            debug.warn('AuthContext', 'fetchUser', '🔑 SUPABASE FALLBACK: Applied admin role for root user');
+            basicUser.role = 'ADMIN';
+            basicUser.isActive = true;
+            basicUser.permissions = ['read', 'write', 'delete', 'admin'];
           }
 
-          console.log('✅ Full user data from database:', fullUser.email, 'Role:', fullUser.role, 'IsActive:', fullUser.isActive);
-          userCache = { user: fullUser, timestamp: Date.now() };
-          return fullUser;
-        } else {
-          console.warn('⚠️ Database query failed:', userError?.message);
+          debug.warn('AuthContext', 'fetchUser', '⚠️ Using fallback user data', { email: basicUser.email, role: basicUser.role });
+          userCache = { user: basicUser, timestamp: Date.now() };
+          debug.captureState('AuthContext', 'fetchUser', 'fallbackUserCreated', basicUser);
+          debug.updateExecution(executionId, { step: 'fallback_success', userId: basicUser.id });
+          debug.endExecution(executionId, true);
+          return basicUser;
+
+        } catch (supabaseError) {
+          debug.error('AuthContext', 'fetchUser', '⚠️ Supabase authentication failed', supabaseError as Error);
+          debug.updateExecution(executionId, { step: 'supabase_error', error: supabaseError });
         }
 
-        // Fallback to basic session user info with CRITICAL admin fix
-        const basicUser: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          role: session.user.user_metadata?.role || 'USER',
-          isActive: true,
-          permissions: []
-        };
+        // No authentication method worked
+        debug.warn('AuthContext', 'fetchUser', '❌ All authentication methods failed');
+        userCache = { user: null, timestamp: Date.now() };
+        debug.captureState('AuthContext', 'fetchUser', 'authenticationFailed', { userCache });
+        debug.endExecution(executionId, true);
+        return null;
 
-        // CRITICAL CHOREO FIX: Admin fallback for root user
-        if (session.user.email === 'alesierraalta@gmail.com') {
-          console.log('🔑 SUPABASE FALLBACK: Applied admin role for root user');
-          basicUser.role = 'ADMIN';
-          basicUser.isActive = true;
-          basicUser.permissions = ['read', 'write', 'delete', 'admin'];
-        }
-
-        console.log('⚠️ Using fallback user data:', basicUser.email);
-        userCache = { user: basicUser, timestamp: Date.now() };
-        return basicUser;
-
-      } catch (supabaseError) {
-        console.warn('⚠️ Supabase authentication failed:', supabaseError);
+      } catch (error) {
+        debug.error('AuthContext', 'fetchUser', '❌ Critical error in fetchUser', error as Error);
+        userCache = { user: null, timestamp: Date.now() };
+        debug.captureState('AuthContext', 'fetchUser', 'criticalError', { error, userCache });
+        debug.endExecution(executionId, false, error as Error);
+        throw error;
+      } finally {
+        isRefetching = false;
+        debug.debug('AuthContext', 'fetchUser', '🔄 Fetch process completed, reset refetching flag');
       }
-
-      // No authentication method worked
-      console.log('❌ Supabase authentication failed - NO FALLBACKS');
-      userCache = { user: null, timestamp: Date.now() };
-      return null;
-
-    } catch (error) {
-      console.error('❌ Error fetching user:', error);
-      userCache = { user: null, timestamp: Date.now() };
-      return null;
-    } finally {
-      isRefetching = false;
-    }
+    });
   }, []); // CRITICAL FIX: Empty dependency array instead of [user]
 
   const refetch = useCallback(async () => {
-    console.log('🔄 Refetching user data...');
-    setLoading(true);
-    try {
-      const userData = await fetchUser(false); // Force refresh
-      setUser(userData);
-      console.log('✅ User data refetched:', userData?.email || 'No user');
-    } catch (error) {
-      console.error('❌ Error refetching user:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    return await debug.withErrorHandling('AuthContext', 'refetch', async () => {
+      const executionId = debug.startExecution('refetch');
+      
+      debug.info('AuthContext', 'refetch', '🔄 Starting user data refetch');
+      debug.captureState('AuthContext', 'refetch', 'beforeRefetch', { currentUser: user?.id, loading });
+      
+      setLoading(true);
+      debug.updateExecution(executionId, { step: 'loading_set' });
+      
+      try {
+        const userData = await fetchUser(false); // Force refresh
+        setUser(userData);
+        
+        debug.info('AuthContext', 'refetch', '✅ User data refetched successfully', {
+          email: userData?.email || 'No user',
+          userId: userData?.id
+        });
+        debug.captureState('AuthContext', 'refetch', 'afterRefetch', { user: userData?.id });
+        debug.endExecution(executionId, true);
+      } catch (error) {
+        debug.error('AuthContext', 'refetch', '❌ Error during refetch', error as Error);
+        setUser(null);
+        debug.captureState('AuthContext', 'refetch', 'refetchError', { user: null });
+        debug.endExecution(executionId, false, error as Error);
+        throw error;
+      } finally {
+        setLoading(false);
+        debug.debug('AuthContext', 'refetch', '🔄 Refetch completed, loading set to false');
+      }
+    });
   }, [fetchUser]);
 
   const logout = useCallback(async (): Promise<boolean> => {
-    try {
-      console.log('🔍 Attempting Supabase-only logout...');
+    return await debug.withErrorHandling('AuthContext', 'logout', async () => {
+      const executionId = debug.startExecution('logout', { currentUser: user?.id });
       
-      // Ensure modules are initialized
-      await initializeModules();
-      
-      // SUPABASE-ONLY LOGOUT (No JWT fallbacks)
-      const success = await signOutFunction();
-      
-      if (success) {
-        console.log('✅ Supabase logout successful');
-        setUser(null);
-        userCache = null; // Clear cache
-        return true;
-      } else {
-        console.warn('⚠️ Supabase logout failed');
+      try {
+        debug.info('AuthContext', 'logout', '🔍 Starting Supabase-only logout process');
+        debug.captureState('AuthContext', 'logout', 'beforeLogout', { user: user?.id, userCache: !!userCache });
+        
+        // SUPABASE-ONLY LOGOUT (No JWT fallbacks)
+        const success = await signOut();
+        debug.updateExecution(executionId, { step: 'signout_completed', success });
+        
+        if (success) {
+          debug.info('AuthContext', 'logout', '✅ Supabase logout successful');
+          setUser(null);
+          userCache = null; // Clear cache
+          debug.captureState('AuthContext', 'logout', 'logoutSuccess', { user: null, userCache: null });
+          debug.endExecution(executionId, true);
+          return true;
+        } else {
+          debug.warn('AuthContext', 'logout', '⚠️ Supabase logout failed');
+          debug.captureState('AuthContext', 'logout', 'logoutFailed', { success: false });
+          debug.endExecution(executionId, false);
+          return false;
+        }
+      } catch (error) {
+        debug.error('AuthContext', 'logout', '❌ Logout error occurred', error as Error);
+        debug.captureState('AuthContext', 'logout', 'logoutError', { error });
+        debug.endExecution(executionId, false, error as Error);
         return false;
       }
-    } catch (error) {
-      console.error('❌ Logout error:', error);
-      return false;
-    }
+    });
   }, []);
 
   // Initial load - only run once
   useEffect(() => {
     let isMounted = true;
+    const initExecutionId = debug.startExecution('initializeAuthEffect');
     
     const initializeAuth = async () => {
-      try {
-        console.log('🚀 Initializing auth context...');
-        const userData = await fetchUser(true);
-        if (isMounted) {
-          setUser(userData);
-          console.log('✅ Auth context initialized:', userData?.email || 'No user');
+      return await debug.withErrorHandling('AuthContext', 'initializeAuth', async () => {
+        try {
+          debug.info('AuthContext', 'initializeAuth', '🚀 Starting auth context initialization');
+          debug.captureState('AuthContext', 'initializeAuth', 'initialState', { isMounted, loading });
+          
+          // Opera browser compatibility check
+          if (browserCompatibility.isOpera()) {
+            debug.info('AuthContext', 'initializeAuth', '🔍 Opera browser detected - applying compatibility fixes');
+            
+            // Report browser compatibility information
+            const browserInfo = browserCompatibility.getBrowserInfo();
+            const features = browserCompatibility.getFeatures();
+            
+            debug.info('AuthContext', 'initializeAuth', '📊 Browser compatibility info', {
+              browser: browserInfo.name,
+              version: browserInfo.version,
+              features: features
+            });
+            
+            // Check for potential compatibility issues
+            if (!features.supportsPromises) {
+              debug.warn('AuthContext', 'initializeAuth', '⚠️ Promise support issues detected in Opera');
+            }
+            
+            if (!features.supportsFetch) {
+              debug.warn('AuthContext', 'initializeAuth', '⚠️ Fetch API issues detected in Opera');
+            }
+            
+            if (!features.supportsWebpack) {
+              debug.warn('AuthContext', 'initializeAuth', '⚠️ Webpack compatibility issues detected in Opera');
+            }
+            
+            // Add small delay for Opera to ensure all polyfills are ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            debug.debug('AuthContext', 'initializeAuth', '⏱️ Opera compatibility delay completed');
+          }
+          
+          const userData = await fetchUser(true);
+          debug.updateExecution(initExecutionId, { step: 'user_fetched', hasUser: !!userData });
+          
+          if (isMounted) {
+            setUser(userData);
+            debug.info('AuthContext', 'initializeAuth', '✅ Auth context initialized successfully', {
+              email: userData?.email || 'No user',
+              userId: userData?.id
+            });
+            debug.captureState('AuthContext', 'initializeAuth', 'userSet', { user: userData?.id });
+          } else {
+            debug.warn('AuthContext', 'initializeAuth', '⚠️ Component unmounted during initialization');
+          }
+        } catch (error) {
+          debug.error('AuthContext', 'initializeAuth', '❌ Auth initialization error', error as Error);
+          
+          // Opera-specific error handling
+          if (browserCompatibility.isOpera()) {
+            browserCompatibility.reportCompatibilityIssue('Auth initialization failed in Opera', {
+              error: error,
+              browserInfo: browserCompatibility.getBrowserInfo(),
+              features: browserCompatibility.getFeatures()
+            });
+          }
+          
+          if (isMounted) {
+            setUser(null);
+            debug.captureState('AuthContext', 'initializeAuth', 'errorState', { user: null });
+          }
+          throw error;
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+            debug.debug('AuthContext', 'initializeAuth', '🔄 Loading state set to false');
+            debug.captureState('AuthContext', 'initializeAuth', 'finalState', { loading: false });
+          }
+          debug.endExecution(initExecutionId, true);
         }
-      } catch (error) {
-        console.error('❌ Auth initialization error:', error);
-        if (isMounted) {
-          setUser(null);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          console.log('🔄 Loading state set to false');
-        }
-      }
+      });
     };
 
     initializeAuth();
     
     return () => {
+      debug.debug('AuthContext', 'cleanup', '🧹 Cleaning up auth initialization effect');
       isMounted = false;
     };
   }, []); // CRITICAL FIX: Empty dependency array to prevent infinite loops
@@ -250,35 +366,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen to Supabase auth changes - FIXED: Only react to specific events with dynamic import
   useEffect(() => {
     let subscription: any = null;
+    const listenerExecutionId = debug.startExecution('setupAuthListener');
     
     const setupAuthListener = async () => {
-      try {
-        // Ensure modules are initialized
-        await initializeModules();
-        
-        const { data } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔔 Auth state change:', event, session?.user?.email || 'No user');
+      return await debug.withErrorHandling('AuthContext', 'setupAuthListener', async () => {
+        try {
+          debug.debug('AuthContext', 'setupAuthListener', '🔗 Setting up auth state listener');
           
-          // CRITICAL FIX: Only react to sign out events, not sign in to prevent loops
-          if (event === 'SIGNED_OUT') {
-            console.log('👋 User signed out');
-            setUser(null);
-            userCache = null; // Clear cache
-            setLoading(false); // CRITICAL FIX: Ensure loading is false
-          }
-          // REMOVED: Don't react to SIGNED_IN or TOKEN_REFRESHED to prevent infinite loops
-          // The initial auth check in the first useEffect handles authentication
-        });
-        
-        subscription = data.subscription;
-      } catch (error) {
-        console.error('❌ Error setting up auth listener:', error);
-      }
+          // Dynamic imports to prevent webpack factory errors
+          const supabaseClient = getSupabaseClient();
+          debug.debug('AuthContext', 'setupAuthListener', '✅ Supabase client obtained for listener');
+          
+          const { data } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            const changeExecutionId = debug.startExecution('authStateChange', { event, hasSession: !!session });
+            
+            debug.info('AuthContext', 'authStateChange', '🔔 Auth state change detected', {
+              event,
+              userEmail: session?.user?.email || 'No user',
+              userId: session?.user?.id
+            });
+            
+            try {
+              // CRITICAL FIX: Only react to sign out events, not sign in to prevent loops
+              if (event === 'SIGNED_OUT') {
+                debug.info('AuthContext', 'authStateChange', '👋 Processing user sign out');
+                setUser(null);
+                userCache = null; // Clear cache
+                setLoading(false); // CRITICAL FIX: Ensure loading is false
+                debug.captureState('AuthContext', 'authStateChange', 'signedOut', { user: null, userCache: null, loading: false });
+              } else {
+                debug.debug('AuthContext', 'authStateChange', '🔄 Ignoring event to prevent loops', { event });
+              }
+              // REMOVED: Don't react to SIGNED_IN or TOKEN_REFRESHED to prevent infinite loops
+              // The initial auth check in the first useEffect handles authentication
+              
+              debug.endExecution(changeExecutionId, true);
+            } catch (error) {
+              debug.error('AuthContext', 'authStateChange', '❌ Error processing auth state change', error as Error);
+              debug.endExecution(changeExecutionId, false, error as Error);
+            }
+          });
+          
+          subscription = data.subscription;
+          debug.debug('AuthContext', 'setupAuthListener', '✅ Auth listener setup completed');
+          debug.endExecution(listenerExecutionId, true);
+        } catch (error) {
+          debug.error('AuthContext', 'setupAuthListener', '❌ Error setting up auth listener', error as Error);
+          debug.endExecution(listenerExecutionId, false, error as Error);
+          throw error;
+        }
+      });
     };
 
     setupAuthListener();
     
     return () => {
+      debug.debug('AuthContext', 'cleanup', '🧹 Cleaning up auth listener subscription');
       if (subscription) {
         subscription.unsubscribe();
       }

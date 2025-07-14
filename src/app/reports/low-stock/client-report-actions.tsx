@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 // Dynamic import with ssr: false is allowed in client components
-const ReportActions = dynamic(() => import("@/components/reports/report-actions"), { ssr: false });
+const ReportActions = dynamic(() => import("../../../components/reports/report-actions"), { ssr: false });
 
 type ClientReportActionsProps = {
   reportType: 'margins' | 'low-stock';

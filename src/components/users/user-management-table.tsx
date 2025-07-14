@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,7 +90,6 @@ const UserManagementTable = () => {
   // Enhanced helper function to get auth headers with development mode fallback
   const getAuthHeaders = useCallback(async () => {
     try {
-      const { getSupabaseClient } = await import('@/lib/supabase-singleton');
       const supabase = getSupabaseClient();
       
       const { data: { session }, error } = await supabase.auth.getSession();

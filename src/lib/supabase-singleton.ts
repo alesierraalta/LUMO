@@ -7,15 +7,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOi
 let supabaseClient = null;
 
 // Debug logging to see which configuration is being used
-console.log('🔧 Supabase Client Configuration:');
-console.log('📍 URL:', supabaseUrl);
-console.log('🔑 Key (first 20 chars):', supabaseAnonKey.substring(0, 20) + '...');
-console.log('🌍 Environment:', process.env.NODE_ENV);
+console.log('[SUPABASE] Configuration:');
+console.log('[SUPABASE] URL:', supabaseUrl);
+console.log('[SUPABASE] Key (first 20 chars):', supabaseAnonKey.substring(0, 20) + '...');
+console.log('[SUPABASE] Environment:', process.env.NODE_ENV);
 
 export function getSupabaseClient() {
   if (!supabaseClient) {
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Supabase client created successfully');
+    console.log('[SUPABASE] Client created successfully');
   }
   return supabaseClient;
 } 

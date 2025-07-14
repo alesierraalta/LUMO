@@ -6,7 +6,7 @@
  */
 
 import React, { ReactElement, ReactNode } from 'react';
-import { render, RenderOptions, RenderResult } from '@testing-library/react';
+import { render, RenderOptions, RenderResult, screen, waitForElementToBeRemoved } from '@testing-library/react';
 import { ThemeProvider } from 'next-themes';
 import userEvent from '@testing-library/user-event';
 
@@ -277,7 +277,6 @@ export const submitForm = async (formTestId = 'form') => {
 
 // Loading helpers
 export const waitForLoadingToFinish = async () => {
-  const { waitForElementToBeRemoved, screen } = await import('@testing-library/react');
   
   // Wait for common loading indicators to disappear
   const loadingIndicators = [

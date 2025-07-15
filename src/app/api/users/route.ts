@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
           is_active,
           created_at,
           updated_at,
-          role:roles(id, name, description)
+          role_id
         `)
         .single();
 
@@ -223,7 +223,22 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      newUser = devUser;
+      // Get role information separately for development mode
+      if (devUser && roleId) {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('id, name, description')
+          .eq('id', roleId)
+          .single();
+        
+        newUser = {
+          ...devUser,
+          role: roleData || null
+        };
+      } else {
+        newUser = devUser;
+      }
+      
       console.log('✅ Users POST API: Development user created successfully:', newUser);
       
     } else {
@@ -249,8 +264,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log('✅ Users POST API: Auth user created:', authData.user?.id);
-      authUserId = authData.user!.id;
+      if (!authData || !authData.user || !authData.user.id) {
+        console.error('❌ Users POST API: Auth user creation failed - no user returned');
+        console.log('🔍 Auth response data:', authData);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to create authentication account - no user returned'
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log('✅ Users POST API: Auth user created:', authData.user.id);
+      authUserId = authData.user.id;
       
       // Then create the user profile in our users table
       console.log('🔔 Users POST API: Creating user profile...');
@@ -270,7 +297,7 @@ export async function POST(request: NextRequest) {
           is_active,
           created_at,
           updated_at,
-          role:roles(id, name, description)
+          role_id
         `)
         .single();
 
@@ -292,7 +319,22 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      newUser = prodUser;
+      // Get role information separately for production mode
+      if (prodUser && roleId) {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('id, name, description')
+          .eq('id', roleId)
+          .single();
+        
+        newUser = {
+          ...prodUser,
+          role: roleData || null
+        };
+      } else {
+        newUser = prodUser;
+      }
+      
       console.log('✅ Users POST API: Production user created successfully:', newUser);
     }
 

@@ -6,6 +6,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { supabaseServer } from './supabase-server-only';
+import { authCache } from './auth-cache';
 
 // Simple password hashing (though Supabase handles this internally)
 export const hashPassword = async (password: string): Promise<string> => {
@@ -166,15 +167,24 @@ export const getCurrentUser = async (): Promise<any> => {
   }
 };
 
-// REPLACEMENT for getCurrentUserFromToken - now handles both JWT and Supabase tokens
+// REPLACEMENT for getCurrentUserFromToken - now handles both JWT and Supabase tokens with caching
 export const getCurrentUserFromToken = async (token: string): Promise<any> => {
+  const startTime = Date.now();
   console.log('🔍 getCurrentUserFromToken: Starting token validation...');
   console.log('🔑 getCurrentUserFromToken: Token (first 50 chars):', token?.substring(0, 50) + '...');
+  
+  // Check cache first
+  const cachedUser = authCache.get(token);
+  if (cachedUser) {
+    const elapsed = Date.now() - startTime;
+    console.log(`⚡ getCurrentUserFromToken: Cache hit! Response time: ${elapsed}ms`);
+    return cachedUser;
+  }
   
   try {
     // Use the provided token to get user from Supabase
     const supabase = supabaseServer;
-    console.log('🔍 getCurrentUserFromToken: Using supabaseServer client');
+    console.log('🔍 getCurrentUserFromToken: Using supabaseServer client (cache miss)');
     
     // Use the provided token to get user from Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -202,8 +212,8 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
       const { data: dbUser, error: dbError } = await supabase
         .from('users')
         .select(`
-          name, 
-          is_active, 
+          name,
+          is_active,
           roles!inner(name)
         `)
         .eq('email', user.email)
@@ -239,10 +249,10 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
         }
       }
     } catch (dbError) {
-      
+      console.warn('❌ getCurrentUserFromToken: Database query exception:', dbError);
       // For alesierraalta@gmail.com, default to ADMIN role
       if (user.email === 'alesierraalta@gmail.com') {
-        
+        console.log('🔑 getCurrentUserFromToken: Applied admin role for root user (exception)');
         userRole = 'ADMIN';
       }
     }
@@ -256,11 +266,16 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
       permissions: userRole === 'ADMIN' ? ['read', 'write', 'delete', 'admin'] : ['read']
     };
 
+    // Cache the result before returning
+    authCache.set(token, userObj);
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ getCurrentUserFromToken: Database query completed and cached. Response time: ${elapsed}ms`);
     
     return userObj;
   } catch (error) {
-    
-    
+    const elapsed = Date.now() - startTime;
+    console.error(`❌ getCurrentUserFromToken: Error after ${elapsed}ms:`, error);
     return null;
   }
 };

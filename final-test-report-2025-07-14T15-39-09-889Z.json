@@ -1,0 +1,216 @@
+[
+  {
+    "deployment": "https://lumo-woad.vercel.app",
+    "steps": {
+      "environment": {
+        "success": true,
+        "data": {
+          "environment": {
+            "supabaseUrl": true,
+            "supabaseUrlLength": 40,
+            "serviceRoleKey": true,
+            "serviceRoleKeyLength": 219,
+            "serviceRoleKeyPrefix": "eyJhbGciOi"
+          },
+          "serviceClient": {
+            "available": true,
+            "dbConnection": {
+              "success": false,
+              "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+            },
+            "rlsBypass": {
+              "success": false,
+              "error": null
+            }
+          },
+          "timestamp": "2025-07-14T15:39:15.267Z",
+          "recommendations": {
+            "envVars": "Environment variables configured",
+            "serviceClient": "Service client created successfully",
+            "database": "Database connection failed - check service role key",
+            "rls": "RLS bypass failed - service role key may be incorrect"
+          }
+        }
+      },
+      "roles": {
+        "success": false,
+        "created": 0,
+        "total": 3,
+        "results": [
+          {
+            "role": "USER",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          },
+          {
+            "role": "MANAGER",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          },
+          {
+            "role": "ADMIN",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          }
+        ]
+      },
+      "userCreation": {
+        "success": false,
+        "error": "Invalid API key"
+      },
+      "login": {
+        "success": true,
+        "user": {
+          "id": "5f493c59-420e-4a9b-afed-0b67bfa892d5",
+          "email": "alesierraalta@gmail.com",
+          "name": "ALEJANDRO SIERRAALTA",
+          "firstName": "ALEJANDRO",
+          "lastName": "SIERRAALTA",
+          "roleId": "550e8400-e29b-41d4-a716-446655440000",
+          "isActive": true
+        },
+        "token": true
+      },
+      "authenticatedEndpoint": {
+        "success": true,
+        "user": {
+          "id": "5f493c59-420e-4a9b-afed-0b67bfa892d5",
+          "email": "alesierraalta@gmail.com",
+          "name": "ALEJANDRO SIERRAALTA",
+          "firstName": "ALEJANDRO",
+          "lastName": "SIERRAALTA",
+          "roleId": "550e8400-e29b-41d4-a716-446655440000",
+          "isActive": true
+        }
+      }
+    },
+    "success": true,
+    "issues": [
+      "RLS bypass failed - service role key issue",
+      "Some roles failed to create",
+      "Admin user creation failed"
+    ],
+    "recommendations": [
+      "Check SUPABASE_SERVICE_ROLE_KEY environment variable"
+    ]
+  },
+  {
+    "deployment": "https://lumo-git-main-alesierraaltas-projects.vercel.app",
+    "steps": {
+      "environment": {
+        "success": true,
+        "data": {
+          "environment": {
+            "supabaseUrl": true,
+            "supabaseUrlLength": 40,
+            "serviceRoleKey": true,
+            "serviceRoleKeyLength": 219,
+            "serviceRoleKeyPrefix": "eyJhbGciOi"
+          },
+          "serviceClient": {
+            "available": true,
+            "dbConnection": {
+              "success": false,
+              "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+            },
+            "rlsBypass": {
+              "success": false,
+              "error": null
+            }
+          },
+          "timestamp": "2025-07-14T15:39:17.365Z",
+          "recommendations": {
+            "envVars": "Environment variables configured",
+            "serviceClient": "Service client created successfully",
+            "database": "Database connection failed - check service role key",
+            "rls": "RLS bypass failed - service role key may be incorrect"
+          }
+        }
+      },
+      "roles": {
+        "success": false,
+        "created": 0,
+        "total": 3,
+        "results": [
+          {
+            "role": "USER",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          },
+          {
+            "role": "MANAGER",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          },
+          {
+            "role": "ADMIN",
+            "success": false,
+            "error": "HTTP 401: {\"message\":\"Invalid API key\",\"hint\":\"Double check your Supabase `anon` or `service_role` API key.\"}"
+          }
+        ]
+      },
+      "userCreation": {
+        "success": false,
+        "error": "Invalid API key"
+      },
+      "login": {
+        "success": true,
+        "user": {
+          "id": "5f493c59-420e-4a9b-afed-0b67bfa892d5",
+          "email": "alesierraalta@gmail.com",
+          "name": "ALEJANDRO SIERRAALTA",
+          "firstName": "ALEJANDRO",
+          "lastName": "SIERRAALTA",
+          "roleId": "550e8400-e29b-41d4-a716-446655440000",
+          "isActive": true
+        },
+        "token": true
+      },
+      "authenticatedEndpoint": {
+        "success": true,
+        "user": {
+          "id": "5f493c59-420e-4a9b-afed-0b67bfa892d5",
+          "email": "alesierraalta@gmail.com",
+          "name": "ALEJANDRO SIERRAALTA",
+          "firstName": "ALEJANDRO",
+          "lastName": "SIERRAALTA",
+          "roleId": "550e8400-e29b-41d4-a716-446655440000",
+          "isActive": true
+        }
+      }
+    },
+    "success": true,
+    "issues": [
+      "RLS bypass failed - service role key issue",
+      "Some roles failed to create",
+      "Admin user creation failed"
+    ],
+    "recommendations": [
+      "Check SUPABASE_SERVICE_ROLE_KEY environment variable"
+    ]
+  },
+  {
+    "deployment": "https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app",
+    "steps": {
+      "environment": {
+        "success": false,
+        "error": "Status 401"
+      },
+      "roles": {
+        "success": false,
+        "error": "Status 401"
+      },
+      "error": {
+        "success": false,
+        "error": "invalid json response body at https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app/api/users/create-temp reason: Unexpected token '<', \"<!doctype \"... is not valid JSON"
+      }
+    },
+    "success": false,
+    "issues": [
+      "Environment diagnostics endpoint failed",
+      "Cannot access roles endpoint",
+      "Network error: invalid json response body at https://lumo-f40cvfaj6-alesierraaltas-projects.vercel.app/api/users/create-temp reason: Unexpected token '<', \"<!doctype \"... is not valid JSON"
+    ],
+    "recommendations": []
+  }
+]

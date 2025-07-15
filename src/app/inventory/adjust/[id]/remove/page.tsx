@@ -1,4 +1,4 @@
-"use client";
+r "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Minus, AlertTriangle } from "lucide-react";
+import { useDebugInventoryAdjust } from "@/hooks/useDebugInventoryAdjust";
+import { DebugOverlay } from "@/components/debug/DebugOverlay";
 
 interface InventoryItem {
   id: string;
@@ -37,6 +39,10 @@ export default function RemoveStockPage() {
   const [inventoryItem, setInventoryItem] = useState<InventoryItem | null>(null);
   const [quantity, setQuantity] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
+
+  // Debug system integration
+  const { debugLogs, isDebugVisible, setIsDebugVisible, addLog, debugButtonClick } =
+    useDebugInventoryAdjust(inventoryId, 'remove');
 
   useEffect(() => {
     fetchInventoryItem();
@@ -163,7 +169,7 @@ export default function RemoveStockPage() {
   const willBeOutOfStock = newStockLevel <= 0;
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 min-h-screen pb-20">
       <div className="mb-6">
         <Button
           variant="outline"
@@ -179,19 +185,19 @@ export default function RemoveStockPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Minus className="h-5 w-5" />
             Remove Stock - {inventoryItem.name}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-6">
           {/* Current Item Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label className="text-sm font-medium">Current Stock</Label>
-              <p className="text-2xl font-bold text-blue-600">{inventoryItem.currentStock}</p>
+              <p className="text-2xl font-bold text-blue-600">{inventoryItem.currentStock || 0}</p>
             </div>
             <div>
               <Label className="text-sm font-medium">Min Stock Level</Label>
@@ -215,7 +221,7 @@ export default function RemoveStockPage() {
                 id="quantity"
                 type="number"
                 min="1"
-                max={inventoryItem.currentStock}
+                max={inventoryItem.currentStock || 0}
                 step="1"
                 value={quantity}
                 onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
@@ -223,7 +229,7 @@ export default function RemoveStockPage() {
                 disabled={submitting}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Maximum: {inventoryItem.currentStock} units
+                Maximum: {inventoryItem.currentStock || 0} units
               </p>
             </div>
 
@@ -240,17 +246,17 @@ export default function RemoveStockPage() {
 
             {quantity > 0 && (
               <div className={`p-3 border rounded-lg ${
-                willBeOutOfStock 
-                  ? 'bg-red-50 border-red-200' 
-                  : willBeLowStock 
-                    ? 'bg-yellow-50 border-yellow-200' 
+                willBeOutOfStock
+                  ? 'bg-red-50 border-red-200'
+                  : willBeLowStock
+                    ? 'bg-yellow-50 border-yellow-200'
                     : 'bg-blue-50 border-blue-200'
               }`}>
                 <p className={`text-sm ${
-                  willBeOutOfStock 
-                    ? 'text-red-800' 
-                    : willBeLowStock 
-                      ? 'text-yellow-800' 
+                  willBeOutOfStock
+                    ? 'text-red-800'
+                    : willBeLowStock
+                      ? 'text-yellow-800'
                       : 'text-blue-800'
                 }`}>
                   <strong>New Stock Level:</strong> {newStockLevel} units
@@ -274,27 +280,38 @@ export default function RemoveStockPage() {
               </div>
             )}
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleRemoveStock} 
-              disabled={submitting || quantity <= 0 || quantity > inventoryItem.currentStock}
-              variant={willBeOutOfStock ? "destructive" : "default"}
-              className="flex-1"
-            >
-              {submitting ? 'Removing...' : `Remove ${quantity} Units`}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/inventory')}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Fixed Bottom Action Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 safe-area-pb">
+        <div className="container mx-auto flex gap-2">
+          <Button
+            onClick={debugButtonClick(handleRemoveStock, 'Remove Stock Button')}
+            disabled={submitting || quantity <= 0 || quantity > (inventoryItem.currentStock || 0)}
+            variant={willBeOutOfStock ? "destructive" : "default"}
+            className="flex-1"
+            size="lg"
+          >
+            {submitting ? 'Removing...' : `Remove ${quantity} Units`}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={debugButtonClick(() => router.push('/inventory'), 'Cancel Button')}
+            disabled={submitting}
+            size="lg"
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+
+      {/* Debug Overlay */}
+      <DebugOverlay
+        logs={debugLogs}
+        isVisible={isDebugVisible}
+        onToggle={() => setIsDebugVisible(!isDebugVisible)}
+      />
     </div>
   );
 } 

@@ -1,0 +1,80 @@
+{
+  "api": {
+    "/api/inventory": {
+      "endpoint": "/api/inventory",
+      "responseTime": 1474,
+      "status": 200,
+      "success": true,
+      "timestamp": "2025-07-14T12:15:18.819Z"
+    },
+    "/api/categories": {
+      "endpoint": "/api/categories",
+      "responseTime": 465,
+      "status": 200,
+      "success": true,
+      "timestamp": "2025-07-14T12:15:19.395Z"
+    },
+    "/api/cache-stats": {
+      "endpoint": "/api/cache-stats",
+      "responseTime": 74,
+      "status": 200,
+      "success": true,
+      "timestamp": "2025-07-14T12:15:19.569Z"
+    }
+  },
+  "cache": {
+    "combined": {
+      "hits": 0,
+      "misses": 0,
+      "hitRate": 0,
+      "totalRequests": 0,
+      "totalSize": 0
+    },
+    "authCache": {
+      "hits": 0,
+      "misses": 0,
+      "sets": 0,
+      "clears": 0,
+      "evictions": 0,
+      "size": 0,
+      "hitRate": 0
+    },
+    "responseCache": {
+      "hits": 0,
+      "misses": 0,
+      "hitRate": 0,
+      "size": 0
+    },
+    "timestamp": "2025-07-14T12:15:19.695Z"
+  },
+  "system": {
+    "nextVersion": "14.2.5",
+    "buildExists": true,
+    "buildStats": {
+      "polyfillFiles": [
+        "static/chunks/polyfills.js"
+      ],
+      "devFiles": [],
+      "ampDevFiles": [],
+      "lowPriorityFiles": [
+        "static/development/_buildManifest.js",
+        "static/development/_ssgManifest.js"
+      ],
+      "rootMainFiles": [],
+      "pages": {
+        "/_app": []
+      },
+      "ampFirstPages": []
+    },
+    "nodeVersion": "v23.3.0",
+    "memoryUsage": {
+      "rss": 54984704,
+      "heapTotal": 12435456,
+      "heapUsed": 7723096,
+      "external": 3297497,
+      "arrayBuffers": 68375
+    },
+    "uptime": 2.3825555
+  },
+  "timestamp": "2025-07-14T12:15:17.339Z"
+}

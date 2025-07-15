@@ -39,7 +39,9 @@
     "build",
     "coverage",
     "playwright-report",
-    "test-results"
+    "test-results",
+    "dev-tools",
+    "dev-tools/**/*"
   ],
   "ts-node": {
     "esm": true

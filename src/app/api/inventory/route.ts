@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db-supabase';
 import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
+import {
+  getOptimizedInventoryItemsCached,
+  getOptimizedInventoryCountCached,
+  invalidateInventoryCaches
+} from '@/lib/db-optimization-redis';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,50 +28,23 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    const where: any = {
-      isActive: true
-    };
+    // Use Redis-cached optimized queries
+    const page = Math.floor(offset / limit) + 1;
+    const items = await getOptimizedInventoryItemsCached(
+      page,
+      limit,
+      search || undefined,
+      categoryId || undefined,
+      locationId || undefined,
+      lowStock
+    );
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { sku: { contains: search } },
-        { description: { contains: search } }
-      ];
-    }
-
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-
-    if (locationId) {
-      where.locationId = locationId;
-    }
-
-    if (lowStock) {
-      // Use a special flag for low stock filtering - this will be handled in post-processing
-      where.currentStock = { lte: 'minStockLevel' };
-    }
-
-    const items = await db.inventoryItem.findMany({
-      where,
-      include: {
-        category: true,
-        location: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { name: 'asc' },
-      take: limit,
-      skip: offset
-    });
-
-    const total = await db.inventoryItem.count({ where });
+    const total = await getOptimizedInventoryCountCached(
+      search || undefined,
+      categoryId || undefined,
+      locationId || undefined,
+      lowStock
+    );
 
     return NextResponse.json({
       success: true,
@@ -122,19 +100,21 @@ export async function POST(request: NextRequest) {
         imageUrl: data.imageUrl,
         createdById,
         isActive: true
-      },
-      include: {
-        category: true,
-        location: true,
-        createdBy: createdById ? {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        } : undefined
       }
     });
+
+    console.log('Created item:', item);
+
+    // Invalidate inventory caches after creating new item
+    await invalidateInventoryCaches();
+
+    if (!item) {
+      console.error('Item creation returned null');
+      return NextResponse.json(
+        { success: false, error: 'Item creation failed - null response' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -142,9 +122,47 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating inventory item:', error);
+    
+    // Handle specific Supabase constraint violations
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+      
+      // Check for duplicate SKU constraint violation
+      if (errorMessage.includes('23505') && errorMessage.includes('inventory_items_sku_key')) {
+        return NextResponse.json(
+          { success: false, error: 'SKU already exists. Please use a unique SKU.' },
+          { status: 409 }
+        );
+      }
+      
+      // Check for foreign key constraint violations
+      if (errorMessage.includes('23503')) {
+        if (errorMessage.includes('category_id')) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid category selected.' },
+            { status: 400 }
+          );
+        }
+        if (errorMessage.includes('location_id')) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid location selected.' },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Check for not null constraint violations
+      if (errorMessage.includes('23502')) {
+        return NextResponse.json(
+          { success: false, error: 'Required field is missing.' },
+          { status: 400 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       { success: false, error: 'Failed to create inventory item' },
       { status: 500 }
     );
   }
-} 
+}

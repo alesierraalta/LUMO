@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus } from "lucide-react";
+import { useDebugInventoryAdjust } from "@/hooks/useDebugInventoryAdjust";
+import { DebugOverlay } from "@/components/debug/DebugOverlay";
 
 interface InventoryItem {
   id: string;
@@ -38,12 +40,17 @@ export default function AddStockPage() {
   const [quantity, setQuantity] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
 
+  // Debug system integration
+  const { debugLogs, isDebugVisible, setIsDebugVisible, addLog, debugButtonClick } =
+    useDebugInventoryAdjust(inventoryId, 'add');
+
   useEffect(() => {
     fetchInventoryItem();
   }, [inventoryId]);
 
   const fetchInventoryItem = async () => {
     try {
+      addLog('state', `Starting fetchInventoryItem for ID: ${inventoryId}`);
       setLoading(true);
       const response = await fetch(`/api/inventory/${inventoryId}`);
       
@@ -54,10 +61,12 @@ export default function AddStockPage() {
       const data = await response.json();
       if (data.success && data.item) {
         setInventoryItem(data.item);
+        addLog('state', 'Inventory item loaded successfully', data.item);
       } else {
         throw new Error('Item not found');
       }
     } catch (error) {
+      addLog('error', 'Error fetching inventory item', error);
       console.error('Error fetching inventory item:', error);
       toast({
         title: 'Error',
@@ -67,11 +76,15 @@ export default function AddStockPage() {
       router.push('/inventory');
     } finally {
       setLoading(false);
+      addLog('state', 'Loading state set to false');
     }
   };
 
   const handleAddStock = async () => {
+    addLog('event', `handleAddStock called with quantity: ${quantity}, notes: ${notes}`);
+    
     if (quantity <= 0) {
+      addLog('error', 'Invalid quantity validation failed', { quantity });
       toast({
         title: 'Error',
         description: 'Please enter a valid quantity',
@@ -81,32 +94,40 @@ export default function AddStockPage() {
     }
 
     try {
+      addLog('state', 'Setting submitting to true');
       setSubmitting(true);
+      
+      const requestBody = { quantity, notes };
+      addLog('network', 'Preparing add-stock request', requestBody);
+      
       const response = await fetch(`/api/inventory/${inventoryId}/add-stock`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          quantity,
-          notes,
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      addLog('network', `Add-stock response: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorData = await response.json();
+        addLog('error', 'Add-stock API error', errorData);
         throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
+      addLog('network', 'Add-stock success response', data);
       
       toast({
         title: 'Success',
         description: `Added ${quantity} units to ${inventoryItem?.name}`,
       });
 
+      addLog('event', 'Navigating back to inventory');
       router.push('/inventory');
     } catch (error: any) {
+      addLog('error', 'handleAddStock error', error);
       console.error('Error adding stock:', error);
       toast({
         title: 'Error',
@@ -114,6 +135,7 @@ export default function AddStockPage() {
         variant: 'destructive'
       });
     } finally {
+      addLog('state', 'Setting submitting to false');
       setSubmitting(false);
     }
   };
@@ -150,7 +172,7 @@ export default function AddStockPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 min-h-screen pb-20">
       <div className="mb-6">
         <Button
           variant="outline"
@@ -166,19 +188,19 @@ export default function AddStockPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             Add Stock - {inventoryItem.name}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-6">
           {/* Current Item Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label className="text-sm font-medium">Current Stock</Label>
-              <p className="text-2xl font-bold text-blue-600">{inventoryItem.currentStock}</p>
+              <p className="text-2xl font-bold text-blue-600">{inventoryItem.currentStock || 0}</p>
             </div>
             <div>
               <Label className="text-sm font-medium">Min Stock Level</Label>
@@ -224,31 +246,42 @@ export default function AddStockPage() {
             {quantity > 0 && (
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-800">
-                  <strong>New Stock Level:</strong> {inventoryItem.currentStock + quantity} units
+                  <strong>New Stock Level:</strong> {(inventoryItem.currentStock || 0) + quantity} units
                 </p>
               </div>
             )}
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleAddStock} 
-              disabled={submitting || quantity <= 0}
-              className="flex-1"
-            >
-              {submitting ? 'Adding...' : `Add ${quantity} Units`}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/inventory')}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Fixed Bottom Action Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 safe-area-pb">
+        <div className="container mx-auto flex gap-2">
+          <Button
+            onClick={debugButtonClick(handleAddStock, 'Add Stock Button')}
+            disabled={submitting || quantity <= 0}
+            className="flex-1"
+            size="lg"
+          >
+            {submitting ? 'Adding...' : `Add ${quantity} Units`}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={debugButtonClick(() => router.push('/inventory'), 'Cancel Button')}
+            disabled={submitting}
+            size="lg"
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+
+      {/* Debug Overlay */}
+      <DebugOverlay
+        logs={debugLogs}
+        isVisible={isDebugVisible}
+        onToggle={() => setIsDebugVisible(!isDebugVisible)}
+      />
     </div>
   );
-} 
+}

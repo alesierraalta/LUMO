@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db-supabase';
 import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
+import { getCategoriesCached, invalidateInventoryCaches } from '@/lib/db-optimization-redis';
+import { responseCache, getCacheKey } from '@/lib/response-cache';
 import { createServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
@@ -30,32 +32,32 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const categories = await db.category.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        _count: {
-          select: {
-            inventoryItems: true
-          }
-        }
-      },
-      orderBy: { name: 'asc' },
-      take: limit,
-      skip: offset
-    });
+    // Use Redis-cached categories
+    let categories = await getCategoriesCached();
+    
+    // Apply search filter if provided
+    if (search) {
+      const searchLower = search.toLowerCase();
+      categories = categories.filter(cat =>
+        cat.name.toLowerCase().includes(searchLower) ||
+        (cat.description && cat.description.toLowerCase().includes(searchLower))
+      );
+    }
 
-    const total = await db.category.count({ where });
+    // Calculate pagination
+    const total = categories.length;
+    const paginatedCategories = categories.slice(offset, offset + limit);
+
+    // Add additional fields that the frontend expects
+    const categoriesWithMeta = paginatedCategories.map(cat => ({
+      ...cat,
+      createdBy: null, // Will be populated from cache if needed
+      _count: { inventoryItems: 0 } // Will be populated from cache if needed
+    }));
 
     return NextResponse.json({
       success: true,
-      categories,
+      categories: categoriesWithMeta,
       total,
       limit,
       offset
@@ -162,6 +164,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Invalidate caches after creating new category
+    await invalidateInventoryCaches();
 
     return NextResponse.json({
       success: true,

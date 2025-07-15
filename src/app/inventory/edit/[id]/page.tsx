@@ -179,8 +179,8 @@ export default function EditProductPage() {
           minStockLevel: formData.minStockLevel,
           unitCost: formData.unitCost,
           unitPrice: formData.unitPrice,
-          categoryId: formData.categoryId || null,
-          locationId: formData.locationId || null,
+          categoryId: formData.categoryId === 'no-category' ? null : formData.categoryId || null,
+          locationId: formData.locationId === 'no-location' ? null : formData.locationId || null,
           isActive: formData.isActive
         }),
       });
@@ -370,7 +370,7 @@ export default function EditProductPage() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Category</SelectItem>
+                  <SelectItem value="no-category">No Category</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -390,7 +390,7 @@ export default function EditProductPage() {
                   <SelectValue placeholder="Select location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Location</SelectItem>
+                  <SelectItem value="no-location">No Location</SelectItem>
                   {locations.map((location) => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.name}

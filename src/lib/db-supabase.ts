@@ -1064,10 +1064,11 @@ export const db = {
         description: data.description,
         sku: data.sku,
         categoryId: data.category_id,
+        locationId: data.location_id,
         currentStock: data.current_stock,
         minStockLevel: data.min_stock_level,
-        unitCost: data.unit_cost,
-        unitPrice: data.unit_price,
+        unitCost: data.cost,
+        unitPrice: data.price,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
@@ -1160,8 +1161,8 @@ export const db = {
         currentStock: item.current_stock,
         minStockLevel: item.min_stock_level,
         maxLevel: item.max_level,
-        unitCost: item.unit_cost,
-        unitPrice: item.unit_price,
+        unitCost: item.cost,
+        unitPrice: item.price,
         categoryId: item.category_id,
         locationId: item.location_id,
         imageUrl: item.image_url,
@@ -1203,11 +1204,16 @@ export const db = {
         name: params.data.name,
         description: params.data.description,
         sku: params.data.sku,
+        barcode: params.data.barcode,
         category_id: params.data.categoryId,
-        quantity: params.data.currentStock || params.data.quantity || 0,
+        location_id: params.data.locationId,
+        current_stock: params.data.currentStock || params.data.quantity || 0,
         min_stock_level: params.data.minStockLevel || 0,
+        max_level: params.data.maxLevel,
         cost: params.data.unitCost || 0,
         price: params.data.unitPrice || 0,
+        image_url: params.data.imageUrl,
+        is_active: params.data.isActive !== false
       };
       
       // Only include created_by_id if it's not null
@@ -1220,6 +1226,8 @@ export const db = {
         itemData.id = params.data.id;
       }
 
+      console.log('🔧 Supabase inventoryItem.create - itemData:', JSON.stringify(itemData, null, 2));
+
       const { data, error } = await supabase
         .from('inventory_items')
         .insert(itemData)
@@ -1231,16 +1239,23 @@ export const db = {
         throw new Error(`Database error: ${error.message}`);
       }
 
+      console.log('✅ Supabase inventoryItem.create - result:', JSON.stringify(data, null, 2));
+
       return {
         id: data.id,
         name: data.name,
         description: data.description,
         sku: data.sku,
+        barcode: data.barcode,
         categoryId: data.category_id,
-        currentStock: data.quantity,
+        locationId: data.location_id,
+        currentStock: data.current_stock,
         minStockLevel: data.min_stock_level,
+        maxLevel: data.max_level,
         unitCost: data.cost,
         unitPrice: data.price,
+        imageUrl: data.image_url,
+        isActive: data.is_active,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         createdById: data.created_by_id
@@ -1253,8 +1268,9 @@ export const db = {
       if (params.data.description !== undefined) updateData.description = params.data.description;
       if (params.data.sku) updateData.sku = params.data.sku;
       if (params.data.categoryId) updateData.category_id = params.data.categoryId;
-      if (params.data.currentStock !== undefined) updateData.quantity = params.data.currentStock;
-      if (params.data.quantity !== undefined) updateData.quantity = params.data.quantity;
+      if (params.data.locationId !== undefined) updateData.location_id = params.data.locationId;
+      if (params.data.currentStock !== undefined) updateData.current_stock = params.data.currentStock;
+      if (params.data.quantity !== undefined) updateData.current_stock = params.data.quantity;
       if (params.data.minStockLevel !== undefined) updateData.min_stock_level = params.data.minStockLevel;
       if (params.data.unitCost !== undefined) updateData.cost = params.data.unitCost;
       if (params.data.unitPrice !== undefined) updateData.price = params.data.unitPrice;
@@ -1279,7 +1295,8 @@ export const db = {
         description: data.description,
         sku: data.sku,
         categoryId: data.category_id,
-        currentStock: data.quantity,
+        locationId: data.location_id,
+        currentStock: data.current_stock,
         minStockLevel: data.min_stock_level,
         unitCost: data.cost,
         unitPrice: data.price,

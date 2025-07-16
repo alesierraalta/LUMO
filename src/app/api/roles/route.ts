@@ -3,6 +3,8 @@ import { createServerClient } from '@/lib/supabase-server';
 import { createServiceSupabaseClient } from '@/lib/supabase-service-client';
 import { getCurrentUserFromToken, getTokenFromRequest, getCurrentUser } from '@/lib/auth-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Roles API: Starting authentication check...');

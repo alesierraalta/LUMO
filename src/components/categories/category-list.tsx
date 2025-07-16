@@ -120,10 +120,10 @@ export function CategoryList({ categories }: CategoryListProps) {
                 href={`/products?category=${category.id}`}
                 className="hover:underline flex items-center"
               >
-                {category._count.inventoryItems > 0 ? (
+                {(category._count?.inventoryItems || 0) > 0 ? (
                   <Badge variant="secondary" className="flex gap-1 items-center">
                     <PackageOpen className="h-3 w-3" />
-                    {category._count.inventoryItems} {category._count.inventoryItems === 1 ? 'product' : 'products'}
+                    {category._count?.inventoryItems || 0} {(category._count?.inventoryItems || 0) === 1 ? 'product' : 'products'}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground text-xs">No products</span>
@@ -159,8 +159,8 @@ export function CategoryList({ categories }: CategoryListProps) {
             <AlertDialogDescription>
               This will permanently delete the category
               {categoryToDelete?.name && ` "${categoryToDelete.name}"`}
-              {categoryToDelete?._count.inventoryItems ? 
-                ` and affect ${categoryToDelete._count.inventoryItems} products` : 
+              {(categoryToDelete?._count?.inventoryItems || 0) > 0 ?
+                ` and affect ${categoryToDelete._count?.inventoryItems || 0} products` :
                 ''
               }.
               This action cannot be undone.

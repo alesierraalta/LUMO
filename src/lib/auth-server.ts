@@ -282,53 +282,98 @@ export const getCurrentUserFromToken = async (token: string): Promise<any> => {
 
 // REPLACEMENT for getTokenFromRequest - now gets Supabase Bearer token
 export const getTokenFromRequest = (request: NextRequest): string | null => {
-  console.log('🔍 getTokenFromRequest: Extracting token from request...');
+  // CRITICAL BUILD FIX: Wrap entire function in try-catch for build safety
+  try {
+    // CRITICAL BUILD FIX: Detect build-time execution and return null immediately
+    if (process.env.NEXT_PHASE === 'phase-production-build' || (process.env.NODE_ENV === 'production' && !request)) {
+      console.log('⚠️ getTokenFromRequest: Build-time execution detected, returning null');
+      return null;
+    }
+    
+    console.log('🔍 getTokenFromRequest: Extracting token from request...');
+    
+    // CRITICAL BUILD FIX: Handle build-time execution gracefully
+    if (!request || !request.headers) {
+      console.log('⚠️ getTokenFromRequest: No request or headers available (build-time)');
+      return null;
+    }
+    
+    // First check Authorization header for Bearer token with enhanced safety
+    let authHeader: string | null = null;
+    try {
+      authHeader = request.headers.get('Authorization');
+    } catch (error) {
+      console.log('⚠️ getTokenFromRequest: Error accessing Authorization header (build-time):', error);
+      return null;
+    }
+    
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      console.log('✅ getTokenFromRequest: Found Bearer token in Authorization header');
+      return authHeader.substring(7); // Remove "Bearer " prefix
+    }
   
-  // First check Authorization header for Bearer token
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    console.log('✅ getTokenFromRequest: Found Bearer token in Authorization header');
-    return authHeader.substring(7); // Remove "Bearer " prefix
-  }
-  
-  // Get all cookies to find Supabase auth cookie
-  const cookies = request.cookies;
-  console.log('🔍 getTokenFromRequest: Checking cookies...');
-  
-  // Look for Supabase auth cookie pattern: sb-{project-id}-auth-token
-  const allCookies = cookies.getAll();
-  console.log('🔍 getTokenFromRequest: Available cookies:', allCookies.map(c => c.name).join(', '));
-  
-  for (const cookie of allCookies) {
-    // Check for Supabase auth token pattern
-    if (cookie.name.match(/^sb-.+-auth-token$/)) {
-      console.log('✅ getTokenFromRequest: Found Supabase auth cookie:', cookie.name);
-      try {
-        // Parse the JSON value to extract access token
-        const authData = JSON.parse(cookie.value);
-        if (authData.access_token) {
-          console.log('✅ getTokenFromRequest: Successfully extracted access token');
-          return authData.access_token;
+    // Get all cookies to find Supabase auth cookie with build-time safety
+    let cookies;
+    let allCookies = [];
+    try {
+      cookies = request.cookies;
+      if (cookies && typeof cookies.getAll === 'function') {
+        allCookies = cookies.getAll();
+        console.log('🔍 getTokenFromRequest: Available cookies:', allCookies.map(c => c.name).join(', '));
+      } else {
+        console.log('⚠️ getTokenFromRequest: No cookies available (build-time)');
+        return null;
+      }
+    } catch (error) {
+      console.log('⚠️ getTokenFromRequest: Error accessing cookies (build-time):', error);
+      return null;
+    }
+    
+    console.log('🔍 getTokenFromRequest: Checking cookies...');
+    
+    for (const cookie of allCookies) {
+      // Check for Supabase auth token pattern
+      if (cookie.name.match(/^sb-.+-auth-token$/)) {
+        console.log('✅ getTokenFromRequest: Found Supabase auth cookie:', cookie.name);
+        try {
+          // Parse the JSON value to extract access token
+          const authData = JSON.parse(cookie.value);
+          if (authData.access_token) {
+            console.log('✅ getTokenFromRequest: Successfully extracted access token');
+            return authData.access_token;
+          }
+        } catch (error) {
+          console.warn('⚠️ getTokenFromRequest: Failed to parse auth cookie:', error);
         }
-      } catch (error) {
-        console.warn('⚠️ getTokenFromRequest: Failed to parse auth cookie:', error);
       }
     }
+    
+    // Fallback to checking generic cookie names with build-time safety
+    let fallbackToken = null;
+    try {
+      if (cookies && typeof cookies.get === 'function') {
+        fallbackToken = cookies.get('sb-access-token')?.value
+          || cookies.get('sb-refresh-token')?.value
+          || cookies.get('auth-token')?.value
+          || null;
+      }
+    } catch (error) {
+      console.log('⚠️ getTokenFromRequest: Error accessing fallback cookies (build-time):', error);
+      fallbackToken = null;
+    }
+    
+    if (fallbackToken) {
+      console.log('✅ getTokenFromRequest: Found token in fallback cookies');
+    } else {
+      console.log('❌ getTokenFromRequest: No token found in any cookies');
+    }
+    
+    return fallbackToken;
+  } catch (buildError) {
+    // CRITICAL BUILD FIX: Catch any unexpected errors during build time
+    console.log('⚠️ getTokenFromRequest: Build-time error caught:', buildError);
+    return null;
   }
-  
-  // Fallback to checking generic cookie names
-  const fallbackToken = request.cookies.get('sb-access-token')?.value
-    || request.cookies.get('sb-refresh-token')?.value
-    || request.cookies.get('auth-token')?.value
-    || null;
-  
-  if (fallbackToken) {
-    console.log('✅ getTokenFromRequest: Found token in fallback cookies');
-  } else {
-    console.log('❌ getTokenFromRequest: No token found in any cookies');
-  }
-  
-  return fallbackToken;
 };
 
 // Helper functions for Supabase-only auth

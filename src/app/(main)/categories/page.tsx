@@ -88,16 +88,34 @@ export default function CategoriesPage() {
   };
 
   const calculateMetrics = (categoriesData: Category[]) => {
+    // Handle empty categories array
+    if (!categoriesData || categoriesData.length === 0) {
+      setMetrics({
+        totalCategories: 0,
+        totalProducts: 0,
+        averageProductsPerCategory: 0,
+        categoriesWithProducts: 0,
+        emptyCategories: 0,
+        mostPopularCategory: 'N/A'
+      });
+      return;
+    }
+
     const totalCategories = categoriesData.length;
     const totalProducts = categoriesData.reduce((sum, cat) => sum + (cat._count?.inventoryItems || 0), 0);
     const categoriesWithProducts = categoriesData.filter(cat => (cat._count?.inventoryItems || 0) > 0).length;
     const emptyCategories = totalCategories - categoriesWithProducts;
     const averageProductsPerCategory = totalCategories > 0 ? Math.round(totalProducts / totalCategories * 100) / 100 : 0;
     
-    const mostPopular = categoriesData.reduce((max, cat) => 
-      (cat._count?.inventoryItems || 0) > (max._count?.inventoryItems || 0) ? cat : max, 
-      categoriesData[0]
-    );
+    // Safe mostPopular calculation with proper null checks
+    let mostPopular = null;
+    if (categoriesData.length > 0) {
+      mostPopular = categoriesData.reduce((max, cat) => {
+        const catCount = cat._count?.inventoryItems || 0;
+        const maxCount = max._count?.inventoryItems || 0;
+        return catCount > maxCount ? cat : max;
+      }, categoriesData[0]);
+    }
 
     setMetrics({
       totalCategories,

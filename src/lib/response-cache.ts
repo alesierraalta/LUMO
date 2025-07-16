@@ -77,10 +77,12 @@ class ResponseCache {
 
 export const responseCache = new ResponseCache();
 
-// Cleanup expired entries every 5 minutes
-setInterval(() => {
-  responseCache.cleanup();
-}, 300000);
+// Cleanup expired entries every 5 minutes (only in runtime, not during build)
+if (typeof window === 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build') {
+  setInterval(() => {
+    responseCache.cleanup();
+  }, 300000);
+}
 
 // Cache key generators
 export const getCacheKey = {

@@ -3,6 +3,8 @@ import { getCurrentUser } from '@/lib/auth-server'
 import jwt from 'jsonwebtoken'
 import { db } from '@/lib/db-supabase'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // First try to get user from Supabase session

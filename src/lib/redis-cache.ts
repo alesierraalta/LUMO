@@ -6,11 +6,11 @@
 import { Redis } from '@upstash/redis';
 
 // Redis configuration with mock detection
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL!;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!;
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || '';
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 
-// Detect if we're using mock Redis configuration
-const isMockRedis = REDIS_URL.startsWith('mock://') || REDIS_TOKEN === 'mock-token';
+// Detect if we're using mock Redis configuration - BUILD SAFE
+const isMockRedis = (REDIS_URL && REDIS_URL.startsWith('mock://')) || REDIS_TOKEN === 'mock-token' || !REDIS_URL || !REDIS_TOKEN;
 
 console.log('🔍 [Redis Cache] Configuration:', {
   url: isMockRedis ? 'MOCK MODE' : 'REAL UPSTASH',

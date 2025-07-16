@@ -7,6 +7,8 @@ import {
   invalidateInventoryCaches
 } from '@/lib/db-optimization-redis';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Get user from token or session

@@ -55,7 +55,10 @@ async function testDeletion() {
     }
     
     const inventoryData = await inventoryResponse.json();
-    const items = inventoryData.data || inventoryData;
+    console.log('📋 Raw inventory response:', inventoryData);
+    
+    // The /api/inventory endpoint returns { success: true, items: [...], total: N }
+    const items = inventoryData.items || inventoryData.data || [];
     console.log('✅ Found', items.length, 'inventory items');
     
     if (items.length === 0) {

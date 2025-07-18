@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Get Supabase configuration from environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ndprriqyhddjoixrlqnz.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kcHJyaXF5aGRkam9peHJscW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0MDAsImV4cCI6MjA2NTY4NDQwMH0.4rzi6UFGnN6ien_706ETHjBylZMK6jt0vjRvvnJ1J-8';
+// Get Supabase configuration from environment variables - NO HARDCODED FALLBACKS
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let supabaseClient = null;
+
+// Validate configuration
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('⚠️ Missing Supabase client configuration. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
+  throw new Error('Missing Supabase configuration');
+}
 
 // Debug logging to see which configuration is being used
 console.log('[SUPABASE] Configuration:');
@@ -18,4 +24,4 @@ export function getSupabaseClient() {
     console.log('[SUPABASE] Client created successfully');
   }
   return supabaseClient;
-} 
+}

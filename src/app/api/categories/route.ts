@@ -64,19 +64,13 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    // Authentication check
+    // Authentication check - use fallback pattern like other APIs
     const token = getTokenFromRequest(request);
-    if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const user = await getCurrentUserFromToken(token);
+    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Invalid token' },
+        { success: false, error: 'Authentication required' },
         { status: 401 }
       );
     }

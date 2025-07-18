@@ -1,0 +1,630 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test Report - TEST_2025-07-18T18-21-10-336Z_68zgd7</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; }
+            .passed { color: green; }
+            .failed { color: red; }
+            .skipped { color: orange; }
+        </style>
+    </head>
+    <body>
+        <h1>Test Execution Report</h1>
+        <div class="summary">
+            <h2>Summary</h2>
+            <p>Session: TEST_2025-07-18T18-21-10-336Z_68zgd7</p>
+            <p>Duration: 0.00 seconds</p>
+            <p class="passed">Passed: 7</p>
+            <p class="failed">Failed: 13</p>
+            <p class="skipped">Skipped: 0</p>
+            <p>Success Rate: 35.00%</p>
+        </div>
+        <pre>{
+  "sessionId": "TEST_2025-07-18T18-21-10-336Z_68zgd7",
+  "timestamp": "2025-07-18T18:21:24.286Z",
+  "duration": null,
+  "environment": {
+    "baseUrl": "http://localhost:3000"
+  },
+  "summary": {
+    "totalTests": 20,
+    "passed": 7,
+    "failed": 13,
+    "skipped": 0,
+    "successRate": "35.00%"
+  },
+  "suites": {
+    "CRUD Operations": {
+      "total": 10,
+      "passed": 0,
+      "failed": 10,
+      "successRate": "0.00%",
+      "errors": [
+        {
+          "operation": "CREATE categories",
+          "error": "Request failed with status code 401",
+          "stack": "AxiosError: Request failed with status code 401\n    at settle (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:2053:12)\n    at IncomingMessage.handleStreamEnd (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:3170:11)\n    at IncomingMessage.emit (node:events:525:35)\n    at endReadableNT (node:internal/streams/readable:1696:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:4280:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:116:24)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:14.228Z"
+        },
+        {
+          "operation": "CRUD operation for categories",
+          "error": "Request failed with status code 401",
+          "stack": "AxiosError: Request failed with status code 401\n    at settle (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:2053:12)\n    at IncomingMessage.handleStreamEnd (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:3170:11)\n    at IncomingMessage.emit (node:events:525:35)\n    at endReadableNT (node:internal/streams/readable:1696:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:4280:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:116:24)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:14.233Z"
+        },
+        {
+          "operation": "CREATE locations",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:14.547Z"
+        },
+        {
+          "operation": "CRUD operation for locations",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:14.547Z"
+        },
+        {
+          "operation": "CREATE products",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:15.592Z"
+        },
+        {
+          "operation": "CRUD operation for products",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:15.592Z"
+        },
+        {
+          "operation": "CREATE users",
+          "error": "Request failed with status code 400",
+          "stack": "AxiosError: Request failed with status code 400\n    at settle (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:2053:12)\n    at IncomingMessage.handleStreamEnd (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:3170:11)\n    at IncomingMessage.emit (node:events:525:35)\n    at endReadableNT (node:internal/streams/readable:1696:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:4280:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:116:24)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:15.605Z"
+        },
+        {
+          "operation": "CRUD operation for users",
+          "error": "Request failed with status code 400",
+          "stack": "AxiosError: Request failed with status code 400\n    at settle (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:2053:12)\n    at IncomingMessage.handleStreamEnd (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:3170:11)\n    at IncomingMessage.emit (node:events:525:35)\n    at endReadableNT (node:internal/streams/readable:1696:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\node_modules\\axios\\dist\\node\\axios.cjs:4280:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:116:24)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:15.609Z"
+        },
+        {
+          "operation": "CREATE inventory",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:16.104Z"
+        },
+        {
+          "operation": "CRUD operation for inventory",
+          "error": "CREATE response missing required ID field",
+          "stack": "Error: CREATE response missing required ID field\n    at CrudTestSuite.testCreate (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:126:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:64:23)\n    at async CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:9)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:21:16.104Z"
+        }
+      ],
+      "details": [
+        {
+          "type": "ERROR",
+          "operation": "CREATE categories",
+          "message": "Request failed with status code 401",
+          "timestamp": "2025-07-18T18:21:14.228Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD operation for categories",
+          "message": "Request failed with status code 401",
+          "timestamp": "2025-07-18T18:21:14.233Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CREATE locations",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:14.547Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD operation for locations",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:14.547Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CREATE products",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:15.592Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD operation for products",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:15.592Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CREATE users",
+          "message": "Request failed with status code 400",
+          "timestamp": "2025-07-18T18:21:15.605Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD operation for users",
+          "message": "Request failed with status code 400",
+          "timestamp": "2025-07-18T18:21:15.609Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CREATE inventory",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:16.104Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD operation for inventory",
+          "message": "CREATE response missing required ID field",
+          "timestamp": "2025-07-18T18:21:16.104Z"
+        }
+      ],
+      "createdEntities": {
+        "products": [],
+        "categories": [],
+        "locations": [],
+        "users": [],
+        "inventory": []
+      }
+    },
+    "Authentication": {
+      "total": 3,
+      "passed": 1,
+      "failed": 2,
+      "details": [
+        {
+          "test": "Admin Login",
+          "status": "FAILED",
+          "error": "Request failed with status code 401"
+        },
+        {
+          "test": "Invalid Login Rejection",
+          "status": "PASSED"
+        },
+        {
+          "test": "Protected Endpoints",
+          "status": "FAILED",
+          "error": "Protected endpoint accessible without authentication"
+        }
+      ]
+    },
+    "API Endpoints": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "details": [
+        {
+          "test": "GET /api/health",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/products",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/categories",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/locations",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/inventory",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        }
+      ]
+    },
+    "Database Integrity": {
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "details": [
+        {
+          "test": "Database Connectivity",
+          "status": "FAILED",
+          "error": "Database not connected"
+        },
+        {
+          "test": "Foreign Key Constraints",
+          "status": "PASSED"
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "cleanup": {
+    "totalDeleted": 0,
+    "totalErrors": 0,
+    "totalSkipped": 52,
+    "successRate": "0%",
+    "errors": [],
+    "skipped": [
+      {
+        "entityType": "inventory",
+        "entityId": "08db24a5-fd16-4f84-82b8-ef085939f100",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_08db24a5-fd16-4f84-82b8-ef085939f100"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f400b468-a669-41aa-a47d-c48ed126c033",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f400b468-a669-41aa-a47d-c48ed126c033"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "b1b3362f-9ede-460a-a932-fe3377b4eeb5",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_b1b3362f-9ede-460a-a932-fe3377b4eeb5"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "fa76a0e7-507d-4184-8d6c-8a8ae336a313",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_fa76a0e7-507d-4184-8d6c-8a8ae336a313"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "409f1b71-c601-4b69-8c57-7e310985a0a6",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_409f1b71-c601-4b69-8c57-7e310985a0a6"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "dc4f2569-b24c-4be3-8d22-d4005827a927",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_dc4f2569-b24c-4be3-8d22-d4005827a927"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f48310b7-090c-4aab-9639-b3515d0806f4",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f48310b7-090c-4aab-9639-b3515d0806f4"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "a6907ef2-497a-46bb-9289-d54b8b0119eb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_a6907ef2-497a-46bb-9289-d54b8b0119eb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "2e75f127-8dde-479c-84eb-dcc369f6c3b4",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_2e75f127-8dde-479c-84eb-dcc369f6c3b4"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "43f042ee-99c6-4de7-9994-91f37a57e817",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_43f042ee-99c6-4de7-9994-91f37a57e817"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "ae5a0fa6-1e54-4653-893e-100eef3929fb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_ae5a0fa6-1e54-4653-893e-100eef3929fb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "de51439d-7316-4a83-a124-767c991a6056",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_de51439d-7316-4a83-a124-767c991a6056"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "23de988a-b411-439e-a7b2-1771f10b7ec6",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_23de988a-b411-439e-a7b2-1771f10b7ec6"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "02043b6e-0db5-45d1-b599-d36177de07d2",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_02043b6e-0db5-45d1-b599-d36177de07d2"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "a4c31dfc-2b97-4a02-83ea-9808f2a34d55",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_a4c31dfc-2b97-4a02-83ea-9808f2a34d55"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "c68b10b1-2a05-4cd9-aadf-cd7a54296d06",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_c68b10b1-2a05-4cd9-aadf-cd7a54296d06"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "5bb53d86-f9e2-4a6c-b093-0de09bde0234",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_5bb53d86-f9e2-4a6c-b093-0de09bde0234"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "222f69a2-eb68-426f-aed6-7ffd7b070e33",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_222f69a2-eb68-426f-aed6-7ffd7b070e33"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "cb86acee-dee9-448a-a0d7-af96713a5577",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_cb86acee-dee9-448a-a0d7-af96713a5577"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f59db7b3-a1a5-4a5e-8f43-3c6cb8e7c867",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f59db7b3-a1a5-4a5e-8f43-3c6cb8e7c867"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "b62523c5-a5e0-49d9-9985-9a8846366f54",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_b62523c5-a5e0-49d9-9985-9a8846366f54"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "726ca943-9b76-4e02-ab06-3416003d7a75",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_726ca943-9b76-4e02-ab06-3416003d7a75"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "46f7aae3-1db2-429d-8b8b-442a4c11977b",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_46f7aae3-1db2-429d-8b8b-442a4c11977b"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "10852871-4efe-4cab-a002-e75094eacdbb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_10852871-4efe-4cab-a002-e75094eacdbb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "72c5af0a-255d-426b-a929-6e5b4092f75c",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_72c5af0a-255d-426b-a929-6e5b4092f75c"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "08db24a5-fd16-4f84-82b8-ef085939f100",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_08db24a5-fd16-4f84-82b8-ef085939f100"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "b1b3362f-9ede-460a-a932-fe3377b4eeb5",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_b1b3362f-9ede-460a-a932-fe3377b4eeb5"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "fa76a0e7-507d-4184-8d6c-8a8ae336a313",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_fa76a0e7-507d-4184-8d6c-8a8ae336a313"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f400b468-a669-41aa-a47d-c48ed126c033",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f400b468-a669-41aa-a47d-c48ed126c033"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "409f1b71-c601-4b69-8c57-7e310985a0a6",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_409f1b71-c601-4b69-8c57-7e310985a0a6"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "dc4f2569-b24c-4be3-8d22-d4005827a927",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_dc4f2569-b24c-4be3-8d22-d4005827a927"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f48310b7-090c-4aab-9639-b3515d0806f4",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f48310b7-090c-4aab-9639-b3515d0806f4"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "a6907ef2-497a-46bb-9289-d54b8b0119eb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_a6907ef2-497a-46bb-9289-d54b8b0119eb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "2e75f127-8dde-479c-84eb-dcc369f6c3b4",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_2e75f127-8dde-479c-84eb-dcc369f6c3b4"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "43f042ee-99c6-4de7-9994-91f37a57e817",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_43f042ee-99c6-4de7-9994-91f37a57e817"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "ae5a0fa6-1e54-4653-893e-100eef3929fb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_ae5a0fa6-1e54-4653-893e-100eef3929fb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "de51439d-7316-4a83-a124-767c991a6056",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_de51439d-7316-4a83-a124-767c991a6056"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "23de988a-b411-439e-a7b2-1771f10b7ec6",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_23de988a-b411-439e-a7b2-1771f10b7ec6"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "02043b6e-0db5-45d1-b599-d36177de07d2",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_02043b6e-0db5-45d1-b599-d36177de07d2"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "a4c31dfc-2b97-4a02-83ea-9808f2a34d55",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_a4c31dfc-2b97-4a02-83ea-9808f2a34d55"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "c68b10b1-2a05-4cd9-aadf-cd7a54296d06",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_c68b10b1-2a05-4cd9-aadf-cd7a54296d06"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "5bb53d86-f9e2-4a6c-b093-0de09bde0234",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_5bb53d86-f9e2-4a6c-b093-0de09bde0234"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "222f69a2-eb68-426f-aed6-7ffd7b070e33",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_222f69a2-eb68-426f-aed6-7ffd7b070e33"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "cb86acee-dee9-448a-a0d7-af96713a5577",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_cb86acee-dee9-448a-a0d7-af96713a5577"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "b62523c5-a5e0-49d9-9985-9a8846366f54",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_b62523c5-a5e0-49d9-9985-9a8846366f54"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "f59db7b3-a1a5-4a5e-8f43-3c6cb8e7c867",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_f59db7b3-a1a5-4a5e-8f43-3c6cb8e7c867"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "9b34a26f-a2ac-4a5d-ac87-608214044f4b",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_9b34a26f-a2ac-4a5d-ac87-608214044f4b"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "726ca943-9b76-4e02-ab06-3416003d7a75",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_726ca943-9b76-4e02-ab06-3416003d7a75"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "46f7aae3-1db2-429d-8b8b-442a4c11977b",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_46f7aae3-1db2-429d-8b8b-442a4c11977b"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "10852871-4efe-4cab-a002-e75094eacdbb",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_10852871-4efe-4cab-a002-e75094eacdbb"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "45edcdc8-e08d-4535-8499-a8203ce81bf8",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_45edcdc8-e08d-4535-8499-a8203ce81bf8"
+      },
+      {
+        "entityType": "inventory",
+        "entityId": "72c5af0a-255d-426b-a929-6e5b4092f75c",
+        "reason": "Production data - no test prefix",
+        "identifier": "inventory_72c5af0a-255d-426b-a929-6e5b4092f75c"
+      }
+    ],
+    "details": [],
+    "timestamp": "2025-07-18T18:21:24.285Z"
+  },
+  "configuration": {
+    "testPrefixes": {
+      "PRODUCTS": "TEST_PRODUCT_",
+      "CATEGORIES": "TEST_CATEGORY_",
+      "LOCATIONS": "TEST_LOCATION_",
+      "USERS": "TEST_USER_",
+      "INVENTORY": "TEST_INVENTORY_",
+      "DEBUG": "DEBUG_",
+      "TEMP": "TEMP_TEST_"
+    },
+    "limits": {
+      "MAX_TEST_PRODUCTS": 50,
+      "MAX_TEST_CATEGORIES": 20,
+      "MAX_TEST_LOCATIONS": 10,
+      "MAX_TEST_USERS": 25,
+      "MAX_TEST_INVENTORY_ITEMS": 100,
+      "CLEANUP_BATCH_SIZE": 10
+    },
+    "scenarios": {
+      "CRUD_OPERATIONS": {
+        "enabled": true,
+        "entities": [
+          "products",
+          "categories",
+          "locations",
+          "inventory",
+          "users"
+        ]
+      },
+      "AUTHENTICATION": {
+        "enabled": true,
+        "testInvalidCredentials": true,
+        "testTokenExpiration": true,
+        "testRolePermissions": true
+      },
+      "FRONTEND_COMPONENTS": {
+        "enabled": true,
+        "testFormValidation": true,
+        "testUserInteractions": true,
+        "testErrorHandling": true
+      },
+      "API_ENDPOINTS": {
+        "enabled": true,
+        "testAllMethods": true,
+        "testErrorResponses": true,
+        "testDataValidation": true
+      },
+      "DATABASE_INTEGRITY": {
+        "enabled": true,
+        "testConstraints": true,
+        "testRelationships": true,
+        "testDataConsistency": true
+      }
+    }
+  }
+}</pre>
+    </body>
+    </html>
+    

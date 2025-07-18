@@ -1,0 +1,281 @@
+{
+  "sessionId": "TEST_2025-07-18T18-13-25-346Z_xkw3h8",
+  "timestamp": "2025-07-18T18:13:43.069Z",
+  "duration": null,
+  "environment": {
+    "baseUrl": "http://localhost:3000"
+  },
+  "summary": {
+    "totalTests": 15,
+    "passed": 7,
+    "failed": 8,
+    "skipped": 0,
+    "successRate": "46.67%"
+  },
+  "suites": {
+    "CRUD Operations": {
+      "total": 5,
+      "passed": 0,
+      "failed": 5,
+      "successRate": "0.00%",
+      "errors": [
+        {
+          "operation": "CRUD test failed for categories",
+          "error": "Unknown entity type: categories",
+          "stack": "Error: Unknown entity type: categories\n    at TestDataFactory.generateCrudTestData (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\factories\\test-data-factory.js:257:15)\n    at CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:58:39)\n    at CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:20)\n    at MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:39)\n    at MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:27)\n    at MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:41)\n    at MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:18)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:13:32.478Z"
+        },
+        {
+          "operation": "CRUD test failed for locations",
+          "error": "Unknown entity type: locations",
+          "stack": "Error: Unknown entity type: locations\n    at TestDataFactory.generateCrudTestData (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\factories\\test-data-factory.js:257:15)\n    at CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:58:39)\n    at CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:20)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:13:32.479Z"
+        },
+        {
+          "operation": "CRUD test failed for products",
+          "error": "Unknown entity type: products",
+          "stack": "Error: Unknown entity type: products\n    at TestDataFactory.generateCrudTestData (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\factories\\test-data-factory.js:257:15)\n    at CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:58:39)\n    at CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:20)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:13:32.479Z"
+        },
+        {
+          "operation": "CRUD test failed for users",
+          "error": "Unknown entity type: users",
+          "stack": "Error: Unknown entity type: users\n    at TestDataFactory.generateCrudTestData (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\factories\\test-data-factory.js:257:15)\n    at CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:58:39)\n    at CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:20)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:13:32.480Z"
+        },
+        {
+          "operation": "CRUD test failed for inventory",
+          "error": "Unknown entity type: inventory",
+          "stack": "Error: Unknown entity type: inventory\n    at TestDataFactory.generateCrudTestData (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\factories\\test-data-factory.js:257:15)\n    at CrudTestSuite.testEntityCrud (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:58:39)\n    at CrudTestSuite.runAllCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\suites\\crud-test-suite.js:44:20)\n    at async MasterTestOrchestrator.executeCrudTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:197:23)\n    at async MasterTestOrchestrator.executeSuite (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:174:16)\n    at async MasterTestOrchestrator.executeTestSuites (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:146:30)\n    at async MasterTestOrchestrator.runComprehensiveTests (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\master-test-orchestrator.js:60:7)\n    at async ComprehensiveTestRunner.run (C:\\Users\\alesierraalta\\Documents\\python\\new-inventory-app\\tests\\run-comprehensive-tests.js:40:23)",
+          "timestamp": "2025-07-18T18:13:32.480Z"
+        }
+      ],
+      "details": [
+        {
+          "type": "ERROR",
+          "operation": "CRUD test failed for categories",
+          "message": "Unknown entity type: categories",
+          "timestamp": "2025-07-18T18:13:32.478Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD test failed for locations",
+          "message": "Unknown entity type: locations",
+          "timestamp": "2025-07-18T18:13:32.479Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD test failed for products",
+          "message": "Unknown entity type: products",
+          "timestamp": "2025-07-18T18:13:32.479Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD test failed for users",
+          "message": "Unknown entity type: users",
+          "timestamp": "2025-07-18T18:13:32.480Z"
+        },
+        {
+          "type": "ERROR",
+          "operation": "CRUD test failed for inventory",
+          "message": "Unknown entity type: inventory",
+          "timestamp": "2025-07-18T18:13:32.480Z"
+        }
+      ],
+      "createdEntities": {
+        "products": [],
+        "categories": [],
+        "locations": [],
+        "users": [],
+        "inventory": []
+      }
+    },
+    "Authentication": {
+      "total": 3,
+      "passed": 1,
+      "failed": 2,
+      "details": [
+        {
+          "test": "Admin Login",
+          "status": "FAILED",
+          "error": "Request failed with status code 401"
+        },
+        {
+          "test": "Invalid Login Rejection",
+          "status": "PASSED"
+        },
+        {
+          "test": "Protected Endpoints",
+          "status": "FAILED",
+          "error": "Protected endpoint accessible without authentication"
+        }
+      ]
+    },
+    "API Endpoints": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "details": [
+        {
+          "test": "GET /api/health",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/products",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/categories",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/locations",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        },
+        {
+          "test": "GET /api/inventory",
+          "status": "PASSED",
+          "responseTime": "N/A"
+        }
+      ]
+    },
+    "Database Integrity": {
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "details": [
+        {
+          "test": "Database Connectivity",
+          "status": "FAILED",
+          "error": "Database not connected"
+        },
+        {
+          "test": "Foreign Key Constraints",
+          "status": "PASSED"
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "cleanup": {
+    "totalDeleted": 0,
+    "totalErrors": 10,
+    "totalSkipped": 0,
+    "successRate": "0%",
+    "errors": [
+      {
+        "entity": "inventory",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:28.367Z"
+      },
+      {
+        "entity": "products",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:29.639Z"
+      },
+      {
+        "entity": "categories",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:30.370Z"
+      },
+      {
+        "entity": "locations",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:31.195Z"
+      },
+      {
+        "entity": "users",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:32.476Z"
+      },
+      {
+        "entity": "inventory",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:41.060Z"
+      },
+      {
+        "entity": "products",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:41.820Z"
+      },
+      {
+        "entity": "categories",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:41.828Z"
+      },
+      {
+        "entity": "locations",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:42.251Z"
+      },
+      {
+        "entity": "users",
+        "error": "entities is not iterable",
+        "timestamp": "2025-07-18T18:13:43.068Z"
+      }
+    ],
+    "skipped": [],
+    "details": [],
+    "timestamp": "2025-07-18T18:13:43.068Z"
+  },
+  "configuration": {
+    "testPrefixes": {
+      "PRODUCTS": "TEST_PRODUCT_",
+      "CATEGORIES": "TEST_CATEGORY_",
+      "LOCATIONS": "TEST_LOCATION_",
+      "USERS": "TEST_USER_",
+      "INVENTORY": "TEST_INVENTORY_",
+      "DEBUG": "DEBUG_",
+      "TEMP": "TEMP_TEST_"
+    },
+    "limits": {
+      "MAX_TEST_PRODUCTS": 50,
+      "MAX_TEST_CATEGORIES": 20,
+      "MAX_TEST_LOCATIONS": 10,
+      "MAX_TEST_USERS": 25,
+      "MAX_TEST_INVENTORY_ITEMS": 100,
+      "CLEANUP_BATCH_SIZE": 10
+    },
+    "scenarios": {
+      "CRUD_OPERATIONS": {
+        "enabled": true,
+        "entities": [
+          "products",
+          "categories",
+          "locations",
+          "inventory",
+          "users"
+        ]
+      },
+      "AUTHENTICATION": {
+        "enabled": true,
+        "testInvalidCredentials": true,
+        "testTokenExpiration": true,
+        "testRolePermissions": true
+      },
+      "FRONTEND_COMPONENTS": {
+        "enabled": true,
+        "testFormValidation": true,
+        "testUserInteractions": true,
+        "testErrorHandling": true
+      },
+      "API_ENDPOINTS": {
+        "enabled": true,
+        "testAllMethods": true,
+        "testErrorResponses": true,
+        "testDataValidation": true
+      },
+      "DATABASE_INTEGRITY": {
+        "enabled": true,
+        "testConstraints": true,
+        "testRelationships": true,
+        "testDataConsistency": true
+      }
+    }
+  }
+}

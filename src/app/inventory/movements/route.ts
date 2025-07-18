@@ -1,88 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db-supabase';
-import { getCurrentUser, getTokenFromRequest, getCurrentUserFromToken } from '@/lib/auth-server';
-
-export const dynamic = 'force-dynamic';
+import { getSupabaseClient } from '@/lib/supabase-singleton';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user from token or session
-    const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    const supabase = getSupabaseClient();
     
-    if (!user) {
+    // Get query parameters for pagination and filtering
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = (page - 1) * limit;
+    
+    // Fetch stock movements with inventory item details
+    const { data: movements, error } = await supabase
+      .from('stock_movements')
+      .select(`
+        id,
+        inventory_item_id,
+        movement_type,
+        quantity,
+        previous_stock,
+        new_stock,
+        notes,
+        created_at,
+        inventory_items (
+          id,
+          name,
+          sku
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching stock movements:', error);
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Failed to fetch stock movements' },
+        { status: 500 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const inventoryItemId = searchParams.get('inventoryItemId');
-    const movementType = searchParams.get('type');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
-    // Build query parameters
-    const queryParams: any = {
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: limit,
-      skip: offset,
-      include: {
-        inventoryItem: {
-          select: {
-            id: true,
-            name: true,
-            sku: true
-          }
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
+    // Transform the data to match the expected format
+    const transformedMovements = movements?.map(movement => ({
+      id: movement.id,
+      inventoryItemId: movement.inventory_item_id,
+      movementType: movement.movement_type,
+      quantity: movement.quantity,
+      previousStock: movement.previous_stock,
+      newStock: movement.new_stock,
+      notes: movement.notes,
+      createdAt: movement.created_at,
+      inventoryItem: {
+        id: movement.inventory_items?.id,
+        name: movement.inventory_items?.name,
+        sku: movement.inventory_items?.sku
       }
-    };
-
-    // Add filters if provided
-    const whereConditions: any = {};
-    
-    if (inventoryItemId) {
-      whereConditions.inventoryItemId = inventoryItemId;
-    }
-    
-    if (movementType) {
-      whereConditions.movementType = movementType;
-    }
-
-    if (Object.keys(whereConditions).length > 0) {
-      queryParams.where = whereConditions;
-    }
-
-    // Get stock movements
-    const movements = await db.stockMovement.findMany(queryParams);
-
-    // Get total count for pagination
-    const totalCount = await db.stockMovement.count({
-      where: queryParams.where
-    });
+    })) || [];
 
     return NextResponse.json({
       success: true,
-      movements,
-      total: totalCount,
-      limit,
-      offset,
-      hasMore: offset + limit < totalCount
+      movements: transformedMovements,
+      pagination: {
+        page,
+        limit,
+        total: transformedMovements.length
+      }
     });
+
   } catch (error) {
-    console.error('Error fetching inventory movements:', error);
+    console.error('Error in stock movements API:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch inventory movements' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -90,132 +78,57 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user from token or session
-    const token = getTokenFromRequest(request);
-    const user = token ? await getCurrentUserFromToken(token) : await getCurrentUser();
+    const supabase = getSupabaseClient();
+    const body = await request.json();
     
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const {
+      inventoryItemId,
+      movementType,
+      quantity,
+      previousStock,
+      newStock,
+      notes
+    } = body;
 
-    const data = await request.json();
-    
     // Validate required fields
-    if (!data.inventoryItemId || !data.movementType || !data.quantity) {
+    if (!inventoryItemId || !movementType || !quantity || previousStock === undefined || newStock === undefined) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: inventoryItemId, movementType, quantity' },
+        { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Validate movement type
-    const validMovementTypes = ['IN', 'OUT', 'ADJUSTMENT', 'TRANSFER', 'SALE', 'PURCHASE', 'RETURN'];
-    if (!validMovementTypes.includes(data.movementType)) {
+    // Insert new stock movement
+    const { data: movement, error } = await supabase
+      .from('stock_movements')
+      .insert({
+        inventory_item_id: inventoryItemId,
+        movement_type: movementType,
+        quantity,
+        previous_stock: previousStock,
+        new_stock: newStock,
+        notes: notes || null
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating stock movement:', error);
       return NextResponse.json(
-        { success: false, error: 'Invalid movement type' },
-        { status: 400 }
+        { success: false, error: 'Failed to create stock movement' },
+        { status: 500 }
       );
     }
-
-    // Get the inventory item to update stock
-    const inventoryItem = await db.inventoryItem.findUnique({
-      where: { id: data.inventoryItemId }
-    });
-
-    if (!inventoryItem) {
-      return NextResponse.json(
-        { success: false, error: 'Inventory item not found' },
-        { status: 404 }
-      );
-    }
-
-    // Calculate new stock level
-    let newStockLevel = inventoryItem.currentStock;
-    const quantity = parseInt(data.quantity);
-
-    // Determine if this is an increase or decrease
-    const increaseTypes = ['IN', 'PURCHASE', 'RETURN', 'ADJUSTMENT'];
-    const decreaseTypes = ['OUT', 'SALE', 'TRANSFER'];
-
-    if (increaseTypes.includes(data.movementType)) {
-      newStockLevel += quantity;
-    } else if (decreaseTypes.includes(data.movementType)) {
-      newStockLevel -= quantity;
-      
-      // Check if we have enough stock
-      if (newStockLevel < 0) {
-        return NextResponse.json(
-          { success: false, error: 'Insufficient stock for this operation' },
-          { status: 400 }
-        );
-      }
-    } else if (data.movementType === 'ADJUSTMENT') {
-      // For adjustments, the quantity might be the new total or the difference
-      // We'll treat it as the new total if specified
-      if (data.newTotal !== undefined) {
-        newStockLevel = parseInt(data.newTotal);
-      }
-    }
-
-    // Handle development mode user ID
-    let createdById = user.id;
-    if (user.id === 'dev-admin') {
-      createdById = null;
-    }
-
-    // Create the stock movement record
-    const movement = await db.stockMovement.create({
-      data: {
-        inventoryItemId: data.inventoryItemId,
-        movementType: data.movementType,
-        quantity: quantity,
-        previousStock: inventoryItem.currentStock,
-        newStock: newStockLevel,
-        unitCost: data.unitCost || inventoryItem.unitCost,
-        totalCost: (data.unitCost || inventoryItem.unitCost) * quantity,
-        reason: data.reason || '',
-        notes: data.notes || '',
-        referenceNumber: data.referenceNumber || '',
-        createdById
-      },
-      include: {
-        inventoryItem: {
-          select: {
-            id: true,
-            name: true,
-            sku: true
-          }
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-
-    // Update the inventory item's current stock
-    await db.inventoryItem.update({
-      where: { id: data.inventoryItemId },
-      data: {
-        currentStock: newStockLevel
-      }
-    });
 
     return NextResponse.json({
       success: true,
-      movement,
-      message: 'Stock movement recorded successfully'
-    }, { status: 201 });
+      movement
+    });
+
   } catch (error) {
-    console.error('Error creating inventory movement:', error);
+    console.error('Error in stock movements POST API:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create inventory movement' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

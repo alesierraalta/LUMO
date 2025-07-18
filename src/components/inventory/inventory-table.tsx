@@ -307,12 +307,13 @@ export default function InventoryTable({
     if (!confirmed) return;
     
     try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-      });
+      // Import apiDelete dynamically to avoid import issues
+      const { apiDelete } = await import('@/lib/api-client');
       
-      if (!response.ok) {
-        throw new Error('Error al eliminar el item');
+      const response = await apiDelete(`/api/products/${id}`);
+      
+      if (response.error || response.status !== 200) {
+        throw new Error(response.error || 'Error al eliminar el item');
       }
       
       toast.success(`Item "${name}" ha sido eliminado del inventario.`);
